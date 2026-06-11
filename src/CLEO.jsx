@@ -1072,7 +1072,7 @@ export default function CLEO(){
   var sEditCot=useState(null); var editCotId=sEditCot[0]; var setEditCotId=sEditCot[1];
   var sBuscaCli=useState(""); var buscaCli=sBuscaCli[0]; var setBuscaCli=sBuscaCli[1];
   var sGuardarSv=useState(null); var guardarSvModal=sGuardarSv[0]; var setGuardarSvModal=sGuardarSv[1];
-  var s16=useState(perfilDemo); var formPerfil=s16[0]; var setFormPerfil=s16[1];
+  var s16=useState(function(){ return lsGet("cleo_perfil",perfilDemo); }); var formPerfil=s16[0]; var setFormPerfil=s16[1];
   var s17=useState(svVacio); var formSv=s17[0]; var setFormSv=s17[1];
   var s17b=useState(0); var editorKey=s17b[0]; var setEditorKey=s17b[1];
   var s18=useState(false); var envioCotizacion=s18[0]; var setEnvioCotizacion=s18[1];
@@ -1129,7 +1129,7 @@ export default function CLEO(){
 
   function setClientes(v){ setClientesRaw(v); try{ localStorage.setItem("cleo_clientes",JSON.stringify(v)); }catch(e){} }
   function setCotizaciones(v){ var m=migrarCots(v); setCotizacionesRaw(m); try{ localStorage.setItem("cleo_cots",JSON.stringify(m)); }catch(e){} }
-  function setPerfil(v){ setPerfilRaw(v); try{ localStorage.setItem("cleo_perfil",JSON.stringify(v)); }catch(e){} }
+  function setPerfil(v){ setPerfilRaw(v); setFormPerfil(v); try{ localStorage.setItem("cleo_perfil",JSON.stringify(v)); }catch(e){} }
   function setServicios(v){ setServiciosRaw(v); try{ localStorage.setItem("cleo_servicios",JSON.stringify(v)); }catch(e){} }
   function setVentas(v){ setVentasRaw(v); try{ localStorage.setItem("cleo_ventas",JSON.stringify(v)); }catch(e){} }
   function setProductos(v){ setProductosRaw(v); }
@@ -1537,8 +1537,17 @@ export default function CLEO(){
     NAV_LABELS.pipeline="Mis clientes";
   }
 
+  // ── HYDRATION GATE — evita flash de onboarding antes de leer localStorage ──
+  var s_hyd=useState(false); var hydrated=s_hyd[0]; var setHydrated=s_hyd[1];
+  useEffect(function(){
+    console.log("[CLEO] mount — perfil.tipoPerfil:", perfil.tipoPerfil);
+    console.log("[CLEO] localStorage cleo_perfil:", localStorage.getItem("cleo_perfil"));
+    console.log("[CLEO] clientes count:", clientes.length);
+    setHydrated(true);
+  },[]);
+  if(!hydrated) return e("div",{style:{minHeight:"100vh",background:C.bg}});
+
   // ── ONBOARDING ─────────────────────────────────────────────────────────────
-  // Lee directamente de localStorage para evitar flash de onboarding
   var tipoPerfilGuardado=perfil.tipoPerfil||(function(){ try{ var p=localStorage.getItem("cleo_perfil"); return p?JSON.parse(p).tipoPerfil||"":""; }catch(e){ return ""; } })();
   if(!tipoPerfilGuardado){
     return e("div",{style:{fontFamily:"Arial,sans-serif",minHeight:"100vh",background:C.bg,display:"flex",alignItems:"center",justifyContent:"center",padding:"24px"}},
@@ -1565,7 +1574,6 @@ export default function CLEO(){
               onClick:function(){
                 var nuevoPerfil=Object.assign({},perfil,{tipoPerfil:op.k});
                 setPerfil(nuevoPerfil);
-                setFormPerfil(nuevoPerfil);
               }
             },
               e("span",{style:{fontSize:28,flexShrink:0}},op.emoji),
@@ -1726,7 +1734,7 @@ export default function CLEO(){
             )
           ),
           // Mi Perfil
-          e("div",{style:{padding:sbOpen?"10px 14px":"8px",display:"flex",alignItems:"center",gap:10,cursor:"pointer",justifyContent:sbOpen?"flex-start":"center",borderTop:"0.5px solid "+C.darkBorder},onClick:function(){ setFormPerfil(Object.assign({},perfilDemo,perfil)); setModalPerfil(true); }},
+          e("div",{style:{padding:sbOpen?"10px 14px":"8px",display:"flex",alignItems:"center",gap:10,cursor:"pointer",justifyContent:sbOpen?"flex-start":"center",borderTop:"0.5px solid "+C.darkBorder},onClick:function(){ setFormPerfil(Object.assign({},perfil)); setModalPerfil(true); }},
             e("div",{style:{width:28,height:28,borderRadius:8,background:"rgba(255,255,255,0.06)",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}},
               e("svg",{width:14,height:14,viewBox:"0 0 24 24",fill:"none",stroke:"rgba(255,255,255,0.45)",strokeWidth:2,strokeLinecap:"round",strokeLinejoin:"round"},
                 e("path",{d:"M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2M12 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8z"})
