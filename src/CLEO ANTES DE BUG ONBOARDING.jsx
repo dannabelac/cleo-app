@@ -1034,14 +1034,17 @@ export default function CLEO(){
 
   // Estados principales — forzar datos frescos si version cambio
   var DATA_VERSION="v4";
+  // No borrar datos al iniciar — solo marcar version si es nueva instalación
+  if(typeof localStorage!=="undefined"&&!localStorage.getItem("cleo_data_version")){
     localStorage.setItem("cleo_data_version",DATA_VERSION);
-  
-  var s1=useState([]); var clientes=s1[0]; var setClientesRaw=s1[1];
-  var s2=useState(function(){ return []; }); var cotizaciones=s2[0]; var setCotizacionesRaw=s2[1];
-  var s3=useState(perfilDemo); var perfil=s3[0]; var setPerfilRaw=s3[1];
-  var s4=useState([]); var servicios=s4[0]; var setServiciosRaw=s4[1];
-  var s4b=useState([]); var ventas=s4b[0]; var setVentasRaw=s4b[1];
-  var s4c=useState(productosDemo); var productos=s4c[0]; var setProductosRaw=s4c[1];
+  }
+  function lsGet(key,fallback){ try{ var v=localStorage.getItem(key); return v?JSON.parse(v):fallback; }catch(e){ return fallback; } }
+  var s1=useState(function(){ return lsGet("cleo_clientes",[]); }); var clientes=s1[0]; var setClientesRaw=s1[1];
+  var s2=useState(function(){ return migrarCots(lsGet("cleo_cots",[])); }); var cotizaciones=s2[0]; var setCotizacionesRaw=s2[1];
+  var s3=useState(function(){ return lsGet("cleo_perfil",perfilDemo); }); var perfil=s3[0]; var setPerfilRaw=s3[1];
+  var s4=useState(function(){ return lsGet("cleo_servicios",[]); }); var servicios=s4[0]; var setServiciosRaw=s4[1];
+  var s4b=useState(function(){ return lsGet("cleo_ventas",[]); }); var ventas=s4b[0]; var setVentasRaw=s4b[1];
+  var s4c=useState(function(){ return lsGet("cleo_productos",productosDemo); }); var productos=s4c[0]; var setProductosRaw=s4c[1];
 
   // Estados de navegacion
   var s5=useState("inicio"); var vista=s5[0]; var setVista=s5[1];
@@ -1121,14 +1124,14 @@ export default function CLEO(){
   var s33=useState("perfil"); var tabCliente=s33[0]; var setTabCliente=s33[1];
 
   // Alertas cerradas
-  var s34=useState([]); var alertasCerradas=s34[0]; var setAlertasCerradas=s34[1];
+  var s34=useState(function(){ try{ return JSON.parse(localStorage.getItem("cleo_alertas_cerradas")||"[]"); }catch(e){ return []; } }); var alertasCerradas=s34[0]; var setAlertasCerradas=s34[1];
   var s35=useState(false); var mostrarArchivados=s35[0]; var setMostrarArchivados=s35[1];
 
-  function setClientes(v){ setClientesRaw(v); }
-  function setCotizaciones(v){ setCotizacionesRaw(migrarCots(v)); }
-  function setPerfil(v){ setPerfilRaw(v); }
-  function setServicios(v){ setServiciosRaw(v); }
-  function setVentas(v){ setVentasRaw(v); }
+  function setClientes(v){ setClientesRaw(v); try{ localStorage.setItem("cleo_clientes",JSON.stringify(v)); }catch(e){} }
+  function setCotizaciones(v){ var m=migrarCots(v); setCotizacionesRaw(m); try{ localStorage.setItem("cleo_cots",JSON.stringify(m)); }catch(e){} }
+  function setPerfil(v){ setPerfilRaw(v); try{ localStorage.setItem("cleo_perfil",JSON.stringify(v)); }catch(e){} }
+  function setServicios(v){ setServiciosRaw(v); try{ localStorage.setItem("cleo_servicios",JSON.stringify(v)); }catch(e){} }
+  function setVentas(v){ setVentasRaw(v); try{ localStorage.setItem("cleo_ventas",JSON.stringify(v)); }catch(e){} }
   function setProductos(v){ setProductosRaw(v); }
 
   // Aprender producto nuevo al guardar venta
@@ -1142,7 +1145,7 @@ export default function CLEO(){
   }
 
   function alertaCerrada(key){ return alertasCerradas.indexOf(key)>=0; }
-  function cerrarAlerta(key){ setAlertasCerradas(function(prev){ return prev.concat([key]); }); }
+  function cerrarAlerta(key){ setAlertasCerradas(function(prev){ var n=prev.concat([key]); try{ localStorage.setItem("cleo_alertas_cerradas",JSON.stringify(n)); }catch(e){} return n; }); }
 
   var clientesFiltrados=[...clientes].filter(function(c){ return c.nombre.toLowerCase().includes(busqueda.toLowerCase())||c.negocio.toLowerCase().includes(busqueda.toLowerCase()); }).sort(function(a,b){ return a.nombre.localeCompare(b.nombre,"es"); });
 
@@ -1479,7 +1482,7 @@ export default function CLEO(){
     card:{background:C.surface,border:"1px solid "+C.border,borderRadius:20,padding:"20px 24px",marginBottom:0,boxShadow:"0 2px 8px rgba(0,0,0,0.05)"},
     badge:function(et){ return {display:"inline-block",padding:"3px 10px",borderRadius:20,fontSize:10,fontWeight:600,background:ETAPA_COLOR[et]+"15",color:ETAPA_COLOR[et]||C.textMuted,border:"1px solid "+(ETAPA_COLOR[et]||C.borderStrong)+"30"}; },
     badgeCot:function(et){ var m={Aceptada:C.green,Rechazada:C.red,Pendiente:C.amber}; var bg={Aceptada:C.greenBg,Rechazada:C.redBg,Pendiente:C.amberBg}; var cl=m[et]||C.textMuted; return {display:"inline-block",padding:"2px 9px",borderRadius:20,fontSize:11,background:bg[et]||C.surfaceUp,color:cl,border:"0.5px solid "+cl+"44"}; },
-    inp:{width:"100%",padding:"10px 12px",borderRadius:10,border:"1px solid "+C.borderStrong,background:C.surface,color:C.text,fontSize:14,boxSizing:"border-box"},
+    inp:{width:"100%",padding:"10px 12px",borderRadius:10,border:"1px solid "+C.borderStrong,background:C.surface,color:C.text,fontSize:14,boxSizing:"border-box",fontFamily:"-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif"},
     lbl:{fontSize:11,color:C.textMuted,marginBottom:5,display:"block",textTransform:"uppercase",letterSpacing:"0.8px",fontWeight:600},
     ov:{position:"fixed",inset:0,background:"rgba(26,22,53,0.55)",display:"flex",alignItems:"center",justifyContent:"center",zIndex:100},
     modal:{background:C.surface,borderRadius:20,padding:"28px",width:460,maxWidth:"95vw",border:"1px solid "+C.border,maxHeight:"88vh",overflowY:"auto",boxShadow:"0 8px 32px rgba(0,0,0,0.12)"},
@@ -4355,8 +4358,10 @@ export default function CLEO(){
             e("div",{style:{display:"flex",flexDirection:"column",gap:8}},
               e("button",{style:{cursor:"pointer",padding:"10px 16px",borderRadius:12,border:"1px solid "+C.red+"33",background:C.redBg,fontSize:13,color:C.red,width:"100%",textAlign:"left",display:"flex",alignItems:"center",gap:8},onClick:function(){
                 if(window.confirm("¿Borrar todos tus datos? Esta acción no se puede deshacer.")){
-                  setClientesRaw([]); setCotizacionesRaw([]);
-                  setVentasRaw([]); setServiciosRaw([]);
+                  setClientes([]); setCotizaciones([]);
+                  setVentas([]); setServicios([]);
+                  setPerfil(perfilDemo);
+                  try{ localStorage.removeItem("cleo_alertas_cerradas"); }catch(e){}
                   setAlertasCerradas([]); setModalPerfil(false);
                 }
               }},

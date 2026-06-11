@@ -1538,7 +1538,9 @@ export default function CLEO(){
   }
 
   // ── ONBOARDING ─────────────────────────────────────────────────────────────
-  if(!perfil.tipoPerfil){
+  // Lee directamente de localStorage para evitar flash de onboarding
+  var tipoPerfilGuardado=perfil.tipoPerfil||(function(){ try{ var p=localStorage.getItem("cleo_perfil"); return p?JSON.parse(p).tipoPerfil||"":""; }catch(e){ return ""; } })();
+  if(!tipoPerfilGuardado){
     return e("div",{style:{fontFamily:"Arial,sans-serif",minHeight:"100vh",background:C.bg,display:"flex",alignItems:"center",justifyContent:"center",padding:"24px"}},
       e("div",{style:{width:"100%",maxWidth:440}},
         // Logo
