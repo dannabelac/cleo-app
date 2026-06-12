@@ -1484,8 +1484,8 @@ export default function CLEO(){
     badgeCot:function(et){ var m={Aceptada:C.green,Rechazada:C.red,Pendiente:C.amber}; var bg={Aceptada:C.greenBg,Rechazada:C.redBg,Pendiente:C.amberBg}; var cl=m[et]||C.textMuted; return {display:"inline-block",padding:"2px 9px",borderRadius:20,fontSize:11,background:bg[et]||C.surfaceUp,color:cl,border:"0.5px solid "+cl+"44"}; },
     inp:{width:"100%",padding:"10px 12px",borderRadius:10,border:"1px solid "+C.borderStrong,background:C.surface,color:C.text,fontSize:14,boxSizing:"border-box",fontFamily:"-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif"},
     lbl:{fontSize:11,color:C.textMuted,marginBottom:5,display:"block",textTransform:"uppercase",letterSpacing:"0.8px",fontWeight:600},
-    ov:{position:"fixed",inset:0,background:"rgba(26,22,53,0.55)",display:"flex",alignItems:isMobile?"flex-end":"center",justifyContent:"center",zIndex:100},
-    modal:{background:C.surface,borderRadius:isMobile?"20px 20px 0 0":"20px",padding:"28px",width:isMobile?"100%":460,maxWidth:isMobile?"100%":"95vw",border:"1px solid "+C.border,maxHeight:isMobile?"92vh":"88vh",overflowY:"auto",boxShadow:"0 8px 32px rgba(0,0,0,0.12)"},
+    ov:{position:"fixed",inset:0,background:"rgba(26,22,53,0.55)",display:"flex",alignItems:"center",justifyContent:"center",zIndex:100},
+    modal:{background:C.surface,borderRadius:20,padding:"28px",width:460,maxWidth:"95vw",border:"1px solid "+C.border,maxHeight:"88vh",overflowY:"auto",boxShadow:"0 8px 32px rgba(0,0,0,0.12)"},
     pb:function(a){ return {cursor:"pointer",padding:"6px 16px",borderRadius:12,border:"1px solid "+(a?C.border:"transparent"),background:a?C.surface:"transparent",color:a?C.text:C.textMuted,fontSize:13,fontWeight:a?600:400}; },
     av:function(color){ return {width:36,height:36,borderRadius:"50%",background:color+"22",display:"flex",alignItems:"center",justifyContent:"center",fontWeight:700,fontSize:12,color:color,flexShrink:0}; },
   };
@@ -1539,14 +1539,12 @@ export default function CLEO(){
 
   // ── HYDRATION GATE — evita flash de onboarding antes de leer localStorage ──
   var s_hyd=useState(false); var hydrated=s_hyd[0]; var setHydrated=s_hyd[1];
-  var sMas=useState(false); var mostrarMas=sMas[0]; var setMostrarMas=sMas[1];
   useEffect(function(){
     console.log("[CLEO] mount — perfil.tipoPerfil:", perfil.tipoPerfil);
     console.log("[CLEO] localStorage cleo_perfil:", localStorage.getItem("cleo_perfil"));
     console.log("[CLEO] clientes count:", clientes.length);
     setHydrated(true);
   },[]);
-  var isMobile=typeof window!=="undefined"&&window.innerWidth<768;
   if(!hydrated) return e("div",{style:{minHeight:"100vh",background:C.bg}});
 
   // ── ONBOARDING ─────────────────────────────────────────────────────────────
@@ -1591,20 +1589,18 @@ export default function CLEO(){
     );
   }
 
-  // ── HYDRATION GATE
-
   return e("div",{style:{fontFamily:'Inter,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif',minHeight:"100vh",display:"flex",background:C.bg}},
 
     // BODY — sidebar + contenido (sin header fijo)
     e("div",{style:{display:"flex",width:"100%"}},
 
-      // SIDEBAR — solo desktop
+      // SIDEBAR — nav con grupos (posicion normal en el flujo)
       e("div",{style:{
         width:sbOpen?280:64,
         minHeight:"100vh",
         background:C.dark,
         borderRight:"1px solid "+C.darkBorder,
-        display:isMobile?"none":"flex",flexDirection:"column",
+        display:"flex",flexDirection:"column",
         flexShrink:0,
         transition:"width 0.2s ease",
         overflow:"hidden",
@@ -1752,10 +1748,10 @@ export default function CLEO(){
         )
       ),
 
-      // CONTENIDO PRINCIPAL
-      e("div",{style:{flex:1,overflow:"auto",background:C.bg,minHeight:"100vh",paddingBottom:isMobile?70:0}},
+      // CONTENIDO PRINCIPAL — margen para sidebar fijo
+      e("div",{style:{flex:1,overflow:"auto",background:C.bg,minHeight:"100vh"}},
 
-        e("div",{style:{padding:isMobile?"20px 16px":"40px 48px",maxWidth:1280,margin:"0 auto",width:"100%",boxSizing:"border-box"}},
+        e("div",{style:{padding:"40px 48px",maxWidth:1280,margin:"0 auto",width:"100%"}},
 
       // INICIO
       vista==="inicio"&&clientes.length===0&&e("div",{style:{display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",minHeight:"60vh",padding:"0 16px",textAlign:"center"}},
@@ -1959,33 +1955,33 @@ export default function CLEO(){
           ),
 
           // CARD METRICAS — con textos renombrados
-          e("div",{style:{background:C.surface,borderRadius:20,padding:"24px",border:"1px solid "+C.border,boxShadow:"0 2px 12px rgba(0,0,0,0.06)",marginBottom:24,display:"grid",gridTemplateColumns:isMobile?"1fr 1fr":"1fr 2px 1fr 2px 1fr 2px 1fr",gap:isMobile?"16px":0,alignItems:"center"}},
+          e("div",{style:{background:C.surface,borderRadius:20,padding:"24px",border:"1px solid "+C.border,boxShadow:"0 2px 12px rgba(0,0,0,0.06)",marginBottom:24,display:"grid",gridTemplateColumns:"1fr 2px 1fr 2px 1fr 2px 1fr",gap:0,alignItems:"center"}},
             // Clientes activos (antes: Pipeline activo)
-            e("div",{style:{padding:isMobile?"4px":"8px 32px 8px 0",cursor:"pointer"},onClick:function(){ setVista("pipeline"); }},
+            e("div",{style:{padding:"8px 32px 8px 0",cursor:"pointer"},onClick:function(){ setVista("pipeline"); }},
               e("div",{style:{fontSize:11,fontWeight:700,color:C.textDim,textTransform:"uppercase",letterSpacing:"1.5px",marginBottom:8}},"OPORTUNIDADES ABIERTAS"),
               e("div",{style:{fontSize:42,fontWeight:700,color:C.text,lineHeight:1,marginBottom:4}},clientesActivos),
               e("div",{style:{fontSize:13,color:C.textMuted,marginBottom:6}},"en proceso"),
               sinContacto>0&&e("div",{style:{fontSize:12,color:C.red,display:"flex",alignItems:"center",gap:4}},"↑ "+sinContacto+" sin contacto")
             ),
-            isMobile?null:e("div",{style:{width:1,height:60,background:C.border}}),
+            e("div",{style:{width:1,height:60,background:C.border}}),
             // Precios enviados (antes: Cotizaciones)
-            e("div",{style:{padding:isMobile?"4px":"8px 32px",cursor:"pointer"},onClick:function(){ setVista("cotizaciones"); setFiltroCot(Object.assign({},filtroCot,{estatus:"Pendiente"})); }},
+            e("div",{style:{padding:"8px 32px",cursor:"pointer"},onClick:function(){ setVista("cotizaciones"); setFiltroCot(Object.assign({},filtroCot,{estatus:"Pendiente"})); }},
               e("div",{style:{fontSize:11,fontWeight:700,color:C.textDim,textTransform:"uppercase",letterSpacing:"1.5px",marginBottom:8}},"PROPUESTAS ENVIADAS"),
               e("div",{style:{fontSize:36,fontWeight:700,color:C.text,lineHeight:1,marginBottom:4}},cotsPend.length),
               e("div",{style:{fontSize:13,color:C.textMuted,marginBottom:6}},"esperando respuesta"),
               totalPend>0&&e("div",{style:{fontSize:12,color:C.amber}},"$"+totalPend.toLocaleString()+" en juego")
             ),
-            isMobile?null:e("div",{style:{width:1,height:60,background:C.border}}),
+            e("div",{style:{width:1,height:60,background:C.border}}),
             // Ventas cerradas
-            e("div",{style:{padding:isMobile?"4px":"8px 32px",cursor:"pointer"},onClick:function(){ setVista("resumen"); }},
+            e("div",{style:{padding:"8px 32px",cursor:"pointer"},onClick:function(){ setVista("resumen"); }},
               e("div",{style:{fontSize:11,fontWeight:700,color:C.textDim,textTransform:"uppercase",letterSpacing:"1.5px",marginBottom:8}},"VENTAS CERRADAS"),
               e("div",{style:{fontSize:36,fontWeight:700,color:C.text,lineHeight:1,marginBottom:4}},ganados.length),
               e("div",{style:{fontSize:13,color:C.textMuted,marginBottom:6}},"precios aceptados"),
               totalGanado>0&&e("div",{style:{fontSize:12,color:C.green}},"$"+totalGanado.toLocaleString()+" cobrado")
             ),
-            isMobile?null:e("div",{style:{width:1,height:60,background:C.border}}),
+            e("div",{style:{width:1,height:60,background:C.border}}),
             // Sin contacto (antes: Seguimientos)
-            e("div",{style:{padding:isMobile?"4px":"8px 0 8px 32px",cursor:"pointer"},onClick:function(){ setVista("hoy"); }},
+            e("div",{style:{padding:"8px 0 8px 32px",cursor:"pointer"},onClick:function(){ setVista("hoy"); }},
               e("div",{style:{fontSize:11,fontWeight:700,color:C.textDim,textTransform:"uppercase",letterSpacing:"1.5px",marginBottom:8}},"SIN SEGUIMIENTO"),
               e("div",{style:{fontSize:36,fontWeight:700,color:sinContacto>0?C.red:C.text,lineHeight:1,marginBottom:4}},sinContacto),
               e("div",{style:{fontSize:13,color:C.textMuted,marginBottom:6}},"clientes sin seguimiento"),
@@ -1994,7 +1990,7 @@ export default function CLEO(){
           ),
 
           // SPLIT 60/40
-          e("div",{style:{display:"grid",gridTemplateColumns:isMobile?"1fr":"3fr 2fr",gap:20,marginBottom:20}},
+          e("div",{style:{display:"grid",gridTemplateColumns:"3fr 2fr",gap:20,marginBottom:20}},
 
             // ACCIONES TOP 3
             e("div",{style:{background:C.surface,borderRadius:20,padding:"28px",border:"1px solid "+C.border,boxShadow:"0 2px 12px rgba(0,0,0,0.06)"}},
@@ -3310,39 +3306,7 @@ export default function CLEO(){
       })()
     ),// cierra padding div
     )// cierra contenido principal div
-    ),// cierra body div
-
-    // BOTTOM NAV — solo móvil
-    isMobile&&e("div",{style:{position:"fixed",bottom:0,left:0,right:0,background:C.dark,borderTop:"1px solid "+C.darkBorder,display:"flex",zIndex:50,paddingBottom:"env(safe-area-inset-bottom,0px)"}},
-      // 5 items principales
-      ["inicio","hoy","pipeline","clientes","cotizaciones"].map(function(v){
-        var activo=vista===v;
-        var nBadge=0;
-        if(v==="hoy") nBadge=clientes.filter(function(c){ return c.etapa!=="Ganado"&&c.etapa!=="Perdido"&&diasDesde(c.fechaEtapa||c.fecha)>=3; }).length;
-        return e("button",{key:v,style:{flex:1,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",padding:"10px 2px 8px",background:"none",border:"none",cursor:"pointer",position:"relative",gap:3,minHeight:56},onClick:function(){ setVista(v); setMostrarMas(false); }},
-          e("svg",{width:20,height:20,viewBox:"0 0 24 24",fill:"none",stroke:activo?"#fff":"rgba(255,255,255,0.45)",strokeWidth:2,strokeLinecap:"round",strokeLinejoin:"round"},e("path",{d:NAV_SVG[v]||""})),
-          e("span",{style:{fontSize:9,color:activo?"#fff":"rgba(255,255,255,0.45)",fontWeight:activo?600:400,lineHeight:1}},NAV_LABELS[v]),
-          activo&&e("div",{style:{position:"absolute",top:0,left:"50%",transform:"translateX(-50%)",width:20,height:2,background:C.purple,borderRadius:99}}),
-          nBadge>0&&e("span",{style:{position:"absolute",top:6,right:"calc(50% - 14px)",minWidth:14,height:14,borderRadius:7,background:C.red,border:"1.5px solid "+C.dark,fontSize:8,color:"#fff",fontWeight:700,display:"flex",alignItems:"center",justifyContent:"center",padding:"0 2px"}},nBadge>9?"9+":nBadge)
-        );
-      }),
-      // Botón Más
-      e("button",{style:{flex:1,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",padding:"10px 2px 8px",background:"none",border:"none",cursor:"pointer",gap:3,minHeight:56,position:"relative"},onClick:function(){ setMostrarMas(!mostrarMas); }},
-        e("svg",{width:20,height:20,viewBox:"0 0 24 24",fill:"none",stroke:mostrarMas?"#fff":"rgba(255,255,255,0.45)",strokeWidth:2,strokeLinecap:"round",strokeLinejoin:"round"},e("path",{d:"M5 12h.01M12 12h.01M19 12h.01"})),
-        e("span",{style:{fontSize:9,color:mostrarMas?"#fff":"rgba(255,255,255,0.45)",fontWeight:mostrarMas?600:400,lineHeight:1}},"Más"),
-        mostrarMas&&e("div",{style:{position:"absolute",top:0,left:"50%",transform:"translateX(-50%)",width:20,height:2,background:C.purple,borderRadius:99}})
-      ),
-      // Drawer "Más"
-      mostrarMas&&e("div",{style:{position:"absolute",bottom:"100%",right:0,background:C.dark,border:"1px solid "+C.darkBorder,borderRadius:"14px 14px 0 0",padding:"8px",minWidth:180}},
-        ["resumen","ventas"].map(function(v){
-          var activo=vista===v;
-          return e("button",{key:v,style:{display:"flex",alignItems:"center",gap:10,width:"100%",padding:"12px 16px",background:activo?C.purple+"22":"none",border:"none",cursor:"pointer",borderRadius:10,marginBottom:2},onClick:function(){ setVista(v); setMostrarMas(false); }},
-            e("svg",{width:18,height:18,viewBox:"0 0 24 24",fill:"none",stroke:activo?"#fff":"rgba(255,255,255,0.6)",strokeWidth:2,strokeLinecap:"round",strokeLinejoin:"round"},e("path",{d:NAV_SVG[v]||""})),
-            e("span",{style:{fontSize:13,color:activo?"#fff":"rgba(255,255,255,0.7)",fontWeight:activo?600:400}},NAV_LABELS[v])
-          );
-        })
-      )
-    )
+    )// cierra body div
   ,
 
     e(ModalVenta,{modalVenta:modalVenta,setModalVenta:setModalVenta,formVenta:formVenta,setFormVenta:setFormVenta,pasoVenta:pasoVenta,setPasoVenta:setPasoVenta,clientes:clientes,guardarVentaDirecta:guardarVentaDirecta,avanzarVenta:avanzarVenta,st:st,productos:productos,sugerenciasConcepto:sugerenciasConcepto,setSugerenciasConcepto:setSugerenciasConcepto,esProductos:esProductos,servicios:servicios}),
@@ -3776,7 +3740,7 @@ export default function CLEO(){
       }
 
       return e("div",{style:st.ov,onClick:consejoMotivo?null:cancelarMotivoPipeline},
-        e("div",{style:Object.assign({},st.modal,{maxWidth:isMobile?"100%":420}),onClick:function(ev){ ev.stopPropagation(); }},
+        e("div",{style:Object.assign({},st.modal,{maxWidth:420}),onClick:function(ev){ ev.stopPropagation(); }},
 
           e("div",{style:{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:16}},
             e("div",null,
@@ -3971,7 +3935,7 @@ export default function CLEO(){
       var esUrgente=diasSinContacto>7&&c.etapa!=="Ganado"&&c.etapa!=="Perdido";
       function irAPerfil(){ setCotRapidaId(null); setVista("clientes"); setClienteAbierto(c.id); setTabCliente("perfil"); }
       return e("div",{style:st.ov,onClick:function(){ setCotRapidaId(null); }},
-        e("div",{style:Object.assign({},st.modal,{padding:0,overflow:"hidden",maxWidth:isMobile?"100%":420,borderRadius:isMobile?"20px 20px 0 0":20}),onClick:function(ev){ ev.stopPropagation(); }},
+        e("div",{style:Object.assign({},st.modal,{padding:0,overflow:"hidden",maxWidth:420,borderRadius:20}),onClick:function(ev){ ev.stopPropagation(); }},
 
           // ── HEADER con gradiente sutil ──
           e("div",{style:{
@@ -4239,7 +4203,7 @@ export default function CLEO(){
     // MODAL PERFIL
     // MODAL PERFIL — solo datos del negocio
     modalPerfil&&e("div",{style:st.ov,onClick:function(){ setModalPerfil(false); }},
-      e("div",{style:Object.assign({},st.modal,{padding:0,overflow:"hidden",maxWidth:isMobile?"100%":500,borderRadius:isMobile?"20px 20px 0 0":24}),onClick:function(ev){ ev.stopPropagation(); }},
+      e("div",{style:Object.assign({},st.modal,{padding:0,overflow:"hidden",maxWidth:500,borderRadius:24}),onClick:function(ev){ ev.stopPropagation(); }},
 
         // ── HEADER ──
         e("div",{style:{padding:"22px 24px 18px",borderBottom:"1px solid "+C.border,display:"flex",alignItems:"center",justifyContent:"space-between",background:"linear-gradient(135deg,"+C.purplePale+" 0%,transparent 70%)"}},
@@ -4438,7 +4402,7 @@ export default function CLEO(){
 
     // MODAL CATALOGO
     modalCatalogo&&e("div",{style:st.ov,onClick:function(){ setModalCatalogo(false); }},
-      e("div",{style:Object.assign({},st.modal,{padding:0,overflow:"hidden",maxWidth:isMobile?"100%":520,borderRadius:isMobile?"20px 20px 0 0":24}),onClick:function(ev){ ev.stopPropagation(); }},
+      e("div",{style:Object.assign({},st.modal,{padding:0,overflow:"hidden",maxWidth:520,borderRadius:24}),onClick:function(ev){ ev.stopPropagation(); }},
 
         // HEADER
         e("div",{style:{padding:"22px 24px 16px",borderBottom:"1px solid "+C.border,display:"flex",alignItems:"center",justifyContent:"space-between",background:"linear-gradient(135deg,"+C.purplePale+" 0%,transparent 70%)"}},
