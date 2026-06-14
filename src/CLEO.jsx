@@ -2724,7 +2724,7 @@ export default function CLEO(){
             // HEADER DE TARJETA
             e("div",{style:{display:"flex",alignItems:"flex-start",gap:12,flexWrap:"wrap",marginBottom:esAceptada||esRechazada?10:0}},
               // Info principal
-              e("div",{style:{flex:1,minWidth:200}},
+              e("div",{style:{flex:1,minWidth:0}},
                 e("div",{style:{fontWeight:600,fontSize:14,color:C.text,marginBottom:3}},cot.concepto||"Cotizacion"),
                 e("div",{style:{fontSize:12,color:C.textMuted,marginBottom:4}},cl?cl.nombre:"--"," · ",cl?cl.negocio:""),
                 e("div",{style:{display:"flex",gap:8,flexWrap:"wrap",alignItems:"center"}},
@@ -2734,7 +2734,7 @@ export default function CLEO(){
               ),
               // Monto + estatus + acciones
               e("div",{style:{display:"flex",flexDirection:"column",alignItems:"flex-end",gap:8,flexShrink:0}},
-                e("div",{style:{fontSize:18,fontWeight:600,color:esAceptada?C.green:C.text,whiteSpace:"nowrap"}},"$"+Number(cot.monto).toLocaleString()),
+                e("div",{style:{fontSize:18,fontWeight:600,color:esAceptada?C.green:C.text,whiteSpace:"nowrap",textAlign:"right"}},"$"+Number(cot.monto).toLocaleString()),
                 e("span",{style:st.badgeCot(cot.estatus)},cot.estatus),
                 e("div",{style:{display:"flex",gap:6,marginTop:4,flexWrap:"wrap",justifyContent:"flex-end"}},
                   e("div",{style:{display:"flex",gap:2,background:C.surfaceUp,borderRadius:6,padding:3,border:"0.5px solid "+C.border}},
@@ -3393,10 +3393,15 @@ export default function CLEO(){
         var nBadge=0;
         if(v==="hoy") nBadge=clientes.filter(function(c){ return c.etapa!=="Ganado"&&c.etapa!=="Perdido"&&diasDesde(c.fechaEtapa||c.fecha)>=3; }).length;
         return e("button",{key:v,style:{flex:1,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",padding:"10px 2px 8px",background:"none",border:"none",cursor:"pointer",position:"relative",gap:3,minHeight:56,overflow:"hidden"},onClick:function(){ setVista(v); setMostrarMas(false); }},
-          e("svg",{width:20,height:20,viewBox:"0 0 24 24",fill:"none",stroke:activo?"#fff":"rgba(255,255,255,0.45)",strokeWidth:2,strokeLinecap:"round",strokeLinejoin:"round"},e("path",{d:NAV_SVG[v]||""})),
+          v==="hoy"
+            ? e("div",{style:{width:20,height:20,borderRadius:"50%",background:nBadge>0?C.red:"rgba(255,255,255,0.15)",display:"flex",alignItems:"center",justifyContent:"center"}},
+                nBadge>0
+                  ? e("span",{style:{fontSize:10,fontWeight:700,color:"#fff",lineHeight:1}},nBadge>9?"9+":nBadge)
+                  : e("svg",{width:12,height:12,viewBox:"0 0 24 24",fill:"none",stroke:activo?"#fff":"rgba(255,255,255,0.45)",strokeWidth:2.5,strokeLinecap:"round"},e("path",{d:"M5 13l4 4L19 7"}))
+              )
+            : e("svg",{width:20,height:20,viewBox:"0 0 24 24",fill:"none",stroke:activo?"#fff":"rgba(255,255,255,0.45)",strokeWidth:2,strokeLinecap:"round",strokeLinejoin:"round"},e("path",{d:NAV_SVG[v]||""})),
           e("span",{style:{fontSize:9,color:activo?"#fff":"rgba(255,255,255,0.45)",fontWeight:activo?600:400,lineHeight:1}},NAV_LABELS[v]),
-          activo&&e("div",{style:{position:"absolute",top:0,left:"50%",transform:"translateX(-50%)",width:20,height:2,background:C.purple,borderRadius:99}}),
-          nBadge>0&&e("span",{style:{position:"absolute",top:5,right:"calc(50% - 20px)",minWidth:13,height:13,borderRadius:7,background:C.red,border:"1.5px solid "+C.dark,fontSize:7,color:"#fff",fontWeight:700,display:"flex",alignItems:"center",justifyContent:"center",padding:"0 2px",zIndex:1}},nBadge>9?"9+":nBadge)
+          activo&&e("div",{style:{position:"absolute",top:0,left:"50%",transform:"translateX(-50%)",width:20,height:2,background:C.purple,borderRadius:99}})
         );
       }),
       // Botón Más
@@ -3484,7 +3489,7 @@ export default function CLEO(){
             transition:"all 0.2s ease"
           }
         },
-          e("span",{style:{fontSize:20}},"☀️"),
+          e("span",{style:{fontSize:20,flexShrink:0}},"☀️"),
           nUrgF>0&&e("div",{style:{
             position:"absolute",top:-2,right:-2,
             width:20,height:20,borderRadius:"50%",
