@@ -8,7 +8,7 @@ const MOTIVOS = ["Precio alto","Eligio a otro","Sin presupuesto","No respondio",
 const FECHA_HOY = new Date().toISOString().slice(0,10);
 
 const C = {
-  // Acento principal — azul eléctrico
+  // Acento principal , azul eléctrico
   purple:"#4B5EFC", purpleLight:"#7B8AFC", purplePale:"rgba(75,94,252,0.08)",
 
   // Fondos
@@ -44,9 +44,9 @@ const ETAPA_COLOR = {
 };
 
 const CONSEJOS = {
-  "Precio alto":"Cuando alguien dice que esta caro, casi siempre significa que no vio suficiente valor — no que no tenga dinero. La proxima vez, antes de dar el precio, explica que problema resuelves y que incluye. El precio es lo ultimo, no lo primero.",
-  "Eligio a otro":"Perder con un competidor no significa que el otro sea mejor — muchas veces significa que comunico mejor lo que ofrece. Preguntale al cliente que fue lo que le gusto del otro. Esa respuesta vale mas que cualquier curso de ventas.",
-  "Sin presupuesto":"Sin presupuesto hoy no significa nunca. Los negocios cambian, los proyectos se reactivan. Programa un mensaje para dentro de 6 semanas — un simple hola puede llegar justo cuando ya tenga el dinero.",
+  "Precio alto":"Cuando alguien dice que esta caro, casi siempre significa que no vio suficiente valor , no que no tenga dinero. La proxima vez, antes de dar el precio, explica que problema resuelves y que incluye. El precio es lo ultimo, no lo primero.",
+  "Eligio a otro":"Perder con un competidor no significa que el otro sea mejor , muchas veces significa que comunico mejor lo que ofrece. Preguntale al cliente que fue lo que le gusto del otro. Esa respuesta vale mas que cualquier curso de ventas.",
+  "Sin presupuesto":"Sin presupuesto hoy no significa nunca. Los negocios cambian, los proyectos se reactivan. Programa un mensaje para dentro de 6 semanas , un simple hola puede llegar justo cuando ya tenga el dinero.",
   "No respondio":"Cuando alguien deja de responder, casi nunca es porque decidio que no. Es porque algo no quedo claro y no supo como preguntarlo. Un mensaje como 'Hola, tienes alguna duda sobre lo que te mande?' puede reactivar toda la conversacion.",
   "Otro":"Registrar por que no cerraste es uno de los habitos mas valiosos que puedes tener. No para castigarte, sino para ver patrones. Si pierdes tres veces por el mismo motivo, ya sabes exactamente que mejorar.",
 };
@@ -93,7 +93,7 @@ function SvgFB(p){ var z=p.size||14; return React.createElement("svg",{width:z,h
 function SvgEM(p){ var z=p.size||14; return React.createElement("svg",{width:z,height:z,viewBox:"0 0 24 24",fill:"none"},React.createElement("rect",{x:"2",y:"4",width:"20",height:"16",rx:"3",fill:C.purple}),React.createElement("path",{d:"M2 7l10 7 10-7",stroke:"#fff",strokeWidth:"1.5",strokeLinecap:"round"})); }
 function SvgIcon(p){ var c=p.canal,z=p.size||14; if(c==="WhatsApp") return React.createElement(SvgWA,{size:z}); if(c==="Instagram") return React.createElement(SvgIG,{size:z}); if(c==="Messenger") return React.createElement(SvgFB,{size:z}); return React.createElement(SvgEM,{size:z}); }
 
-// ── RICH EDITOR — negrita, cursiva, listas ──────────────────────────────────
+// ── RICH EDITOR , negrita, cursiva, listas ──────────────────────────────────
 function RichEditor(props){
   var value=props.value||""; var onChange=props.onChange; var placeholder=props.placeholder||""; var minHeight=props.minHeight||80;
   var ref=React.useRef(null);
@@ -126,7 +126,7 @@ function RichEditor(props){
     var range=sel.getRangeAt(0);
     var selected=range.toString().trim();
 
-    // Check if already inside a list — toggle off
+    // Check if already inside a list , toggle off
     var node=sel.anchorNode;
     while(node&&node!==ref.current){
       if(node.nodeName==="UL"||node.nodeName==="OL"){
@@ -157,7 +157,7 @@ function RichEditor(props){
       range.deleteContents();
       range.insertNode(list);
     } else {
-      // No selection — convert entire content, replacing it
+      // No selection , convert entire content, replacing it
       var allText=ref.current.innerText.trim();
       var lines=allText.split("\n").filter(function(l){ return l.trim(); });
       if(!lines.length) lines=[""];
@@ -301,7 +301,7 @@ function generarPDFCot(cot,cliente,perfil){
   html+='*{margin:0;padding:0;box-sizing:border-box;}';
   html+='body{font-family:"Helvetica Neue",Helvetica,Arial,sans-serif;background:#fff;color:'+pt+';font-size:13px;line-height:1.5;}';
   html+='.wrap{max-width:760px;margin:0 auto;border:1px solid #e8e8e8;min-height:100vh;}';
-  // HEADER — barra de acento izquierda
+  // HEADER , barra de acento izquierda
   html+='.header{display:grid;grid-template-columns:1fr auto;gap:24px;padding:36px 48px;border-bottom:3px solid '+pc+';}';
   html+='.logo-row{display:flex;align-items:center;gap:14px;}';
   html+='.logo-box{width:48px;height:48px;border-radius:10px;background:'+pc+';display:flex;align-items:center;justify-content:center;font-size:20px;font-weight:700;color:#fff;flex-shrink:0;overflow:hidden;}';
@@ -312,7 +312,7 @@ function generarPDFCot(cot,cliente,perfil){
   html+='.doc-label{font-size:10px;text-transform:uppercase;letter-spacing:2px;color:#aaa;font-weight:600;margin-bottom:6px;}';
   html+='.doc-folio{font-size:26px;font-weight:700;color:'+pc+';}';
   html+='.doc-meta{font-size:11px;color:#999;margin-top:6px;line-height:1.8;}';
-  // BANDA DE COLOR — acento entre header y body
+  // BANDA DE COLOR , acento entre header y body
   html+='.accent-band{background:'+pc+';height:4px;}';
   // BODY
   html+='.body{padding:40px 48px;}';
@@ -709,7 +709,7 @@ function ModalVenta(props){
         e("label",{style:st.lbl},"Cliente"),
         e("select",{value:formVenta.clienteId||"",onChange:function(ev){ setFormVenta(Object.assign({},formVenta,{clienteId:ev.target.value})); },style:st.inp},
           e("option",{value:""},"-- Seleccionar o dejar en blanco --"),
-          clientes.map(function(c){ return e("option",{key:c.id,value:c.id},c.nombre+(c.negocio?" — "+c.negocio:"")); })
+          clientes.map(function(c){ return e("option",{key:c.id,value:c.id},c.nombre+(c.negocio?" , "+c.negocio:"")); })
         ),
         e("div",{style:{fontSize:11,color:C.textDim,marginTop:4}},"Si no está en la lista, podrás crearlo al guardar.")
       ),
@@ -755,14 +755,14 @@ function ModalVenta(props){
               style:Object.assign({},st.inp,{flex:1,marginBottom:0,fontSize:12,color:C.purple,cursor:"pointer"})
             },
               e("option",{value:""},"＋ Del catálogo..."),
-              servicios.map(function(sv){ return e("option",{key:sv.id,value:sv.id},sv.nombre+" — $"+Number(sv.precio).toLocaleString()); })
+              servicios.map(function(sv){ return e("option",{key:sv.id,value:sv.id},sv.nombre+" , $"+Number(sv.precio).toLocaleString()); })
             ),
             e("button",{
               onClick:function(){ addItem(null); },
               style:{cursor:"pointer",padding:"8px 14px",borderRadius:10,border:"1px dashed "+C.border,background:"transparent",fontSize:12,color:C.textMuted,fontWeight:500,flexShrink:0,whiteSpace:"nowrap"}
             },"+ Manual")
           ),
-          // Monto libre — solo si no hay items
+          // Monto libre , solo si no hay items
           items.length===0&&e("div",{style:{marginTop:10}},
             e("label",{style:st.lbl},"O ingresa el monto directo"),
             e(MontoInput,{value:formVenta.monto||"",onChange:function(ev){ setFormVenta(Object.assign({},formVenta,{monto:ev.target.value})); },placeholder:"$0",style:st.inp})
@@ -936,13 +936,13 @@ function VistaVentas(props){
         )
       ),
 
-      // ALERTA — solo para ventas "del día" donde sí perdió el contacto sin querer
+      // ALERTA , solo para ventas "del día" donde sí perdió el contacto sin querer
       sinContactoAccidental>0&&e("div",{style:{marginBottom:20,padding:"12px 16px",borderRadius:12,background:C.amberBg,border:"1px solid "+C.amberBorder,fontSize:13,color:"#78350F",lineHeight:1.6,display:"flex",gap:10,alignItems:"flex-start"}},
         e("span",{style:{fontSize:16,flexShrink:0}},"💡"),
         e("span",null,
-          sinContactoAccidental+" venta"+(sinContactoAccidental>1?"s":"")+" registrada"+(sinContactoAccidental>1?"s":"")+" como total del día — sin contacto del cliente. ",
+          sinContactoAccidental+" venta"+(sinContactoAccidental>1?"s":"")+" registrada"+(sinContactoAccidental>1?"s":"")+" como total del día , sin contacto del cliente. ",
           e("strong",null,"Si puedes, pide el WhatsApp o Instagram"),
-          " — así puedes volver a venderle cuando quieras."
+          " , así puedes volver a venderle cuando quieras."
         )
       ),
 
@@ -1032,9 +1032,9 @@ function migrarCots(cots){
 export default function CLEO(){
   var e=React.createElement;
 
-  // Estados principales — forzar datos frescos si version cambio
+  // Estados principales , forzar datos frescos si version cambio
   var DATA_VERSION="v4";
-  // No borrar datos al iniciar — solo marcar version si es nueva instalación
+  // No borrar datos al iniciar , solo marcar version si es nueva instalación
   if(typeof localStorage!=="undefined"&&!localStorage.getItem("cleo_data_version")){
     localStorage.setItem("cleo_data_version",DATA_VERSION);
   }
@@ -1072,7 +1072,7 @@ export default function CLEO(){
   var sEditCot=useState(null); var editCotId=sEditCot[0]; var setEditCotId=sEditCot[1];
   var sBuscaCli=useState(""); var buscaCli=sBuscaCli[0]; var setBuscaCli=sBuscaCli[1];
   var sGuardarSv=useState(null); var guardarSvModal=sGuardarSv[0]; var setGuardarSvModal=sGuardarSv[1];
-  var s16=useState(perfilDemo); var formPerfil=s16[0]; var setFormPerfil=s16[1];
+  var s16=useState(function(){ return lsGet("cleo_perfil",perfilDemo); }); var formPerfil=s16[0]; var setFormPerfil=s16[1];
   var s17=useState(svVacio); var formSv=s17[0]; var setFormSv=s17[1];
   var s17b=useState(0); var editorKey=s17b[0]; var setEditorKey=s17b[1];
   var s18=useState(false); var envioCotizacion=s18[0]; var setEnvioCotizacion=s18[1];
@@ -1129,7 +1129,7 @@ export default function CLEO(){
 
   function setClientes(v){ setClientesRaw(v); try{ localStorage.setItem("cleo_clientes",JSON.stringify(v)); }catch(e){} }
   function setCotizaciones(v){ var m=migrarCots(v); setCotizacionesRaw(m); try{ localStorage.setItem("cleo_cots",JSON.stringify(m)); }catch(e){} }
-  function setPerfil(v){ setPerfilRaw(v); try{ localStorage.setItem("cleo_perfil",JSON.stringify(v)); }catch(e){} }
+  function setPerfil(v){ setPerfilRaw(v); setFormPerfil(v); try{ localStorage.setItem("cleo_perfil",JSON.stringify(v)); }catch(e){} }
   function setServicios(v){ setServiciosRaw(v); try{ localStorage.setItem("cleo_servicios",JSON.stringify(v)); }catch(e){} }
   function setVentas(v){ setVentasRaw(v); try{ localStorage.setItem("cleo_ventas",JSON.stringify(v)); }catch(e){} }
   function setProductos(v){ setProductosRaw(v); }
@@ -1236,7 +1236,7 @@ export default function CLEO(){
       if(clienteId2){
         setClientes(clientes.map(function(c){ return c.id===clienteId2?Object.assign({},c,{etapa:etapaAnteriorGanado}):c; }));
       } else if(cotAceptadaId){
-        // Viene de cotizaciones — buscar cliente por cotizacion
+        // Viene de cotizaciones , buscar cliente por cotizacion
         var cotCancel=cotizaciones.find(function(c){ return c.id===cotAceptadaId; });
         if(cotCancel) setClientes(clientes.map(function(c){ return c.id===cotCancel.clienteId?Object.assign({},c,{etapa:etapaAnteriorGanado}):c; }));
       }
@@ -1340,7 +1340,7 @@ export default function CLEO(){
     // Marcar cotizacion como Rechazada
     var cotPerdida=cotizaciones.find(function(c){ return c.clienteId===motivoPipelineId&&(c.estatus==="Pendiente"||c.estatus==="Aceptada"); });
     if(cotPerdida) setCotizaciones(cotizaciones.map(function(c){ return c.id===cotPerdida.id?Object.assign({},c,{estatus:"Rechazada",motivoPerdida:motivo}):c; }));
-    // Limpiar etapaAnterior — ya confirmó
+    // Limpiar etapaAnterior , ya confirmó
     setEtapaAnteriorPipeline(null);
     setEstatusAnteriorCot(null);
     // Mostrar mensaje educativo y seguimiento inline
@@ -1393,7 +1393,7 @@ export default function CLEO(){
         contacto:formVenta.nuevoContacto||"",
         origen:"Venta directa",
         etapa:"Ganado",
-        notas:"Registrado desde venta directa"+(formVenta.etiqueta?" — "+formVenta.etiqueta:""),
+        notas:"Registrado desde venta directa"+(formVenta.etiqueta?" , "+formVenta.etiqueta:""),
         fecha:formVenta.fecha||FECHA_HOY,
         instagram:"",
         canalPrincipal:"WhatsApp",
@@ -1432,7 +1432,7 @@ export default function CLEO(){
     }
   }
 
-  // PIPELINE — solo una alerta urgente a la vez, la mas critica
+  // PIPELINE , solo una alerta urgente a la vez, la mas critica
   var alertas=[];
   (function(){
     // Buscar la alerta mas urgente
@@ -1458,7 +1458,7 @@ export default function CLEO(){
     }
     // 3. Sin clientes nuevos esta semana
     if(clientes.filter(function(c){ return diasDesde(c.fecha)<=7; }).length===0&&clientes.length>0&&!alertaCerrada("sin_leads")){
-      alertas.push({key:"sin_leads",msg:"Esta semana no tienes contactos nuevos registrados. Hablaste con alguien que pueda estar interesado? Registralo ahora — en 48 horas ya no lo vas a recordar.",urgente:false,accion:{label:"+ Registrar",fn:function(){ setClienteSel(null); setForm(formVacio); setModalCliente(true); }}});
+      alertas.push({key:"sin_leads",msg:"Esta semana no tienes contactos nuevos registrados. Hablaste con alguien que pueda estar interesado? Registralo ahora , en 48 horas ya no lo vas a recordar.",urgente:false,accion:{label:"+ Registrar",fn:function(){ setClienteSel(null); setForm(formVacio); setModalCliente(true); }}});
     }
   })();
 
@@ -1484,8 +1484,8 @@ export default function CLEO(){
     badgeCot:function(et){ var m={Aceptada:C.green,Rechazada:C.red,Pendiente:C.amber}; var bg={Aceptada:C.greenBg,Rechazada:C.redBg,Pendiente:C.amberBg}; var cl=m[et]||C.textMuted; return {display:"inline-block",padding:"2px 9px",borderRadius:20,fontSize:11,background:bg[et]||C.surfaceUp,color:cl,border:"0.5px solid "+cl+"44"}; },
     inp:{width:"100%",padding:"10px 12px",borderRadius:10,border:"1px solid "+C.borderStrong,background:C.surface,color:C.text,fontSize:14,boxSizing:"border-box",fontFamily:"-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif"},
     lbl:{fontSize:11,color:C.textMuted,marginBottom:5,display:"block",textTransform:"uppercase",letterSpacing:"0.8px",fontWeight:600},
-    ov:{position:"fixed",inset:0,background:"rgba(26,22,53,0.55)",display:"flex",alignItems:"center",justifyContent:"center",zIndex:100},
-    modal:{background:C.surface,borderRadius:20,padding:"28px",width:460,maxWidth:"95vw",border:"1px solid "+C.border,maxHeight:"88vh",overflowY:"auto",boxShadow:"0 8px 32px rgba(0,0,0,0.12)"},
+    ov:{position:"fixed",inset:0,background:"rgba(26,22,53,0.55)",display:"flex",alignItems:isMobile?"flex-end":"center",justifyContent:"center",zIndex:100},
+    modal:{background:C.surface,borderRadius:isMobile?"20px 20px 0 0":"20px",padding:"28px",width:isMobile?"100%":460,maxWidth:isMobile?"100%":"95vw",border:"1px solid "+C.border,maxHeight:isMobile?"92vh":"88vh",overflowY:"auto",boxShadow:"0 8px 32px rgba(0,0,0,0.12)"},
     pb:function(a){ return {cursor:"pointer",padding:"6px 16px",borderRadius:12,border:"1px solid "+(a?C.border:"transparent"),background:a?C.surface:"transparent",color:a?C.text:C.textMuted,fontSize:13,fontWeight:a?600:400}; },
     av:function(color){ return {width:36,height:36,borderRadius:"50%",background:color+"22",display:"flex",alignItems:"center",justifyContent:"center",fontWeight:700,fontSize:12,color:color,flexShrink:0}; },
   };
@@ -1537,8 +1537,20 @@ export default function CLEO(){
     NAV_LABELS.pipeline="Mis clientes";
   }
 
+  // ── HYDRATION GATE , evita flash de onboarding antes de leer localStorage ──
+  var s_hyd=useState(false); var hydrated=s_hyd[0]; var setHydrated=s_hyd[1];
+  var sMas=useState(false); var mostrarMas=sMas[0]; var setMostrarMas=sMas[1];
+  var sMoverC=useState(null); var moverClienteId=sMoverC[0]; var setMoverClienteId=sMoverC[1];
+  useEffect(function(){
+    console.log("[CLEO] mount , perfil.tipoPerfil:", perfil.tipoPerfil);
+    console.log("[CLEO] localStorage cleo_perfil:", localStorage.getItem("cleo_perfil"));
+    console.log("[CLEO] clientes count:", clientes.length);
+    setHydrated(true);
+  },[]);
+  var isMobile=typeof window!=="undefined"&&window.innerWidth<768;
+  if(!hydrated) return e("div",{style:{minHeight:"100vh",background:C.bg}});
+
   // ── ONBOARDING ─────────────────────────────────────────────────────────────
-  // Lee directamente de localStorage para evitar flash de onboarding
   var tipoPerfilGuardado=perfil.tipoPerfil||(function(){ try{ var p=localStorage.getItem("cleo_perfil"); return p?JSON.parse(p).tipoPerfil||"":""; }catch(e){ return ""; } })();
   if(!tipoPerfilGuardado){
     return e("div",{style:{fontFamily:"Arial,sans-serif",minHeight:"100vh",background:C.bg,display:"flex",alignItems:"center",justifyContent:"center",padding:"24px"}},
@@ -1557,7 +1569,7 @@ export default function CLEO(){
         e("div",{style:{fontSize:13,color:C.textDim,marginBottom:16}},"Para hablarte en tu idioma, dinos cómo es tu negocio:"),
         // Opciones
         e("div",{style:{display:"flex",flexDirection:"column",gap:12,marginBottom:32}},
-          [{k:"productos",emoji:"🛍️",titulo:"Vendo productos",desc:"Joyería, ropa, comida, artesanías, cosméticos — vendes cosas físicas o digitales."},{k:"servicios",emoji:"💼",titulo:"Ofrezco servicios",desc:"Fotografía, diseño, reparaciones, consultoría — vendes tu tiempo o conocimiento."}].map(function(op){
+          [{k:"productos",emoji:"🛍️",titulo:"Vendo productos",desc:"Joyería, ropa, comida, artesanías, cosméticos , vendes cosas físicas o digitales."},{k:"servicios",emoji:"💼",titulo:"Ofrezco servicios",desc:"Fotografía, diseño, reparaciones, consultoría , vendes tu tiempo o conocimiento."}].map(function(op){
             return e("button",{key:op.k,
               style:{cursor:"pointer",padding:"20px",borderRadius:14,border:"1.5px solid "+C.border,background:C.surface,textAlign:"left",display:"flex",gap:16,alignItems:"flex-start",transition:"border-color 0.15s"},
               onMouseEnter:function(ev){ ev.currentTarget.style.borderColor=C.purple; },
@@ -1565,7 +1577,6 @@ export default function CLEO(){
               onClick:function(){
                 var nuevoPerfil=Object.assign({},perfil,{tipoPerfil:op.k});
                 setPerfil(nuevoPerfil);
-                setFormPerfil(nuevoPerfil);
               }
             },
               e("span",{style:{fontSize:28,flexShrink:0}},op.emoji),
@@ -1581,18 +1592,20 @@ export default function CLEO(){
     );
   }
 
+  // ── HYDRATION GATE
+
   return e("div",{style:{fontFamily:'Inter,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif',minHeight:"100vh",display:"flex",background:C.bg}},
 
-    // BODY — sidebar + contenido (sin header fijo)
+    // BODY , sidebar + contenido (sin header fijo)
     e("div",{style:{display:"flex",width:"100%"}},
 
-      // SIDEBAR — nav con grupos (posicion normal en el flujo)
+      // SIDEBAR , solo desktop
       e("div",{style:{
         width:sbOpen?280:64,
         minHeight:"100vh",
         background:C.dark,
         borderRight:"1px solid "+C.darkBorder,
-        display:"flex",flexDirection:"column",
+        display:isMobile?"none":"flex",flexDirection:"column",
         flexShrink:0,
         transition:"width 0.2s ease",
         overflow:"hidden",
@@ -1675,43 +1688,7 @@ export default function CLEO(){
           })()
         ),
 
-        // NIVEL DE HABITOS
-        sbOpen&&e("div",{style:{padding:"12px 14px",borderTop:"0.5px solid "+C.darkBorder,flexShrink:0}},
-          (function(){
-            var h1=clientes.filter(function(c){ return diasDesde(c.fecha)<=7; }).length>0;
-            var h2=clientes.filter(function(c){ return c.etapa==="Ganado"||c.seguimientoFecha; }).length>0;
-            var h3=cotizaciones.filter(function(c){ return c.estatus==="Rechazada"&&c.motivoPerdida; }).length>0;
-            var h4=cotizaciones.filter(function(c){ return c.estatus==="Aceptada"; }).length>0;
-            var h5=clientes.filter(function(c){ return c.etapa==="Ganado"&&c.seguimientoFecha; }).length>0;
-            var habitos=[h1,h2,h3,h4,h5];
-            var activos=habitos.filter(Boolean).length;
-            var niveles=["Principiante","Aprendiz","Constante","Consultivo","Experto"];
-            var nivel=activos===0?"Principiante":activos<=1?"Aprendiz":activos<=2?"Constante":activos<=3?"Consultivo":"Experto";
-            var nivelIdx=niveles.indexOf(nivel);
-            var faltante=[
-              {hab:h1,label:"Registrar clientes"},
-              {hab:h2,label:"Dar seguimiento"},
-              {hab:h3,label:"Documentar pérdidas"},
-              {hab:h4,label:"Cotizar formalmente"},
-              {hab:h5,label:"Contacto postventa"}
-            ].find(function(x){ return !x.hab; });
-            return e("div",null,
-              e("div",{style:{fontSize:10,color:"#94A3B8",textTransform:"uppercase",letterSpacing:"1px",marginBottom:8}},"Tu nivel como vendedor"),
-              e("div",{style:{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:6}},
-                e("div",{style:{fontSize:13,fontWeight:700,color:"#fff"}},(activos===4?"⭐":activos===3?"💜":activos===2?"🟪":activos===1?"🟦":"⬜")+" "+nivel),
-                e("div",{style:{fontSize:11,color:"#94A3B8"}},activos+"/5")
-              ),
-              e("div",{style:{height:4,background:"rgba(255,255,255,0.1)",borderRadius:4,marginBottom:8}},
-                e("div",{style:{height:4,background:"#5B5CF6",borderRadius:4,width:(activos/5*100)+"%",transition:"width 0.3s"}})
-              ),
-              faltante&&e("div",{style:{fontSize:11,color:"#94A3B8",lineHeight:1.4}},
-                "Falta: "+faltante.label
-              )
-            );
-          })()
-        ),
-
-        // HERRAMIENTAS — Mi Catálogo + Mi Perfil
+        // HERRAMIENTAS , Mi Catálogo + Mi Perfil
         e("div",{style:{borderTop:"0.5px solid "+C.darkBorder,flexShrink:0}},
           // Mi Catálogo
           e("div",{style:{padding:sbOpen?"10px 14px":"8px",display:"flex",alignItems:"center",gap:10,cursor:"pointer",justifyContent:sbOpen?"flex-start":"center"},onClick:function(){ setModalCatalogo(true); }},
@@ -1726,7 +1703,7 @@ export default function CLEO(){
             )
           ),
           // Mi Perfil
-          e("div",{style:{padding:sbOpen?"10px 14px":"8px",display:"flex",alignItems:"center",gap:10,cursor:"pointer",justifyContent:sbOpen?"flex-start":"center",borderTop:"0.5px solid "+C.darkBorder},onClick:function(){ setFormPerfil(Object.assign({},perfilDemo,perfil)); setModalPerfil(true); }},
+          e("div",{style:{padding:sbOpen?"10px 14px":"8px",display:"flex",alignItems:"center",gap:10,cursor:"pointer",justifyContent:sbOpen?"flex-start":"center",borderTop:"0.5px solid "+C.darkBorder},onClick:function(){ setFormPerfil(Object.assign({},perfil)); setModalPerfil(true); }},
             e("div",{style:{width:28,height:28,borderRadius:8,background:"rgba(255,255,255,0.06)",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}},
               e("svg",{width:14,height:14,viewBox:"0 0 24 24",fill:"none",stroke:"rgba(255,255,255,0.45)",strokeWidth:2,strokeLinecap:"round",strokeLinejoin:"round"},
                 e("path",{d:"M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2M12 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8z"})
@@ -1740,16 +1717,16 @@ export default function CLEO(){
         )
       ),
 
-      // CONTENIDO PRINCIPAL — margen para sidebar fijo
-      e("div",{style:{flex:1,overflow:"auto",background:C.bg,minHeight:"100vh"}},
+      // CONTENIDO PRINCIPAL
+      e("div",{style:{flex:1,overflow:"auto",background:C.bg,minHeight:"100vh",paddingBottom:isMobile?70:0}},
 
-        e("div",{style:{padding:"40px 48px",maxWidth:1280,margin:"0 auto",width:"100%"}},
+        e("div",{style:{padding:isMobile?"20px 16px":"40px 48px",maxWidth:1280,margin:"0 auto",width:"100%",boxSizing:"border-box"}},
 
       // INICIO
       vista==="inicio"&&clientes.length===0&&e("div",{style:{display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",minHeight:"60vh",padding:"0 16px",textAlign:"center"}},
         e("div",{style:{fontSize:40,marginBottom:20}},"👋"),
         e("div",{style:{fontSize:22,fontWeight:700,color:C.text,marginBottom:12,lineHeight:1.3}},"¿Por dónde empiezo?"),
-        e("div",{style:{fontSize:15,color:C.textMuted,lineHeight:1.7,marginBottom:32,maxWidth:380}},"Piensa en alguien con quien hayas hablado esta semana — un cliente, alguien que preguntó precio, alguien interesado. Regístralo aquí. Tarda 30 segundos y es todo lo que necesitas para empezar."),
+        e("div",{style:{fontSize:15,color:C.textMuted,lineHeight:1.7,marginBottom:32,maxWidth:380}},"Piensa en alguien con quien hayas hablado esta semana , un cliente, alguien que preguntó precio, alguien interesado. Regístralo aquí. Tarda 30 segundos y es todo lo que necesitas para empezar."),
         e("button",{style:{cursor:"pointer",padding:"14px 28px",borderRadius:12,border:"none",background:C.purple,fontSize:15,color:"#fff",fontWeight:600,marginBottom:20},onClick:function(){ setClienteSel(null); setForm(formVacio); setModalCliente(true); }},"Registrar mi primer cliente →"),
         e("div",{style:{fontSize:12,color:C.textDim,maxWidth:320,lineHeight:1.6}},"¿Por qué registrarlo? Porque en 2 semanas CLEO te va a decir exactamente qué está funcionando en tu negocio y qué no.")
       ),
@@ -1771,11 +1748,11 @@ export default function CLEO(){
         var totalGanado=ganados.reduce(function(s,c){ return s+c.monto; },0);
         var ganadosRecientes=clientes.filter(function(c){ return c.etapa==="Ganado"&&diasDesde(c.fechaEtapa||c.fecha)<=14; });
 
-        // Subtitulo educativo — sin repetir numeros
+        // Subtitulo educativo , sin repetir numeros
         var subtitulo;
         var enNegociacion=clientes.filter(function(c){ return c.etapa==="Negociacion"; }).length;
-        if(enNegociacion>0) subtitulo="Tienes clientes listos para cerrar — el siguiente paso es tuyo.";
-        else if(cotsPend.length>0) subtitulo="Tu siguiente venta probablemente ya esta en tu pipeline — solo necesita seguimiento.";
+        if(enNegociacion>0) subtitulo="Tienes clientes listos para cerrar , el siguiente paso es tuyo.";
+        else if(cotsPend.length>0) subtitulo="Tu siguiente venta probablemente ya esta en tu pipeline , solo necesita seguimiento.";
         else if(clientes.length<5) subtitulo="Registra tus conversaciones y CLEO te dira exactamente que esta funcionando.";
         else subtitulo="La herramienta que te ensena a vender mejor con cada cliente que registras.";
 
@@ -1789,7 +1766,7 @@ export default function CLEO(){
         clientes.filter(function(c){ var ref=c.ultimoContacto||c.fecha; var d=Math.floor((HOY-new Date(ref))/86400000); return c.etapa==="Negociacion"&&d>=3; }).forEach(function(c){
           if(!accionesRaw.find(function(a){ return a.cliente.id===c.id; })){
             var d=Math.floor((HOY-new Date(c.ultimoContacto||c.fecha))/86400000);
-            accionesRaw.push({cliente:c,dias:d,tipo:"Negociacion",prioridad:"alta",desc:"En negociación — pregunta antes de bajar precio"});
+            accionesRaw.push({cliente:c,dias:d,tipo:"Negociacion",prioridad:"alta",desc:"En negociación , pregunta antes de bajar precio"});
           }
         });
         cotizaciones.filter(function(c){ return c.estatus==="Pendiente"&&diasDesde(c.fecha)>=3&&diasDesde(c.fecha)<7; }).forEach(function(cot){
@@ -1807,7 +1784,7 @@ export default function CLEO(){
         var prioPeso={"alta":0,"media":1,"baja":2};
         var acciones=accionesRaw.sort(function(a,b){ var pd=prioPeso[a.prioridad]-prioPeso[b.prioridad]; return pd!==0?pd:b.dias-a.dias; }).slice(0,3);
 
-        // ── INSIGHT mejorado — sin tecnicismos, basado en datos reales ──────────
+        // ── INSIGHT mejorado , sin tecnicismos, basado en datos reales ──────────
         var rechazadasTotal=cotizaciones.filter(function(c){ return c.estatus==="Rechazada"; });
         var porPrecio=rechazadasTotal.filter(function(c){ return c.motivoPerdida==="Precio alto"; });
         var sinContactoWA=clientes.filter(function(c){ return !c.contacto&&c.canalPrincipal!=="WhatsApp"; });
@@ -1817,7 +1794,7 @@ export default function CLEO(){
             icono:"💡",
             etiqueta:"Lo que tus números dicen de ti",
             titulo:"Te han dicho que es muy caro "+porPrecio.length+" veces",
-            texto:"Casi nunca significa que eres caro — significa que el cliente no vio suficiente valor antes de escuchar el número. La solución no es bajar precio: es explicar qué resuelves antes de decir cuánto cuesta.",
+            texto:"Casi nunca significa que eres caro , significa que el cliente no vio suficiente valor antes de escuchar el número. La solución no es bajar precio: es explicar qué resuelves antes de decir cuánto cuesta.",
             accionLabel:"Ver esos casos",
             accionVista:"cotizaciones"
           };
@@ -1826,7 +1803,7 @@ export default function CLEO(){
             icono:"📱",
             etiqueta:"Lo que tus números dicen de ti",
             titulo:"Tienes "+sinContactoWA.length+" clientes sin seguimiento",
-            texto:"Si esos clientes dejan de escribirte, no tienes forma de retomar el contacto. En tu próxima venta, pide el número antes de que se vayan — una sola pregunta cambia todo.",
+            texto:"Si esos clientes dejan de escribirte, no tienes forma de retomar el contacto. En tu próxima venta, pide el número antes de que se vayan , una sola pregunta cambia todo.",
             accionLabel:"Ver esos clientes",
             accionVista:"clientes"
           };
@@ -1835,7 +1812,7 @@ export default function CLEO(){
             icono:"🤝",
             etiqueta:"Lo que tus números dicen de ti",
             titulo:ganadosRecientes.length+" clientes te compraron recientemente",
-            texto:"Este es el mejor momento para pedir referidos. A un cliente que acaba de comprar le da gusto recomendarte — pero si no se lo pides, no lo hace. Un mensaje de seguimiento hoy puede traerte tu próximo cliente.",
+            texto:"Este es el mejor momento para pedir referidos. A un cliente que acaba de comprar le da gusto recomendarte , pero si no se lo pides, no lo hace. Un mensaje de seguimiento hoy puede traerte tu próximo cliente.",
             accionLabel:"Ver clientes ganados",
             accionVista:"resumen"
           };
@@ -1844,7 +1821,7 @@ export default function CLEO(){
             icono:"⏳",
             etiqueta:"Lo que tus números dicen de ti",
             titulo:"Tienes "+cotsPend.length+" precios enviados esperando respuesta",
-            texto:"No necesitas más prospectos ahora mismo — necesitas darle seguimiento a los que ya tienes. Un mensaje simple de '¿pudiste revisar lo que te mandé?' puede reactivar una venta que ya creías perdida.",
+            texto:"No necesitas más prospectos ahora mismo , necesitas darle seguimiento a los que ya tienes. Un mensaje simple de '¿pudiste revisar lo que te mandé?' puede reactivar una venta que ya creías perdida.",
             accionLabel:"Ver precios enviados",
             accionVista:"cotizaciones"
           };
@@ -1859,7 +1836,7 @@ export default function CLEO(){
           };
         }
 
-        // ── PREGUNTA DE LA SEMANA — basada en datos reales ─────────────────────
+        // ── PREGUNTA DE LA SEMANA , basada en datos reales ─────────────────────
         var preguntaSemana=null;
         var semanaNum=Math.floor((HOY-new Date(HOY.getFullYear(),0,1))/604800000);
         var clientesSemana=clientes.filter(function(c){ return diasDesde(c.fecha)<=7; });
@@ -1871,15 +1848,15 @@ export default function CLEO(){
         } else if(ganadasSemana.length>=1){
           preguntaSemana="Cerraste una venta esta semana. ¿Qué fue lo que más influyó para que ese cliente dijera que sí?";
         } else if(clientesSemana.length>=1){
-          preguntaSemana="Registraste "+clientesSemana.length+" contacto"+(clientesSemana.length>1?"s":"")+" esta semana. ¿Cuál de ellos tiene más probabilidades de comprar y por qué?";
+          preguntaSemana=clientesSemana.length===1?"Registraste un nuevo contacto esta semana. ¿Ya le escribiste para dar seguimiento?":"Registraste "+clientesSemana.length+" contactos esta semana. ¿Cuál de ellos tiene más probabilidades de comprar y por qué?";
         } else if(sinContacto>=3){
           preguntaSemana="Tienes "+sinContacto+" clientes sin seguimiento. ¿Cuál es la razón real por la que no has escrito? ¿Miedo al no, falta de tiempo, o algo más?";
         } else {
-          var preguntas=["¿Cuál es el principal motivo por el que un cliente tuyo te elige a ti y no a la competencia?","¿En qué parte del proceso sientes que pierdes más clientes — al primer contacto, al mandar el precio, o en el seguimiento?","¿Qué tan seguido le pides referidos a tus clientes que ya compraron?"];
+          var preguntas=["¿Cuál es el principal motivo por el que un cliente tuyo te elige a ti y no a la competencia?","¿En qué parte del proceso sientes que pierdes más clientes , al primer contacto, al mandar el precio, o en el seguimiento?","¿Qué tan seguido le pides referidos a tus clientes que ya compraron?"];
           preguntaSemana=preguntas[semanaNum%preguntas.length];
         }
 
-        // ── RECONOCIMIENTO — aparece cuando el emprendedor hizo algo bien ────────
+        // ── RECONOCIMIENTO , aparece cuando el emprendedor hizo algo bien ────────
         var reconocimiento=null;
         var cierreHoy=cotizaciones.filter(function(c){ return c.estatus==="Aceptada"&&diasDesde(c.fecha)<=2; });
         var clientesHoy=clientes.filter(function(c){ return diasDesde(c.fecha)<=2; });
@@ -1888,7 +1865,7 @@ export default function CLEO(){
           var totalCierreHoy=cierreHoy.reduce(function(s,c){ return s+c.monto; },0);
           reconocimiento={
             titulo:"¡Cerraste una venta!",
-            texto:"$"+totalCierreHoy.toLocaleString()+" registrados. Documentar tus cierres te ayuda a ver qué está funcionando — sigue así.",
+            texto:"$"+totalCierreHoy.toLocaleString()+" registrados. Documentar tus cierres te ayuda a ver qué está funcionando , sigue así.",
             icono:"🎉"
           };
         } else if(clientesHoy.length>=2){
@@ -1900,7 +1877,7 @@ export default function CLEO(){
         } else if(perdidasDocumentadas.length>=1){
           reconocimiento={
             titulo:"Bien documentado",
-            texto:"Registraste el motivo de una pérdida. Eso es exactamente lo que necesitas para mejorar — muy pocos emprendedores lo hacen.",
+            texto:"Registraste el motivo de una pérdida. Eso es exactamente lo que necesitas para mejorar , muy pocos emprendedores lo hacen.",
             icono:"📝"
           };
         }
@@ -1910,7 +1887,7 @@ export default function CLEO(){
 
         return e("div",{style:{display:"flex",flexDirection:"column",gap:0}},
 
-          // BARRA SUPERIOR — solo botones
+          // BARRA SUPERIOR , solo botones
           e("div",{style:{display:"flex",alignItems:"center",justifyContent:"flex-end",gap:8,marginLeft:-32,marginRight:-32,marginTop:-32,padding:"14px 32px",background:C.bg}},
             e("button",{style:{cursor:"pointer",padding:"9px 18px",borderRadius:14,border:"1px solid "+C.border,background:C.surface,fontSize:13,color:C.textMuted,fontWeight:500},onClick:function(){ setClienteSel(null); setForm(formVacio); setModalCliente(true); }},"+ Cliente"),
             e("button",{style:{cursor:"pointer",padding:"9px 18px",borderRadius:14,border:"1px solid "+C.green+"44",background:C.green+"08",fontSize:13,color:C.green,fontWeight:500},onClick:abrirModalVenta},"+ Venta"),
@@ -1924,7 +1901,7 @@ export default function CLEO(){
             e("div",{style:{fontSize:14,color:C.textMuted,marginTop:8}},subtitulo)
           ),
 
-          // RECONOCIMIENTO — solo visible si aplica, desaparece después de 2 días
+          // RECONOCIMIENTO , solo visible si aplica, desaparece después de 2 días
           reconocimiento&&e("div",{style:{
             background:"#F0FDF4",border:"1px solid #86EFAC",borderRadius:14,
             padding:"14px 20px",marginBottom:20,
@@ -1937,7 +1914,7 @@ export default function CLEO(){
             )
           ),
 
-          // PREGUNTA DE LA SEMANA — justo debajo del saludo
+          // PREGUNTA DE LA SEMANA , justo debajo del saludo
           e("div",{style:{
             background:"#EEF2FF",border:"1px solid #C7D2FE",borderRadius:14,
             padding:"16px 20px",marginBottom:24
@@ -1946,34 +1923,34 @@ export default function CLEO(){
             e("div",{style:{fontSize:14,color:"#312E81",lineHeight:1.6}},preguntaSemana)
           ),
 
-          // CARD METRICAS — con textos renombrados
-          e("div",{style:{background:C.surface,borderRadius:20,padding:"24px",border:"1px solid "+C.border,boxShadow:"0 2px 12px rgba(0,0,0,0.06)",marginBottom:24,display:"grid",gridTemplateColumns:"1fr 2px 1fr 2px 1fr 2px 1fr",gap:0,alignItems:"center"}},
+          // CARD METRICAS , con textos renombrados
+          e("div",{style:{background:C.surface,borderRadius:20,padding:"24px",border:"1px solid "+C.border,boxShadow:"0 2px 12px rgba(0,0,0,0.06)",marginBottom:24,display:"grid",gridTemplateColumns:isMobile?"1fr 1fr":"1fr 2px 1fr 2px 1fr 2px 1fr",gap:isMobile?"16px":0,alignItems:"center"}},
             // Clientes activos (antes: Pipeline activo)
-            e("div",{style:{padding:"8px 32px 8px 0",cursor:"pointer"},onClick:function(){ setVista("pipeline"); }},
+            e("div",{style:{padding:isMobile?"4px":"8px 32px 8px 0",cursor:"pointer"},onClick:function(){ setVista("pipeline"); }},
               e("div",{style:{fontSize:11,fontWeight:700,color:C.textDim,textTransform:"uppercase",letterSpacing:"1.5px",marginBottom:8}},"OPORTUNIDADES ABIERTAS"),
               e("div",{style:{fontSize:42,fontWeight:700,color:C.text,lineHeight:1,marginBottom:4}},clientesActivos),
               e("div",{style:{fontSize:13,color:C.textMuted,marginBottom:6}},"en proceso"),
               sinContacto>0&&e("div",{style:{fontSize:12,color:C.red,display:"flex",alignItems:"center",gap:4}},"↑ "+sinContacto+" sin contacto")
             ),
-            e("div",{style:{width:1,height:60,background:C.border}}),
+            isMobile?null:e("div",{style:{width:1,height:60,background:C.border}}),
             // Precios enviados (antes: Cotizaciones)
-            e("div",{style:{padding:"8px 32px",cursor:"pointer"},onClick:function(){ setVista("cotizaciones"); setFiltroCot(Object.assign({},filtroCot,{estatus:"Pendiente"})); }},
+            e("div",{style:{padding:isMobile?"4px":"8px 32px",cursor:"pointer"},onClick:function(){ setVista("cotizaciones"); setFiltroCot(Object.assign({},filtroCot,{estatus:"Pendiente"})); }},
               e("div",{style:{fontSize:11,fontWeight:700,color:C.textDim,textTransform:"uppercase",letterSpacing:"1.5px",marginBottom:8}},"PROPUESTAS ENVIADAS"),
               e("div",{style:{fontSize:36,fontWeight:700,color:C.text,lineHeight:1,marginBottom:4}},cotsPend.length),
               e("div",{style:{fontSize:13,color:C.textMuted,marginBottom:6}},"esperando respuesta"),
               totalPend>0&&e("div",{style:{fontSize:12,color:C.amber}},"$"+totalPend.toLocaleString()+" en juego")
             ),
-            e("div",{style:{width:1,height:60,background:C.border}}),
+            isMobile?null:e("div",{style:{width:1,height:60,background:C.border}}),
             // Ventas cerradas
-            e("div",{style:{padding:"8px 32px",cursor:"pointer"},onClick:function(){ setVista("resumen"); }},
+            e("div",{style:{padding:isMobile?"4px":"8px 32px",cursor:"pointer"},onClick:function(){ setVista("cotizaciones"); setFiltroCot(Object.assign({},filtroCot,{estatus:"Aceptada"})); }},
               e("div",{style:{fontSize:11,fontWeight:700,color:C.textDim,textTransform:"uppercase",letterSpacing:"1.5px",marginBottom:8}},"VENTAS CERRADAS"),
               e("div",{style:{fontSize:36,fontWeight:700,color:C.text,lineHeight:1,marginBottom:4}},ganados.length),
               e("div",{style:{fontSize:13,color:C.textMuted,marginBottom:6}},"precios aceptados"),
               totalGanado>0&&e("div",{style:{fontSize:12,color:C.green}},"$"+totalGanado.toLocaleString()+" cobrado")
             ),
-            e("div",{style:{width:1,height:60,background:C.border}}),
+            isMobile?null:e("div",{style:{width:1,height:60,background:C.border}}),
             // Sin contacto (antes: Seguimientos)
-            e("div",{style:{padding:"8px 0 8px 32px",cursor:"pointer"},onClick:function(){ setVista("hoy"); }},
+            e("div",{style:{padding:isMobile?"4px":"8px 0 8px 32px",cursor:"pointer"},onClick:function(){ setVista("hoy"); }},
               e("div",{style:{fontSize:11,fontWeight:700,color:C.textDim,textTransform:"uppercase",letterSpacing:"1.5px",marginBottom:8}},"SIN SEGUIMIENTO"),
               e("div",{style:{fontSize:36,fontWeight:700,color:sinContacto>0?C.red:C.text,lineHeight:1,marginBottom:4}},sinContacto),
               e("div",{style:{fontSize:13,color:C.textMuted,marginBottom:6}},"clientes sin seguimiento"),
@@ -1982,17 +1959,17 @@ export default function CLEO(){
           ),
 
           // SPLIT 60/40
-          e("div",{style:{display:"grid",gridTemplateColumns:"3fr 2fr",gap:20,marginBottom:20}},
+          e("div",{style:{display:"grid",gridTemplateColumns:isMobile?"1fr":"3fr 2fr",gap:20,marginBottom:20}},
 
             // ACCIONES TOP 3
             e("div",{style:{background:C.surface,borderRadius:20,padding:"28px",border:"1px solid "+C.border,boxShadow:"0 2px 12px rgba(0,0,0,0.06)"}},
               e("div",{style:{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:4}},
-                e("div",{style:{fontSize:15,fontWeight:700,color:C.text}},"Tu lista de hoy"),
+                e("div",{style:{fontSize:15,fontWeight:700,color:C.text}},"A quién contactar hoy"),
                 e("button",{style:{fontSize:12,color:"#fff",background:C.purple,border:"none",cursor:"pointer",fontWeight:600,padding:"6px 14px",borderRadius:10},onClick:function(){ setVista("hoy"); }},"Contactar →")
               ),
-              e("div",{style:{fontSize:12,color:C.textMuted,marginBottom:20,lineHeight:1.6}},acciones.length===0?"Hoy no tienes pendientes urgentes. Buen momento para registrar conversaciones nuevas.":acciones.some(function(a){return a.tipo==="Seguimiento"&&a.dias>=7;})?"Después de 7 días sin respuesta, un mensaje simple puede reactivar muchas de esas conversaciones.":"El seguimiento no es perseguir — es no dejar que se enfríe una conversación que ya empezaste."),
+              e("div",{style:{fontSize:12,color:C.textMuted,marginBottom:20,lineHeight:1.6}},acciones.length===0?"Hoy no tienes pendientes urgentes. Buen momento para registrar conversaciones nuevas.":acciones.some(function(a){return a.tipo==="Seguimiento"&&a.dias>=7;})?"Después de 7 días sin respuesta, un mensaje simple puede reactivar muchas de esas conversaciones.":"El seguimiento no es perseguir , es no dejar que se enfríe una conversación que ya empezaste."),
               acciones.length===0
-                ? e("div",{style:{fontSize:13,color:C.textMuted,padding:"16px 0",textAlign:"center"}},"✓ Todo al día — sin pendientes urgentes.")
+                ? e("div",{style:{fontSize:13,color:C.textMuted,padding:"16px 0",textAlign:"center"}},"✓ Todo al día , sin pendientes urgentes.")
                 : e("div",null,
                     acciones.map(function(a,i){
                       return e("div",{key:i,style:{display:"flex",alignItems:"center",gap:14,padding:"14px 0",borderBottom:i<acciones.length-1?"1px solid "+C.border:"none",cursor:"pointer"},onClick:function(){ setVista("hoy"); }},
@@ -2024,10 +2001,10 @@ export default function CLEO(){
               });
               if(tiemposCierre2.length>=2){
                 var prom2=Math.round(tiemposCierre2.reduce(function(s,d){ return s+d; },0)/tiemposCierre2.length);
-                if(prom2===0) insights.push({ic:"⏱",txt:"Tus clientes deciden el mismo día que les envías el precio.",sub:"Tienes que tener todo listo desde el primer mensaje — precio, propuesta y forma de pago."});
-                else if(prom2===1) insights.push({ic:"⏱",txt:"Tus clientes suelen decidir muy rápido, casi siempre al día siguiente.",sub:"No dejes pasar más de 2 días sin dar seguimiento — si no responden, un mensaje corto puede cerrar la venta."});
-                else if(prom2<=3) insights.push({ic:"⏱",txt:"Tus clientes deciden en "+prom2+" días.",sub:"Son decisiones rápidas. Si no respondes en ese tiempo, pierdes el momento."});
-                else insights.push({ic:"⏱",txt:"Tus clientes tardan ~"+prom2+" días en decidir.",sub:"Haz seguimiento a los "+Math.round(prom2/2)+" días — antes de que se enfríe el interés."});
+                if(prom2===0) insights.push({ic:"⏱️",txt:"Tus clientes deciden el mismo día que les envías el precio.",sub:"Tienes que tener todo listo desde el primer mensaje , precio, propuesta y forma de pago."});
+                else if(prom2===1) insights.push({ic:"⏱️",txt:"Tus clientes suelen decidir muy rápido, casi siempre al día siguiente.",sub:"No dejes pasar más de 2 días sin dar seguimiento , si no responden, un mensaje corto puede cerrar la venta."});
+                else if(prom2<=3) insights.push({ic:"⏱️",txt:"Tus clientes deciden en "+prom2+" días.",sub:"Son decisiones rápidas. Si no respondes en ese tiempo, pierdes el momento."});
+                else insights.push({ic:"⏱️",txt:"Tus clientes tardan ~"+prom2+" días en decidir.",sub:"Haz seguimiento a los "+Math.round(prom2/2)+" días , antes de que se enfríe el interés."});
               }
 
               // Canal con mejor conversión
@@ -2099,7 +2076,7 @@ export default function CLEO(){
       // PIPELINE
       vista==="pipeline"&&(function(){
 
-        // Frase educativa — detecta patron en el kanban
+        // Frase educativa , detecta patron en el kanban
         var enSeguimiento=clientes.filter(function(c){ return c.etapa==="Seguimiento"; }).length;
         var enNegociacionDias=clientes.filter(function(c){ return c.etapa==="Negociacion"&&diasDesde(c.fechaEtapa||c.fecha)>=3; }).length;
         var enNuevoContacto=clientes.filter(function(c){ return c.etapa==="Nuevo contacto"; }).length;
@@ -2111,15 +2088,15 @@ export default function CLEO(){
         },{et:"",n:0});
         var frase;
         if(enNegociacionDias>=2) frase="Los clientes en negociación suelen necesitar que alguien los ayude a decidir, no que los presionen. Una pregunta abierta puede destrabar mucho.";
-        else if(enSeguimiento>=3) frase="Tienes varios clientes esperando — a veces un mensaje de '¿tienes alguna duda?' es todo lo que necesitan para avanzar.";
+        else if(enSeguimiento>=3) frase="Tienes varios clientes esperando , a veces un mensaje de '¿tienes alguna duda?' es todo lo que necesitan para avanzar.";
         else if(etapaMasLlena.et==="Nuevo contacto"&&etapaMasLlena.n>=3) frase="Tienes buenos prospectos. El siguiente paso es conocerlos mejor antes de hablarles de precio.";
-        else if(perdidasRecientes>=1) frase="Perder un cliente no es el final — a veces es el inicio de una mejor conversación más adelante.";
-        else if(clientesActivos>=3) frase="Tu pipeline se ve bien distribuido. Eso significa que estás dándole atención a cada etapa — sigue así.";
+        else if(perdidasRecientes>=1) frase="Perder un cliente no es el final , a veces es el inicio de una mejor conversación más adelante.";
+        else if(clientesActivos>=3) frase="Tu pipeline se ve bien distribuido. Eso significa que estás dándole atención a cada etapa , sigue así.";
         else frase="Cada cliente que registras es una conversación que no se va a perder. Sigue moviéndolos de etapa conforme avancen.";
 
         return e("div",{style:{display:"flex",flexDirection:"column",gap:0}},
 
-          // BOTONES — arriba a la derecha solos
+          // BOTONES , arriba a la derecha solos
           e("div",{style:{display:"flex",justifyContent:"flex-end",gap:8,marginLeft:-32,marginRight:-32,marginTop:-32,padding:"14px 32px",background:C.bg}},
             e("button",{style:{cursor:"pointer",padding:"9px 18px",borderRadius:14,border:"1px solid "+C.border,background:C.surface,fontSize:13,color:C.textMuted,fontWeight:500},onClick:function(){ setClienteSel(null); setForm(formVacio); setModalCliente(true); }},"+ Cliente"),
             e("button",{style:{cursor:"pointer",padding:"9px 18px",borderRadius:14,border:"1px solid "+C.green+"44",background:C.green+"08",fontSize:13,color:C.green,fontWeight:500},onClick:abrirModalVenta},"+ Venta"),
@@ -2134,7 +2111,7 @@ export default function CLEO(){
 
           // KANBAN
           e("div",{style:{overflowX:"auto",paddingBottom:8}},
-            e("div",{style:{display:"flex",gap:12,minWidth:960}},
+            e("div",{style:{display:"flex",gap:12,minWidth:isMobile?"unset":960}},
               ETAPAS.map(function(etapa){
                 var cols=clientesFiltrados.filter(function(c){
                   if(c.etapa!==etapa) return false;
@@ -2155,7 +2132,7 @@ export default function CLEO(){
                   return s+(cot?cot.monto:0);
                 },0);
                 return e("div",{key:etapa,
-                  style:{flex:"0 0 175px",minWidth:175,display:"flex",flexDirection:"column"},
+                  style:{flex:isMobile?"0 0 85vw":"0 0 175px",minWidth:isMobile?"85vw":175,display:"flex",flexDirection:"column"},
                   onDragOver:function(ev){ onDragOver(ev,etapa); },
                   onDrop:function(ev){ onDrop(ev,etapa); },
                   onDragLeave:function(){ setDragOver(null); }
@@ -2174,7 +2151,7 @@ export default function CLEO(){
                     e("div",{style:{display:"flex",justifyContent:"space-between",alignItems:"flex-start"}},
                       e("div",{style:{flex:1,minWidth:0,marginRight:6}},
                         e("div",{style:{fontSize:11,fontWeight:700,color:ec,marginBottom:2,lineHeight:1.3}},ETAPAS_LABEL[etapa]||etapa),
-                        e("div",{style:{fontSize:10,color:totalCol>0?C.textMuted:C.textDim,whiteSpace:"nowrap"}},totalCol>0?"$"+totalCol.toLocaleString():"—")
+                        e("div",{style:{fontSize:10,color:totalCol>0?C.textMuted:C.textDim,whiteSpace:"nowrap"}},totalCol>0?"$"+totalCol.toLocaleString():",")
                       ),
                       e("div",{style:{
                         width:22,height:22,borderRadius:"50%",flexShrink:0,
@@ -2231,7 +2208,7 @@ export default function CLEO(){
                           setCotRapidaId(c.id);
                         }
                       },
-                        // Fila 1 — avatar + nombre
+                        // Fila 1 , avatar + nombre
                         e("div",{style:{display:"flex",gap:8,alignItems:"center"}},
                           e("div",{style:{
                             width:32,height:32,borderRadius:"50%",flexShrink:0,
@@ -2243,7 +2220,7 @@ export default function CLEO(){
                             e("div",{style:{fontSize:10,color:C.textMuted,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}},c.negocio||(" "))
                           )
                         ),
-                        // Fila 2 — contenido según etapa
+                        // Fila 2 , contenido según etapa
                         (function(){
                           var esPerdidoG=c.etapa==="Perdido";
                           var esGanadoG=c.etapa==="Ganado";
@@ -2271,12 +2248,12 @@ export default function CLEO(){
                           var texto=dias+"d"+(concepto3?" · "+concepto3.slice(0,16)+(concepto3.length>16?"...":""):"");
                           return e("div",{style:{fontSize:10,lineHeight:"22px",height:22,padding:"0 7px",borderRadius:6,flexShrink:0,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis",color:diasRojo?C.red:C.textMuted,background:diasRojo?C.red+"08":"#F8FAFC",border:"0.5px solid "+(diasRojo?C.red+"30":C.border)}},texto);
                         })(),
-                        // Fila 3 — monto pendiente (solo si no es Perdido)
+                        // Fila 3 , monto pendiente (solo si no es Perdido)
                         e("div",{style:{fontSize:10,fontWeight:600,color:saldoReal>0&&c.etapa!=="Perdido"?C.amber:"transparent",height:16,lineHeight:"16px",flexShrink:0,whiteSpace:"nowrap",overflow:"hidden"}},
                           saldoReal>0&&c.etapa!=="Perdido"?"$"+saldoReal.toLocaleString()+" pendiente":"\u00a0"
                         ),
-                        // Fila 4 — seguimiento si perdido, contactar si activo/ganado
-                        e("div",{style:{height:28,flexShrink:0},onClick:function(ev){ ev.stopPropagation(); }},
+                        // Fila 4 , seguimiento si perdido, contactar si activo/ganado
+                        e("div",{style:{height:28,flexShrink:0,display:"flex",gap:6,alignItems:"center"},onClick:function(ev){ ev.stopPropagation(); }},
                           c.etapa==="Perdido"?(function(){
                             if(!c.seguimientoFecha) return null;
                             var dSeg=Math.round((new Date(c.seguimientoFecha).getTime()-HOY.getTime())/86400000);
@@ -2287,6 +2264,11 @@ export default function CLEO(){
                                 style:{display:"inline-flex",alignItems:"center",gap:4,padding:"5px 10px",borderRadius:10,background:C.green,color:"#fff",fontSize:10,fontWeight:600,textDecoration:"none",whiteSpace:"nowrap"}
                               },e(SvgIcon,{canal:c.canalPrincipal||"WhatsApp",size:10}),"Contactar")
                             : null
+                          ,
+                          isMobile&&e("button",{
+                            style:{marginLeft:"auto",padding:"4px 8px",borderRadius:8,border:"1px solid "+C.border,background:C.surfaceUp,fontSize:10,color:C.textMuted,cursor:"pointer",flexShrink:0},
+                            onClick:function(ev){ ev.stopPropagation(); setMoverClienteId(c.id); }
+                          },"Mover →")
                         )
                       );
                     }),
@@ -2373,7 +2355,7 @@ export default function CLEO(){
                 }).filter(function(d){ return d!==null; });
                 if(tiemposCierreC.length>=1){
                   var promC=Math.round(tiemposCierreC.reduce(function(s,d){ return s+d; },0)/tiemposCierreC.length);
-                  facts.push({ic:"⏱",txt:"Tardó "+promC+" día"+(promC!==1?"s":"")+" en comprar."});
+                  facts.push({ic:"⏱️",txt:"Tardó "+promC+" día"+(promC!==1?"s":"")+" en comprar."});
                 } else if(cotPendC.length>0){
                   var diasEspera=diasDesde(cotPendC[cotPendC.length-1].fecha);
                   facts.push({ic:"⏳",txt:"Lleva "+diasEspera+" días evaluando tu propuesta."});
@@ -2475,7 +2457,7 @@ export default function CLEO(){
                   eventos.push({fecha:v.fecha,tipo:"venta",titulo:"Venta directa"+(v.concepto?" · "+v.concepto:""),desc:"$"+Number(v.monto).toLocaleString()+(v.etiqueta?" · "+v.etiqueta:""),color:C.green,orden:0});
                 });
 
-                // Ordenar — reciente primero, futuros al fondo, registro siempre último
+                // Ordenar , reciente primero, futuros al fondo, registro siempre último
                 eventos.sort(function(a,b){
                   if(a.futuro&&!b.futuro) return 1;
                   if(!a.futuro&&b.futuro) return -1;
@@ -2699,7 +2681,7 @@ export default function CLEO(){
           return Math.max(0,Math.floor((hoy-new Date(ref))/86400000));
         }
 
-        // Helper: coaching estructurado — objetivo + consejo + mensaje
+        // Helper: coaching estructurado , objetivo + consejo + mensaje
         function coachingCliente(c,prioridad){
           var cid=Number(c.id);
           var cotPend=cotizaciones.filter(function(cot){ return Number(cot.clienteId)===cid&&cot.estatus==="Pendiente"; }).sort(function(a,b){ return new Date(b.fecha)-new Date(a.fecha); })[0];
@@ -2718,7 +2700,7 @@ export default function CLEO(){
           if(c.etapa==="Perdido"){
             var motivo=c.motivoPerdida||"";
             var consejoP=motivo==="Precio alto"
-              ?"No intentes reabrir con descuento. Pregunta si su situación cambió — eso es más poderoso que bajar precio."
+              ?"No intentes reabrir con descuento. Pregunta si su situación cambió , eso es más poderoso que bajar precio."
               :motivo==="Sin presupuesto"
               ?"No vendas todavía. Solo pregunta si el presupuesto ya está disponible."
               :"No menciones la venta anterior. Solo reabre la conversación con algo genuino.";
@@ -2753,7 +2735,7 @@ export default function CLEO(){
               objetivo:nombre+" lleva más de un mes sin responder. Tu objetivo es cerrar esta conversación, no mantenerla abierta.",
               objetivoSub:"Si no responde a este mensaje, mueve el cliente a Perdido y libera tu energía.",
               consejo:"Un último mensaje honesto cierra mejor que desaparecer. Dale la opción de decir que no sin sentirse mal.",
-              mensaje:"Hola "+nombre+", entiendo que a veces los planes cambian. Si ya no es buen momento, no hay problema — solo dímelo para no estar interrumpiéndote."
+              mensaje:"Hola "+nombre+", entiendo que a veces los planes cambian. Si ya no es buen momento, no hay problema , solo dímelo para no estar interrumpiéndote."
             };
           }
           if(c.etapa==="Negociacion") return {
@@ -2776,7 +2758,7 @@ export default function CLEO(){
           };
         }
 
-        // Helper: mejor contexto disponible — solo cotizacion (legacy, para urgentes.razon)
+        // Helper: mejor contexto disponible , solo cotizacion (legacy, para urgentes.razon)
         function contextoCliente(c){
           var cid=Number(c.id);
           var cotPend=cotizaciones.filter(function(cot){ return Number(cot.clienteId)===cid&&cot.estatus==="Pendiente"; }).sort(function(a,b){ return new Date(b.fecha)-new Date(a.fecha); })[0];
@@ -2786,27 +2768,27 @@ export default function CLEO(){
             if(d<=7) return "Mandaste tu cotizacion de "+concepto+" hace "+d+" dias. Buen momento para preguntar si tiene alguna duda antes de decidir.";
             if(d<=14) return "Ya van "+d+" dias desde que mando tu cotizacion de "+concepto+". A veces solo necesitan que alguien les pregunte si siguen interesados.";
             if(d<=30) return "Llevan "+d+" dias sin hablar sobre "+concepto+". Si no le escribes esta semana, probablemente ya lo perdiste.";
-            return "Más de "+d+" días sin respuesta sobre "+concepto+". Vale la pena un último mensaje antes de cerrarlo — a veces la vida se los lleva y no es que no quieran.";
+            return "Más de "+d+" días sin respuesta sobre "+concepto+". Vale la pena un último mensaje antes de cerrarlo , a veces la vida se los lleva y no es que no quieran.";
           }
           return null;
         }
 
         var urgentes=[];
 
-        // P1 — seguimientos programados vencidos
+        // P1 , seguimientos programados vencidos
         clientes.filter(function(c){ return c.seguimientoFecha&&new Date(c.seguimientoFecha)<=hoy; }).forEach(function(c){
           var esPerdido=c.etapa==="Perdido";
           var esGanado=c.etapa==="Ganado";
           var ctx=!esPerdido&&!esGanado?contextoCliente(c):null;
           var razon=esGanado
-            ?"Te dijiste que hoy le escribias — es cliente que ya te compro, no lo dejes enfriar."
+            ?"Te dijiste que hoy le escribias , es cliente que ya te compro, no lo dejes enfriar."
             :esPerdido
             ?"Hoy era el dia para intentar recuperar a "+c.nombre+(c.motivoPerdida?". La ultima vez fue por "+c.motivoPerdida:"")+". Un mensaje simple puede reabrir la puerta."
             :ctx||"Te anotaste escribirle hoy. Hazlo antes de que se te vaya el dia.";
           urgentes.push({cliente:c,razon:razon,color:esGanado?C.green:esPerdido?C.red:C.amber,prioridad:1});
         });
 
-        // P2 — negociacion sin contacto >2 dias
+        // P2 , negociacion sin contacto >2 dias
         clientes.filter(function(c){ return c.etapa==="Negociacion"&&!c.seguimientoFecha&&diasSinContacto(c)>2; }).forEach(function(c){
           var ctx=contextoCliente(c);
           urgentes.push({cliente:c,razon:ctx||(function(){
@@ -2816,30 +2798,30 @@ export default function CLEO(){
                 x.razonCierre.forEach(function(r){ razonesCount3[r]=(razonesCount3[r]||0)+1; });
               });
               var topRazon=Object.entries(razonesCount3).sort(function(a,b){ return b[1]-a[1]; })[0];
-              if(topRazon&&topRazon[0]==="Seguimiento") return "Con clientes como "+c.nombre.split(" ")[0]+", lo que mas ha funcionado es el seguimiento constante. Llevais "+diasSinContacto(c)+" dias sin hablar — escribele hoy.";
-              if(topRazon&&topRazon[0]==="Recomendacion") return "La ultima vez que hablaron, "+c.nombre.split(" ")[0]+" estaba casi listo. "+diasSinContacto(c)+" días de silencio pueden enfriarlo — un mensaje hoy puede cambiar eso.";
-              return "La ultima vez que hablaron, "+c.nombre.split(" ")[0]+" estaba casi listo para decir que si. "+diasSinContacto(c)+" días de silencio pueden enfriarlo — escribele hoy.";
+              if(topRazon&&topRazon[0]==="Seguimiento") return "Con clientes como "+c.nombre.split(" ")[0]+", lo que mas ha funcionado es el seguimiento constante. Llevais "+diasSinContacto(c)+" dias sin hablar , escribele hoy.";
+              if(topRazon&&topRazon[0]==="Recomendacion") return "La ultima vez que hablaron, "+c.nombre.split(" ")[0]+" estaba casi listo. "+diasSinContacto(c)+" días de silencio pueden enfriarlo , un mensaje hoy puede cambiar eso.";
+              return "La ultima vez que hablaron, "+c.nombre.split(" ")[0]+" estaba casi listo para decir que si. "+diasSinContacto(c)+" días de silencio pueden enfriarlo , escribele hoy.";
             })(),color:C.urgent,prioridad:2});
         });
 
-        // P3 — cotizacion enviada sin contacto >3 dias
+        // P3 , cotizacion enviada sin contacto >3 dias
         clientes.filter(function(c){ return c.etapa==="Cotizacion enviada"&&!c.seguimientoFecha&&diasSinContacto(c)>3; }).forEach(function(c){
           var ctx=contextoCliente(c);
           urgentes.push({cliente:c,razon:ctx||"Mandó tu precio hace "+diasSinContacto(c)+" días y no ha dicho nada. A veces solo necesitan que alguien les pregunte si tienen dudas.",color:C.textMuted,prioridad:3});
         });
 
-        // P4 — seguimiento sin contacto >4 dias (excluye Nuevo contacto, Ganado, Perdido)
+        // P4 , seguimiento sin contacto >4 dias (excluye Nuevo contacto, Ganado, Perdido)
         clientes.filter(function(c){ return c.etapa==="Seguimiento"&&!c.seguimientoFecha&&diasSinContacto(c)>4; }).forEach(function(c){
           var ctx=contextoCliente(c);
-          urgentes.push({cliente:c,razon:ctx||c.nombre.split(" ")[0]+" lleva "+diasSinContacto(c)+" días sin noticias tuyas. No significa que perdió el interés — solo que está ocupado. Un mensaje corto basta.",color:C.textMuted,prioridad:4});
+          urgentes.push({cliente:c,razon:ctx||c.nombre.split(" ")[0]+" lleva "+diasSinContacto(c)+" días sin noticias tuyas. No significa que perdió el interés , solo que está ocupado. Un mensaje corto basta.",color:C.textMuted,prioridad:4});
         });
 
-        // P5 — nuevo contacto sin movimiento >5 dias
+        // P5 , nuevo contacto sin movimiento >5 dias
         clientes.filter(function(c){ return c.etapa==="Nuevo contacto"&&!c.seguimientoFecha&&diasSinContacto(c)>5; }).forEach(function(c){
-          urgentes.push({cliente:c,razon:"Registraste a "+c.nombre.split(" ")[0]+" hace "+diasSinContacto(c)+" días y no ha habido movimiento. Si no le has escrito todavía, hoy es el día — después se olvida.",color:C.textDim,prioridad:5});
+          urgentes.push({cliente:c,razon:"Registraste a "+c.nombre.split(" ")[0]+" hace "+diasSinContacto(c)+" días y no ha habido movimiento. Si no le has escrito todavía, hoy es el día , después se olvida.",color:C.textDim,prioridad:5});
         });
 
-        // P6 — ganados sin seguimiento >30 dias
+        // P6 , ganados sin seguimiento >30 dias
         clientes.filter(function(c){
           if(c.etapa!=="Ganado") return false;
           if(c.seguimientoFecha) return false;
@@ -2850,11 +2832,11 @@ export default function CLEO(){
           var meses=Math.floor(diasGanado/30);
           razon=meses>=2
             ?c.nombre.split(" ")[0]+" te compró hace "+meses+" meses y no has vuelto a escribirle. Es buen momento para saber cómo le fue y pedirle un referido."
-            :c.nombre.split(" ")[0]+" te compró hace 30 días. Es el mejor momento para preguntar cómo le fue — y si conoce a alguien que pueda necesitarte.";
+            :c.nombre.split(" ")[0]+" te compró hace 30 días. Es el mejor momento para preguntar cómo le fue , y si conoce a alguien que pueda necesitarte.";
           urgentes.push({cliente:c,razon:razon,color:C.green,prioridad:6});
         });
 
-        // P7 — perdidos sin seguimiento >60 dias
+        // P7 , perdidos sin seguimiento >60 dias
         clientes.filter(function(c){
           if(c.etapa!=="Perdido") return false;
           if(c.seguimientoFecha) return false;
@@ -2880,7 +2862,7 @@ export default function CLEO(){
 
         return e("div",{style:{display:"flex",flexDirection:"column",gap:0}},
 
-          // BOTONES — arriba a la derecha
+          // BOTONES , arriba a la derecha
           e("div",{style:{display:"flex",justifyContent:"flex-end",gap:8,marginLeft:-32,marginRight:-32,marginTop:-32,padding:"14px 32px",background:C.bg}},
             e("button",{style:{cursor:"pointer",padding:"9px 18px",borderRadius:14,border:"1px solid "+C.border,background:C.surface,fontSize:13,color:C.textMuted,fontWeight:500},onClick:function(){ setClienteSel(null); setForm(formVacio); setModalCliente(true); }},"+ Cliente"),
             e("button",{style:{cursor:"pointer",padding:"9px 18px",borderRadius:14,border:"1px solid "+C.green+"44",background:C.green+"08",fontSize:13,color:C.green,fontWeight:500},onClick:abrirModalVenta},"+ Venta"),
@@ -2889,10 +2871,10 @@ export default function CLEO(){
 
           // TÍTULO
           e("div",{style:{paddingTop:24,marginBottom:24}},
-            e("div",{style:{fontSize:28,fontWeight:700,color:C.text,lineHeight:1.1,marginBottom:6}},"Tu lista de hoy"),
+            e("div",{style:{fontSize:28,fontWeight:700,color:C.text,lineHeight:1.1,marginBottom:6}},"Tu objetivo hoy"),
             e("div",{style:{fontSize:14,color:C.textMuted}},
               urgentes.length===0
-                ? "Todo al día — no tienes pendientes urgentes."
+                ? "Todo al día , no tienes pendientes urgentes."
                 : urgentes.length===1
                   ? "Tienes 1 cliente que necesita atención hoy."
                   : "Tienes "+urgentes.length+" clientes que necesitan atención, ordenados por urgencia."
@@ -2909,12 +2891,12 @@ export default function CLEO(){
             var diasUsando=clientes.length>0?diasDesde([...clientes].sort(function(a,b){ return new Date(a.fecha)-new Date(b.fecha); })[0].fecha):0;
             var consejo=null;
             if(ganadosRecientes.length>=2) consejo="Tienes "+ganadosRecientes.length+" clientes que ya te compraron. ¿Les has escrito desde entonces? Un mensaje simple puede traerte una venta sin buscar cliente nuevo.";
-            else if(sinContacto.length>=2) consejo="Tienes "+sinContacto.length+" clientes sin seguimiento reciente. La próxima vez que alguien te compre, pídele el número — así puedes volver a venderle cuando quieras.";
+            else if(sinContacto.length>=2) consejo="Tienes "+sinContacto.length+" clientes sin seguimiento reciente. La próxima vez que alguien te compre, pídele el número , así puedes volver a venderle cuando quieras.";
             else if(diasUsando<=21&&clientes.length>=3) consejo="Sigue registrando tus conversaciones aunque no cierren. En 2 semanas CLEO te va a mostrar exactamente qué está funcionando en tu negocio.";
             else if(mejorCanal&&mejorCanal[1]>=2) consejo=mejorCanal[0]+" es donde más cierras. ¿Qué estás haciendo ahí que no estás haciendo en los demás canales?";
             return e("div",{style:{background:C.surface,borderRadius:20,padding:"28px",border:"1px solid "+C.border,boxShadow:"0 2px 12px rgba(0,0,0,0.06)"}},
               e("div",{style:{fontSize:18,fontWeight:700,color:C.text,marginBottom:8}},"✓ Estás al día"),
-              e("div",{style:{fontSize:14,color:C.textMuted,lineHeight:1.7,marginBottom:consejo?20:0}},"Diste seguimiento a tiempo — eso es exactamente lo que más importa en ventas. No es talento, es constancia."),
+              e("div",{style:{fontSize:14,color:C.textMuted,lineHeight:1.7,marginBottom:consejo?20:0}},"Diste seguimiento a tiempo , eso es exactamente lo que más importa en ventas. No es talento, es constancia."),
               consejo&&e("div",{style:{fontSize:13,color:"#312E81",lineHeight:1.7,padding:"14px 16px",background:"#EEF2FF",borderRadius:12,border:"1px solid #C7D2FE"}},
                 e("span",{style:{fontWeight:600,marginRight:6}},"💡"),consejo
               )
@@ -2935,7 +2917,7 @@ export default function CLEO(){
                 border:"1px solid "+C.border,borderLeft:"3px solid "+borderColor,
                 boxShadow:"0 2px 8px rgba(0,0,0,0.05)"
               }},
-                // Fila 1 — avatar + nombre + etapa
+                // Fila 1 , avatar + nombre + etapa
                 e("div",{style:{display:"flex",alignItems:"center",gap:12,marginBottom:12}},
                   e("div",{style:{width:36,height:36,borderRadius:"50%",background:ec+"18",display:"flex",alignItems:"center",justifyContent:"center",fontSize:12,fontWeight:700,color:ec,flexShrink:0}},iniciales(c.nombre)),
                   e("div",{style:{flex:1,minWidth:0}},
@@ -2947,7 +2929,7 @@ export default function CLEO(){
                     esPerdido&&e("span",{style:{fontSize:10,padding:"3px 8px",borderRadius:20,background:C.red+"10",color:C.red,border:"1px solid "+C.red+"25"}},"Para recuperar")
                   )
                 ),
-                // Fila 2 — coaching estructurado
+                // Fila 2 , coaching estructurado
                 (function(){
                   var coach=coachingCliente(c,u.prioridad);
                   return e("div",{style:{marginBottom:14,borderRadius:12,overflow:"hidden",border:"1px solid "+C.border}},
@@ -2969,7 +2951,7 @@ export default function CLEO(){
                     )
                   );
                 })(),
-                // Fila 3 — botones
+                // Fila 3 , botones
                 e("div",{style:{display:"flex",gap:8,flexWrap:"wrap",alignItems:"center"}},
                   urlContactar&&e("a",{href:urlContactar,target:"_blank",rel:"noreferrer",
                     style:{cursor:"pointer",padding:"7px 14px",borderRadius:12,border:"none",background:C.green,fontSize:12,color:"#fff",fontWeight:600,textDecoration:"none",display:"inline-flex",alignItems:"center",gap:5}
@@ -3040,13 +3022,13 @@ export default function CLEO(){
         if(cotsPeriodo.length===0){
           resumenTexto=esProductos?"Aun no hay precios registrados este periodo. Cuando registres uno, aqui veras cuantos clientes te compran.":"Aun no hay cotizaciones en este periodo. Cuando mandes una, aqui veras como te va.";
         } else if(aceptadas.length===0){
-          resumenTexto="Mandaste "+cotsPeriodo.length+" cotizacion"+(cotsPeriodo.length>1?"es":"")+" este periodo pero ninguna cerro todavia."+(motivoPrincipal?" El motivo mas frecuente fue '"+motivoPrincipal+"'.":" Registra el motivo cuando pierdas una — te ayuda a mejorar.");
+          resumenTexto="Mandaste "+cotsPeriodo.length+" cotizacion"+(cotsPeriodo.length>1?"es":"")+" este periodo pero ninguna cerro todavia."+(motivoPrincipal?" El motivo mas frecuente fue '"+motivoPrincipal+"'.":" Registra el motivo cuando pierdas una , te ayuda a mejorar.");
         } else if(tasa>=50){
-          resumenTexto="Cerraste "+aceptadas.length+" de "+cotsPeriodo.length+" cotizaciones. Excelente — mas de la mitad de lo que mandas se convierte en venta.";
+          resumenTexto="Cerraste "+aceptadas.length+" de "+cotsPeriodo.length+" cotizaciones. Excelente , mas de la mitad de lo que mandas se convierte en venta.";
         } else if(tasa>=30){
           resumenTexto="Cerraste "+aceptadas.length+" de "+cotsPeriodo.length+" cotizaciones y cobraste $"+totalG.toLocaleString()+"."+(motivoPrincipal?" Las que no cerraron fue principalmente por '"+motivoPrincipal+"'.":"");
         } else {
-          resumenTexto="Cerraste "+aceptadas.length+" de "+cotsPeriodo.length+" cotizaciones."+(motivoPrincipal?" El motivo mas frecuente de rechazo fue '"+motivoPrincipal+"' — un seguimiento a tiempo puede rescatar algunas.":" Registra por que no cerraron — ese dato vale oro.");
+          resumenTexto="Cerraste "+aceptadas.length+" de "+cotsPeriodo.length+" cotizaciones."+(motivoPrincipal?" El motivo mas frecuente de rechazo fue '"+motivoPrincipal+"' , un seguimiento a tiempo puede rescatar algunas.":" Registra por que no cerraron , ese dato vale oro.");
         }
         var maxLeads=Math.max.apply(null,ORIGENES.map(function(o){ return clientes.filter(function(c){ return c.origen===o; }).length; }).concat([1]));
 
@@ -3066,7 +3048,7 @@ export default function CLEO(){
         var dashCot=(pctCot/100)*circ;
         var dashVD=(pctVD/100)*circ;
 
-        // Barras por mes — ultimos 6 meses
+        // Barras por mes , ultimos 6 meses
         var MESES_LABELS=["Ene","Feb","Mar","Abr","May","Jun","Jul","Ago","Sep","Oct","Nov","Dic"];
         var mesesData=[];
         for(var mi=5;mi>=0;mi--){
@@ -3095,7 +3077,7 @@ export default function CLEO(){
           // TITULO
           e("div",{style:{paddingTop:24,marginBottom:24}},
             e("div",{style:{fontSize:32,fontWeight:700,color:C.text,lineHeight:1.1,marginBottom:6}},"Lo que aprendimos"),
-            e("div",{style:{fontSize:14,color:C.textMuted}},"Una revisión de cómo estás vendiendo — no solo cuánto.")
+            e("div",{style:{fontSize:14,color:C.textMuted}},"Una revisión de cómo estás vendiendo , no solo cuánto.")
           ),
 
           // HERO CARD OSCURA
@@ -3108,7 +3090,7 @@ export default function CLEO(){
               ?"Más de la mitad de tus propuestas se convierten en ventas. Eso te pone por encima del promedio de emprendedores."
               :promDiasCierre!==null
               ?(promDiasCierre<=1?"Tus clientes deciden muy rápido, casi el mismo día. Ten todo listo desde el primer mensaje.":"Tus clientes tardan en promedio "+promDiasCierre+" días en decidir. Ese es el momento ideal para hacer seguimiento.")
-              :"Sigue registrando tus conversaciones — CLEO empezará a descubrir patrones de tu negocio.";
+              :"Sigue registrando tus conversaciones , CLEO empezará a descubrir patrones de tu negocio.";
             return e("div",{style:{background:"#0F1729",borderRadius:20,padding:"24px 28px",marginBottom:24,position:"relative",overflow:"hidden",boxShadow:"0 4px 20px rgba(0,0,0,0.12)"}},
               e("div",{style:{position:"absolute",top:-40,right:-40,width:180,height:180,borderRadius:"50%",background:"rgba(99,102,241,0.08)"}}),
               e("div",{style:{display:"grid",gridTemplateColumns:"1fr 2px 1fr 2px 1fr",gap:0,alignItems:"center",marginBottom:24,paddingBottom:24,borderBottom:"1px solid rgba(255,255,255,0.06)"}},[
@@ -3142,7 +3124,7 @@ export default function CLEO(){
               (function(){
                 var items=[];
                 if(cotsPeriodo.length>0) items.push({ic:"📈",txt:"Cerraste "+aceptadas.length+" de "+cotsPeriodo.length+" cotizaciones ("+tasa+"% de tasa de cierre).",color:tasa>=40?C.green:C.text});
-                if(promDiasCierre!==null) items.push({ic:"⏱",txt:promDiasCierre<=1?"Tus clientes deciden muy rápido, casi el mismo día.":promDiasCierre<=3?"Tus clientes deciden en "+promDiasCierre+" días — decisiones rápidas.":"Tus clientes tardan ~"+promDiasCierre+" días en decidir.",color:C.text});
+                if(promDiasCierre!==null) items.push({ic:"⏱️",txt:promDiasCierre<=1?"Tus clientes deciden muy rápido, casi el mismo día.":promDiasCierre<=3?"Tus clientes deciden en "+promDiasCierre+" días , decisiones rápidas.":"Tus clientes tardan ~"+promDiasCierre+" días en decidir.",color:C.text});
                 if(motivoPrincipal) items.push({ic:"🔍",txt:"\""+motivoPrincipal+"\" fue la objeción más frecuente.",color:C.red});
                 if(totalIngresos>0) items.push({ic:"📊",txt:pctCot+"% de tus ingresos vinieron de cotizaciones.",color:C.text});
                 var saldosPendientes=aceptadas.reduce(function(s,cot){ var p=cot.pagos||[]; var pagado=p.reduce(function(x,pg){ return x+Number(pg.monto); },0); return s+(cot.monto-pagado>0?cot.monto-pagado:0); },0);
@@ -3167,7 +3149,7 @@ export default function CLEO(){
               e("div",{style:{fontSize:11,fontWeight:700,color:C.textDim,textTransform:"uppercase",letterSpacing:"1.5px",marginBottom:20}},"Esto esta funcionando"),
               (function(){
                 var items=[];
-                if(tasa>=40) items.push("Tasa de cierre del "+tasa+"% — por encima del promedio.");
+                if(tasa>=40) items.push("Tasa de cierre del "+tasa+"% , por encima del promedio.");
                 if(pctCot>=60) items.push("La mayoría de tus ventas vienen de cotizaciones.");
                 if(prom>0) items.push("Ticket promedio de $"+prom.toLocaleString()+".");
                 if(mejorCanalCierre&&mejorCanalCierre[1]>=2) items.push(mejorCanalCierre[0]+" te trae clientes que compran.");
@@ -3188,16 +3170,16 @@ export default function CLEO(){
                     motivoPrincipal==="Precio alto"?"Dedica más tiempo a mostrar el valor antes de dar el precio.":
                     motivoPrincipal==="Sin presupuesto"?"Pregunta por el presupuesto al inicio para no perder tiempo.":
                     motivoPrincipal==="Eligio a otro"?"Revisa cómo presentas tu propuesta frente a la competencia.":
-                    "Cada patrón de pérdida tiene una solución — el primer paso es registrarlo."
+                    "Cada patrón de pérdida tiene una solución , el primer paso es registrarlo."
                   )
                 );
                 if(ganadosSinRazon>0) return e("div",null,
                   e("div",{style:{fontSize:14,color:"#78350F",lineHeight:1.65,marginBottom:10,fontWeight:500}},"¿Por qué te compraron?"),
-                  e("div",{style:{fontSize:13,color:"#92400E",lineHeight:1.65,borderTop:"1px solid "+C.amberBorder,paddingTop:10}},"Tienes "+ganadosSinRazon+" cliente"+(ganadosSinRazon>1?"s que compraron":"  que compró")+" sin razón de cierre registrada. Saber por qué cierras es tan importante como saber por qué pierdes — te dice qué repetir.")
+                  e("div",{style:{fontSize:13,color:"#92400E",lineHeight:1.65,borderTop:"1px solid "+C.amberBorder,paddingTop:10}},"Tienes "+ganadosSinRazon+" cliente"+(ganadosSinRazon>1?"s que compraron":"  que compró")+" sin razón de cierre registrada. Saber por qué cierras es tan importante como saber por qué pierdes , te dice qué repetir.")
                 );
                 return e("div",null,
                   e("div",{style:{fontSize:14,color:"#78350F",lineHeight:1.65,fontWeight:500}},"Registra el motivo cuando pierdas una venta."),
-                  e("div",{style:{fontSize:13,color:"#92400E",lineHeight:1.65,borderTop:"1px solid "+C.amberBorder,paddingTop:10,marginTop:10}},"Ese dato es el más valioso para mejorar — CLEO empezará a mostrarte patrones.")
+                  e("div",{style:{fontSize:13,color:"#92400E",lineHeight:1.65,borderTop:"1px solid "+C.amberBorder,paddingTop:10,marginTop:10}},"Ese dato es el más valioso para mejorar , CLEO empezará a mostrarte patrones.")
                 );
               })()
             )
@@ -3280,9 +3262,9 @@ export default function CLEO(){
                 var lecciones=[];
                 if(aceptadas.length>0&&cotsPeriodo.length>1) lecciones.push("Los clientes que recibieron seguimiento tienen más probabilidades de comprar.");
                 if(pctCot>=60) lecciones.push("Tus mejores ventas llegaron mediante cotizaciones bien preparadas.");
-                if(motivoPrincipal) lecciones.push("\""+motivoPrincipal+"\" fue una objeción recurrente — es una señal sobre cómo presentas tu valor.");
-                if(promDiasCierre!==null&&promDiasCierre>7) lecciones.push("La mayoría de tus clientes decide después de varios días — la paciencia y el seguimiento son clave.");
-                if(mejorCanalCierre) lecciones.push(mejorCanalCierre[0]+" funciona — no abandones ese canal.");
+                if(motivoPrincipal) lecciones.push("\""+motivoPrincipal+"\" fue una objeción recurrente , es una señal sobre cómo presentas tu valor.");
+                if(promDiasCierre!==null&&promDiasCierre>7) lecciones.push("La mayoría de tus clientes decide después de varios días , la paciencia y el seguimiento son clave.");
+                if(mejorCanalCierre) lecciones.push(mejorCanalCierre[0]+" funciona , no abandones ese canal.");
                 if(rechazadas.length===0&&cotsPeriodo.length>=2) lecciones.push("No perdiste ninguna cotización este periodo. Sigue haciendo lo que estás haciendo.");
                 if(lecciones.length===0) lecciones.push("Cada conversación que registras es datos. Con el tiempo CLEO te compartirá aprendizajes más específicos.");
                 return lecciones.map(function(l,i){
@@ -3298,12 +3280,79 @@ export default function CLEO(){
       })()
     ),// cierra padding div
     )// cierra contenido principal div
-    )// cierra body div
+    ),// cierra body div
+
+    // BOTTOM NAV , solo móvil
+    isMobile&&e("div",{style:{position:"fixed",bottom:0,left:0,right:0,background:C.dark,borderTop:"1px solid "+C.darkBorder,display:"flex",zIndex:50,paddingBottom:"env(safe-area-inset-bottom,0px)"}},
+      // 5 items principales
+      ["inicio","hoy","pipeline","clientes","cotizaciones"].map(function(v){
+        var activo=vista===v;
+        var nBadge=0;
+        if(v==="hoy") nBadge=clientes.filter(function(c){ return c.etapa!=="Ganado"&&c.etapa!=="Perdido"&&diasDesde(c.fechaEtapa||c.fecha)>=3; }).length;
+        return e("button",{key:v,style:{flex:1,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",padding:"10px 2px 8px",background:"none",border:"none",cursor:"pointer",position:"relative",gap:3,minHeight:56},onClick:function(){ setVista(v); setMostrarMas(false); }},
+          e("svg",{width:20,height:20,viewBox:"0 0 24 24",fill:"none",stroke:activo?"#fff":"rgba(255,255,255,0.45)",strokeWidth:2,strokeLinecap:"round",strokeLinejoin:"round"},e("path",{d:NAV_SVG[v]||""})),
+          e("span",{style:{fontSize:9,color:activo?"#fff":"rgba(255,255,255,0.45)",fontWeight:activo?600:400,lineHeight:1}},NAV_LABELS[v]),
+          activo&&e("div",{style:{position:"absolute",top:0,left:"50%",transform:"translateX(-50%)",width:20,height:2,background:C.purple,borderRadius:99}}),
+          nBadge>0&&e("span",{style:{position:"absolute",top:4,left:"50%",marginLeft:4,minWidth:14,height:14,borderRadius:7,background:C.red,border:"1.5px solid "+C.dark,fontSize:8,color:"#fff",fontWeight:700,display:"flex",alignItems:"center",justifyContent:"center",padding:"0 2px"}},nBadge>9?"9+":nBadge)
+        );
+      }),
+      // Botón Más
+      e("button",{style:{flex:1,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",padding:"10px 2px 8px",background:"none",border:"none",cursor:"pointer",gap:3,minHeight:56,position:"relative"},onClick:function(){ setMostrarMas(!mostrarMas); }},
+        e("svg",{width:20,height:20,viewBox:"0 0 24 24",fill:"none",stroke:mostrarMas?"#fff":"rgba(255,255,255,0.45)",strokeWidth:2,strokeLinecap:"round",strokeLinejoin:"round"},e("path",{d:"M5 12h.01M12 12h.01M19 12h.01"})),
+        e("span",{style:{fontSize:9,color:mostrarMas?"#fff":"rgba(255,255,255,0.45)",fontWeight:mostrarMas?600:400,lineHeight:1}},"Más"),
+        mostrarMas&&e("div",{style:{position:"absolute",top:0,left:"50%",transform:"translateX(-50%)",width:20,height:2,background:C.purple,borderRadius:99}})
+      ),
+      // Drawer "Más" , resumen, ventas, perfil, catálogo
+      mostrarMas&&e("div",{style:{position:"absolute",bottom:"100%",right:0,left:0,background:C.dark,border:"1px solid "+C.darkBorder,borderRadius:"14px 14px 0 0",padding:"8px"}},
+        [
+          {v:"resumen",icon:NAV_SVG["resumen"],label:NAV_LABELS["resumen"]},
+          {v:"ventas",icon:NAV_SVG["ventas"],label:NAV_LABELS["ventas"]},
+        ].map(function(item){
+          var activo=vista===item.v;
+          return e("button",{key:item.v,style:{display:"flex",alignItems:"center",gap:10,width:"100%",padding:"12px 16px",background:activo?C.purple+"22":"none",border:"none",cursor:"pointer",borderRadius:10,marginBottom:2},onClick:function(){ setVista(item.v); setMostrarMas(false); }},
+            e("svg",{width:18,height:18,viewBox:"0 0 24 24",fill:"none",stroke:activo?"#fff":"rgba(255,255,255,0.6)",strokeWidth:2,strokeLinecap:"round",strokeLinejoin:"round"},e("path",{d:item.icon||""})),
+            e("span",{style:{fontSize:13,color:activo?"#fff":"rgba(255,255,255,0.7)",fontWeight:activo?600:400}},item.label)
+          );
+        }),
+        e("div",{style:{height:1,background:C.darkBorder,margin:"4px 0"}}),
+        e("button",{style:{display:"flex",alignItems:"center",gap:10,width:"100%",padding:"12px 16px",background:"none",border:"none",cursor:"pointer",borderRadius:10,marginBottom:2},onClick:function(){ setFormPerfil(Object.assign({},perfil)); setModalCatalogo(true); setMostrarMas(false); }},
+          e("svg",{width:18,height:18,viewBox:"0 0 24 24",fill:"none",stroke:"rgba(255,255,255,0.6)",strokeWidth:2,strokeLinecap:"round",strokeLinejoin:"round"},e("path",{d:"M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"})),
+          e("span",{style:{fontSize:13,color:"rgba(255,255,255,0.7)"}},"Mi catálogo")
+        ),
+        e("button",{style:{display:"flex",alignItems:"center",gap:10,width:"100%",padding:"12px 16px",background:"none",border:"none",cursor:"pointer",borderRadius:10},onClick:function(){ setFormPerfil(Object.assign({},perfil)); setModalPerfil(true); setMostrarMas(false); }},
+          e("svg",{width:18,height:18,viewBox:"0 0 24 24",fill:"none",stroke:"rgba(255,255,255,0.6)",strokeWidth:2,strokeLinecap:"round",strokeLinejoin:"round"},e("path",{d:"M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2M12 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8z"})),
+          e("span",{style:{fontSize:13,color:"rgba(255,255,255,0.7)"}},"Mi perfil")
+        )
+      )
+    )
   ,
 
     e(ModalVenta,{modalVenta:modalVenta,setModalVenta:setModalVenta,formVenta:formVenta,setFormVenta:setFormVenta,pasoVenta:pasoVenta,setPasoVenta:setPasoVenta,clientes:clientes,guardarVentaDirecta:guardarVentaDirecta,avanzarVenta:avanzarVenta,st:st,productos:productos,sugerenciasConcepto:sugerenciasConcepto,setSugerenciasConcepto:setSugerenciasConcepto,esProductos:esProductos,servicios:servicios}),
 
-    // BOTON FLOTANTE HOY
+    // PANEL MOVER , móvil pipeline
+    isMobile&&moverClienteId&&(function(){
+      var cMover=clientes.find(function(c){ return c.id===moverClienteId; });
+      if(!cMover) return null;
+      return e("div",{style:{position:"fixed",inset:0,background:"rgba(0,0,0,0.5)",zIndex:200,display:"flex",alignItems:"flex-end"},onClick:function(){ setMoverClienteId(null); }},
+        e("div",{style:{width:"100%",background:C.surface,borderRadius:"20px 20px 0 0",padding:"20px",paddingBottom:"env(safe-area-inset-bottom,20px)"},onClick:function(ev){ ev.stopPropagation(); }},
+          e("div",{style:{width:36,height:4,borderRadius:2,background:C.border,margin:"0 auto 16px"}}),
+          e("div",{style:{fontSize:15,fontWeight:700,color:C.text,marginBottom:4}},"Mover a etapa"),
+          e("div",{style:{fontSize:13,color:C.textMuted,marginBottom:20}},cMover.nombre),
+          e("div",{style:{display:"flex",flexDirection:"column",gap:8}},
+            ETAPAS.filter(function(et){ return et!==cMover.etapa; }).map(function(et){
+              var ec=ETAPA_COLOR[et]||C.purple;
+              return e("button",{key:et,style:{display:"flex",alignItems:"center",gap:12,padding:"14px 16px",borderRadius:14,border:"1px solid "+C.border,background:C.surface,cursor:"pointer",textAlign:"left"},onClick:function(){
+                moverEtapa(cMover.id,et);
+                setMoverClienteId(null);
+              }},
+                e("div",{style:{width:10,height:10,borderRadius:"50%",background:ec,flexShrink:0}}),
+                e("div",{style:{fontSize:14,color:C.text,fontWeight:500}},ETAPAS_LABEL[et]||et)
+              );
+            })
+          )
+        )
+      );
+    })(),
     (function(){
       var hoyF=new Date();
       var programadosF=clientes.filter(function(c){ return c.seguimientoFecha&&new Date(c.seguimientoFecha)<=hoyF; }).length;
@@ -3395,19 +3444,19 @@ export default function CLEO(){
         e("button",{style:{background:"none",border:"none",cursor:"pointer",color:C.textDim,fontSize:20,lineHeight:1,padding:"0 4px"},onClick:cancelarGanado},"×")
       );
 
-      // PASO 1 — FELICIDADES + POR QUE COMPRO + PAGO
+      // PASO 1 , FELICIDADES + POR QUE COMPRO + PAGO
       if(pasoGanado===1) return e("div",{style:st.ov,onClick:cancelarGanado},
         e("div",{style:st.modal,onClick:function(ev){ ev.stopPropagation(); }},
           headerPasos,
 
           // FELICIDADES
           e("div",{style:{fontSize:11,color:C.green,textTransform:"uppercase",letterSpacing:"0.5px",marginBottom:6}},"Venta cerrada 🎉"),
-          e("div",{style:{fontSize:16,fontWeight:700,color:C.text,marginBottom:20}},"Felicidades — cerraste con "+(cl?cl.nombre:"este cliente")+"!"),
+          e("div",{style:{fontSize:16,fontWeight:700,color:C.text,marginBottom:20}},"Felicidades , cerraste con "+(cl?cl.nombre:"este cliente")+"!"),
 
-          // POR QUE COMPRO — opcional, sin caja extra
+          // POR QUE COMPRO , opcional, sin caja extra
           e("div",{style:{marginBottom:20}},
             e("div",{style:{fontSize:13,fontWeight:600,color:C.text,marginBottom:2}},"¿Por qué crees que compró?"),
-            e("div",{style:{fontSize:11,color:C.textDim,marginBottom:10}},"Opcional — en 5 ventas CLEO te dirá qué está funcionando en tu negocio."),
+            e("div",{style:{fontSize:11,color:C.textDim,marginBottom:10}},"Opcional , en 5 ventas CLEO te dirá qué está funcionando en tu negocio."),
             e("div",{style:{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:6,marginBottom:8}},
               [{k:"Confianza",e:"🤝"},{k:"Precio justo",e:"💰"},{k:"Rapidez",e:"⚡"},{k:"Recomendacion",e:"👥"},{k:"Seguimiento",e:"📩"},{k:"Calidad",e:"✨"}].map(function(r){
                 var activo=razonCierre.indexOf(r.k)>=0;
@@ -3426,7 +3475,7 @@ export default function CLEO(){
                 "Recomendacion":"Las recomendaciones cierran 4 veces más rápido que cualquier otro canal. ¿Ya le pediste otro referido a este cliente?",
                 "Seguimiento":"El seguimiento funcionó. Eso es exactamente lo que separa a los que cierran de los que no.",
                 "Confianza":"La confianza se construye con consistencia. Sigue haciendo lo que estás haciendo.",
-                "Precio justo":"Cerraron por precio justo — no por barato. Hay una diferencia importante ahí.",
+                "Precio justo":"Cerraron por precio justo , no por barato. Hay una diferencia importante ahí.",
                 "Rapidez":"La rapidez fue tu diferenciador. Los clientes valoran no tener que esperar.",
                 "Calidad":"La calidad habla sola. Este cliente probablemente va a recomendarte.",
                 "No se":"Registrarlo igual te ayuda a ver patrones con el tiempo."
@@ -3440,7 +3489,7 @@ export default function CLEO(){
           // SEPARADOR
           e("div",{style:{height:1,background:C.border,marginBottom:16}}),
 
-          // PAGO — obligatorio
+          // PAGO , obligatorio
           e("div",{style:{marginBottom:20}},
             e("div",{style:{display:"flex",alignItems:"baseline",justifyContent:"space-between",marginBottom:10}},
               e("div",{style:{fontSize:13,fontWeight:600,color:C.text}},"¿Cómo quedó el pago?"),
@@ -3480,13 +3529,13 @@ export default function CLEO(){
         )
       );
 
-      // PASO 2 — REFERIDO
+      // PASO 2 , REFERIDO
       if(pasoGanado===2) return e("div",{style:st.ov,onClick:cancelarGanado},
         e("div",{style:st.modal,onClick:function(ev){ ev.stopPropagation(); }},
           headerPasos,
-          e("div",{style:{fontSize:13,color:C.textMuted,marginBottom:16,lineHeight:1.6}},"Los clientes satisfechos casi siempre están dispuestos a recomendarte — pero rara vez lo hacen solos. No porque no quieran, sino porque nadie les preguntó. Tu siguiente venta puede venir de aquí."),
+          e("div",{style:{fontSize:13,color:C.textMuted,marginBottom:16,lineHeight:1.6}},"Los clientes satisfechos casi siempre están dispuestos a recomendarte , pero rara vez lo hacen solos. No porque no quieran, sino porque nadie les preguntó. Tu siguiente venta puede venir de aquí."),
           urlReferido&&e("div",{style:{marginBottom:20,padding:"14px 16px",background:C.green+"0D",borderRadius:10,border:"0.5px solid "+C.green+"33"}},
-            e("div",{style:{fontSize:12,color:C.green,fontWeight:600,marginBottom:8}},"Hazlo ahora — tarda 30 segundos"),
+            e("div",{style:{fontSize:12,color:C.green,fontWeight:600,marginBottom:8}},"Hazlo ahora , tarda 30 segundos"),
             e("div",{style:{fontSize:12,color:C.textMuted,marginBottom:10,lineHeight:1.5}},'"'+msgReferido+'"'),
             e("a",{href:urlReferido,target:"_blank",rel:"noreferrer",
               style:{display:"inline-flex",alignItems:"center",gap:8,padding:"10px 16px",borderRadius:8,background:C.green,color:"#fff",fontSize:13,fontWeight:600,textDecoration:"none",cursor:"pointer",marginBottom:12}
@@ -3498,13 +3547,13 @@ export default function CLEO(){
             )
           ),
           e("div",{style:{display:"flex",gap:8,justifyContent:"flex-end"}},
-            e("button",{style:st.btn,onClick:function(){ setPasoGanado(3); }},"Ahora no — siguiente"),
+            e("button",{style:st.btn,onClick:function(){ setPasoGanado(3); }},"Ahora no , siguiente"),
             e("button",{style:st.btnP,onClick:function(){ setPasoGanado(3); }},"Ya lo hice →")
           )
         )
       );
 
-      // PASO 3 — SEGUIMIENTO
+      // PASO 3 , SEGUIMIENTO
       return e("div",{style:st.ov,onClick:cancelarGanado},
         e("div",{style:st.modal,onClick:function(ev){ ev.stopPropagation(); }},
           headerPasos,
@@ -3536,7 +3585,7 @@ export default function CLEO(){
             e("button",{style:st.btn,onClick:function(){
               if(cl){ var f=new Date(); f.setDate(f.getDate()+30); setClientes(clientes.map(function(x){ return x.id===cl.id?Object.assign({},x,{seguimientoFecha:f.toISOString().slice(0,10)}):x; })); }
               cerrarModal();
-            }},"Ahora no — recordame en 30 dias"),
+            }},"Ahora no , recordame en 30 dias"),
             e("button",{style:st.btnP,onClick:function(){
               if(cl){ var f=new Date(); f.setDate(f.getDate()+Number(diasPostVenta)); setClientes(clientes.map(function(x){ return x.id===cl.id?Object.assign({},x,{seguimientoFecha:f.toISOString().slice(0,10)}):x; })); }
               cerrarModal();
@@ -3567,7 +3616,7 @@ export default function CLEO(){
         {
           key:"negociacion",
           label:"Ya casi cierra",
-          desc:"Lo muevo a Negociacion en tu pipeline — esta listo para cerrar",
+          desc:"Lo muevo a Negociacion en tu pipeline , esta listo para cerrar",
           color:C.amber,
           accion:function(){
             setClientes(clientes.map(function(x){ return x.id===cl.id?Object.assign({},x,{etapa:"Negociacion",seguimientoFecha:"",ultimoContacto:FECHA_HOY}):x; }));
@@ -3577,7 +3626,7 @@ export default function CLEO(){
         {
           key:"tiempo",
           label:"Necesita mas tiempo",
-          desc:"Lo reprogramo para mas adelante — no es el momento pero puede volver",
+          desc:"Lo reprogramo para mas adelante , no es el momento pero puede volver",
           color:C.textMuted,
           accion:function(){
             setClientes(clientes.map(function(x){ return x.id===cl.id?Object.assign({},x,{ultimoContacto:FECHA_HOY}):x; }));
@@ -3589,7 +3638,7 @@ export default function CLEO(){
         {
           key:"perdido",
           label:"Ya no esta interesado",
-          desc:"Lo muevo a Perdido — registra el motivo para aprender de esto",
+          desc:"Lo muevo a Perdido , registra el motivo para aprender de esto",
           color:C.red,
           accion:function(){
             setClientes(clientes.map(function(x){ return x.id===cl.id?Object.assign({},x,{etapa:"Perdido",seguimientoFecha:"",ultimoContacto:FECHA_HOY}):x; }));
@@ -3636,7 +3685,7 @@ export default function CLEO(){
         mensajes=[
           "Hola "+nombre+", ¿pudiste revisar la propuesta? Aquí para resolver cualquier duda.",
           "Hola "+nombre+", solo quería preguntar si hay algo que te genere duda antes de decidir.",
-          "Hola "+nombre+", sin presión — solo quiero asegurarme de que tengas todo lo que necesitas para decidir."
+          "Hola "+nombre+", sin presión , solo quiero asegurarme de que tengas todo lo que necesitas para decidir."
         ];
       } else if(etapa==="Cotizacion enviada"){
         mensajes=[
@@ -3656,7 +3705,7 @@ export default function CLEO(){
       var consejo="";
       if(yaCompro) consejo="Un cliente que ya te compró tiene 5 veces más probabilidades de volverte a comprar que uno nuevo. No lo descuides.";
       else if(etapa==="Negociacion") consejo="Si lleva días sin responder, casi siempre es por duda, no por desinterés. Pregunta antes de asumir que se perdió.";
-      else if(etapa==="Cotizacion enviada") consejo="El 80% de las ventas requieren más de un seguimiento. No escribirle no es respetarle — es perder la venta.";
+      else if(etapa==="Cotizacion enviada") consejo="El 80% de las ventas requieren más de un seguimiento. No escribirle no es respetarle , es perder la venta.";
       else consejo="Mantener el contacto no es perseguir. Es recordarle que existes cuando llegue el momento de necesitarte.";
 
       return e("div",{style:st.ov,onClick:function(){ setSeguimientoClienteId(null); }},
@@ -3709,10 +3758,10 @@ export default function CLEO(){
       var cotCl=cotizaciones.filter(function(c){ return c.clienteId===motivoPipelineId; }).sort(function(a,b){ return new Date(b.fecha)-new Date(a.fecha); })[0];
 
       var MOTIVOS_V2=[
-        {key:"Precio alto",   icono:"💸",label:"Le pareció caro",    msg:"Un no por precio casi siempre significa que no vio suficiente valor todavía. En unos meses su situación puede cambiar — o tú puedes tener un argumento mejor.",    seg:"60", sugerencia:"Hola [nombre], terminé un proyecto similar y quedó muy bien. Si en algún momento quieres ver cómo quedó, con gusto te lo muestro."},
+        {key:"Precio alto",   icono:"💸",label:"Le pareció caro",    msg:"Un no por precio casi siempre significa que no vio suficiente valor todavía. En unos meses su situación puede cambiar , o tú puedes tener un argumento mejor.",    seg:"60", sugerencia:"Hola [nombre], terminé un proyecto similar y quedó muy bien. Si en algún momento quieres ver cómo quedó, con gusto te lo muestro."},
         {key:"Eligio a otro", icono:"🤝",label:"Eligió a otro",       msg:"El que eligió hoy puede decepcionar mañana. Muchos clientes regresan después de probar a la competencia. Vale la pena quedarse en su radar.",                        seg:"90", sugerencia:"Hola [nombre], ¿cómo te fue con el proyecto? Solo quería saber si resultó como esperabas."},
         {key:"Sin presupuesto",icono:"📆",label:"Sin presupuesto",        msg:"Sin presupuesto hoy no significa sin presupuesto siempre. En unos meses puede tener los recursos que hoy no tiene.",                                                              seg:"90", sugerencia:"Hola [nombre], estoy abriendo agenda para el próximo trimestre. Si quieres que lo tengamos en mente, con gusto."},
-        {key:"No respondio",  icono:"💬",label:"Dejó de responder",   msg:"El silencio no es un no definitivo. A veces la gente se pierde en el día a día. Un mensaje en el momento correcto puede reabrir todo.",                              seg:"30", sugerencia:"Hola [nombre], ¿todo bien por allá? — Sin mencionar la cotización. Si responde, ahí retomas la conversación."},
+        {key:"No respondio",  icono:"💬",label:"Dejó de responder",   msg:"El silencio no es un no definitivo. A veces la gente se pierde en el día a día. Un mensaje en el momento correcto puede reabrir todo.",                              seg:"30", sugerencia:"Hola [nombre], ¿todo bien por allá? , Sin mencionar la cotización. Si responde, ahí retomas la conversación."},
         {key:"Otro",          icono:"📝",label:"Otro motivo",             msg:"Un no de hoy puede ser un sí en 3 meses. Dejar la puerta abierta no cuesta nada y a veces trae la mejor venta.",                                                          seg:"30", sugerencia:"Hola [nombre], ¿cómo has estado? Por aquí si en algún momento surge algo en lo que pueda ayudarte."}
       ];
 
@@ -3732,7 +3781,7 @@ export default function CLEO(){
       }
 
       return e("div",{style:st.ov,onClick:consejoMotivo?null:cancelarMotivoPipeline},
-        e("div",{style:Object.assign({},st.modal,{maxWidth:420}),onClick:function(ev){ ev.stopPropagation(); }},
+        e("div",{style:Object.assign({},st.modal,{maxWidth:isMobile?"100%":420}),onClick:function(ev){ ev.stopPropagation(); }},
 
           e("div",{style:{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:16}},
             e("div",null,
@@ -3822,13 +3871,13 @@ export default function CLEO(){
       );
     })(),
 
-    // MODAL SEGUIMIENTO PERDIDO — paso 2
+    // MODAL SEGUIMIENTO PERDIDO , paso 2
     showSeguimientoLost&&(function(){
       var cl=clientes.find(function(c){ return c.id===clientePerdidoId; });
       var nombre=cl?cl.nombre.split(" ")[0]:"este cliente";
 
       var MSGS_MOTIVO={
-        "Precio alto":"Un no por precio casi siempre significa que no vio suficiente valor todavía. En unos meses su situación puede cambiar — o tú puedes tener un argumento mejor.",
+        "Precio alto":"Un no por precio casi siempre significa que no vio suficiente valor todavía. En unos meses su situación puede cambiar , o tú puedes tener un argumento mejor.",
         "Eligio a otro":"El que eligió hoy puede decepcionar mañana. Muchos clientes regresan después de probar a la competencia. Vale la pena quedarse en su radar.",
         "Sin presupuesto":"Sin presupuesto hoy no significa sin presupuesto siempre. En unos meses puede tener los recursos que hoy no tiene.",
         "No respondio":"El silencio no es un no definitivo. A veces la gente se pierde en el día a día. Un mensaje en el momento correcto puede reabrir todo.",
@@ -3890,7 +3939,7 @@ export default function CLEO(){
       var cl=clientes.find(function(c){ return c.id===modalEtapa.clienteId; });
       var info=modalEtapa.info;
       return e("div",{style:st.ov,onClick:function(){ setModalEtapa(null); }},
-        e("div",{style:Object.assign({},st.modal,{maxWidth:400}),onClick:function(ev){ ev.stopPropagation(); }},
+        e("div",{style:Object.assign({},st.modal,{maxWidth:isMobile?"100%":400}),onClick:function(ev){ ev.stopPropagation(); }},
           modalEtapa.esPrimeraVez&&e("div",{style:{fontSize:11,color:C.purple,fontWeight:600,marginBottom:8,textTransform:"uppercase",letterSpacing:"0.5px"}},"💡 ¿Qué significa esta etapa?"),
           e("div",{style:{fontSize:15,fontWeight:600,color:C.text,marginBottom:6}},info.msg),
           e("div",{style:{fontSize:13,color:C.textMuted,marginBottom:20,lineHeight:1.6}},info.accion),
@@ -3910,7 +3959,7 @@ export default function CLEO(){
       );
     })(),
 
-    // MODAL COTIZACION RAPIDA — pipeline
+    // MODAL COTIZACION RAPIDA , pipeline
     cotRapidaId&&(function(){
       var c=clientes.find(function(x){ return x.id===cotRapidaId; });
       if(!c) return null;
@@ -3927,7 +3976,7 @@ export default function CLEO(){
       var esUrgente=diasSinContacto>7&&c.etapa!=="Ganado"&&c.etapa!=="Perdido";
       function irAPerfil(){ setCotRapidaId(null); setVista("clientes"); setClienteAbierto(c.id); setTabCliente("perfil"); }
       return e("div",{style:st.ov,onClick:function(){ setCotRapidaId(null); }},
-        e("div",{style:Object.assign({},st.modal,{padding:0,overflow:"hidden",maxWidth:420,borderRadius:20}),onClick:function(ev){ ev.stopPropagation(); }},
+        e("div",{style:Object.assign({},st.modal,{padding:0,overflow:"hidden",maxWidth:isMobile?"100%":420,borderRadius:isMobile?"20px 20px 0 0":20}),onClick:function(ev){ ev.stopPropagation(); }},
 
           // ── HEADER con gradiente sutil ──
           e("div",{style:{
@@ -4074,7 +4123,7 @@ export default function CLEO(){
 
     // MODAL GUARDAR SERVICIO
     guardarSvModal&&e("div",{style:st.ov,onClick:function(){ setGuardarSvModal(null); }},
-      e("div",{style:Object.assign({},st.modal,{maxWidth:380}),onClick:function(ev){ ev.stopPropagation(); }},
+      e("div",{style:Object.assign({},st.modal,{maxWidth:isMobile?"100%":380}),onClick:function(ev){ ev.stopPropagation(); }},
         e("div",{style:{fontSize:15,fontWeight:600,color:C.text,marginBottom:8}},"¿Guardar en Mis servicios?"),
         e("div",{style:{fontSize:13,color:C.textMuted,marginBottom:16,lineHeight:1.6}},
           "Agregaste \""+guardarSvModal.nombre+"\" por $"+Number(guardarSvModal.precio).toLocaleString()+". ¿Quieres guardarlo para usarlo más rápido la próxima vez?"
@@ -4171,7 +4220,7 @@ export default function CLEO(){
       );
     })(),
 
-    // MODAL ANTICIPO (legacy — mantener por compatibilidad)
+    // MODAL ANTICIPO (legacy , mantener por compatibilidad)
     anticCotId&&(function(){
       var cot=cotizaciones.find(function(c){ return c.id===anticCotId; });
       var cl=cot?clientes.find(function(c){ return c.id===cot.clienteId; }):null;
@@ -4193,9 +4242,9 @@ export default function CLEO(){
     })(),
 
     // MODAL PERFIL
-    // MODAL PERFIL — solo datos del negocio
+    // MODAL PERFIL , solo datos del negocio
     modalPerfil&&e("div",{style:st.ov,onClick:function(){ setModalPerfil(false); }},
-      e("div",{style:Object.assign({},st.modal,{padding:0,overflow:"hidden",maxWidth:500,borderRadius:24}),onClick:function(ev){ ev.stopPropagation(); }},
+      e("div",{style:Object.assign({},st.modal,{padding:0,overflow:"hidden",maxWidth:isMobile?"100%":500,borderRadius:isMobile?"20px 20px 0 0":24}),onClick:function(ev){ ev.stopPropagation(); }},
 
         // ── HEADER ──
         e("div",{style:{padding:"22px 24px 18px",borderBottom:"1px solid "+C.border,display:"flex",alignItems:"center",justifyContent:"space-between",background:"linear-gradient(135deg,"+C.purplePale+" 0%,transparent 70%)"}},
@@ -4219,7 +4268,7 @@ export default function CLEO(){
               ),
               e("div",null,
                 e("label",{style:st.lbl},"Teléfono"),
-                e("input",{value:formPerfil.telefono||"",onChange:function(ev){ setFormPerfil(Object.assign({},formPerfil,{telefono:ev.target.value})); },placeholder:"55 0000 0000",style:st.inp})
+                e("input",{value:formPerfil.telefono||"",onChange:function(ev){ var v=ev.target.value.replace(/\D/g,"").slice(0,10); setFormPerfil(Object.assign({},formPerfil,{telefono:v})); },placeholder:"5512345678",maxLength:10,inputMode:"numeric",style:st.inp})
               )
             ),
             e("div",{style:{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,marginBottom:10}},
@@ -4394,7 +4443,7 @@ export default function CLEO(){
 
     // MODAL CATALOGO
     modalCatalogo&&e("div",{style:st.ov,onClick:function(){ setModalCatalogo(false); }},
-      e("div",{style:Object.assign({},st.modal,{padding:0,overflow:"hidden",maxWidth:520,borderRadius:24}),onClick:function(ev){ ev.stopPropagation(); }},
+      e("div",{style:Object.assign({},st.modal,{padding:0,overflow:"hidden",maxWidth:isMobile?"100%":520,borderRadius:isMobile?"20px 20px 0 0":24}),onClick:function(ev){ ev.stopPropagation(); }},
 
         // HEADER
         e("div",{style:{padding:"22px 24px 16px",borderBottom:"1px solid "+C.border,display:"flex",alignItems:"center",justifyContent:"space-between",background:"linear-gradient(135deg,"+C.purplePale+" 0%,transparent 70%)"}},
@@ -4415,7 +4464,7 @@ export default function CLEO(){
               e("span",{style:{fontSize:11,color:C.textDim,background:C.surfaceUp,border:"1px solid "+C.border,borderRadius:20,padding:"2px 10px"}},servicios.length+" registrados")
             ),
 
-            // Buscador — solo si hay 4+
+            // Buscador , solo si hay 4+
             servicios.length>=4&&e("div",{style:{marginBottom:10,position:"relative"}},
               e("svg",{width:14,height:14,viewBox:"0 0 24 24",fill:"none",style:{position:"absolute",left:10,top:"50%",transform:"translateY(-50%)",pointerEvents:"none"}},
                 e("path",{d:"M21 21l-4.35-4.35M17 11A6 6 0 115 11a6 6 0 0112 0z",stroke:C.textDim,strokeWidth:2,strokeLinecap:"round"})
@@ -4524,51 +4573,114 @@ export default function CLEO(){
 
     // MODAL CLIENTE
     modalCliente&&e("div",{style:st.ov,onClick:function(){ setModalCliente(false); }},
-      e("div",{style:st.modal,onClick:function(ev){ ev.stopPropagation(); }},
-        e("div",{style:{fontWeight:600,fontSize:15,marginBottom:16,color:C.text}},clienteSel?"Editar cliente":"Nuevo cliente"),
-        [["nombre","Nombre completo"],["negocio","Negocio"],["notas","Notas"]].map(function(p){ return e("div",{key:p[0],style:{marginBottom:12}},e("label",{style:st.lbl},p[1]),p[0]==="notas"?e("textarea",{value:form[p[0]],onChange:function(ev){ setForm(Object.assign({},form,{[p[0]]:ev.target.value})); },style:Object.assign({},st.inp,{minHeight:50,resize:"vertical"})}):e("input",{value:form[p[0]],onChange:function(ev){ setForm(Object.assign({},form,{[p[0]]:ev.target.value})); },style:st.inp})); }),
-        e("div",{style:{marginBottom:12}},
-          e("label",{style:st.lbl},"¿Por dónde prefiere que le escribas?"),
-          e("div",{style:{fontSize:11,color:C.textDim,marginBottom:8}},"Canal principal de contacto"),
-          e("div",{style:{display:"flex",gap:6,flexWrap:"wrap"}},CANALES.map(function(c){ var cc=canalColor(c); return e("button",{key:c,style:Object.assign({},st.btn,{background:form.canalPrincipal===c?cc+"22":"transparent",color:form.canalPrincipal===c?cc:C.textMuted,border:"0.5px solid "+(form.canalPrincipal===c?cc+"66":C.border),fontSize:12,padding:"5px 12px",display:"inline-flex",alignItems:"center",gap:4}),onClick:function(){ setForm(Object.assign({},form,{canalPrincipal:c})); }},e(SvgIcon,{canal:c,size:12}),c); }))
-        ),
-        (form.canalPrincipal==="WhatsApp"||form.contacto)&&e("div",{style:{marginBottom:12}},e("label",{style:st.lbl},"WhatsApp (10 digitos)"),e("input",{value:form.contacto,onChange:function(ev){ setForm(Object.assign({},form,{contacto:ev.target.value})); },style:st.inp})),
-        (form.canalPrincipal==="Instagram"||form.instagram)&&e("div",{style:{marginBottom:12}},e("label",{style:st.lbl},"Instagram"),e("input",{value:form.instagram,onChange:function(ev){ setForm(Object.assign({},form,{instagram:ev.target.value})); },style:st.inp})),
-        (form.canalPrincipal==="Messenger"||form.messenger)&&e("div",{style:{marginBottom:12}},e("label",{style:st.lbl},"Messenger"),e("input",{value:form.messenger,onChange:function(ev){ setForm(Object.assign({},form,{messenger:ev.target.value})); },style:st.inp})),
-        (form.canalPrincipal==="Email"||form.email)&&e("div",{style:{marginBottom:12}},e("label",{style:st.lbl},"Email"),e("input",{value:form.email,onChange:function(ev){ setForm(Object.assign({},form,{email:ev.target.value})); },style:st.inp})),
-        e("div",{style:{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12,marginBottom:12}},
+      e("div",{style:Object.assign({},st.modal,{padding:0,overflow:"hidden",maxWidth:isMobile?"100%":480,borderRadius:isMobile?"20px 20px 0 0":20}),onClick:function(ev){ ev.stopPropagation(); }},
+
+        // HEADER
+        e("div",{style:{padding:"20px 24px 16px",background:"linear-gradient(135deg,"+C.purplePale+" 0%,transparent 70%)",borderBottom:"1px solid "+C.border,display:"flex",alignItems:"center",justifyContent:"space-between"}},
           e("div",null,
-            e("label",{style:st.lbl},"¿Cómo llegó a ti?"),
-            e("div",{style:{fontSize:11,color:C.textDim,marginBottom:6}},"Origen del cliente"),
-            e("select",{value:form.origen,onChange:function(ev){ setForm(Object.assign({},form,{origen:ev.target.value})); },style:st.inp},ORIGENES.map(function(o){ return e("option",{key:o,value:o},o); }))
+            e("div",{style:{fontWeight:700,fontSize:18,color:C.text}},clienteSel?"Editar cliente":"Nuevo cliente"),
+            e("div",{style:{fontSize:12,color:C.textMuted,marginTop:2}},clienteSel?"Actualiza los datos del cliente":"Registra un nuevo contacto")
           ),
-          e("div",null,
-            e("label",{style:st.lbl},"Etapa"),
-            e("div",{style:{fontSize:11,color:C.textDim,marginBottom:6}},"En qué punto está"),
-            e("select",{value:form.etapa,onChange:function(ev){ setForm(Object.assign({},form,{etapa:ev.target.value})); },style:st.inp},ETAPAS.map(function(et){ return e("option",{key:et,value:et},ETAPAS_LABEL[et]||et); }))
-          )
+          e("button",{style:{background:C.surfaceUp,border:"1px solid "+C.border,cursor:"pointer",color:C.textDim,fontSize:18,padding:"6px 10px",borderRadius:10,lineHeight:1},onClick:function(){ setModalCliente(false); }},"×")
         ),
-        !clienteSel&&e("div",{style:{marginBottom:16,padding:"12px 14px",background:C.surfaceUp,borderRadius:8,border:"0.5px solid "+C.border}},
-          e("div",{style:{fontSize:13,color:C.text,marginBottom:10}},"¿Ya le enviaste un precio o cotización?"),
-          e("div",{style:{display:"flex",gap:8,marginBottom:envioCotizacion?12:0}},
-            e("button",{style:Object.assign({},st.btn,{fontSize:12,background:envioCotizacion===true?C.purplePale:"transparent",color:envioCotizacion===true?C.purpleLight:C.textMuted,border:"0.5px solid "+(envioCotizacion===true?C.purpleLight+"44":C.border)}),onClick:function(){ setEnvioCotizacion(true); }},"Si, ya le envie"),
-            e("button",{style:Object.assign({},st.btn,{fontSize:12,background:envioCotizacion===false?C.purplePale:"transparent",color:envioCotizacion===false?C.purpleLight:C.textMuted,border:"0.5px solid "+(envioCotizacion===false?C.purpleLight+"44":C.border)}),onClick:function(){ setEnvioCotizacion(false); setFormEnvioCot({concepto:"",monto:""}); }},"No todavia")
-          ),
-          envioCotizacion&&e("div",null,
-            e("div",{style:{marginBottom:8}},
-              e("label",{style:st.lbl},"Que le ofreciste?"),
-              servicios.length>0&&e("select",{value:formEnvioCot.concepto,onChange:function(ev){ var sv=servicios.find(function(x){ return x.nombre===ev.target.value; }); if(sv) setFormEnvioCot(Object.assign({},formEnvioCot,{concepto:sv.nombre,monto:sv.precio})); else setFormEnvioCot(Object.assign({},formEnvioCot,{concepto:ev.target.value==="otro"?"":ev.target.value})); },style:Object.assign({},st.inp,{marginBottom:6})},
-                e("option",{value:""},"-- Seleccionar --"),
-                servicios.map(function(sv){ return e("option",{key:sv.id,value:sv.nombre},sv.nombre+" · $"+Number(sv.precio).toLocaleString()); }),
-                e("option",{value:"otro"},"Otro (escribir)")
-              ),
-              e("input",{value:formEnvioCot.concepto,onChange:function(ev){ setFormEnvioCot(Object.assign({},formEnvioCot,{concepto:ev.target.value})); },placeholder:"ej. Sesion fotografica, Pastel boda...",style:st.inp})
+
+        // BODY
+        e("div",{style:{padding:"20px 24px",overflowY:"auto",maxHeight:isMobile?"75vh":"70vh"}},
+
+          // Nombre y negocio
+          e("div",{style:{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,marginBottom:14}},
+            e("div",null,
+              e("label",{style:st.lbl},"Nombre *"),
+              e("input",{value:form.nombre,onChange:function(ev){ setForm(Object.assign({},form,{nombre:ev.target.value})); },placeholder:"ej. María García",style:st.inp,autoFocus:true})
             ),
-            e("div",null,e("label",{style:st.lbl},"Monto ($)"),e(MontoInput,{value:formEnvioCot.monto,onChange:function(ev){ setFormEnvioCot(Object.assign({},formEnvioCot,{monto:ev.target.value})); },placeholder:"0",style:st.inp})),
-            e("div",{style:{fontSize:11,color:C.textDim,marginTop:8}},"Sin el monto no puedes saber cuanto has cotizado ni tu tasa de cierre.")
+            e("div",null,
+              e("label",{style:st.lbl},"Negocio / Empresa"),
+              e("input",{value:form.negocio,onChange:function(ev){ setForm(Object.assign({},form,{negocio:ev.target.value})); },placeholder:"ej. Boutique Luna",style:st.inp})
+            )
+          ),
+
+          // Canal principal
+          e("div",{style:{marginBottom:14}},
+            e("label",{style:st.lbl},"¿Por dónde contactarlo?"),
+            e("div",{style:{fontSize:11,color:C.textDim,marginBottom:8}},"Canal principal que usa para comunicarse contigo"),
+            e("div",{style:{display:"grid",gridTemplateColumns:"1fr 1fr",gap:6}},
+              CANALES.map(function(canal){
+                var cc=canalColor(canal);
+                var activo=form.canalPrincipal===canal;
+                return e("button",{key:canal,style:{cursor:"pointer",padding:"7px 10px",borderRadius:8,border:"1.5px solid "+(activo?cc:C.border),background:activo?cc+"18":"transparent",fontSize:12,color:activo?cc:C.textMuted,fontWeight:activo?600:400,display:"flex",alignItems:"center",gap:6,transition:"all 0.15s"},onClick:function(){ setForm(Object.assign({},form,{canalPrincipal:canal})); }},
+                  e(SvgIcon,{canal:canal,size:12}),canal
+                );
+              })
+            )
+          ),
+
+          // Dato de contacto según canal
+          e("div",{style:{marginBottom:14}},
+            form.canalPrincipal==="WhatsApp"&&e("div",null,
+              e("label",{style:st.lbl},"Número de WhatsApp"),
+              e("input",{value:form.contacto,onChange:function(ev){ var v=ev.target.value.replace(/\D/g,"").slice(0,10); setForm(Object.assign({},form,{contacto:v})); },placeholder:"10 dígitos",style:st.inp,maxLength:10,inputMode:"numeric"})
+            ),
+            form.canalPrincipal==="Instagram"&&e("div",null,
+              e("label",{style:st.lbl},"Instagram"),
+              e("input",{value:form.instagram||"",onChange:function(ev){ setForm(Object.assign({},form,{instagram:ev.target.value})); },placeholder:"@usuario",style:st.inp})
+            ),
+            form.canalPrincipal==="Messenger"&&e("div",null,
+              e("label",{style:st.lbl},"Messenger"),
+              e("input",{value:form.messenger||"",onChange:function(ev){ setForm(Object.assign({},form,{messenger:ev.target.value})); },placeholder:"Nombre en Facebook",style:st.inp})
+            ),
+            form.canalPrincipal==="Email"&&e("div",null,
+              e("label",{style:st.lbl},"Email"),
+              e("input",{value:form.email||"",onChange:function(ev){ setForm(Object.assign({},form,{email:ev.target.value})); },placeholder:"correo@ejemplo.com",style:st.inp,type:"email"})
+            )
+          ),
+
+          // Origen - grid 2 columnas
+          e("div",{style:{marginBottom:14}},
+            e("label",{style:st.lbl},"¿Cómo llegó a ti?"),
+            e("div",{style:{display:"grid",gridTemplateColumns:"1fr 1fr",gap:6,marginTop:6}},
+              ORIGENES.map(function(o){
+                var activo=form.origen===o;
+                return e("button",{key:o,style:{cursor:"pointer",padding:"7px 10px",borderRadius:8,border:"1.5px solid "+(activo?C.purple:C.border),background:activo?C.purplePale:"transparent",fontSize:12,color:activo?C.purple:C.textMuted,fontWeight:activo?600:400,textAlign:"left",transition:"all 0.15s"},onClick:function(){ setForm(Object.assign({},form,{origen:o})); }},o);
+              })
+            )
+          ),
+
+          // Cotizacion previa (solo nuevo cliente)
+          !clienteSel&&e("div",{style:{marginBottom:14,padding:"14px 16px",background:C.purplePale,borderRadius:12,border:"1px solid "+C.purple+"22"}},
+            e("div",{style:{fontSize:13,color:C.text,fontWeight:500,marginBottom:4}},"¿Ya le enviaste una propuesta o precio?"),
+            e("div",{style:{fontSize:12,color:C.textMuted,lineHeight:1.55,marginBottom:12}},"Si ya la enviaste, regístrala ahora. Las oportunidades con seguimiento tienen más probabilidades de convertirse en venta."),
+            e("div",{style:{display:"flex",gap:8,marginBottom:envioCotizacion?12:0}},
+              e("button",{style:{cursor:"pointer",padding:"8px 16px",borderRadius:10,border:"1.5px solid "+(envioCotizacion===true?C.purple:C.border),background:envioCotizacion===true?C.purple:"transparent",fontSize:12,color:envioCotizacion===true?"#fff":C.textMuted,fontWeight:500,transition:"all 0.15s"},onClick:function(){ setEnvioCotizacion(true); }},"Sí, ya la envié"),
+              e("button",{style:{cursor:"pointer",padding:"8px 16px",borderRadius:10,border:"1.5px solid "+(envioCotizacion===false?C.purple:C.border),background:envioCotizacion===false?C.purple:"transparent",fontSize:12,color:envioCotizacion===false?"#fff":C.textMuted,fontWeight:500,transition:"all 0.15s"},onClick:function(){ setEnvioCotizacion(false); setFormEnvioCot({concepto:"",monto:""}); }},"No todavía")
+            ),
+            envioCotizacion&&e("div",null,
+              e("div",{style:{marginBottom:8}},
+                e("label",{style:st.lbl},"¿Qué le ofreciste?"),
+                servicios.length>0&&e("select",{value:formEnvioCot.concepto,onChange:function(ev){ var sv=servicios.find(function(x){ return x.nombre===ev.target.value; }); if(sv) setFormEnvioCot(Object.assign({},formEnvioCot,{concepto:sv.nombre,monto:sv.precio})); else setFormEnvioCot(Object.assign({},formEnvioCot,{concepto:""})); },style:Object.assign({},st.inp,{marginBottom:6})},
+                  e("option",{value:""},"-- Del catálogo --"),
+                  servicios.map(function(sv){ return e("option",{key:sv.id,value:sv.nombre},sv.nombre+" , $"+Number(sv.precio).toLocaleString()); })
+                ),
+                e("input",{value:formEnvioCot.concepto,onChange:function(ev){ setFormEnvioCot(Object.assign({},formEnvioCot,{concepto:ev.target.value})); },placeholder:"ej. Sesión fotográfica...",style:st.inp})
+              ),
+              e("div",null,
+                e("label",{style:st.lbl},"Monto ($)"),
+                e(MontoInput,{value:formEnvioCot.monto,onChange:function(ev){ setFormEnvioCot(Object.assign({},formEnvioCot,{monto:ev.target.value})); },placeholder:"0",style:st.inp})
+              )
+            )
+          ),
+
+          // Notas
+          e("div",{style:{marginBottom:4}},
+            e("label",{style:st.lbl},"¿Qué está buscando este cliente?"),
+            e("textarea",{value:form.notas,onChange:function(ev){ setForm(Object.assign({},form,{notas:ev.target.value})); },placeholder:"Ej. Más ventas, un logo nuevo, remodelar su local, mejorar sus redes sociales...",style:Object.assign({},st.inp,{minHeight:60,resize:"vertical"})})
           )
         ),
-        e("div",{style:{display:"flex",gap:8,justifyContent:"flex-end"}},e("button",{style:st.btn,onClick:function(){ setModalCliente(false); }},"Cancelar"),e("button",{style:st.btnP,onClick:guardarCliente},"Guardar"))
+
+        // FOOTER
+        e("div",{style:{padding:"14px 24px",borderTop:"1px solid "+C.border,display:"flex",gap:8,justifyContent:"flex-end",background:C.surfaceUp}},
+          e("button",{style:st.btn,onClick:function(){ setModalCliente(false); }},"Cancelar"),
+          e("button",{style:Object.assign({},st.btnP,{opacity:form.nombre.trim()?1:0.5}),onClick:guardarCliente,disabled:!form.nombre.trim()},"Guardar")
+        )
       )
     ),
 
@@ -4610,7 +4722,7 @@ export default function CLEO(){
             var cl=clientes.find(function(c){ return String(c.id)===String(formCot.clienteId); });
             if(!cl) return null;
             return e("div",{style:{marginTop:6,padding:"6px 10px",background:C.purplePale,borderRadius:6,fontSize:12,color:C.purple,display:"flex",justifyContent:"space-between",alignItems:"center"}},
-              e("span",null,cl.nombre+(cl.negocio?" — "+cl.negocio:"")),
+              e("span",null,cl.nombre+(cl.negocio?" , "+cl.negocio:"")),
               e("button",{style:{background:"none",border:"none",cursor:"pointer",color:C.textDim,fontSize:14},onClick:function(){ setFormCot(Object.assign({},formCot,{clienteId:""})); setBuscaCli(""); }},"×")
             );
           })()
@@ -4621,7 +4733,7 @@ export default function CLEO(){
             e("option",{value:""},"-- Seleccionar --"),
             servicios.map(function(sv){ return e("option",{key:sv.id,value:sv.nombre},sv.nombre+" · $"+Number(sv.precio).toLocaleString()); })
           ),
-          e("div",{style:{fontSize:11,color:C.textDim,marginTop:4}},"¿No está en la lista? Escríbelo abajo — te preguntaremos si quieres guardarlo.")
+          e("div",{style:{fontSize:11,color:C.textDim,marginTop:4}},"¿No está en la lista? Escríbelo abajo , te preguntaremos si quieres guardarlo.")
         ),
         e("div",{style:{marginBottom:12}},e("label",{style:st.lbl},TXT.concepto),e("input",{value:formCot.concepto,onChange:function(ev){ setFormCot(Object.assign({},formCot,{concepto:ev.target.value})); },placeholder:esProductos?"ej. Aretes plata, Pastel boda...":"ej. Sesion fotografica, Diseno web...",style:st.inp})),
         e("div",{style:{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:10,marginBottom:12}},

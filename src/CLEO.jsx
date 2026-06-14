@@ -70,9 +70,33 @@ function contactUrl(c,msg){
   var canal=c.canalPrincipal||"WhatsApp";
   if(canal==="WhatsApp"&&c.contacto) return "https://wa.me/52"+c.contacto+"?text="+encodeURIComponent(msg);
   if(canal==="Instagram"&&c.instagram) return "https://instagram.com/"+c.instagram.replace("@","");
-  if(canal==="Messenger"&&c.messenger) return "https://m.me/"+c.messenger;
+  if(canal==="Messenger"||canal==="Facebook"){
+    var fb=c.messenger||c.facebook||"";
+    if(fb) return "https://facebook.com/"+fb.replace("@","");
+    return null;
+  }
   if(canal==="Email"&&c.email) return "mailto:"+c.email;
   return null;
+}
+function contactLabel(c){
+  var canal=c.canalPrincipal||"WhatsApp";
+  if(canal==="WhatsApp") return "Contactar";
+  if(canal==="Instagram") return "Ver perfil";
+  if(canal==="Facebook"||canal==="Messenger"){
+    var fb=c.messenger||c.facebook||"";
+    return fb?"Abrir Facebook":"Copiar nombre";
+  }
+  if(canal==="Email") return "Enviar email";
+  return "Contactar";
+}
+function contactFallbackCopy(c){
+  var canal=c.canalPrincipal||"WhatsApp";
+  if((canal==="Facebook"||canal==="Messenger")&&!(c.messenger||c.facebook)){
+    var val=c.messenger||c.nombre||"";
+    try{ navigator.clipboard.writeText(val); }catch(e){}
+    return true;
+  }
+  return false;
 }
 function msgEtapa(c,concepto){
   var nombre=c.nombre?c.nombre.split(" ")[0]:"";
@@ -296,9 +320,11 @@ function generarPDFCot(cot,cliente,perfil){
   if(perfil.redesIG) redes.push('<span style="display:inline-flex;align-items:center;gap:5px;margin-right:16px;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none"><defs><linearGradient id="igpdf" x1="2" y1="22" x2="22" y2="2" gradientUnits="userSpaceOnUse"><stop stop-color="#F58529"/><stop offset="0.5" stop-color="#DD2A7B"/><stop offset="1" stop-color="#8134AF"/></linearGradient></defs><rect x="2" y="2" width="20" height="20" rx="5" fill="url(#igpdf)"/><circle cx="12" cy="12" r="4" stroke="#fff" stroke-width="2"/><circle cx="17" cy="7" r="1" fill="#fff"/></svg><span>'+perfil.redesIG+'</span></span>');
   if(perfil.redesFB) redes.push('<span style="display:inline-flex;align-items:center;gap:5px;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="10" fill="#185FA5"/><path d="M13.5 8H15V6h-1.5C12.1 6 11 7.1 11 8.5V10H9.5v2H11v6h2v-6h1.5l.5-2H13V8.5c0-.3.2-.5.5-.5z" fill="#fff"/></svg><span>'+perfil.redesFB+'</span></span>');
 
-  var html='<!DOCTYPE html><html><head><meta charset="utf-8"><title>'+folio+'</title>';
+  var html='<!DOCTYPE html><html><head><meta charset="utf-8"><title>Cotizacion '+(cliente?cliente.nombre:folio)+'</title>';
   html+='<style>';
   html+='*{margin:0;padding:0;box-sizing:border-box;}';
+  html+='@media print{body{-webkit-print-color-adjust:exact;print-color-adjust:exact;}.no-print{display:none;}}';
+  html+='@page{margin:0;size:A4;}';
   html+='body{font-family:"Helvetica Neue",Helvetica,Arial,sans-serif;background:#fff;color:'+pt+';font-size:13px;line-height:1.5;}';
   html+='.wrap{max-width:760px;margin:0 auto;border:1px solid #e8e8e8;min-height:100vh;}';
   // HEADER , barra de acento izquierda
@@ -419,11 +445,21 @@ function generarPDFCot(cot,cliente,perfil){
   html+='</div>';
   html+='</div></body></html>';
 
-  var blob=new Blob([html],{type:'text/html'});
-  var url=URL.createObjectURL(blob);
-  var a=document.createElement('a');
-  a.href=url; a.download='Cotizacion_'+(cliente?cliente.nombre.replace(/ /g,'_'):'cliente')+'_'+cot.fecha+'.html';
-  document.body.appendChild(a); a.click(); document.body.removeChild(a); URL.revokeObjectURL(url);
+  // Abrir en nueva ventana para imprimir/guardar como PDF
+  var win=window.open('','_blank');
+  if(win){
+    win.document.write(html);
+    win.document.close();
+    win.focus();
+    setTimeout(function(){ win.print(); },800);
+  } else {
+    // Fallback: descarga HTML si popup bloqueado
+    var blob=new Blob([html],{type:'text/html'});
+    var url=URL.createObjectURL(blob);
+    var a=document.createElement('a');
+    a.href=url; a.download='Cotizacion_'+(cliente?cliente.nombre.replace(/ /g,'_'):'cliente')+'_'+cot.fecha+'.html';
+    document.body.appendChild(a); a.click(); document.body.removeChild(a); URL.revokeObjectURL(url);
+  }
 }
 function generarComprobante(cot,cliente,perfil){
   var saldo=cot.monto-cot.anticipo;
@@ -505,8 +541,19 @@ function generarComprobante(cot,cliente,perfil){
   var blob=new Blob([html],{type:'text/html'});
   var url=URL.createObjectURL(blob);
   var a=document.createElement('a');
-  a.href=url; a.download='Comprobante_'+(cliente?cliente.nombre.replace(/ /g,'_'):'cliente')+'_'+cot.fechaAnticipo+'.html';
-  document.body.appendChild(a); a.click(); document.body.removeChild(a); URL.revokeObjectURL(url);
+  var win=window.open('','_blank');
+  if(win){
+    win.document.write(html);
+    win.document.close();
+    win.focus();
+    setTimeout(function(){ win.print(); },800);
+  } else {
+    var blob=new Blob([html],{type:'text/html'});
+    var url=URL.createObjectURL(blob);
+    var a=document.createElement('a');
+    a.href=url; a.download='Comprobante_'+(cliente?cliente.nombre.replace(/ /g,'_'):'cliente')+'_'+cot.fechaAnticipo+'.html';
+    document.body.appendChild(a); a.click(); document.body.removeChild(a); URL.revokeObjectURL(url);
+  }
 }
 
 // ─── MAIN COMPONENT ──────────────────────────────────────────────────────────
@@ -527,8 +574,19 @@ function generarComprobantePago(pago,cot,cliente,perfil){
   var blob=new Blob([html],{type:'text/html'});
   var url=URL.createObjectURL(blob);
   var a=document.createElement('a');
-  a.href=url; a.download='Pago_'+(cliente?cliente.nombre.replace(/ /g,'_'):'cliente')+'_'+pago.fecha+'.html';
-  document.body.appendChild(a); a.click(); document.body.removeChild(a); URL.revokeObjectURL(url);
+  var win=window.open('','_blank');
+  if(win){
+    win.document.write(html);
+    win.document.close();
+    win.focus();
+    setTimeout(function(){ win.print(); },800);
+  } else {
+    var blob=new Blob([html],{type:'text/html'});
+    var url=URL.createObjectURL(blob);
+    var a=document.createElement('a');
+    a.href=url; a.download='Pago_'+(cliente?cliente.nombre.replace(/ /g,'_'):'cliente')+'_'+pago.fecha+'.html';
+    document.body.appendChild(a); a.click(); document.body.removeChild(a); URL.revokeObjectURL(url);
+  }
 }
 
 function generarComprobanteGeneral(cot,cliente,perfil){
@@ -630,8 +688,19 @@ function generarComprobanteGeneral(cot,cliente,perfil){
   var blob=new Blob([html],{type:'text/html'});
   var url=URL.createObjectURL(blob);
   var a=document.createElement('a');
-  a.href=url; a.download='EstadoCuenta_'+(cliente?cliente.nombre.replace(/ /g,'_'):'cliente')+'_'+FECHA_HOY+'.html';
-  document.body.appendChild(a); a.click(); document.body.removeChild(a); URL.revokeObjectURL(url);
+  var win=window.open('','_blank');
+  if(win){
+    win.document.write(html);
+    win.document.close();
+    win.focus();
+    setTimeout(function(){ win.print(); },800);
+  } else {
+    var blob=new Blob([html],{type:'text/html'});
+    var url=URL.createObjectURL(blob);
+    var a=document.createElement('a');
+    a.href=url; a.download='EstadoCuenta_'+(cliente?cliente.nombre.replace(/ /g,'_'):'cliente')+'_'+FECHA_HOY+'.html';
+    document.body.appendChild(a); a.click(); document.body.removeChild(a); URL.revokeObjectURL(url);
+  }
 }
 
 function ModalVenta(props){
@@ -1129,7 +1198,14 @@ export default function CLEO(){
 
   function setClientes(v){ setClientesRaw(v); try{ localStorage.setItem("cleo_clientes",JSON.stringify(v)); }catch(e){} }
   function setCotizaciones(v){ var m=migrarCots(v); setCotizacionesRaw(m); try{ localStorage.setItem("cleo_cots",JSON.stringify(m)); }catch(e){} }
-  function setPerfil(v){ setPerfilRaw(v); setFormPerfil(v); try{ localStorage.setItem("cleo_perfil",JSON.stringify(v)); }catch(e){} }
+  function setPerfil(v){ 
+    setPerfilRaw(v); 
+    setFormPerfil(v); 
+    try{ 
+      localStorage.setItem("cleo_perfil",JSON.stringify(v)); 
+      if(v.tipoPerfil) localStorage.setItem("cleo_tipo_perfil",v.tipoPerfil);
+    }catch(e){} 
+  }
   function setServicios(v){ setServiciosRaw(v); try{ localStorage.setItem("cleo_servicios",JSON.stringify(v)); }catch(e){} }
   function setVentas(v){ setVentasRaw(v); try{ localStorage.setItem("cleo_ventas",JSON.stringify(v)); }catch(e){} }
   function setProductos(v){ setProductosRaw(v); }
@@ -1551,8 +1627,16 @@ export default function CLEO(){
   if(!hydrated) return e("div",{style:{minHeight:"100vh",background:C.bg}});
 
   // ── ONBOARDING ─────────────────────────────────────────────────────────────
-  var tipoPerfilGuardado=perfil.tipoPerfil||(function(){ try{ var p=localStorage.getItem("cleo_perfil"); return p?JSON.parse(p).tipoPerfil||"":""; }catch(e){ return ""; } })();
-  if(!tipoPerfilGuardado){
+  var tienesDatos=clientes.length>0||cotizaciones.length>0||ventas.length>0;
+  var tipoPerfilGuardado=perfil.tipoPerfil||(function(){ 
+    try{ 
+      var p=localStorage.getItem("cleo_perfil"); 
+      var tp=p?JSON.parse(p).tipoPerfil||"":"";
+      if(!tp) tp=localStorage.getItem("cleo_tipo_perfil")||"";
+      return tp;
+    }catch(e){ return ""; } 
+  })();
+  if(!tipoPerfilGuardado&&!tienesDatos){
     return e("div",{style:{fontFamily:"Arial,sans-serif",minHeight:"100vh",background:C.bg,display:"flex",alignItems:"center",justifyContent:"center",padding:"24px"}},
       e("div",{style:{width:"100%",maxWidth:440}},
         // Logo
@@ -1843,16 +1927,31 @@ export default function CLEO(){
         var perdidasSemana=cotizaciones.filter(function(c){ return c.estatus==="Rechazada"&&diasDesde(c.fecha)<=7; });
         var ganadasSemana=cotizaciones.filter(function(c){ return c.estatus==="Aceptada"&&diasDesde(c.fecha)<=7; });
         if(perdidasSemana.length>=1){
-          var motivo=perdidasSemana[0].motivoPerdida||"sin motivo registrado";
-          preguntaSemana="Perdiste una venta esta semana ("+motivo+"). ¿Qué harías diferente si pudieras repetir esa conversación desde el principio?";
+          var motivo=perdidasSemana[0].motivoPerdida;
+          preguntaSemana=motivo
+            ?"No cerraste esa venta. El motivo fue \""+motivo+"\". ¿Hay otro cliente activo con la misma objeción al que puedas atender diferente esta semana?"
+            :"Perdiste una venta esta semana. ¿Tienes claro en qué momento se enfrió? Identificarlo te ayuda a saber qué cambiar la próxima vez.";
         } else if(ganadasSemana.length>=1){
-          preguntaSemana="Cerraste una venta esta semana. ¿Qué fue lo que más influyó para que ese cliente dijera que sí?";
+          var cl0=ganadasSemana[0];
+          var cc=clientes.find(function(c){ return c.id===cl0.clienteId; });
+          preguntaSemana="Cerraste una venta"+(cc?" con "+cc.nombre.split(" ")[0]:"")+". ¿Qué hiciste diferente esta vez que podrías repetir con tus próximos clientes?";
         } else if(clientesSemana.length>=1){
-          preguntaSemana=clientesSemana.length===1?"Registraste un nuevo contacto esta semana. ¿Ya le escribiste para dar seguimiento?":"Registraste "+clientesSemana.length+" contactos esta semana. ¿Cuál de ellos tiene más probabilidades de comprar y por qué?";
+          var nc=clientesSemana[0];
+          preguntaSemana=clientesSemana.length===1
+            ?"Registraste a "+nc.nombre.split(" ")[0]+" esta semana. ¿Ya le enviaste una propuesta o le diste seguimiento?"
+            :"Tienes "+clientesSemana.length+" contactos nuevos esta semana. ¿A cuál de ellos le urge más resolver su problema?";
         } else if(sinContacto>=3){
-          preguntaSemana="Tienes "+sinContacto+" clientes sin seguimiento. ¿Cuál es la razón real por la que no has escrito? ¿Miedo al no, falta de tiempo, o algo más?";
+          preguntaSemana="Hay "+sinContacto+" clientes que no han recibido noticias tuyas. ¿Cuál de ellos tiene más probabilidades de avanzar si le escribes hoy?";
         } else {
-          var preguntas=["¿Cuál es el principal motivo por el que un cliente tuyo te elige a ti y no a la competencia?","¿En qué parte del proceso sientes que pierdes más clientes , al primer contacto, al mandar el precio, o en el seguimiento?","¿Qué tan seguido le pides referidos a tus clientes que ya compraron?"];
+          var preguntas=[
+            "¿Hay alguna cotización pendiente a la que no le hayas dado seguimiento esta semana? Un mensaje puede ser la diferencia entre cerrar o perder esa oportunidad.",
+            "¿Cuál de tus clientes activos tiene el problema más urgente por resolver? Ese es al que deberías escribirle primero hoy.",
+            "¿Hay algún cliente que lleve más de una semana sin recibir respuesta tuya? Si es así, hoy es el día de retomar esa conversación.",
+            "¿Cuántas cotizaciones tienes abiertas sin respuesta? Cada una de esas es dinero esperando una decisión. ¿Cuál podrías despejar hoy?",
+            "¿Qué oportunidad podría avanzar con un mensaje o llamada de 5 minutos? Identifícala y hazlo antes de que termine el día.",
+            "¿Tienes clientes que ya compraron y a los que no les has vuelto a escribir? Un cliente satisfecho es tu mejor fuente de referidos.",
+            "¿Cuál de tus clientes activos lleva más tiempo sin avanzar de etapa? Ese estancamiento casi siempre tiene una razón que vale la pena explorar."
+          ];
           preguntaSemana=preguntas[semanaNum%preguntas.length];
         }
 
@@ -2260,9 +2359,13 @@ export default function CLEO(){
                             return e("div",{style:{fontSize:10,color:"#5B5CF6",fontWeight:500}},"Seg: "+(dSeg<=0?"hoy":dSeg===1?"mañana":"en "+dSeg+" días"));
                           })()
                           : urlContactar
-                            ? e("a",{href:urlContactar,target:"_blank",rel:"noreferrer",
-                                style:{display:"inline-flex",alignItems:"center",gap:4,padding:"5px 10px",borderRadius:10,background:C.green,color:"#fff",fontSize:10,fontWeight:600,textDecoration:"none",whiteSpace:"nowrap"}
-                              },e(SvgIcon,{canal:c.canalPrincipal||"WhatsApp",size:10}),"Contactar")
+                            ? (contactUrl(c,msgEtapa(c))
+                              ? e("a",{href:contactUrl(c,msgEtapa(c)),target:"_blank",rel:"noreferrer",
+                                  style:{display:"inline-flex",alignItems:"center",gap:4,padding:"5px 10px",borderRadius:10,background:C.green,color:"#fff",fontSize:10,fontWeight:600,textDecoration:"none",whiteSpace:"nowrap"}
+                                },e(SvgIcon,{canal:c.canalPrincipal||"WhatsApp",size:10}),contactLabel(c))
+                              : e("button",{style:{display:"inline-flex",alignItems:"center",gap:4,padding:"5px 10px",borderRadius:10,background:C.surfaceUp,color:C.textMuted,fontSize:10,fontWeight:600,border:"1px solid "+C.border,cursor:"pointer"},
+                                  onClick:function(ev){ ev.stopPropagation(); contactFallbackCopy(c); }
+                                },e(SvgIcon,{canal:c.canalPrincipal||"WhatsApp",size:10}),contactLabel(c)))
                             : null
                           ,
                           isMobile&&e("button",{
@@ -2630,10 +2733,10 @@ export default function CLEO(){
                 )
               ),
               // Monto + estatus + acciones
-              e("div",{style:{display:"flex",flexDirection:"column",alignItems:"flex-end",gap:8}},
-                e("div",{style:{fontSize:18,fontWeight:600,color:esAceptada?C.green:C.text}},"$"+Number(cot.monto).toLocaleString()),
+              e("div",{style:{display:"flex",flexDirection:"column",alignItems:"flex-end",gap:8,flexShrink:0}},
+                e("div",{style:{fontSize:18,fontWeight:600,color:esAceptada?C.green:C.text,whiteSpace:"nowrap"}},"$"+Number(cot.monto).toLocaleString()),
                 e("span",{style:st.badgeCot(cot.estatus)},cot.estatus),
-                e("div",{style:{display:"flex",gap:6,marginTop:4}},
+                e("div",{style:{display:"flex",gap:6,marginTop:4,flexWrap:"wrap",justifyContent:"flex-end"}},
                   e("div",{style:{display:"flex",gap:2,background:C.surfaceUp,borderRadius:6,padding:3,border:"0.5px solid "+C.border}},
                     ["Pendiente","Aceptada","Rechazada"].map(function(est){
                       var activo=cot.estatus===est;
@@ -2955,7 +3058,7 @@ export default function CLEO(){
                 e("div",{style:{display:"flex",gap:8,flexWrap:"wrap",alignItems:"center"}},
                   urlContactar&&e("a",{href:urlContactar,target:"_blank",rel:"noreferrer",
                     style:{cursor:"pointer",padding:"7px 14px",borderRadius:12,border:"none",background:C.green,fontSize:12,color:"#fff",fontWeight:600,textDecoration:"none",display:"inline-flex",alignItems:"center",gap:5}
-                  },e(SvgIcon,{canal:c.canalPrincipal||"WhatsApp",size:12}),"Contactar"),
+                  },e(SvgIcon,{canal:c.canalPrincipal||"WhatsApp",size:12}),contactLabel(c)),
                   e("button",{style:{cursor:"pointer",padding:"7px 14px",borderRadius:12,border:"1px solid "+C.border,background:"transparent",fontSize:12,color:C.textMuted,fontWeight:500},onClick:function(){ setContactadoClienteId(c.id); }},"Ya contacté"),
                   e("button",{style:{cursor:"pointer",padding:"7px 14px",borderRadius:12,border:"1px solid "+C.border,background:"transparent",fontSize:12,color:C.textMuted,fontWeight:500},onClick:function(){ setSeguimientoClienteId(c.id); setSeguimientoDias(""); }},"Reprogramar"),
                   esPerdido&&e("button",{style:{cursor:"pointer",padding:"7px 14px",borderRadius:12,border:"1px solid "+C.green+"33",background:"transparent",fontSize:12,color:C.green,fontWeight:500},onClick:function(){ setClientes(clientes.map(function(x){ return x.id===c.id?Object.assign({},x,{etapa:"Nuevo contacto",seguimientoFecha:""}):x; })); }},"Reactivar")
@@ -3289,11 +3392,11 @@ export default function CLEO(){
         var activo=vista===v;
         var nBadge=0;
         if(v==="hoy") nBadge=clientes.filter(function(c){ return c.etapa!=="Ganado"&&c.etapa!=="Perdido"&&diasDesde(c.fechaEtapa||c.fecha)>=3; }).length;
-        return e("button",{key:v,style:{flex:1,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",padding:"10px 2px 8px",background:"none",border:"none",cursor:"pointer",position:"relative",gap:3,minHeight:56},onClick:function(){ setVista(v); setMostrarMas(false); }},
+        return e("button",{key:v,style:{flex:1,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",padding:"10px 2px 8px",background:"none",border:"none",cursor:"pointer",position:"relative",gap:3,minHeight:56,overflow:"hidden"},onClick:function(){ setVista(v); setMostrarMas(false); }},
           e("svg",{width:20,height:20,viewBox:"0 0 24 24",fill:"none",stroke:activo?"#fff":"rgba(255,255,255,0.45)",strokeWidth:2,strokeLinecap:"round",strokeLinejoin:"round"},e("path",{d:NAV_SVG[v]||""})),
           e("span",{style:{fontSize:9,color:activo?"#fff":"rgba(255,255,255,0.45)",fontWeight:activo?600:400,lineHeight:1}},NAV_LABELS[v]),
           activo&&e("div",{style:{position:"absolute",top:0,left:"50%",transform:"translateX(-50%)",width:20,height:2,background:C.purple,borderRadius:99}}),
-          nBadge>0&&e("span",{style:{position:"absolute",top:4,left:"50%",marginLeft:4,minWidth:14,height:14,borderRadius:7,background:C.red,border:"1.5px solid "+C.dark,fontSize:8,color:"#fff",fontWeight:700,display:"flex",alignItems:"center",justifyContent:"center",padding:"0 2px"}},nBadge>9?"9+":nBadge)
+          nBadge>0&&e("span",{style:{position:"absolute",top:5,right:"calc(50% - 20px)",minWidth:13,height:13,borderRadius:7,background:C.red,border:"1.5px solid "+C.dark,fontSize:7,color:"#fff",fontWeight:700,display:"flex",alignItems:"center",justifyContent:"center",padding:"0 2px",zIndex:1}},nBadge>9?"9+":nBadge)
         );
       }),
       // Botón Más
@@ -4091,7 +4194,7 @@ export default function CLEO(){
                 background:c.canalPrincipal==="WhatsApp"?C.green:c.canalPrincipal==="Instagram"?"#D85A30":c.canalPrincipal==="Messenger"?"#185FA5":C.purple,
                 boxShadow:"0 1px 4px rgba(0,0,0,0.15)",flex:"1 1 auto"
               }
-            },e(SvgIcon,{canal:c.canalPrincipal||"WhatsApp",size:13}),"Contactar"),
+            },e(SvgIcon,{canal:c.canalPrincipal||"WhatsApp",size:13}),contactLabel(c)),
             cot&&e("button",{style:Object.assign({},st.btn,{fontSize:12,padding:"8px 14px",flex:"0 0 auto"}),onClick:function(){ editarCot(cot); setCotRapidaId(null); }},"Editar cot."),
             cot&&e("button",{
               style:Object.assign({},st.btn,{fontSize:12,padding:"8px 14px",flex:"0 0 auto",display:"inline-flex",alignItems:"center",gap:5}),
@@ -4585,7 +4688,7 @@ export default function CLEO(){
         ),
 
         // BODY
-        e("div",{style:{padding:"20px 24px",overflowY:"auto",maxHeight:isMobile?"75vh":"70vh"}},
+        e("div",{style:{padding:"20px 24px",overflowY:"auto",maxHeight:isMobile?"72vh":"70vh"}},
 
           // Nombre y negocio
           e("div",{style:{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,marginBottom:14}},
@@ -4677,7 +4780,7 @@ export default function CLEO(){
         ),
 
         // FOOTER
-        e("div",{style:{padding:"14px 24px",borderTop:"1px solid "+C.border,display:"flex",gap:8,justifyContent:"flex-end",background:C.surfaceUp}},
+        e("div",{style:{padding:"14px 24px",paddingBottom:isMobile?"20px":"14px",borderTop:"1px solid "+C.border,display:"flex",gap:8,justifyContent:"flex-end",background:C.surfaceUp,flexShrink:0}},
           e("button",{style:st.btn,onClick:function(){ setModalCliente(false); }},"Cancelar"),
           e("button",{style:Object.assign({},st.btnP,{opacity:form.nombre.trim()?1:0.5}),onClick:guardarCliente,disabled:!form.nombre.trim()},"Guardar")
         )
