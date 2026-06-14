@@ -3475,7 +3475,7 @@ export default function CLEO(){
         );
       }).length;
       var nUrgF=programadosF+atascadosF;
-      if(vista==="hoy"||isMobile) return null;
+      if(vista==="hoy") return null;
       return e("div",{style:{position:"fixed",bottom:24,right:24,zIndex:90}},
         e("button",{
           onClick:function(){ setVista("hoy"); },
