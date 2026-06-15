@@ -761,7 +761,7 @@ function ModalVenta(props){
   var tipoOpciones=[{key:"especifico",label:"Con cliente",desc:"Tienes el contacto"},{key:"generico",label:"Sin contacto",desc:"Venta rapida"},{key:"dia",label:"Total del dia",desc:"Monto global"}];
   return e("div",{style:st.ov,onClick:function(){ setModalVenta(false); }},
     e("div",{style:st.modal,onClick:function(ev){ ev.stopPropagation(); }},
-      e("div",{style:{fontWeight:600,fontSize:15,marginBottom:16,color:C.text}},"Nueva venta directa"),
+      e("div",{style:{fontWeight:600,fontSize:15,marginBottom:16,color:C.text}},"Venta rápida"),
       e("div",{style:{marginBottom:16}},
         e("label",{style:st.lbl},"Tipo de venta"),
         e("div",{style:{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:6}},
@@ -959,8 +959,8 @@ function VistaVentas(props){
 
     // TÍTULO
     e("div",{style:{paddingTop:24,marginBottom:24}},
-      e("div",{style:{fontSize:28,fontWeight:700,color:C.text,lineHeight:1.1,marginBottom:6}},"Ventas directas"),
-      e("div",{style:{fontSize:14,color:C.textMuted}},"Cobros sin cotización")
+      e("div",{style:{fontSize:28,fontWeight:700,color:C.text,lineHeight:1.1,marginBottom:4}},"Ventas rápidas"),
+      e("div",{style:{fontSize:13,color:C.textMuted,marginBottom:2}},"Ideal para clientes que compran al momento, sin necesidad de cotización")
     ),
 
     // FILTRO DE PERIODO
@@ -1360,8 +1360,9 @@ export default function CLEO(){
     }
     // Si el concepto no esta en el catalogo de servicios, preguntar si guardar
     var conceptoNuevo=formCot.concepto.trim();
-    var yaExiste=servicios.some(function(s){ return s.nombre.toLowerCase()===conceptoNuevo.toLowerCase(); });
-    if(!yaExiste&&conceptoNuevo){
+    var yaExiste=servicios.some(function(s){ return s.nombre.trim().toLowerCase()===conceptoNuevo.toLowerCase(); });
+    var vieneDeCatalogo=servicios.some(function(s){ return s.nombre.trim()===conceptoNuevo; });
+    if(!yaExiste&&!vieneDeCatalogo&&conceptoNuevo){
       setGuardarSvModal({nombre:conceptoNuevo,precio:Number(formCot.precioUnit),descripcion:formCot.notas||""});
     }
     setModalCot(false); setFormCot(cotVacio);
@@ -1561,7 +1562,7 @@ export default function CLEO(){
     inp:{width:"100%",padding:"10px 12px",borderRadius:10,border:"1px solid "+C.borderStrong,background:C.surface,color:C.text,fontSize:14,boxSizing:"border-box",fontFamily:"-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif"},
     lbl:{fontSize:11,color:C.textMuted,marginBottom:5,display:"block",textTransform:"uppercase",letterSpacing:"0.8px",fontWeight:600},
     ov:{position:"fixed",inset:0,background:"rgba(26,22,53,0.55)",display:"flex",alignItems:isMobile?"flex-end":"center",justifyContent:"center",zIndex:100},
-    modal:{background:C.surface,borderRadius:isMobile?"20px 20px 0 0":"20px",padding:"28px",width:isMobile?"100%":460,maxWidth:isMobile?"100%":"95vw",border:"1px solid "+C.border,maxHeight:isMobile?"92vh":"88vh",overflowY:"auto",boxShadow:"0 8px 32px rgba(0,0,0,0.12)"},
+    modal:{background:C.surface,borderRadius:isMobile?"20px 20px 0 0":"20px",padding:"28px",width:isMobile?"100%":460,maxWidth:isMobile?"100%":"95vw",border:"1px solid "+C.border,maxHeight:isMobile?"92vh":"88vh",overflowY:"auto",overflowX:"hidden",boxShadow:"0 8px 32px rgba(0,0,0,0.12)"},
     pb:function(a){ return {cursor:"pointer",padding:"6px 16px",borderRadius:12,border:"1px solid "+(a?C.border:"transparent"),background:a?C.surface:"transparent",color:a?C.text:C.textMuted,fontSize:13,fontWeight:a?600:400}; },
     av:function(color){ return {width:36,height:36,borderRadius:"50%",background:color+"22",display:"flex",alignItems:"center",justifyContent:"center",fontWeight:700,fontSize:12,color:color,flexShrink:0}; },
   };
@@ -1578,7 +1579,7 @@ export default function CLEO(){
     hoy:'M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z',
     resumen:'M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z',
   };
-  var NAV_LABELS={inicio:"Inicio",pipeline:"Pipeline",clientes:"Clientes",ventas:"Ventas directas",cotizaciones:"Cotizaciones","hoy":"Hoy",resumen:"Resumen"};
+  var NAV_LABELS={inicio:"Inicio",pipeline:"Seguimientos",clientes:"Clientes",ventas:"Ventas rápidas",cotizaciones:"Cotizaciones","hoy":"Hoy",resumen:"Resumen"};
 
   // ── LENGUAJE SEGÚN PERFIL ───────────────────────────────────────────────────
   var esProductos=perfil.tipoPerfil==="productos";
@@ -1602,7 +1603,7 @@ export default function CLEO(){
     cotizacion:      esProductos?"Precio":"Cotizacion",
     cotizaciones:    esProductos?"Precios enviados":"Cotizaciones",
     nuevaCotizacion: esProductos?"+ Precio":"+ Cotizacion",
-    pipeline:        esProductos?"Mis clientes":"Pipeline",
+    pipeline:        esProductos?"Mis clientes":"Seguimientos",
     tasaCierre:      esProductos?"De cada 10, cuántos compran":"Tasa de cierre",
     concepto:        esProductos?"Producto":"Concepto / Servicio",
     clienteGanado:   esProductos?"Compró":"Ganado",
@@ -1707,7 +1708,7 @@ export default function CLEO(){
           ),
           sbOpen&&e("div",{style:{display:"flex",flexDirection:"column"}},
             e("div",{style:{fontWeight:700,fontSize:15,color:"#fff",letterSpacing:"1px"}},"CLEO"),
-            e("div",{style:{fontSize:10,color:"rgba(255,255,255,0.35)"}},"Sistema educativo de ventas")
+            e("div",{style:{fontSize:10,color:"rgba(255,255,255,0.35)",lineHeight:1.3,maxWidth:140}},"El sistema que te ayuda a vender mejor")
           )
         ),
 
@@ -1837,7 +1838,7 @@ export default function CLEO(){
         var enNegociacion=clientes.filter(function(c){ return c.etapa==="Negociacion"; }).length;
         if(enNegociacion>0) subtitulo="Tienes clientes listos para cerrar , el siguiente paso es tuyo.";
         else if(cotsPend.length>0) subtitulo="Tu siguiente venta probablemente ya esta en tu pipeline , solo necesita seguimiento.";
-        else if(clientes.length<5) subtitulo="Registra tus conversaciones y CLEO te dira exactamente que esta funcionando.";
+        else if(clientes.length<5) subtitulo="Registra tu actividad de ventas y descubre qué acciones generan más resultados.";
         else subtitulo="La herramienta que te ensena a vender mejor con cada cliente que registras.";
 
         // Top 3 acciones
@@ -1988,15 +1989,27 @@ export default function CLEO(){
 
           // BARRA SUPERIOR , solo botones
           e("div",{style:{display:"flex",alignItems:"center",justifyContent:"flex-end",gap:8,marginLeft:-32,marginRight:-32,marginTop:-32,padding:"14px 32px",background:C.bg}},
+            isMobile&&e("div",{style:{
+              width:36,height:36,borderRadius:10,
+              background:C.dark,
+              display:"flex",alignItems:"center",justifyContent:"center",
+              flexShrink:0,marginRight:"auto"
+            }},
+              e("svg",{width:22,height:22,viewBox:"0 0 100 100",fill:"none"},
+                e("path",{d:"M72 28C65 20 54 16 44 18C28 21 17 35 17 50C17 65 28 79 44 82C54 84 65 80 72 72",stroke:"#fff",strokeWidth:12,strokeLinecap:"round",fill:"none"}),
+                e("path",{d:"M62 38C57 33 50 30 44 31C34 33 27 41 27 50C27 59 34 67 44 69C50 70 57 67 62 62",stroke:"rgba(255,255,255,0.35)",strokeWidth:8,strokeLinecap:"round",fill:"none"})
+              )
+            ),
             e("button",{style:{cursor:"pointer",padding:"9px 18px",borderRadius:14,border:"1px solid "+C.border,background:C.surface,fontSize:13,color:C.textMuted,fontWeight:500},onClick:function(){ setClienteSel(null); setForm(formVacio); setModalCliente(true); }},"+ Cliente"),
-            e("button",{style:{cursor:"pointer",padding:"9px 18px",borderRadius:14,border:"1px solid "+C.green+"44",background:C.green+"08",fontSize:13,color:C.green,fontWeight:500},onClick:abrirModalVenta},"+ Venta"),
+            e("button",{style:{cursor:"pointer",padding:"9px 18px",borderRadius:14,border:"1px solid "+C.green+"44",background:C.green+"08",fontSize:13,color:C.green,fontWeight:500},onClick:abrirModalVenta},"+ Venta rápida"),
             !esProductos&&e("button",{style:{cursor:"pointer",padding:"9px 20px",borderRadius:14,border:"none",background:"#5B5CF6",fontSize:13,color:"#fff",fontWeight:600},onClick:function(){ setModalCot(true); }},TXT.nuevaCotizacion)
           ),
 
           // SALUDO
           e("div",{style:{marginBottom:20,paddingTop:24}},
-            e("div",{style:{fontSize:32,fontWeight:700,color:C.text,lineHeight:1.1}},saludo+", "+nombre+" 👋"),
-            e("div",{style:{fontSize:12,color:C.textDim,marginTop:4}},hoyLabel),
+            e("div",{style:{fontSize:isMobile?26:32,fontWeight:700,color:C.text,lineHeight:1.1}},saludo+", "+nombre+" 👋"),
+            isMobile&&e("div",{style:{fontSize:13,fontWeight:500,color:C.purple,marginTop:6,letterSpacing:"0.1px"}},"CLEO · El sistema que te ayuda a vender mejor"),
+            e("div",{style:{fontSize:12,color:C.textDim,marginTop:isMobile?4:4}},hoyLabel),
             e("div",{style:{fontSize:14,color:C.textMuted,marginTop:8}},subtitulo)
           ),
 
@@ -2023,37 +2036,29 @@ export default function CLEO(){
           ),
 
           // CARD METRICAS , con textos renombrados
-          e("div",{style:{background:C.surface,borderRadius:20,padding:"24px",border:"1px solid "+C.border,boxShadow:"0 2px 12px rgba(0,0,0,0.06)",marginBottom:24,display:"grid",gridTemplateColumns:isMobile?"1fr 1fr":"1fr 2px 1fr 2px 1fr 2px 1fr",gap:isMobile?"16px":0,alignItems:"center"}},
-            // Clientes activos (antes: Pipeline activo)
-            e("div",{style:{padding:isMobile?"4px":"8px 32px 8px 0",cursor:"pointer"},onClick:function(){ setVista("pipeline"); }},
-              e("div",{style:{fontSize:11,fontWeight:700,color:C.textDim,textTransform:"uppercase",letterSpacing:"1.5px",marginBottom:8}},"OPORTUNIDADES ABIERTAS"),
-              e("div",{style:{fontSize:42,fontWeight:700,color:C.text,lineHeight:1,marginBottom:4}},clientesActivos),
-              e("div",{style:{fontSize:13,color:C.textMuted,marginBottom:6}},"en proceso"),
-              sinContacto>0&&e("div",{style:{fontSize:12,color:C.red,display:"flex",alignItems:"center",gap:4}},"↑ "+sinContacto+" sin contacto")
-            ),
-            isMobile?null:e("div",{style:{width:1,height:60,background:C.border}}),
-            // Precios enviados (antes: Cotizaciones)
-            e("div",{style:{padding:isMobile?"4px":"8px 32px",cursor:"pointer"},onClick:function(){ setVista("cotizaciones"); setFiltroCot(Object.assign({},filtroCot,{estatus:"Pendiente"})); }},
-              e("div",{style:{fontSize:11,fontWeight:700,color:C.textDim,textTransform:"uppercase",letterSpacing:"1.5px",marginBottom:8}},"PROPUESTAS ENVIADAS"),
-              e("div",{style:{fontSize:36,fontWeight:700,color:C.text,lineHeight:1,marginBottom:4}},cotsPend.length),
-              e("div",{style:{fontSize:13,color:C.textMuted,marginBottom:6}},"esperando respuesta"),
-              totalPend>0&&e("div",{style:{fontSize:12,color:C.amber}},"$"+totalPend.toLocaleString()+" en juego")
+          e("div",{style:{background:C.surface,borderRadius:20,padding:isMobile?"16px 8px":"24px",border:"1px solid "+C.border,boxShadow:"0 2px 12px rgba(0,0,0,0.06)",marginBottom:24,display:"grid",gridTemplateColumns:isMobile?"1fr 1fr 1fr":"1fr 2px 1fr 2px 1fr",gap:0,alignItems:"start"}},
+            // Propuestas enviadas
+            e("div",{style:{padding:isMobile?"4px 6px":"8px 32px",cursor:"pointer",textAlign:"center",borderRight:isMobile?"1px solid "+C.border:"none"},onClick:function(){ setVista("cotizaciones"); setFiltroCot(Object.assign({},filtroCot,{estatus:"Pendiente"})); }},
+              e("div",{style:{fontSize:isMobile?9:11,fontWeight:700,color:C.textDim,textTransform:"uppercase",letterSpacing:"0.5px",marginBottom:6}},"PROPUESTAS"),
+              e("div",{style:{fontSize:isMobile?26:36,fontWeight:700,color:C.text,lineHeight:1,marginBottom:4}},cotsPend.length),
+              e("div",{style:{fontSize:isMobile?9:13,color:C.textMuted,marginBottom:6,lineHeight:1.3}},"esperando respuesta"),
+              totalPend>0&&e("div",{style:{fontSize:isMobile?9:12,color:C.amber,fontWeight:600}},"$"+totalPend.toLocaleString())
             ),
             isMobile?null:e("div",{style:{width:1,height:60,background:C.border}}),
             // Ventas cerradas
-            e("div",{style:{padding:isMobile?"4px":"8px 32px",cursor:"pointer"},onClick:function(){ setVista("cotizaciones"); setFiltroCot(Object.assign({},filtroCot,{estatus:"Aceptada"})); }},
-              e("div",{style:{fontSize:11,fontWeight:700,color:C.textDim,textTransform:"uppercase",letterSpacing:"1.5px",marginBottom:8}},"VENTAS CERRADAS"),
-              e("div",{style:{fontSize:36,fontWeight:700,color:C.text,lineHeight:1,marginBottom:4}},ganados.length),
-              e("div",{style:{fontSize:13,color:C.textMuted,marginBottom:6}},"precios aceptados"),
-              totalGanado>0&&e("div",{style:{fontSize:12,color:C.green}},"$"+totalGanado.toLocaleString()+" cobrado")
+            e("div",{style:{padding:isMobile?"4px 6px":"8px 32px",cursor:"pointer",textAlign:"center",borderRight:isMobile?"1px solid "+C.border:"none"},onClick:function(){ setVista("cotizaciones"); setFiltroCot(Object.assign({},filtroCot,{estatus:"Aceptada"})); }},
+              e("div",{style:{fontSize:isMobile?9:11,fontWeight:700,color:C.textDim,textTransform:"uppercase",letterSpacing:"0.5px",marginBottom:6}},"CERRADAS"),
+              e("div",{style:{fontSize:isMobile?26:36,fontWeight:700,color:C.text,lineHeight:1,marginBottom:4}},ganados.length),
+              e("div",{style:{fontSize:isMobile?9:13,color:C.textMuted,marginBottom:6,lineHeight:1.3}},"precios aceptados"),
+              totalGanado>0&&e("div",{style:{fontSize:isMobile?9:12,color:C.green,fontWeight:600}},"$"+totalGanado.toLocaleString())
             ),
             isMobile?null:e("div",{style:{width:1,height:60,background:C.border}}),
-            // Sin contacto (antes: Seguimientos)
-            e("div",{style:{padding:isMobile?"4px":"8px 0 8px 32px",cursor:"pointer"},onClick:function(){ setVista("hoy"); }},
-              e("div",{style:{fontSize:11,fontWeight:700,color:C.textDim,textTransform:"uppercase",letterSpacing:"1.5px",marginBottom:8}},"SIN SEGUIMIENTO"),
-              e("div",{style:{fontSize:36,fontWeight:700,color:sinContacto>0?C.red:C.text,lineHeight:1,marginBottom:4}},sinContacto),
-              e("div",{style:{fontSize:13,color:C.textMuted,marginBottom:6}},"clientes sin seguimiento"),
-              sinContacto>0&&e("div",{style:{fontSize:12,color:C.red}},"requieren atención")
+            // Sin seguimiento
+            e("div",{style:{padding:isMobile?"4px 6px":"8px 0 8px 32px",cursor:"pointer",textAlign:"center"},onClick:function(){ setVista("hoy"); }},
+              e("div",{style:{fontSize:isMobile?9:11,fontWeight:700,color:C.textDim,textTransform:"uppercase",letterSpacing:"0.5px",marginBottom:6}},"SIN CONTACTO"),
+              e("div",{style:{fontSize:isMobile?26:36,fontWeight:700,color:sinContacto>0?C.red:C.text,lineHeight:1,marginBottom:4}},sinContacto),
+              e("div",{style:{fontSize:isMobile?9:13,color:C.textMuted,marginBottom:6,lineHeight:1.3}},"sin seguimiento"),
+              sinContacto>0&&e("div",{style:{fontSize:isMobile?9:12,color:C.red,fontWeight:600}},"requieren atención")
             )
           ),
 
@@ -2198,7 +2203,7 @@ export default function CLEO(){
           // BOTONES , arriba a la derecha solos
           e("div",{style:{display:"flex",justifyContent:"flex-end",gap:8,marginLeft:-32,marginRight:-32,marginTop:-32,padding:"14px 32px",background:C.bg}},
             e("button",{style:{cursor:"pointer",padding:"9px 18px",borderRadius:14,border:"1px solid "+C.border,background:C.surface,fontSize:13,color:C.textMuted,fontWeight:500},onClick:function(){ setClienteSel(null); setForm(formVacio); setModalCliente(true); }},"+ Cliente"),
-            e("button",{style:{cursor:"pointer",padding:"9px 18px",borderRadius:14,border:"1px solid "+C.green+"44",background:C.green+"08",fontSize:13,color:C.green,fontWeight:500},onClick:abrirModalVenta},"+ Venta"),
+            e("button",{style:{cursor:"pointer",padding:"9px 18px",borderRadius:14,border:"1px solid "+C.green+"44",background:C.green+"08",fontSize:13,color:C.green,fontWeight:500},onClick:abrirModalVenta},"+ Venta rápida"),
             !esProductos&&e("button",{style:{cursor:"pointer",padding:"9px 20px",borderRadius:14,border:"none",background:"#5B5CF6",fontSize:13,color:"#fff",fontWeight:600},onClick:function(){ setModalCot(true); }},TXT.nuevaCotizacion)
           ),
 
@@ -2518,7 +2523,7 @@ export default function CLEO(){
             tabCliente==="historial"&&e("div",null,
               e("div",{style:{display:"flex",gap:8,marginBottom:16,flexWrap:"wrap"}},
                 e("button",{style:Object.assign({},st.btn,{fontSize:12,padding:"5px 12px"}),onClick:function(){ setFormCot(Object.assign({},cotVacio,{clienteId:String(c.id)})); setModalCot(true); }},"+ "+TXT.cotizacion),
-                e("button",{style:Object.assign({},st.btn,{fontSize:12,padding:"5px 12px",color:C.green,borderColor:C.greenBorder}),onClick:function(){ setFormVenta(Object.assign({},ventaVacia,{tipo:"especifico",clienteId:String(c.id)})); setPasoVenta("form"); setModalVenta(true); }},"+ Venta directa")
+                e("button",{style:Object.assign({},st.btn,{fontSize:12,padding:"5px 12px",color:C.green,borderColor:C.greenBorder}),onClick:function(){ setFormVenta(Object.assign({},ventaVacia,{tipo:"especifico",clienteId:String(c.id)})); setPasoVenta("form"); setModalVenta(true); }},"+ Venta rápida")
               ),
               e("div",{style:{background:C.surface,borderRadius:20,border:"1px solid "+C.border,padding:"24px",boxShadow:"0 2px 12px rgba(0,0,0,0.06)"}},
               (function(){
@@ -2622,7 +2627,7 @@ export default function CLEO(){
         return e("div",{style:{display:"flex",flexDirection:"column",gap:0}},
           e("div",{style:{display:"flex",justifyContent:"flex-end",gap:8,marginLeft:-32,marginRight:-32,marginTop:-32,padding:"14px 32px",background:C.bg}},
             e("button",{style:{cursor:"pointer",padding:"9px 18px",borderRadius:14,border:"1px solid "+C.border,background:C.surface,fontSize:13,color:C.textMuted,fontWeight:500},onClick:function(){ setClienteSel(null); setForm(formVacio); setModalCliente(true); }},"+ Cliente"),
-            e("button",{style:{cursor:"pointer",padding:"9px 18px",borderRadius:14,border:"1px solid "+C.green+"44",background:C.green+"08",fontSize:13,color:C.green,fontWeight:500},onClick:abrirModalVenta},"+ Venta"),
+            e("button",{style:{cursor:"pointer",padding:"9px 18px",borderRadius:14,border:"1px solid "+C.green+"44",background:C.green+"08",fontSize:13,color:C.green,fontWeight:500},onClick:abrirModalVenta},"+ Venta rápida"),
             !esProductos&&e("button",{style:{cursor:"pointer",padding:"9px 20px",borderRadius:14,border:"none",background:"#5B5CF6",fontSize:13,color:"#fff",fontWeight:600},onClick:function(){ setModalCot(true); }},TXT.nuevaCotizacion)
           ),
           e("div",{style:{paddingTop:20,marginBottom:20}},
@@ -2678,13 +2683,13 @@ export default function CLEO(){
       vista==="cotizaciones"&&e("div",{style:{display:"flex",flexDirection:"column",gap:0}},
         e("div",{style:{display:"flex",justifyContent:"flex-end",gap:8,marginLeft:-32,marginRight:-32,marginTop:-32,padding:"14px 32px",background:C.bg}},
             e("button",{style:{cursor:"pointer",padding:"9px 18px",borderRadius:14,border:"1px solid "+C.border,background:C.surface,fontSize:13,color:C.textMuted,fontWeight:500},onClick:function(){ setClienteSel(null); setForm(formVacio); setModalCliente(true); }},"+ Cliente"),
-            e("button",{style:{cursor:"pointer",padding:"9px 18px",borderRadius:14,border:"1px solid "+C.green+"44",background:C.green+"08",fontSize:13,color:C.green,fontWeight:500},onClick:abrirModalVenta},"+ Venta"),
+            e("button",{style:{cursor:"pointer",padding:"9px 18px",borderRadius:14,border:"1px solid "+C.green+"44",background:C.green+"08",fontSize:13,color:C.green,fontWeight:500},onClick:abrirModalVenta},"+ Venta rápida"),
             !esProductos&&e("button",{style:{cursor:"pointer",padding:"9px 20px",borderRadius:14,border:"none",background:"#5B5CF6",fontSize:13,color:"#fff",fontWeight:600},onClick:function(){ setModalCot(true); }},TXT.nuevaCotizacion)
           ),
           // Filtros styled
         e("div",{style:{paddingTop:20,marginBottom:20}},
-          e("div",{style:{fontSize:28,fontWeight:700,color:C.text,lineHeight:1.1,marginBottom:6}},"Precios enviados"),
-          e("div",{style:{fontSize:14,color:C.textMuted}},"Historial de cotizaciones y su estado")
+          e("div",{style:{fontSize:28,fontWeight:700,color:C.text,lineHeight:1.1,marginBottom:4}},"Cotizaciones"),
+          e("div",{style:{fontSize:13,color:C.textMuted}},"Ideal para clientes que necesitan evaluar una propuesta antes de comprar")
         ),
         e("div",{style:{display:"flex",gap:8,marginBottom:16,flexWrap:"wrap",alignItems:"center"}},
           e("input",{placeholder:"Buscar...",value:filtroCot.busqueda,onChange:function(ev){ setFiltroCot(Object.assign({},filtroCot,{busqueda:ev.target.value})); },style:Object.assign({},st.inp,{flex:1,minWidth:120})}),
@@ -2720,33 +2725,35 @@ export default function CLEO(){
           var esPendiente=cot.estatus==="Pendiente";
           var esRechazada=cot.estatus==="Rechazada";
           var borderColor=esAceptada?C.green:esRechazada?C.red:esPendiente?C.amber:C.borderStrong;
-          return e("div",{key:cot.id,style:{background:C.surface,border:"1px solid "+C.border,borderRadius:16,padding:"18px 20px",marginBottom:10,borderLeft:"3px solid "+borderColor,boxShadow:"0 2px 6px rgba(0,0,0,0.05)"}},
-            // HEADER DE TARJETA
-            e("div",{style:{display:"flex",alignItems:"flex-start",gap:12,flexWrap:"wrap",marginBottom:esAceptada||esRechazada?10:0}},
-              // Info principal
+          return e("div",{key:cot.id,style:{background:C.surface,border:"1px solid "+C.border,borderRadius:16,padding:"16px",marginBottom:10,borderLeft:"3px solid "+borderColor,boxShadow:"0 2px 6px rgba(0,0,0,0.05)"}},
+            // HEADER — info + monto
+            e("div",{style:{display:"flex",alignItems:"flex-start",justifyContent:"space-between",gap:8,marginBottom:8}},
               e("div",{style:{flex:1,minWidth:0}},
-                e("div",{style:{fontWeight:600,fontSize:14,color:C.text,marginBottom:3}},cot.concepto||"Cotizacion"),
-                e("div",{style:{fontSize:12,color:C.textMuted,marginBottom:4}},cl?cl.nombre:"--"," · ",cl?cl.negocio:""),
+                e("div",{style:{fontWeight:600,fontSize:14,color:C.text,marginBottom:3,lineHeight:1.3,wordBreak:"break-word"}},cot.concepto||"Cotizacion"),
+                e("div",{style:{fontSize:12,color:C.textMuted,marginBottom:4}},cl?(cl.nombre+(cl.negocio?" · "+cl.negocio:"")):"--"),
                 e("div",{style:{display:"flex",gap:8,flexWrap:"wrap",alignItems:"center"}},
                   e("span",{style:{fontSize:11,color:C.textDim}},"Enviada: "+fmtFecha(cot.fecha)),
                   cot.vigencia&&e("span",{style:{fontSize:11,color:new Date(cot.vigencia)<new Date()?C.red:C.textDim}},"Vence: "+fmtFecha(cot.vigencia))
                 )
               ),
-              // Monto + estatus + acciones
-              e("div",{style:{display:"flex",flexDirection:"column",alignItems:"flex-end",gap:8,flexShrink:0}},
-                e("div",{style:{fontSize:18,fontWeight:600,color:esAceptada?C.green:C.text,whiteSpace:"nowrap",textAlign:"right"}},"$"+Number(cot.monto).toLocaleString()),
-                e("span",{style:st.badgeCot(cot.estatus)},cot.estatus),
-                e("div",{style:{display:"flex",gap:6,marginTop:4,flexWrap:"wrap",justifyContent:"flex-end"}},
-                  e("div",{style:{display:"flex",gap:2,background:C.surfaceUp,borderRadius:6,padding:3,border:"0.5px solid "+C.border}},
-                    ["Pendiente","Aceptada","Rechazada"].map(function(est){
-                      var activo=cot.estatus===est;
-                      return e("button",{key:est,style:{cursor:"pointer",padding:"3px 8px",borderRadius:4,border:"none",background:activo?C.surface:"transparent",fontSize:11,color:activo?C.text:C.textMuted,fontWeight:activo?500:400},onClick:function(){ cambiarEstatus(cot.id,est); }},est);
-                    })
-                  ),
-                  e("button",{style:Object.assign({},st.btn,{fontSize:11,padding:"4px 10px"}),onClick:function(){ editarCot(cot); }},"Editar"),e("button",{style:Object.assign({},st.btn,{fontSize:11,padding:"4px 10px"}),onClick:function(){ generarPDFCot(cot,cl,perfil); }},"PDF"),
-                  waUrl&&e("a",{href:waUrl,target:"_blank",rel:"noreferrer",style:{padding:"4px 10px",borderRadius:8,background:C.greenBg,color:C.green,border:"0.5px solid "+C.greenBorder,fontSize:11,textDecoration:"none",display:"inline-flex",alignItems:"center",gap:4}},e(SvgWA,{size:12}),"WA")
-                )
+              e("div",{style:{display:"flex",flexDirection:"column",alignItems:"flex-end",gap:4,flexShrink:0,paddingLeft:8}},
+                e("div",{style:{fontSize:17,fontWeight:700,color:esAceptada?C.green:C.text,whiteSpace:"nowrap"}},"$"+Number(cot.monto).toLocaleString()),
+                e("span",{style:st.badgeCot(cot.estatus)},cot.estatus)
               )
+            ),
+            // ACCIONES
+            e("div",{style:{display:"flex",gap:4,flexWrap:"wrap",alignItems:"center",marginBottom:esAceptada||esRechazada?10:0}},
+              e("div",{style:{display:"flex",gap:2,background:C.surfaceUp,borderRadius:6,padding:3,border:"0.5px solid "+C.border}},
+                ["Pendiente","Aceptada","Rechazada"].map(function(est){
+                  var activo=cot.estatus===est;
+                  return e("button",{key:est,style:{cursor:"pointer",padding:"3px 8px",borderRadius:4,border:"none",background:activo?C.surface:"transparent",fontSize:11,color:activo?C.text:C.textMuted,fontWeight:activo?500:400},onClick:function(){ cambiarEstatus(cot.id,est); }},est);
+                })
+              ),
+              e("button",{style:Object.assign({},st.btn,{fontSize:11,padding:"4px 10px"}),onClick:function(){ editarCot(cot); }},"Editar"),
+              e("button",{style:Object.assign({},st.btn,{fontSize:11,padding:"4px 10px"}),onClick:function(){ generarPDFCot(cot,cl,perfil); }},"PDF"),
+              waUrl
+                ? e("a",{href:waUrl,target:"_blank",rel:"noreferrer",style:{padding:"4px 10px",borderRadius:8,background:C.greenBg,color:C.green,border:"0.5px solid "+C.greenBorder,fontSize:11,textDecoration:"none",display:"inline-flex",alignItems:"center",gap:4}},e(SvgWA,{size:12}),"WA")
+                : cl&&cl.canalPrincipal&&cl.canalPrincipal!=="WhatsApp"&&contactUrl(cl,"Hola")&&e("a",{href:contactUrl(cl,"Hola"),target:"_blank",rel:"noreferrer",style:{padding:"4px 10px",borderRadius:8,background:C.purplePale,color:C.purple,border:"0.5px solid "+C.purple+"33",fontSize:11,textDecoration:"none",display:"inline-flex",alignItems:"center",gap:4}},e(SvgIcon,{canal:cl.canalPrincipal,size:11}),cl.canalPrincipal.slice(0,2))
             ),
             esAceptada&&e("div",{style:{paddingTop:10,borderTop:"0.5px solid "+C.border}},
               (function(){
@@ -2968,7 +2975,7 @@ export default function CLEO(){
           // BOTONES , arriba a la derecha
           e("div",{style:{display:"flex",justifyContent:"flex-end",gap:8,marginLeft:-32,marginRight:-32,marginTop:-32,padding:"14px 32px",background:C.bg}},
             e("button",{style:{cursor:"pointer",padding:"9px 18px",borderRadius:14,border:"1px solid "+C.border,background:C.surface,fontSize:13,color:C.textMuted,fontWeight:500},onClick:function(){ setClienteSel(null); setForm(formVacio); setModalCliente(true); }},"+ Cliente"),
-            e("button",{style:{cursor:"pointer",padding:"9px 18px",borderRadius:14,border:"1px solid "+C.green+"44",background:C.green+"08",fontSize:13,color:C.green,fontWeight:500},onClick:abrirModalVenta},"+ Venta"),
+            e("button",{style:{cursor:"pointer",padding:"9px 18px",borderRadius:14,border:"1px solid "+C.green+"44",background:C.green+"08",fontSize:13,color:C.green,fontWeight:500},onClick:abrirModalVenta},"+ Venta rápida"),
             !esProductos&&e("button",{style:{cursor:"pointer",padding:"9px 20px",borderRadius:14,border:"none",background:"#5B5CF6",fontSize:13,color:"#fff",fontWeight:600},onClick:function(){ setModalCot(true); }},TXT.nuevaCotizacion)
           ),
 
@@ -3097,6 +3104,12 @@ export default function CLEO(){
         var vdSinContacto=ventasPer.filter(function(v){ return v.tipo!=="especifico"; }).length;
         var pctCapturado=ventasPer.length>0?Math.round((vdConContacto/ventasPer.length)*100):null;
 
+        // Servicio/concepto más vendido (cotizaciones aceptadas + ventas rápidas)
+        var conceptoCount={};
+        aceptadas.forEach(function(c){ if(c.concepto){ var k=c.concepto.trim(); conceptoCount[k]=(conceptoCount[k]||0)+1; } });
+        ventasPer.forEach(function(v){ if(v.concepto){ var k=v.concepto.trim(); conceptoCount[k]=(conceptoCount[k]||0)+1; } });
+        var topConcepto=Object.entries(conceptoCount).sort(function(a,b){ return b[1]-a[1]; })[0]||null;
+
         // Tiempo promedio de cierre (dias desde registro hasta cotizacion aceptada)
         var tiemposCierre=[];
         aceptadas.forEach(function(cot){
@@ -3183,59 +3196,60 @@ export default function CLEO(){
             e("div",{style:{fontSize:14,color:C.textMuted}},"Una revisión de cómo estás vendiendo , no solo cuánto.")
           ),
 
-          // HERO CARD OSCURA
           (function(){
             var cobradoMes=totalG+totalVD;
             var enJuego=cotsPeriodo.filter(function(c){ return c.estatus==="Pendiente"; }).reduce(function(s,c){ return s+c.monto; },0);
-            var aprendizaje=motivoPrincipal
-              ?"La mayoría de las oportunidades que no cerraron mencionaron \""+motivoPrincipal+"\" como objeción principal."
-              :cotsPeriodo.length>=3&&tasa>=50
-              ?"Más de la mitad de tus propuestas se convierten en ventas. Eso te pone por encima del promedio de emprendedores."
-              :promDiasCierre!==null
-              ?(promDiasCierre<=1?"Tus clientes deciden muy rápido, casi el mismo día. Ten todo listo desde el primer mensaje.":"Tus clientes tardan en promedio "+promDiasCierre+" días en decidir. Ese es el momento ideal para hacer seguimiento.")
-              :"Sigue registrando tus conversaciones , CLEO empezará a descubrir patrones de tu negocio.";
             return e("div",{style:{background:"#0F1729",borderRadius:20,padding:"24px 28px",marginBottom:24,position:"relative",overflow:"hidden",boxShadow:"0 4px 20px rgba(0,0,0,0.12)"}},
-              e("div",{style:{position:"absolute",top:-40,right:-40,width:180,height:180,borderRadius:"50%",background:"rgba(99,102,241,0.08)"}}),
-              e("div",{style:{display:"grid",gridTemplateColumns:"1fr 2px 1fr 2px 1fr",gap:0,alignItems:"center",marginBottom:24,paddingBottom:24,borderBottom:"1px solid rgba(255,255,255,0.06)"}},[
-                {label:"Cobrado",val:"$"+cobradoMes.toLocaleString(),color:"#4ADE80",sub:aceptadas.length+" venta"+(aceptadas.length!==1?"s":"")+" cerrada"+(aceptadas.length!==1?"s":"")},
+              e("div",{style:{display:"grid",gridTemplateColumns:"1fr 1px 1fr 1px 1fr 1px 1fr",gap:0,alignItems:"start"}},[
+                {label:"Total cobrado",val:"$"+cobradoMes.toLocaleString(),color:"#4ADE80",sub:"cotizaciones + ventas rápidas"},
                 null,
                 {label:"Tasa de cierre",val:cotsPeriodo.length?tasa+"%":"--",color:tasa>=50?"#4ADE80":tasa>=30?"#FCD34D":"#F87171",sub:aceptadas.length+" de "+cotsPeriodo.length+" propuestas"},
                 null,
-                {label:"En juego",val:"$"+enJuego.toLocaleString(),color:"#94A3B8",sub:"esperando respuesta"},
+                {label:"Ventas rápidas",val:ventasPer.length>0?"$"+totalVD.toLocaleString():"--",color:"#94A3B8",sub:ventasPer.length+" venta"+(ventasPer.length!==1?"s":"")+" este periodo"},
+                null,
+                {label:"En juego",val:enJuego>0?"$"+enJuego.toLocaleString():"$0",color:"#94A3B8",sub:"esperando respuesta"},
               ].map(function(k,i){
-                if(k===null) return e("div",{key:i,style:{width:1,height:48,background:"rgba(255,255,255,0.06)"}});
-                return e("div",{key:i,style:{padding:"0 24px"}},
-                  e("div",{style:{fontSize:10,color:"rgba(255,255,255,0.4)",textTransform:"uppercase",letterSpacing:"0.8px",marginBottom:4}},k.label),
-                  e("div",{style:{fontSize:24,fontWeight:700,color:k.color,lineHeight:1,marginBottom:3}},k.val),
-                  e("div",{style:{fontSize:11,color:"rgba(255,255,255,0.35)"}},k.sub)
+                if(k===null) return e("div",{key:i,style:{width:1,background:"rgba(255,255,255,0.06)",alignSelf:"stretch"}});
+                return e("div",{key:i,style:{padding:isMobile?"0 6px":"0 12px",textAlign:"center"}},
+                  e("div",{style:{fontSize:isMobile?8:10,color:"rgba(255,255,255,0.4)",textTransform:"uppercase",letterSpacing:"0.8px",marginBottom:4}},k.label),
+                  e("div",{style:{fontSize:isMobile?14:20,fontWeight:700,color:k.color,lineHeight:1,marginBottom:3}},k.val),
+                  e("div",{style:{fontSize:isMobile?9:11,color:"rgba(255,255,255,0.35)",lineHeight:1.3}},k.sub)
                 );
-              })),
-              e("div",{style:{display:"flex",gap:14,alignItems:"flex-start"}},
-                e("div",{style:{width:36,height:36,borderRadius:10,background:"rgba(99,102,241,0.2)",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}},e("span",{style:{fontSize:18}},"🧠")),
-                e("div",null,
-                  e("div",{style:{fontSize:10,color:"#6366F1",fontWeight:700,textTransform:"uppercase",letterSpacing:"1px",marginBottom:6}},"Aprendizaje principal"),
-                  e("div",{style:{fontSize:14,color:"#E2E8F0",lineHeight:1.65,fontWeight:500}},aprendizaje)
-                )
-              )
+              }))
             );
           })(),
 
-          // DESCUBRIMIENTOS
+          // DESCUBRIMIENTOS UNIFICADOS
           e("div",{style:{background:C.surface,borderRadius:20,padding:"24px",border:"1px solid "+C.border,boxShadow:"0 2px 12px rgba(0,0,0,0.04)",marginBottom:24}},
-            e("div",{style:{fontSize:11,fontWeight:700,color:C.textDim,textTransform:"uppercase",letterSpacing:"1.5px",marginBottom:20}},"Lo que CLEO descubrio"),
+            e("div",{style:{display:"flex",alignItems:"center",gap:10,marginBottom:20}},
+              e("div",{style:{width:32,height:32,borderRadius:10,background:C.purplePale,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}},e("span",{style:{fontSize:16}},"🧠")),
+              e("div",{style:{fontSize:13,fontWeight:700,color:C.text}},"Lo que aprendiste este periodo")
+            ),
             e("div",{style:{display:"flex",flexDirection:"column"}},
               (function(){
                 var items=[];
-                if(cotsPeriodo.length>0) items.push({ic:"📈",txt:"Cerraste "+aceptadas.length+" de "+cotsPeriodo.length+" cotizaciones ("+tasa+"% de tasa de cierre).",color:tasa>=40?C.green:C.text});
-                if(promDiasCierre!==null) items.push({ic:"⏱️",txt:promDiasCierre<=1?"Tus clientes deciden muy rápido, casi el mismo día.":promDiasCierre<=3?"Tus clientes deciden en "+promDiasCierre+" días , decisiones rápidas.":"Tus clientes tardan ~"+promDiasCierre+" días en decidir.",color:C.text});
-                if(motivoPrincipal) items.push({ic:"🔍",txt:"\""+motivoPrincipal+"\" fue la objeción más frecuente.",color:C.red});
-                if(totalIngresos>0) items.push({ic:"📊",txt:pctCot+"% de tus ingresos vinieron de cotizaciones.",color:C.text});
+                // Cotizaciones
+                if(cotsPeriodo.length>0) items.push({ic:"📈",txt:"Cerraste "+aceptadas.length+" de "+cotsPeriodo.length+" cotizaciones — "+tasa+"% de tasa de cierre.",color:tasa>=40?C.green:C.text});
+                // Tiempo de cierre
+                if(promDiasCierre!==null) items.push({ic:"⏱️",txt:promDiasCierre<=1?"Tus clientes deciden muy rápido, casi el mismo día. Ten todo listo desde el primer mensaje.":promDiasCierre<=3?"Tus clientes deciden en "+promDiasCierre+" días — decisiones rápidas.":"Tus clientes tardan ~"+promDiasCierre+" días en decidir. Ese es el momento ideal para hacer seguimiento.",color:C.text});
+                // Ventas rápidas
+                if(ventasPer.length>0) items.push({ic:"⚡",txt:"Tuviste "+ventasPer.length+" venta"+(ventasPer.length!==1?"s":"")+" rápida"+(ventasPer.length!==1?"s":"")+" por $"+totalVD.toLocaleString()+(vdConContacto>0?" — "+vdConContacto+" con cliente identificado":"")+".",color:C.text});
+                // Servicio más vendido
+                if(topConcepto&&topConcepto[1]>=2) items.push({ic:"⭐",txt:"\""+topConcepto[0]+"\" fue tu servicio más vendido este periodo ("+topConcepto[1]+" veces).",color:C.purple});
+                // Objeción principal
+                if(motivoPrincipal) items.push({ic:"🔍",txt:"\""+motivoPrincipal+"\" fue la objeción más frecuente en lo que no cerraste.",color:C.red});
+                // Distribución de ingresos
+                if(totalIngresos>0&&totalVD>0&&totalG>0) items.push({ic:"📊",txt:pctCot+"% de tus ingresos vinieron de cotizaciones y "+pctVD+"% de ventas rápidas.",color:C.text});
+                else if(totalIngresos>0) items.push({ic:"📊",txt:pctCot+"% de tus ingresos vinieron de cotizaciones.",color:C.text});
+                // Saldos pendientes
                 var saldosPendientes=aceptadas.reduce(function(s,cot){ var p=cot.pagos||[]; var pagado=p.reduce(function(x,pg){ return x+Number(pg.monto); },0); return s+(cot.monto-pagado>0?cot.monto-pagado:0); },0);
-                if(saldosPendientes===0&&aceptadas.length>0) items.push({ic:"✅",txt:"No tienes cuentas pendientes por cobrar este periodo.",color:C.green});
-                else if(saldosPendientes>0) items.push({ic:"⚠️",txt:"Te deben $"+saldosPendientes.toLocaleString()+" de ventas ya cerradas este periodo.",color:C.amber});
+                if(saldosPendientes===0&&aceptadas.length>0) items.push({ic:"✅",txt:"Sin cuentas pendientes por cobrar este periodo.",color:C.green});
+                else if(saldosPendientes>0) items.push({ic:"⚠️",txt:"Te deben $"+saldosPendientes.toLocaleString()+" de ventas ya cerradas.",color:C.amber});
+                // Canal
                 if(mejorCanalCierre) items.push({ic:"🎯",txt:mejorCanalCierre[0]+" es tu canal con más clientes cerrados.",color:C.text});
-                if(prom>0) items.push({ic:"💰",txt:"Ticket promedio: $"+prom.toLocaleString()+" por venta.",color:C.text});
-                if(items.length===0) items.push({ic:"🌱",txt:"Registra más conversaciones para que CLEO descubra patrones.",color:C.textMuted});
+                // Ticket promedio
+                if(prom>0) items.push({ic:"💰",txt:"Ticket promedio por cotización: $"+prom.toLocaleString()+".",color:C.text});
+                if(items.length===0) items.push({ic:"🌱",txt:"Sigue registrando ventas y conversaciones — CLEO empezará a descubrir patrones.",color:C.textMuted});
                 return items.map(function(item,i){
                   return e("div",{key:i,style:{display:"flex",gap:14,alignItems:"flex-start",padding:"12px 0",borderBottom:i<items.length-1?"1px solid "+C.border:"none"}},
                     e("span",{style:{fontSize:20,flexShrink:0}},item.ic),
@@ -3256,7 +3270,7 @@ export default function CLEO(){
                 if(pctCot>=60) items.push("La mayoría de tus ventas vienen de cotizaciones.");
                 if(prom>0) items.push("Ticket promedio de $"+prom.toLocaleString()+".");
                 if(mejorCanalCierre&&mejorCanalCierre[1]>=2) items.push(mejorCanalCierre[0]+" te trae clientes que compran.");
-                if(ventasPer.length>0) items.push(ventasPer.length+" venta"+(ventasPer.length>1?"s directas":" directa")+" este periodo.");
+                if(ventasPer.length>0) items.push(ventasPer.length+" venta"+(ventasPer.length>1?"s rápidas":" rápida")+" este periodo.");
                 if(items.length===0) items.push("Registra más ventas y CLEO identificará qué funciona.");
                 return e("div",{style:{display:"flex",flexDirection:"column",gap:12}},
                   items.map(function(item,i){ return e("div",{key:i,style:{display:"flex",gap:10,alignItems:"flex-start"}},e("div",{style:{width:18,height:18,borderRadius:"50%",background:C.green+"15",border:"1px solid "+C.green+"40",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,marginTop:2}},e("svg",{width:8,height:8,viewBox:"0 0 24 24",fill:"none"},e("path",{d:"M5 13l4 4L19 7",stroke:C.green,strokeWidth:3,strokeLinecap:"round",strokeLinejoin:"round"}))),e("div",{style:{fontSize:13,color:C.text,lineHeight:1.5}},item)); })
@@ -3357,28 +3371,6 @@ export default function CLEO(){
             })()
           ),
 
-          // LO QUE APRENDISTE
-          e("div",{style:{background:"#0F1729",borderRadius:20,padding:"24px",marginBottom:8,boxShadow:"0 4px 20px rgba(0,0,0,0.12)"}},
-            e("div",{style:{fontSize:11,fontWeight:700,color:"#4F46E5",textTransform:"uppercase",letterSpacing:"1.5px",marginBottom:20}},"Lo que aprendiste este periodo"),
-            e("div",{style:{display:"flex",flexDirection:"column"}},
-              (function(){
-                var lecciones=[];
-                if(aceptadas.length>0&&cotsPeriodo.length>1) lecciones.push("Los clientes que recibieron seguimiento tienen más probabilidades de comprar.");
-                if(pctCot>=60) lecciones.push("Tus mejores ventas llegaron mediante cotizaciones bien preparadas.");
-                if(motivoPrincipal) lecciones.push("\""+motivoPrincipal+"\" fue una objeción recurrente , es una señal sobre cómo presentas tu valor.");
-                if(promDiasCierre!==null&&promDiasCierre>7) lecciones.push("La mayoría de tus clientes decide después de varios días , la paciencia y el seguimiento son clave.");
-                if(mejorCanalCierre) lecciones.push(mejorCanalCierre[0]+" funciona , no abandones ese canal.");
-                if(rechazadas.length===0&&cotsPeriodo.length>=2) lecciones.push("No perdiste ninguna cotización este periodo. Sigue haciendo lo que estás haciendo.");
-                if(lecciones.length===0) lecciones.push("Cada conversación que registras es datos. Con el tiempo CLEO te compartirá aprendizajes más específicos.");
-                return lecciones.map(function(l,i){
-                  return e("div",{key:i,style:{display:"flex",gap:14,alignItems:"flex-start",padding:"12px 0",borderBottom:i<lecciones.length-1?"1px solid rgba(255,255,255,0.06)":"none"}},
-                    e("span",{style:{fontSize:18,flexShrink:0}},"📚"),
-                    e("div",{style:{fontSize:13,color:"#94A3B8",lineHeight:1.65}},l)
-                  );
-                });
-              })()
-            )
-          )
         )
       })()
     ),// cierra padding div
@@ -3387,8 +3379,8 @@ export default function CLEO(){
 
     // BOTTOM NAV , solo móvil
     isMobile&&e("div",{style:{position:"fixed",bottom:0,left:0,right:0,background:C.dark,borderTop:"1px solid "+C.darkBorder,display:"flex",zIndex:50,paddingBottom:"env(safe-area-inset-bottom,0px)"}},
-      // 5 items principales
-      ["inicio","hoy","pipeline","clientes","cotizaciones"].map(function(v){
+      // 5 items principales: inicio, hoy, pipeline, ventas, cotizaciones
+      ["inicio","hoy","pipeline","ventas","cotizaciones"].map(function(v){
         var activo=vista===v;
         var nBadge=0;
         if(v==="hoy") nBadge=clientes.filter(function(c){ return c.etapa!=="Ganado"&&c.etapa!=="Perdido"&&diasDesde(c.fechaEtapa||c.fecha)>=3; }).length;
@@ -3410,11 +3402,11 @@ export default function CLEO(){
         e("span",{style:{fontSize:9,color:mostrarMas?"#fff":"rgba(255,255,255,0.45)",fontWeight:mostrarMas?600:400,lineHeight:1}},"Más"),
         mostrarMas&&e("div",{style:{position:"absolute",top:0,left:"50%",transform:"translateX(-50%)",width:20,height:2,background:C.purple,borderRadius:99}})
       ),
-      // Drawer "Más" , resumen, ventas, perfil, catálogo
+      // Drawer "Más"
       mostrarMas&&e("div",{style:{position:"absolute",bottom:"100%",right:0,left:0,background:C.dark,border:"1px solid "+C.darkBorder,borderRadius:"14px 14px 0 0",padding:"8px"}},
         [
+          {v:"clientes",icon:NAV_SVG["clientes"],label:NAV_LABELS["clientes"]},
           {v:"resumen",icon:NAV_SVG["resumen"],label:NAV_LABELS["resumen"]},
-          {v:"ventas",icon:NAV_SVG["ventas"],label:NAV_LABELS["ventas"]},
         ].map(function(item){
           var activo=vista===item.v;
           return e("button",{key:item.v,style:{display:"flex",alignItems:"center",gap:10,width:"100%",padding:"12px 16px",background:activo?C.purple+"22":"none",border:"none",cursor:"pointer",borderRadius:10,marginBottom:2},onClick:function(){ setVista(item.v); setMostrarMas(false); }},
@@ -3475,7 +3467,7 @@ export default function CLEO(){
         );
       }).length;
       var nUrgF=programadosF+atascadosF;
-      if(vista==="hoy") return null;
+      if(vista==="hoy"||isMobile) return null;
       return e("div",{style:{position:"fixed",bottom:24,right:24,zIndex:90}},
         e("button",{
           onClick:function(){ setVista("hoy"); },
@@ -3553,7 +3545,7 @@ export default function CLEO(){
       );
 
       // PASO 1 , FELICIDADES + POR QUE COMPRO + PAGO
-      if(pasoGanado===1) return e("div",{style:st.ov,onClick:cancelarGanado},
+      if(pasoGanado===1) return e("div",{style:st.ov},
         e("div",{style:st.modal,onClick:function(ev){ ev.stopPropagation(); }},
           headerPasos,
 
@@ -3638,16 +3630,18 @@ export default function CLEO(){
       );
 
       // PASO 2 , REFERIDO
-      if(pasoGanado===2) return e("div",{style:st.ov,onClick:cancelarGanado},
+      if(pasoGanado===2) return e("div",{style:st.ov},
         e("div",{style:st.modal,onClick:function(ev){ ev.stopPropagation(); }},
           headerPasos,
           e("div",{style:{fontSize:13,color:C.textMuted,marginBottom:16,lineHeight:1.6}},"Los clientes satisfechos casi siempre están dispuestos a recomendarte , pero rara vez lo hacen solos. No porque no quieran, sino porque nadie les preguntó. Tu siguiente venta puede venir de aquí."),
-          urlReferido&&e("div",{style:{marginBottom:20,padding:"14px 16px",background:C.green+"0D",borderRadius:10,border:"0.5px solid "+C.green+"33"}},
+          e("div",{style:{marginBottom:20,padding:"14px 16px",background:C.green+"0D",borderRadius:10,border:"0.5px solid "+C.green+"33"}},
             e("div",{style:{fontSize:12,color:C.green,fontWeight:600,marginBottom:8}},"Hazlo ahora , tarda 30 segundos"),
             e("div",{style:{fontSize:12,color:C.textMuted,marginBottom:10,lineHeight:1.5}},'"'+msgReferido+'"'),
-            e("a",{href:urlReferido,target:"_blank",rel:"noreferrer",
-              style:{display:"inline-flex",alignItems:"center",gap:8,padding:"10px 16px",borderRadius:8,background:C.green,color:"#fff",fontSize:13,fontWeight:600,textDecoration:"none",cursor:"pointer",marginBottom:12}
-            },e(SvgWA,{size:14}),"Pedir referido a "+nombre),
+            urlReferido
+              ? e("a",{href:urlReferido,target:"_blank",rel:"noreferrer",
+                  style:{display:"inline-flex",alignItems:"center",gap:8,padding:"10px 16px",borderRadius:8,background:C.green,color:"#fff",fontSize:13,fontWeight:600,textDecoration:"none",cursor:"pointer",marginBottom:12}
+                },e(SvgWA,{size:14}),"Pedir referido a "+nombre)
+              : e("div",{style:{fontSize:12,color:C.textMuted,marginBottom:12,padding:"8px 12px",background:C.surfaceUp,borderRadius:8}},"Manda este mensaje por WhatsApp, Instagram o como prefieras a "+nombre+"."),
             e("div",{style:{padding:"10px 12px",background:C.amber+"0D",borderRadius:8,border:"0.5px solid "+C.amber+"33"}},
               e("div",{style:{fontSize:11,color:C.amber,fontWeight:600,marginBottom:3}},"💡 Tip para conseguir más referidos"),
               e("div",{style:{fontSize:11,color:C.text,lineHeight:1.6,marginBottom:4}},"Agrega un incentivo y tu cliente tendrá algo concreto que ofrecer:"),
@@ -3662,7 +3656,7 @@ export default function CLEO(){
       );
 
       // PASO 3 , SEGUIMIENTO
-      return e("div",{style:st.ov,onClick:cancelarGanado},
+      return e("div",{style:st.ov},
         e("div",{style:st.modal,onClick:function(ev){ ev.stopPropagation(); }},
           headerPasos,
           e("div",{style:{fontSize:14,fontWeight:600,color:C.text,marginBottom:4}},"¿Cuándo quieres volver a escribirle?"),
@@ -4239,7 +4233,10 @@ export default function CLEO(){
         e("div",{style:{display:"flex",gap:8,justifyContent:"flex-end"}},
           e("button",{style:st.btn,onClick:function(){ setGuardarSvModal(null); }},"No, era único"),
           e("button",{style:st.btnP,onClick:function(){
-            setServicios([...servicios,{id:Date.now(),nombre:guardarSvModal.nombre,precio:guardarSvModal.precio,descripcion:guardarSvModal.descripcion}]);
+            var yaExisteAhora=servicios.some(function(s){ return s.nombre.trim().toLowerCase()===guardarSvModal.nombre.trim().toLowerCase(); });
+            if(!yaExisteAhora){
+              setServicios([...servicios,{id:Date.now(),nombre:guardarSvModal.nombre,precio:guardarSvModal.precio,descripcion:guardarSvModal.descripcion}]);
+            }
             setGuardarSvModal(null);
           }},"Sí, guardarlo")
         )
@@ -4794,83 +4791,142 @@ export default function CLEO(){
 
     // MODAL COTIZACION
     modalCot&&e("div",{style:st.ov,onClick:function(){ setModalCot(false); }},
-      e("div",{style:st.modal,onClick:function(ev){ ev.stopPropagation(); }},
-        e("div",{style:{fontWeight:600,fontSize:15,marginBottom:16,color:C.text}},editCotId?"Editar "+TXT.cotizacion:"Nueva "+TXT.cotizacion),
-        e("div",{style:{marginBottom:12,position:"relative"}},
-          e("label",{style:st.lbl},"Cliente"),
-          e("div",{style:{display:"flex",gap:6}},
-            e("input",{
-              placeholder:formCot.clienteId?(clientes.find(function(c){ return String(c.id)===String(formCot.clienteId); })||{}).nombre||"Buscar cliente...":"Buscar cliente...",
-              value:buscaCli,
-              onChange:function(ev){ setBuscaCli(ev.target.value); setFormCot(Object.assign({},formCot,{clienteId:""})); },
-              onFocus:function(){ setBuscaCli(""); },
-              style:Object.assign({},st.inp,{flex:1})
-            }),
-            e("button",{
-              style:{cursor:"pointer",padding:"0 12px",borderRadius:8,border:"0.5px solid "+C.border,background:buscaCli==="*"?C.purplePale:"transparent",fontSize:13,color:C.textMuted,flexShrink:0},
-              onClick:function(){ setBuscaCli(buscaCli==="*"?"":"*"); setFormCot(Object.assign({},formCot,{clienteId:""})); },
-              title:"Ver todos"
-            },"☰")
-          ),
-          (buscaCli.length>0)&&e("div",{style:{position:"absolute",top:"100%",left:0,right:0,background:C.surface,border:"1px solid "+C.border,borderRadius:8,zIndex:50,maxHeight:200,overflowY:"auto",boxShadow:"0 4px 12px rgba(0,0,0,0.08)"}},
-            [...clientes]
-              .filter(function(c){ return buscaCli==="*"||c.nombre.toLowerCase().includes(buscaCli.toLowerCase())||c.negocio.toLowerCase().includes(buscaCli.toLowerCase()); })
-              .sort(function(a,b){ return a.nombre.localeCompare(b.nombre,"es"); })
-              .map(function(c){
-                return e("div",{key:c.id,
-                  style:{padding:"10px 12px",cursor:"pointer",fontSize:13,color:C.text,borderBottom:"0.5px solid "+C.border},
-                  onMouseDown:function(ev){ ev.preventDefault(); setFormCot(Object.assign({},formCot,{clienteId:String(c.id)})); setBuscaCli(""); },
-                },
-                  e("div",{style:{fontWeight:500}},c.nombre),
-                  c.negocio&&e("div",{style:{fontSize:11,color:C.textDim}},c.negocio)
-                );
-              })
-          ),
-          formCot.clienteId&&!buscaCli&&(function(){
-            var cl=clientes.find(function(c){ return String(c.id)===String(formCot.clienteId); });
-            if(!cl) return null;
-            return e("div",{style:{marginTop:6,padding:"6px 10px",background:C.purplePale,borderRadius:6,fontSize:12,color:C.purple,display:"flex",justifyContent:"space-between",alignItems:"center"}},
-              e("span",null,cl.nombre+(cl.negocio?" , "+cl.negocio:"")),
-              e("button",{style:{background:"none",border:"none",cursor:"pointer",color:C.textDim,fontSize:14},onClick:function(){ setFormCot(Object.assign({},formCot,{clienteId:""})); setBuscaCli(""); }},"×")
-            );
-          })()
-        ),
-        servicios.length>0&&e("div",{style:{marginBottom:12}},
-          e("label",{style:st.lbl},esProductos?"Mis productos frecuentes":"Mis servicios"),
-          e("select",{value:formCot.concepto,onChange:function(ev){ var sv=servicios.find(function(x){ return x.nombre===ev.target.value; }); if(sv) setFormCot(Object.assign({},formCot,{concepto:sv.nombre,precioUnit:sv.precio,notas:sv.descripcion?sv.descripcion.replace(/<[^>]+>/g," ").replace(/\s+/g," ").trim():"",svCondiciones:sv.condiciones||"",svCondicionesHtml:sv.condiciones||""})); else setFormCot(Object.assign({},formCot,{concepto:""})); },style:st.inp},
-            e("option",{value:""},"-- Seleccionar --"),
-            servicios.map(function(sv){ return e("option",{key:sv.id,value:sv.nombre},sv.nombre+" · $"+Number(sv.precio).toLocaleString()); })
-          ),
-          e("div",{style:{fontSize:11,color:C.textDim,marginTop:4}},"¿No está en la lista? Escríbelo abajo , te preguntaremos si quieres guardarlo.")
-        ),
-        e("div",{style:{marginBottom:12}},e("label",{style:st.lbl},TXT.concepto),e("input",{value:formCot.concepto,onChange:function(ev){ setFormCot(Object.assign({},formCot,{concepto:ev.target.value})); },placeholder:esProductos?"ej. Aretes plata, Pastel boda...":"ej. Sesion fotografica, Diseno web...",style:st.inp})),
-        e("div",{style:{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:10,marginBottom:12}},
-          e("div",null,e("label",{style:st.lbl},"Cantidad"),e("input",{type:"number",min:"1",value:formCot.cantidad,onChange:function(ev){ setFormCot(Object.assign({},formCot,{cantidad:ev.target.value})); },style:st.inp})),
-          e("div",null,e("label",{style:st.lbl},"Precio unit."),e(MontoInput,{value:formCot.precioUnit,onChange:function(ev){ setFormCot(Object.assign({},formCot,{precioUnit:ev.target.value})); },style:st.inp,placeholder:"0"})),
-          e("div",null,e("label",{style:st.lbl},"Total"),e("div",{style:Object.assign({},st.inp,{color:C.green,fontWeight:600,display:"flex",alignItems:"center"})},"$"+((Number(formCot.cantidad)||1)*Number(formCot.precioUnit||0)).toLocaleString()))
-        ),
-        e("div",{style:{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,marginBottom:12}},
+      e("div",{style:{background:C.surface,borderRadius:isMobile?"20px 20px 0 0":"20px",width:isMobile?"100%":560,maxWidth:"100%",maxHeight:isMobile?"94vh":"88vh",border:isMobile?"none":"1px solid "+C.border,boxShadow:"0 8px 32px rgba(0,0,0,0.14)",display:"flex",flexDirection:"column",overflow:"hidden",margin:isMobile?0:"auto"},onClick:function(ev){ ev.stopPropagation(); }},
+
+        // HEADER
+        e("div",{style:{padding:isMobile?"16px 20px":"20px 24px",borderBottom:"1px solid "+C.border,flexShrink:0,display:"flex",alignItems:"center",justifyContent:"space-between"}},
           e("div",null,
-            e("label",{style:st.lbl},"Vigencia (dias)"),
-            e("input",{type:"number",min:"1",placeholder:"ej. 7",value:formCot.vigenciaDias||"",onChange:function(ev){
-              var dias=Number(ev.target.value); var fecha="";
-              if(dias>0){ var d=new Date(); d.setDate(d.getDate()+dias); fecha=d.toISOString().slice(0,10); }
-              setFormCot(Object.assign({},formCot,{vigenciaDias:ev.target.value,vigencia:fecha}));
-            },style:st.inp}),
-            formCot.vigencia&&e("div",{style:{fontSize:11,color:C.textDim,marginTop:4}},"Vence: "+formCot.vigencia)
+            e("div",{style:{fontWeight:700,fontSize:isMobile?15:17,color:C.text}},editCotId?"Editar "+TXT.cotizacion:"Nueva "+TXT.cotizacion),
+            e("div",{style:{fontSize:12,color:C.textMuted,marginTop:2}},"Prepara una propuesta para tu cliente")
           ),
-          e("div",null,e("label",{style:st.lbl},"Estatus"),e("select",{value:formCot.estatus,onChange:function(ev){ setFormCot(Object.assign({},formCot,{estatus:ev.target.value})); },style:st.inp},["Pendiente","Aceptada","Rechazada"].map(function(est){ var lm={"Aceptada":esProductos?"Compró":"Aceptada","Rechazada":esProductos?"No compró":"Rechazada","Pendiente":"Pendiente"}; return e("option",{key:est,value:est},lm[est]||est); })))
+          e("button",{style:{background:"none",border:"none",cursor:"pointer",color:C.textMuted,fontSize:22,lineHeight:1,padding:"0 2px"},onClick:function(){ setModalCot(false); setEtapaPendiente(null); }},"×")
         ),
-        formCot.notas!==undefined&&e("div",{style:{marginBottom:12}},
-          e("label",{style:st.lbl},"Descripción del servicio"),
-          e("textarea",{value:formCot.notas,onChange:function(ev){ setFormCot(Object.assign({},formCot,{notas:ev.target.value})); },placeholder:"Qué incluye este servicio para este cliente...",style:Object.assign({},st.inp,{minHeight:60,resize:"vertical"})})
+
+        // BODY SCROLLABLE
+        e("div",{style:{padding:isMobile?"16px 20px":"20px 24px",overflowY:"auto",flex:1,display:"flex",flexDirection:"column",gap:isMobile?14:18}},
+
+          // CLIENTE
+          e("div",{style:{position:"relative"}},
+            e("label",{style:st.lbl},"Cliente"),
+            e("div",{style:{display:"flex",gap:6}},
+              e("input",{
+                placeholder:formCot.clienteId?(clientes.find(function(c){ return String(c.id)===String(formCot.clienteId); })||{}).nombre||"Buscar cliente...":"Buscar cliente...",
+                value:buscaCli,
+                onChange:function(ev){ setBuscaCli(ev.target.value); setFormCot(Object.assign({},formCot,{clienteId:""})); },
+                onFocus:function(){ setBuscaCli(""); },
+                style:Object.assign({},st.inp,{flex:1})
+              }),
+              e("button",{
+                style:{cursor:"pointer",padding:"0 14px",borderRadius:10,border:"1px solid "+C.border,background:buscaCli==="*"?C.purplePale:"transparent",fontSize:14,color:C.textMuted,flexShrink:0},
+                onClick:function(){ setBuscaCli(buscaCli==="*"?"":"*"); setFormCot(Object.assign({},formCot,{clienteId:""})); },
+                title:"Ver todos"
+              },"☰")
+            ),
+            (buscaCli.length>0)&&e("div",{style:{position:"absolute",top:"100%",left:0,right:0,background:C.surface,border:"1px solid "+C.border,borderRadius:10,zIndex:50,maxHeight:180,overflowY:"auto",boxShadow:"0 8px 24px rgba(0,0,0,0.1)"}},
+              [...clientes]
+                .filter(function(c){ return buscaCli==="*"||c.nombre.toLowerCase().includes(buscaCli.toLowerCase())||c.negocio.toLowerCase().includes(buscaCli.toLowerCase()); })
+                .sort(function(a,b){ return a.nombre.localeCompare(b.nombre,"es"); })
+                .map(function(c){
+                  return e("div",{key:c.id,
+                    style:{padding:"10px 14px",cursor:"pointer",fontSize:13,color:C.text,borderBottom:"0.5px solid "+C.border},
+                    onMouseDown:function(ev){ ev.preventDefault(); setFormCot(Object.assign({},formCot,{clienteId:String(c.id)})); setBuscaCli(""); },
+                  },
+                    e("div",{style:{fontWeight:500}},c.nombre),
+                    c.negocio&&e("div",{style:{fontSize:12,color:C.textDim}},c.negocio)
+                  );
+                })
+            ),
+            formCot.clienteId&&!buscaCli&&(function(){
+              var cl=clientes.find(function(c){ return String(c.id)===String(formCot.clienteId); });
+              if(!cl) return null;
+              return e("div",{style:{marginTop:6,padding:"8px 12px",background:C.purplePale,borderRadius:8,fontSize:13,color:C.purple,display:"flex",justifyContent:"space-between",alignItems:"center"}},
+                e("div",null,
+                  e("div",{style:{fontWeight:600}},cl.nombre),
+                  cl.negocio&&e("div",{style:{fontSize:12,opacity:0.7}},cl.negocio)
+                ),
+                e("button",{style:{background:"none",border:"none",cursor:"pointer",color:C.textDim,fontSize:16},onClick:function(){ setFormCot(Object.assign({},formCot,{clienteId:""})); setBuscaCli(""); }},"×")
+              );
+            })()
+          ),
+
+          // SERVICIO DEL CATÁLOGO
+          // CONCEPTO + CATÁLOGO
+          e("div",null,
+            e("label",{style:st.lbl},TXT.concepto),
+            servicios.length>0&&e("div",null,
+              e("select",{
+                value:servicios.some(function(sv){ return sv.nombre===formCot.concepto; })?formCot.concepto:"",
+                onChange:function(ev){
+                  var sv=servicios.find(function(x){ return x.nombre===ev.target.value; });
+                  if(sv) setFormCot(Object.assign({},formCot,{concepto:sv.nombre,precioUnit:sv.precio,notas:sv.descripcion?sv.descripcion.replace(/<[^>]+>/g," ").replace(/\s+/g," ").trim():"",svCondiciones:sv.condiciones||"",svCondicionesHtml:sv.condiciones||""}));
+                  else setFormCot(Object.assign({},formCot,{concepto:""}));
+                },
+                style:Object.assign({},st.inp,{marginBottom:8,color:servicios.some(function(sv){ return sv.nombre===formCot.concepto; })?C.text:C.textMuted})
+              },
+                e("option",{value:""},"-- Seleccionar del catálogo --"),
+                servicios.map(function(sv){ return e("option",{key:sv.id,value:sv.nombre},sv.nombre+" · $"+Number(sv.precio).toLocaleString()); })
+              ),
+              e("div",{style:{display:"flex",alignItems:"center",gap:8,marginBottom:8}},
+                e("div",{style:{flex:1,height:1,background:C.border}}),
+                e("div",{style:{fontSize:11,color:C.textDim,whiteSpace:"nowrap"}},"o escríbelo manualmente"),
+                e("div",{style:{flex:1,height:1,background:C.border}})
+              )
+            ),
+            e("input",{value:formCot.concepto,onChange:function(ev){ setFormCot(Object.assign({},formCot,{concepto:ev.target.value})); },placeholder:esProductos?"ej. Aretes plata, Pastel boda...":"ej. Sesión fotográfica, Diseño web...",style:st.inp}),
+            servicios.length>0&&!servicios.some(function(sv){ return sv.nombre===formCot.concepto; })&&formCot.concepto.trim()&&e("div",{style:{fontSize:12,color:C.textDim,marginTop:5}},"¿No está en la lista? Te preguntaremos si quieres guardarlo al catálogo.")
+          ),
+
+          // PRECIO ROW: cantidad | precio unit | total
+          e("div",null,
+            e("label",{style:st.lbl},"Precio"),
+            e("div",{style:{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:10}},
+              e("div",null,
+                e("div",{style:{fontSize:12,color:C.textMuted,marginBottom:5}},"Cantidad"),
+                e("input",{type:"number",min:"1",value:formCot.cantidad,onChange:function(ev){ setFormCot(Object.assign({},formCot,{cantidad:ev.target.value})); },style:st.inp})
+              ),
+              e("div",null,
+                e("div",{style:{fontSize:12,color:C.textMuted,marginBottom:5}},"Precio unit."),
+                e(MontoInput,{value:formCot.precioUnit,onChange:function(ev){ setFormCot(Object.assign({},formCot,{precioUnit:ev.target.value})); },style:st.inp,placeholder:"0"})
+              ),
+              e("div",null,
+                e("div",{style:{fontSize:12,color:C.textMuted,marginBottom:5}},"Total"),
+                e("div",{style:Object.assign({},st.inp,{color:C.green,fontWeight:700,fontSize:15,display:"flex",alignItems:"center",justifyContent:"center",background:C.greenBg,border:"1px solid "+C.greenBorder})},"$"+((Number(formCot.cantidad)||1)*Number(formCot.precioUnit||0)).toLocaleString())
+              )
+            )
+          ),
+
+          // VIGENCIA
+          e("div",null,
+            e("label",{style:st.lbl},"Vigencia (días)"),
+            e("div",{style:{display:"flex",gap:10,alignItems:"center"}},
+              e("input",{type:"number",min:"1",placeholder:"ej. 7",value:formCot.vigenciaDias||"",onChange:function(ev){
+                var dias=Number(ev.target.value); var fecha="";
+                if(dias>0){ var d=new Date(); d.setDate(d.getDate()+dias); fecha=d.toISOString().slice(0,10); }
+                setFormCot(Object.assign({},formCot,{vigenciaDias:ev.target.value,vigencia:fecha}));
+              },style:Object.assign({},st.inp,{flex:1})}),
+              formCot.vigencia&&e("div",{style:{fontSize:12,color:C.textMuted,whiteSpace:"nowrap",flexShrink:0,paddingLeft:4}},"Vence: "+formCot.vigencia)
+            )
+          ),
+
+          // DESCRIPCIÓN
+          formCot.notas!==undefined&&e("div",null,
+            e("label",{style:st.lbl},"Descripción del servicio"),
+            e("textarea",{value:formCot.notas,onChange:function(ev){ setFormCot(Object.assign({},formCot,{notas:ev.target.value})); },placeholder:"Qué incluye este servicio para este cliente...",style:Object.assign({},st.inp,{minHeight:64,resize:"vertical"})})
+          ),
+
+          // CONDICIONES
+          e("div",null,
+            e("label",{style:st.lbl},"Condiciones para este cliente"),
+            e("div",{style:{fontSize:12,color:C.textDim,marginBottom:6}},"Puedes modificar las condiciones para esta cotización sin cambiar tu catálogo."),
+            e(RichEditor,{key:"cot-cond-"+(formCot.concepto||""),value:formCot.svCondicionesHtml||formCot.svCondiciones||"",onChange:function(v){ setFormCot(Object.assign({},formCot,{svCondicionesHtml:v,svCondiciones:v.replace(/<[^>]+>/g," ").replace(/\s+/g," ").trim()})); },placeholder:"Entrega, revisiones, forma de pago, excepciones...",minHeight:70})
+          )
         ),
-        e("div",{style:{marginBottom:16}},
-          e("label",{style:st.lbl},"Condiciones para este cliente"),
-          e("div",{style:{fontSize:11,color:C.textDim,marginBottom:6}},"Puedes modificar las condiciones para esta cotización sin cambiar tu catálogo."),
-          e(RichEditor,{key:"cot-cond-"+(formCot.concepto||""),value:formCot.svCondicionesHtml||formCot.svCondiciones||"",onChange:function(v){ setFormCot(Object.assign({},formCot,{svCondicionesHtml:v,svCondiciones:v.replace(/<[^>]+>/g," ").replace(/\s+/g," ").trim()})); },placeholder:"Entrega, revisiones, forma de pago, excepciones...",minHeight:70})
-        ),
-        e("div",{style:{display:"flex",gap:8,justifyContent:"flex-end"}},e("button",{style:st.btn,onClick:function(){ setModalCot(false); setEtapaPendiente(null); }},"Cancelar"),e("button",{style:st.btnP,onClick:guardarCot},"Guardar"))
+
+        // FOOTER FIJO
+        e("div",{style:{padding:isMobile?"12px 20px 28px":"14px 24px",borderTop:"1px solid "+C.border,display:"flex",gap:8,justifyContent:"flex-end",background:C.surfaceUp,flexShrink:0}},
+          e("button",{style:st.btn,onClick:function(){ setModalCot(false); setEtapaPendiente(null); }},"Cancelar"),
+          e("button",{style:Object.assign({},st.btnP,{opacity:formCot.concepto.trim()?1:0.5}),onClick:guardarCot,disabled:!formCot.concepto.trim()},"Guardar propuesta")
+        )
       )
     )
   );

@@ -760,8 +760,15 @@ function ModalVenta(props){
   }
   var tipoOpciones=[{key:"especifico",label:"Con cliente",desc:"Tienes el contacto"},{key:"generico",label:"Sin contacto",desc:"Venta rapida"},{key:"dia",label:"Total del dia",desc:"Monto global"}];
   return e("div",{style:st.ov,onClick:function(){ setModalVenta(false); }},
-    e("div",{style:st.modal,onClick:function(ev){ ev.stopPropagation(); }},
-      e("div",{style:{fontWeight:600,fontSize:15,marginBottom:16,color:C.text}},"Venta rápida"),
+    e("div",{style:Object.assign({},st.modal,{padding:0,overflow:"hidden"}),onClick:function(ev){ ev.stopPropagation(); }},
+      e("div",{style:{padding:"20px 24px 16px",background:"linear-gradient(135deg,"+C.greenBg+" 0%,transparent 70%)",borderBottom:"1px solid "+C.border,display:"flex",alignItems:"center",justifyContent:"space-between"}},
+        e("div",null,
+          e("div",{style:{fontWeight:700,fontSize:18,color:C.text}},"Venta rápida"),
+          e("div",{style:{fontSize:12,color:C.textMuted,marginTop:2}},"Ventas que no requirieron una cotización")
+        ),
+        e("button",{style:{background:C.surfaceUp,border:"1px solid "+C.border,borderRadius:10,cursor:"pointer",color:C.textMuted,fontSize:16,lineHeight:1,padding:"6px 10px"},onClick:function(){ setModalVenta(false); }},"×")
+      ),
+      e("div",{style:{padding:"20px 24px"}},
       e("div",{style:{marginBottom:16}},
         e("label",{style:st.lbl},"Tipo de venta"),
         e("div",{style:{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:6}},
@@ -858,6 +865,7 @@ function ModalVenta(props){
         e("button",{style:st.btn,onClick:function(){ setModalVenta(false); }},"Cancelar"),
         e("button",{style:st.btnG,onClick:avanzarVenta},"Guardar venta")
       )
+      ) // cierra padding div
     )
   );
 }
@@ -960,7 +968,7 @@ function VistaVentas(props){
     // TÍTULO
     e("div",{style:{paddingTop:24,marginBottom:24}},
       e("div",{style:{fontSize:28,fontWeight:700,color:C.text,lineHeight:1.1,marginBottom:4}},"Ventas rápidas"),
-      e("div",{style:{fontSize:13,color:C.textMuted,marginBottom:2}},"Ideal para clientes que compran al momento, sin necesidad de cotización")
+      e("div",{style:{fontSize:14,color:C.textMuted,marginBottom:6}},"Ideal para clientes que compran al momento, sin necesidad de cotización")
     ),
 
     // FILTRO DE PERIODO
@@ -2010,7 +2018,7 @@ export default function CLEO(){
             e("div",{style:{fontSize:isMobile?26:32,fontWeight:700,color:C.text,lineHeight:1.1}},saludo+", "+nombre+" 👋"),
             isMobile&&e("div",{style:{fontSize:13,fontWeight:500,color:C.purple,marginTop:6,letterSpacing:"0.1px"}},"CLEO · El sistema que te ayuda a vender mejor"),
             e("div",{style:{fontSize:12,color:C.textDim,marginTop:isMobile?4:4}},hoyLabel),
-            e("div",{style:{fontSize:14,color:C.textMuted,marginTop:8}},subtitulo)
+            !isMobile&&e("div",{style:{fontSize:14,color:C.textMuted,marginTop:8}},subtitulo)
           ),
 
           // RECONOCIMIENTO , solo visible si aplica, desaparece después de 2 días
@@ -2209,8 +2217,8 @@ export default function CLEO(){
 
           // TÍTULO + FRASE EDUCATIVA
           e("div",{style:{paddingTop:24,marginBottom:24}},
-            e("div",{style:{fontSize:28,fontWeight:700,color:C.text,lineHeight:1.1,marginBottom:8}},"Tus clientes"),
-            e("div",{style:{fontSize:14,color:C.textMuted,lineHeight:1.6,maxWidth:600}},frase)
+            e("div",{style:{fontSize:28,fontWeight:700,color:C.text,lineHeight:1.1,marginBottom:6}},"Tus clientes"),
+            e("div",{style:{fontSize:14,color:C.textMuted}},frase)
           ),
 
           // KANBAN
@@ -2632,7 +2640,7 @@ export default function CLEO(){
           ),
           e("div",{style:{paddingTop:20,marginBottom:20}},
             e("div",{style:{fontSize:28,fontWeight:700,color:C.text,lineHeight:1.1,marginBottom:6}},"Tus clientes"),
-            e("div",{style:{fontSize:14,color:C.textMuted}},clientes.length+" contactos registrados")
+            e("div",{style:{fontSize:14,color:C.textMuted,marginBottom:6}},clientes.length+" contactos registrados")
           ),
           e("div",{style:{display:"flex",gap:8,marginBottom:16,flexWrap:"wrap"}},
             e("input",{placeholder:"Buscar...",style:Object.assign({},st.inp,{flex:1,minWidth:120}),value:busqueda,onChange:function(ev){ setBusqueda(ev.target.value); }}),
@@ -2689,7 +2697,7 @@ export default function CLEO(){
           // Filtros styled
         e("div",{style:{paddingTop:20,marginBottom:20}},
           e("div",{style:{fontSize:28,fontWeight:700,color:C.text,lineHeight:1.1,marginBottom:4}},"Cotizaciones"),
-          e("div",{style:{fontSize:13,color:C.textMuted}},"Ideal para clientes que necesitan evaluar una propuesta antes de comprar")
+          e("div",{style:{fontSize:14,color:C.textMuted,marginBottom:6}},"Ideal para clientes que necesitan evaluar una propuesta antes de comprar")
         ),
         e("div",{style:{display:"flex",gap:8,marginBottom:16,flexWrap:"wrap",alignItems:"center"}},
           e("input",{placeholder:"Buscar...",value:filtroCot.busqueda,onChange:function(ev){ setFiltroCot(Object.assign({},filtroCot,{busqueda:ev.target.value})); },style:Object.assign({},st.inp,{flex:1,minWidth:120})}),
@@ -2776,7 +2784,10 @@ export default function CLEO(){
                 );
               })()
             ),
-            esRechazada&&cot.motivoPerdida&&e("div",{style:{marginTop:8,fontSize:12,color:C.red}},"Motivo: "+cot.motivoPerdida)
+            esRechazada&&cot.motivoPerdida&&e("div",{style:{marginTop:10,paddingTop:10,borderTop:"0.5px solid "+C.redBorder,display:"flex",alignItems:"center",gap:6}},
+              e("span",{style:{fontSize:12,color:C.red,fontWeight:500}},"Motivo:"),
+              e("span",{style:{fontSize:12,color:C.red}},cot.motivoPerdida)
+            )
           );
         })
       ),
@@ -2914,8 +2925,13 @@ export default function CLEO(){
             })(),color:C.urgent,prioridad:2});
         });
 
-        // P3 , cotizacion enviada sin contacto >3 dias
-        clientes.filter(function(c){ return c.etapa==="Cotizacion enviada"&&!c.seguimientoFecha&&diasSinContacto(c)>3; }).forEach(function(c){
+        // P3 , cotizacion enviada sin contacto >3 dias (por ultimoContacto O por fecha cotizacion)
+        clientes.filter(function(c){ 
+          if(c.etapa!=="Cotizacion enviada"||c.seguimientoFecha) return false;
+          var cotPend=cotizaciones.filter(function(cot){ return cot.clienteId===c.id&&cot.estatus==="Pendiente"; }).sort(function(a,b){ return new Date(b.fecha)-new Date(a.fecha); })[0];
+          var diasCot=cotPend?diasDesde(cotPend.fecha):0;
+          return diasSinContacto(c)>3||diasCot>=3;
+        }).forEach(function(c){
           var ctx=contextoCliente(c);
           urgentes.push({cliente:c,razon:ctx||"Mandó tu precio hace "+diasSinContacto(c)+" días y no ha dicho nada. A veces solo necesitan que alguien les pregunte si tienen dudas.",color:C.textMuted,prioridad:3});
         });
@@ -3193,17 +3209,15 @@ export default function CLEO(){
           // TITULO
           e("div",{style:{paddingTop:24,marginBottom:24}},
             e("div",{style:{fontSize:32,fontWeight:700,color:C.text,lineHeight:1.1,marginBottom:6}},"Lo que aprendimos"),
-            e("div",{style:{fontSize:14,color:C.textMuted}},"Una revisión de cómo estás vendiendo , no solo cuánto.")
+            e("div",{style:{fontSize:14,color:C.textMuted,marginBottom:6}},"Una revisión de cómo estás vendiendo , no solo cuánto.")
           ),
 
           (function(){
             var cobradoMes=totalG+totalVD;
             var enJuego=cotsPeriodo.filter(function(c){ return c.estatus==="Pendiente"; }).reduce(function(s,c){ return s+c.monto; },0);
             return e("div",{style:{background:"#0F1729",borderRadius:20,padding:"24px 28px",marginBottom:24,position:"relative",overflow:"hidden",boxShadow:"0 4px 20px rgba(0,0,0,0.12)"}},
-              e("div",{style:{display:"grid",gridTemplateColumns:"1fr 1px 1fr 1px 1fr 1px 1fr",gap:0,alignItems:"start"}},[
+              e("div",{style:{display:"grid",gridTemplateColumns:"1fr 1px 1fr 1px 1fr",gap:0,alignItems:"start"}},[
                 {label:"Total cobrado",val:"$"+cobradoMes.toLocaleString(),color:"#4ADE80",sub:"cotizaciones + ventas rápidas"},
-                null,
-                {label:"Tasa de cierre",val:cotsPeriodo.length?tasa+"%":"--",color:tasa>=50?"#4ADE80":tasa>=30?"#FCD34D":"#F87171",sub:aceptadas.length+" de "+cotsPeriodo.length+" propuestas"},
                 null,
                 {label:"Ventas rápidas",val:ventasPer.length>0?"$"+totalVD.toLocaleString():"--",color:"#94A3B8",sub:ventasPer.length+" venta"+(ventasPer.length!==1?"s":"")+" este periodo"},
                 null,
@@ -3221,10 +3235,7 @@ export default function CLEO(){
 
           // DESCUBRIMIENTOS UNIFICADOS
           e("div",{style:{background:C.surface,borderRadius:20,padding:"24px",border:"1px solid "+C.border,boxShadow:"0 2px 12px rgba(0,0,0,0.04)",marginBottom:24}},
-            e("div",{style:{display:"flex",alignItems:"center",gap:10,marginBottom:20}},
-              e("div",{style:{width:32,height:32,borderRadius:10,background:C.purplePale,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}},e("span",{style:{fontSize:16}},"🧠")),
-              e("div",{style:{fontSize:13,fontWeight:700,color:C.text}},"Lo que aprendiste este periodo")
-            ),
+            e("div",{style:{fontSize:11,fontWeight:700,color:C.textDim,textTransform:"uppercase",letterSpacing:"1.5px",marginBottom:20}},"Lo que aprendiste este periodo"),
             e("div",{style:{display:"flex",flexDirection:"column"}},
               (function(){
                 var items=[];
@@ -4790,16 +4801,16 @@ export default function CLEO(){
     ),
 
     // MODAL COTIZACION
-    modalCot&&e("div",{style:st.ov,onClick:function(){ setModalCot(false); }},
+    modalCot&&e("div",{style:Object.assign({},st.ov,{overflow:"hidden"}),onClick:function(){ setModalCot(false); }},
       e("div",{style:{background:C.surface,borderRadius:isMobile?"20px 20px 0 0":"20px",width:isMobile?"100%":560,maxWidth:"100%",maxHeight:isMobile?"94vh":"88vh",border:isMobile?"none":"1px solid "+C.border,boxShadow:"0 8px 32px rgba(0,0,0,0.14)",display:"flex",flexDirection:"column",overflow:"hidden",margin:isMobile?0:"auto"},onClick:function(ev){ ev.stopPropagation(); }},
 
         // HEADER
-        e("div",{style:{padding:isMobile?"16px 20px":"20px 24px",borderBottom:"1px solid "+C.border,flexShrink:0,display:"flex",alignItems:"center",justifyContent:"space-between"}},
+        e("div",{style:{padding:"20px 24px 16px",background:"linear-gradient(135deg,"+C.purplePale+" 0%,transparent 70%)",borderBottom:"1px solid "+C.border,flexShrink:0,display:"flex",alignItems:"flex-start",justifyContent:"space-between"}},
           e("div",null,
-            e("div",{style:{fontWeight:700,fontSize:isMobile?15:17,color:C.text}},editCotId?"Editar "+TXT.cotizacion:"Nueva "+TXT.cotizacion),
+            e("div",{style:{fontWeight:700,fontSize:18,color:C.text}},editCotId?"Editar "+TXT.cotizacion:"Nueva cotización"),
             e("div",{style:{fontSize:12,color:C.textMuted,marginTop:2}},"Prepara una propuesta para tu cliente")
           ),
-          e("button",{style:{background:"none",border:"none",cursor:"pointer",color:C.textMuted,fontSize:22,lineHeight:1,padding:"0 2px"},onClick:function(){ setModalCot(false); setEtapaPendiente(null); }},"×")
+          e("button",{style:{background:C.surfaceUp,border:"1px solid "+C.border,borderRadius:10,cursor:"pointer",color:C.textMuted,fontSize:16,lineHeight:1,padding:"6px 10px"},onClick:function(){ setModalCot(false); setEtapaPendiente(null); }},"×")
         ),
 
         // BODY SCROLLABLE
