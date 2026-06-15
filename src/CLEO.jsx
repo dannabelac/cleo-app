@@ -207,7 +207,7 @@ function RichEditor(props){
   var showPlaceholder=!value||value==="<br>"||value===""||value==="<p></p>";
   var editorId=React.useRef("re-"+(Math.random().toString(36).slice(2)));
 
-  return React.createElement("div",{style:{border:"1px solid #CBD5E1",borderRadius:10,overflow:"hidden",background:"#fff"}},
+  return React.createElement("div",{style:{border:"1px solid #CBD5E1",borderRadius:10,overflow:"hidden",background:"#fff",position:"relative"}},
     React.createElement("style",null,
       "#"+editorId.current+" ul{list-style-type:disc;padding-left:20px;margin:4px 0;}"+
       "#"+editorId.current+" ol{list-style-type:decimal;padding-left:20px;margin:4px 0;}"+
@@ -705,6 +705,7 @@ function generarComprobanteGeneral(cot,cliente,perfil){
 
 function ModalVenta(props){
   var e=React.createElement;
+  var isMobile=window.innerWidth<640;
   var modalVenta=props.modalVenta; var setModalVenta=props.setModalVenta;
   var formVenta=props.formVenta; var setFormVenta=props.setFormVenta;
   var pasoVenta=props.pasoVenta; var setPasoVenta=props.setPasoVenta;
@@ -925,6 +926,7 @@ function Alertas(props){
 
 function VistaVentas(props){
   var e=React.createElement;
+  var isMobile=window.innerWidth<640;
   var ventas=props.ventas; var clientes=props.clientes; var setVentas=props.setVentas; var st=props.st;
   var productos=props.productos||[]; var setProductos=props.setProductos||function(){};
 
@@ -958,7 +960,7 @@ function VistaVentas(props){
   return e("div",{style:{display:"flex",flexDirection:"column",gap:0}},
 
     // TOP BAR
-    e("div",{style:{display:"flex",alignItems:"center",justifyContent:"flex-end",marginLeft:-48,marginRight:-48,marginTop:-40,padding:"14px 48px",background:C.bg}},
+    e("div",{style:{display:"flex",alignItems:"center",justifyContent:"flex-end",marginLeft:isMobile?-16:-48,marginRight:isMobile?-16:-48,marginTop:isMobile?-20:-40,padding:isMobile?"12px 16px":"14px 48px",background:C.bg}},
       e("button",{style:{cursor:"pointer",padding:"9px 20px",borderRadius:14,border:"none",background:C.purple,fontSize:13,color:"#fff",fontWeight:600,display:"inline-flex",alignItems:"center",gap:6},onClick:props.abrirModalVenta},
         e("svg",{width:13,height:13,viewBox:"0 0 24 24",fill:"none"},e("path",{d:"M12 5v14M5 12h14",stroke:"#fff",strokeWidth:2.5,strokeLinecap:"round"})),
         "Registrar venta"
@@ -1996,7 +1998,7 @@ export default function CLEO(){
         return e("div",{style:{display:"flex",flexDirection:"column",gap:0}},
 
           // BARRA SUPERIOR , solo botones
-          e("div",{style:{display:"flex",alignItems:"center",justifyContent:"flex-end",gap:8,marginLeft:-48,marginRight:-48,marginTop:-40,padding:"14px 48px",background:C.bg}},
+          e("div",{style:{display:"flex",alignItems:"center",justifyContent:"flex-end",gap:isMobile?6:8,marginLeft:isMobile?-16:-48,marginRight:isMobile?-16:-48,marginTop:isMobile?-20:-40,padding:isMobile?"12px 16px":"14px 48px",background:C.bg}},
             isMobile&&e("div",{style:{
               width:36,height:36,borderRadius:10,
               background:C.dark,
@@ -2008,12 +2010,10 @@ export default function CLEO(){
                 e("path",{d:"M62 38C57 33 50 30 44 31C34 33 27 41 27 50C27 59 34 67 44 69C50 70 57 67 62 62",stroke:"rgba(255,255,255,0.35)",strokeWidth:8,strokeLinecap:"round",fill:"none"})
               )
             ),
-            e("button",{style:{cursor:"pointer",padding:"9px 18px",borderRadius:14,border:"1px solid "+C.border,background:C.surface,fontSize:13,color:C.textMuted,fontWeight:500},onClick:function(){ setClienteSel(null); setForm(formVacio); setModalCliente(true); }},"+ Cliente"),
-            e("button",{style:{cursor:"pointer",padding:"9px 18px",borderRadius:14,border:"1px solid "+C.green+"44",background:C.green+"08",fontSize:13,color:C.green,fontWeight:500},onClick:abrirModalVenta},"+ Venta rápida"),
-            !esProductos&&e("button",{style:{cursor:"pointer",padding:"9px 20px",borderRadius:14,border:"none",background:"#5B5CF6",fontSize:13,color:"#fff",fontWeight:600},onClick:function(){ setModalCot(true); }},TXT.nuevaCotizacion)
+            e("button",{style:{cursor:"pointer",padding:isMobile?"7px 10px":"9px 18px",borderRadius:14,border:"1px solid "+C.border,background:C.surface,fontSize:isMobile?12:13,color:C.textMuted,fontWeight:500,whiteSpace:"nowrap"},onClick:function(){ setClienteSel(null); setForm(formVacio); setModalCliente(true); }},"+ Cliente"),
+            e("button",{style:{cursor:"pointer",padding:isMobile?"7px 10px":"9px 18px",borderRadius:14,border:"1px solid "+C.green+"44",background:C.green+"08",fontSize:isMobile?12:13,color:C.green,fontWeight:500,whiteSpace:"nowrap"},onClick:abrirModalVenta},"+ Venta rápida"),
+            !esProductos&&e("button",{style:{cursor:"pointer",padding:isMobile?"7px 10px":"9px 20px",borderRadius:14,border:"none",background:"#5B5CF6",fontSize:isMobile?12:13,color:"#fff",fontWeight:600,whiteSpace:"nowrap"},onClick:function(){ setModalCot(true); }},isMobile?"+ Cotización":TXT.nuevaCotizacion)
           ),
-
-          // SALUDO
           e("div",{style:{marginBottom:20,paddingTop:24}},
             e("div",{style:{fontSize:isMobile?26:32,fontWeight:700,color:C.text,lineHeight:1.1}},saludo+", "+nombre+" 👋"),
             isMobile&&e("div",{style:{fontSize:13,fontWeight:500,color:C.purple,marginTop:6,letterSpacing:"0.1px"}},"CLEO · El sistema que te ayuda a vender mejor"),
@@ -2208,7 +2208,7 @@ export default function CLEO(){
         return e("div",{style:{display:"flex",flexDirection:"column",gap:0}},
 
           // BOTONES , arriba a la derecha solos
-          e("div",{style:{display:"flex",justifyContent:"flex-end",gap:8,marginLeft:-48,marginRight:-48,marginTop:-40,padding:"14px 48px",background:C.bg}},
+          e("div",{style:{display:"flex",justifyContent:"flex-end",gap:8,marginLeft:isMobile?-16:-48,marginRight:isMobile?-16:-48,marginTop:isMobile?-20:-40,padding:isMobile?"12px 16px":"14px 48px",background:C.bg}},
             e("button",{style:{cursor:"pointer",padding:"9px 18px",borderRadius:14,border:"1px solid "+C.border,background:C.surface,fontSize:13,color:C.textMuted,fontWeight:500},onClick:function(){ setClienteSel(null); setForm(formVacio); setModalCliente(true); }},"+ Cliente"),
             e("button",{style:{cursor:"pointer",padding:"9px 18px",borderRadius:14,border:"1px solid "+C.green+"44",background:C.green+"08",fontSize:13,color:C.green,fontWeight:500},onClick:abrirModalVenta},"+ Venta rápida"),
             !esProductos&&e("button",{style:{cursor:"pointer",padding:"9px 20px",borderRadius:14,border:"none",background:"#5B5CF6",fontSize:13,color:"#fff",fontWeight:600},onClick:function(){ setModalCot(true); }},TXT.nuevaCotizacion)
@@ -2437,7 +2437,7 @@ export default function CLEO(){
           }
           var ec2=ETAPA_COLOR[c.etapa]||C.purple;
           return e("div",null,
-            e("div",{style:{display:"flex",alignItems:"center",justifyContent:"space-between",marginLeft:-48,marginRight:-48,marginTop:-40,padding:"14px 48px",background:C.bg,marginBottom:20}},
+            e("div",{style:{display:"flex",alignItems:"center",justifyContent:"space-between",marginLeft:isMobile?-16:-48,marginRight:isMobile?-16:-48,marginTop:isMobile?-20:-40,padding:isMobile?"12px 16px":"14px 48px",background:C.bg,marginBottom:isMobile?12:20}},
               e("button",{style:{cursor:"pointer",background:"none",border:"none",fontSize:13,color:C.textMuted,fontWeight:500,padding:"4px 0"},onClick:function(){ setClienteAbierto(null); setTabCliente("perfil"); }},"← Volver"),
               e(BtnCanal,{cliente:c})
             ),
@@ -2632,7 +2632,7 @@ export default function CLEO(){
           );
         }
         return e("div",{style:{display:"flex",flexDirection:"column",gap:0}},
-          e("div",{style:{display:"flex",justifyContent:"flex-end",gap:8,marginLeft:-48,marginRight:-48,marginTop:-40,padding:"14px 48px",background:C.bg}},
+          e("div",{style:{display:"flex",justifyContent:"flex-end",gap:8,marginLeft:isMobile?-16:-48,marginRight:isMobile?-16:-48,marginTop:isMobile?-20:-40,padding:isMobile?"12px 16px":"14px 48px",background:C.bg}},
             e("button",{style:{cursor:"pointer",padding:"9px 18px",borderRadius:14,border:"1px solid "+C.border,background:C.surface,fontSize:13,color:C.textMuted,fontWeight:500},onClick:function(){ setClienteSel(null); setForm(formVacio); setModalCliente(true); }},"+ Cliente"),
             e("button",{style:{cursor:"pointer",padding:"9px 18px",borderRadius:14,border:"1px solid "+C.green+"44",background:C.green+"08",fontSize:13,color:C.green,fontWeight:500},onClick:abrirModalVenta},"+ Venta rápida"),
             !esProductos&&e("button",{style:{cursor:"pointer",padding:"9px 20px",borderRadius:14,border:"none",background:"#5B5CF6",fontSize:13,color:"#fff",fontWeight:600},onClick:function(){ setModalCot(true); }},TXT.nuevaCotizacion)
@@ -2688,7 +2688,7 @@ export default function CLEO(){
 
       // COTIZACIONES
       vista==="cotizaciones"&&e("div",{style:{display:"flex",flexDirection:"column",gap:0}},
-        e("div",{style:{display:"flex",justifyContent:"flex-end",gap:8,marginLeft:-48,marginRight:-48,marginTop:-40,padding:"14px 48px",background:C.bg}},
+        e("div",{style:{display:"flex",justifyContent:"flex-end",gap:8,marginLeft:isMobile?-16:-48,marginRight:isMobile?-16:-48,marginTop:isMobile?-20:-40,padding:isMobile?"12px 16px":"14px 48px",background:C.bg}},
             e("button",{style:{cursor:"pointer",padding:"9px 18px",borderRadius:14,border:"1px solid "+C.border,background:C.surface,fontSize:13,color:C.textMuted,fontWeight:500},onClick:function(){ setClienteSel(null); setForm(formVacio); setModalCliente(true); }},"+ Cliente"),
             e("button",{style:{cursor:"pointer",padding:"9px 18px",borderRadius:14,border:"1px solid "+C.green+"44",background:C.green+"08",fontSize:13,color:C.green,fontWeight:500},onClick:abrirModalVenta},"+ Venta rápida"),
             !esProductos&&e("button",{style:{cursor:"pointer",padding:"9px 20px",borderRadius:14,border:"none",background:"#5B5CF6",fontSize:13,color:"#fff",fontWeight:600},onClick:function(){ setModalCot(true); }},TXT.nuevaCotizacion)
@@ -2988,7 +2988,7 @@ export default function CLEO(){
         return e("div",{style:{display:"flex",flexDirection:"column",gap:0}},
 
           // BOTONES , arriba a la derecha
-          e("div",{style:{display:"flex",justifyContent:"flex-end",gap:8,marginLeft:-48,marginRight:-48,marginTop:-40,padding:"14px 48px",background:C.bg}},
+          e("div",{style:{display:"flex",justifyContent:"flex-end",gap:8,marginLeft:isMobile?-16:-48,marginRight:isMobile?-16:-48,marginTop:isMobile?-20:-40,padding:isMobile?"12px 16px":"14px 48px",background:C.bg}},
             e("button",{style:{cursor:"pointer",padding:"9px 18px",borderRadius:14,border:"1px solid "+C.border,background:C.surface,fontSize:13,color:C.textMuted,fontWeight:500},onClick:function(){ setClienteSel(null); setForm(formVacio); setModalCliente(true); }},"+ Cliente"),
             e("button",{style:{cursor:"pointer",padding:"9px 18px",borderRadius:14,border:"1px solid "+C.green+"44",background:C.green+"08",fontSize:13,color:C.green,fontWeight:500},onClick:abrirModalVenta},"+ Venta rápida"),
             !esProductos&&e("button",{style:{cursor:"pointer",padding:"9px 20px",borderRadius:14,border:"none",background:"#5B5CF6",fontSize:13,color:"#fff",fontWeight:600},onClick:function(){ setModalCot(true); }},TXT.nuevaCotizacion)
@@ -3196,7 +3196,7 @@ export default function CLEO(){
         return e("div",{style:{display:"flex",flexDirection:"column",gap:0}},
 
           // TOP BAR
-          e("div",{style:{display:"flex",alignItems:"center",justifyContent:"space-between",marginLeft:-48,marginRight:-48,marginTop:-40,padding:"14px 48px",background:C.bg}},
+          e("div",{style:{display:"flex",alignItems:"center",justifyContent:"space-between",marginLeft:isMobile?-16:-48,marginRight:isMobile?-16:-48,marginTop:isMobile?-20:-40,padding:isMobile?"12px 16px":"14px 48px",background:C.bg}},
             e("div",{style:{display:"flex",gap:3,background:C.surfaceUp,border:"1px solid "+C.border,borderRadius:10,padding:3}},
               [["semana","Semana"],["mes","Mes"],["trimestre","Trimestre"],["todo","Todo"]].map(function(p){
                 var activo=periodo===p[0];
@@ -3309,7 +3309,7 @@ export default function CLEO(){
                   e("div",{style:{width:28,height:28,borderRadius:8,background:"#DCFCE7",display:"flex",alignItems:"center",justifyContent:"center",fontSize:14}},"🎯"),
                   e("div",{style:{fontSize:11,fontWeight:700,color:C.green,textTransform:"uppercase",letterSpacing:"1.5px"}},"Qué deberías hacer esta semana")
                 ),
-                e("div",{style:{fontSize:13,color:C.textMuted,marginBottom:20}},"3 acciones que tendrán el mayor impacto en tus resultados."),
+                e("div",{style:{fontSize:13,color:C.textMuted,marginBottom:20}},acciones.length===1?"1 acción que tendrá el mayor impacto en tus resultados.":acciones.length+" acciones que tendrán el mayor impacto en tus resultados."),
                 e("div",{style:{display:"grid",gridTemplateColumns:isMobile?"1fr":"1fr 1fr 1fr",gap:12}},
                   acciones.map(function(ac){
                     return e("div",{key:ac.n,style:{background:C.bg,borderRadius:14,padding:"16px",border:"1px solid "+C.border,display:"flex",gap:12,alignItems:"flex-start"}},

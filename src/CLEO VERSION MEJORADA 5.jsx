@@ -760,8 +760,15 @@ function ModalVenta(props){
   }
   var tipoOpciones=[{key:"especifico",label:"Con cliente",desc:"Tienes el contacto"},{key:"generico",label:"Sin contacto",desc:"Venta rapida"},{key:"dia",label:"Total del dia",desc:"Monto global"}];
   return e("div",{style:st.ov,onClick:function(){ setModalVenta(false); }},
-    e("div",{style:st.modal,onClick:function(ev){ ev.stopPropagation(); }},
-      e("div",{style:{fontWeight:600,fontSize:15,marginBottom:16,color:C.text}},"Venta rápida"),
+    e("div",{style:Object.assign({},st.modal,{padding:0,overflow:"hidden"}),onClick:function(ev){ ev.stopPropagation(); }},
+      e("div",{style:{padding:"20px 24px 16px",background:"linear-gradient(135deg,"+C.greenBg+" 0%,transparent 70%)",borderBottom:"1px solid "+C.border,display:"flex",alignItems:"center",justifyContent:"space-between"}},
+        e("div",null,
+          e("div",{style:{fontWeight:700,fontSize:18,color:C.text}},"Venta rápida"),
+          e("div",{style:{fontSize:12,color:C.textMuted,marginTop:2}},"Ventas que no requirieron una cotización")
+        ),
+        e("button",{style:{background:C.surfaceUp,border:"1px solid "+C.border,borderRadius:10,cursor:"pointer",color:C.textMuted,fontSize:16,lineHeight:1,padding:"6px 10px"},onClick:function(){ setModalVenta(false); }},"×")
+      ),
+      e("div",{style:{padding:"20px 24px"}},
       e("div",{style:{marginBottom:16}},
         e("label",{style:st.lbl},"Tipo de venta"),
         e("div",{style:{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:6}},
@@ -844,7 +851,7 @@ function ModalVenta(props){
       ),
       e("div",{style:{marginBottom:12}},
         e("label",{style:st.lbl},"Fecha"),
-        e("input",{type:"date",value:formVenta.fecha||FECHA_HOY,onChange:function(ev){ setFormVenta(Object.assign({},formVenta,{fecha:ev.target.value})); },style:st.inp})
+        e("input",{type:"date",value:formVenta.fecha||FECHA_HOY,onChange:function(ev){ setFormVenta(Object.assign({},formVenta,{fecha:ev.target.value})); },style:Object.assign({},st.inp,{width:"100%",boxSizing:"border-box",display:"block"})})
       ),
       e("div",{style:{marginBottom:12}},
         e("label",{style:st.lbl},"Donde fue esta venta? (opcional)"),
@@ -858,6 +865,7 @@ function ModalVenta(props){
         e("button",{style:st.btn,onClick:function(){ setModalVenta(false); }},"Cancelar"),
         e("button",{style:st.btnG,onClick:avanzarVenta},"Guardar venta")
       )
+      ) // cierra padding div
     )
   );
 }
@@ -950,7 +958,7 @@ function VistaVentas(props){
   return e("div",{style:{display:"flex",flexDirection:"column",gap:0}},
 
     // TOP BAR
-    e("div",{style:{display:"flex",alignItems:"center",justifyContent:"flex-end",marginLeft:-32,marginRight:-32,marginTop:-32,padding:"14px 32px",background:C.bg}},
+    e("div",{style:{display:"flex",alignItems:"center",justifyContent:"flex-end",marginLeft:-48,marginRight:-48,marginTop:-40,padding:"14px 48px",background:C.bg}},
       e("button",{style:{cursor:"pointer",padding:"9px 20px",borderRadius:14,border:"none",background:C.purple,fontSize:13,color:"#fff",fontWeight:600,display:"inline-flex",alignItems:"center",gap:6},onClick:props.abrirModalVenta},
         e("svg",{width:13,height:13,viewBox:"0 0 24 24",fill:"none"},e("path",{d:"M12 5v14M5 12h14",stroke:"#fff",strokeWidth:2.5,strokeLinecap:"round"})),
         "Registrar venta"
@@ -960,7 +968,7 @@ function VistaVentas(props){
     // TÍTULO
     e("div",{style:{paddingTop:24,marginBottom:24}},
       e("div",{style:{fontSize:28,fontWeight:700,color:C.text,lineHeight:1.1,marginBottom:4}},"Ventas rápidas"),
-      e("div",{style:{fontSize:13,color:C.textMuted,marginBottom:2}},"Ideal para clientes que compran al momento, sin necesidad de cotización")
+      e("div",{style:{fontSize:14,color:C.textMuted,marginBottom:6}},"Ideal para clientes que compran al momento, sin necesidad de cotización")
     ),
 
     // FILTRO DE PERIODO
@@ -1988,7 +1996,7 @@ export default function CLEO(){
         return e("div",{style:{display:"flex",flexDirection:"column",gap:0}},
 
           // BARRA SUPERIOR , solo botones
-          e("div",{style:{display:"flex",alignItems:"center",justifyContent:"flex-end",gap:8,marginLeft:-32,marginRight:-32,marginTop:-32,padding:"14px 32px",background:C.bg}},
+          e("div",{style:{display:"flex",alignItems:"center",justifyContent:"flex-end",gap:8,marginLeft:-48,marginRight:-48,marginTop:-40,padding:"14px 48px",background:C.bg}},
             isMobile&&e("div",{style:{
               width:36,height:36,borderRadius:10,
               background:C.dark,
@@ -2010,7 +2018,7 @@ export default function CLEO(){
             e("div",{style:{fontSize:isMobile?26:32,fontWeight:700,color:C.text,lineHeight:1.1}},saludo+", "+nombre+" 👋"),
             isMobile&&e("div",{style:{fontSize:13,fontWeight:500,color:C.purple,marginTop:6,letterSpacing:"0.1px"}},"CLEO · El sistema que te ayuda a vender mejor"),
             e("div",{style:{fontSize:12,color:C.textDim,marginTop:isMobile?4:4}},hoyLabel),
-            e("div",{style:{fontSize:14,color:C.textMuted,marginTop:8}},subtitulo)
+            !isMobile&&e("div",{style:{fontSize:14,color:C.textMuted,marginTop:8}},subtitulo)
           ),
 
           // RECONOCIMIENTO , solo visible si aplica, desaparece después de 2 días
@@ -2092,84 +2100,83 @@ export default function CLEO(){
                   )
             ),
 
-            // LO QUE CLEO ESTÁ APRENDIENDO
+            // 🔥 TU RITMO DE VENTAS (racha estilo Duolingo)
             e("div",{style:{background:"#0F1729",borderRadius:20,padding:"24px",display:"flex",flexDirection:"column",minHeight:0}},(function(){
-              var negocioNombre=perfil.nombre||"tu negocio";
-              var insights=[];
-
-              // Tiempo promedio de decisión
-              var tiemposCierre2=[];
-              cotizaciones.filter(function(c){ return c.estatus==="Aceptada"; }).forEach(function(cot){
-                var cl=clientes.find(function(c){ return c.id===cot.clienteId; });
-                if(cl&&cl.fecha&&cot.fecha){ var d=Math.floor((new Date(cot.fecha)-new Date(cl.fecha))/86400000); if(d>=0&&d<=120) tiemposCierre2.push(d); }
-              });
-              if(tiemposCierre2.length>=2){
-                var prom2=Math.round(tiemposCierre2.reduce(function(s,d){ return s+d; },0)/tiemposCierre2.length);
-                if(prom2===0) insights.push({ic:"⏱️",txt:"Tus clientes deciden el mismo día que les envías el precio.",sub:"Tienes que tener todo listo desde el primer mensaje , precio, propuesta y forma de pago."});
-                else if(prom2===1) insights.push({ic:"⏱️",txt:"Tus clientes suelen decidir muy rápido, casi siempre al día siguiente.",sub:"No dejes pasar más de 2 días sin dar seguimiento , si no responden, un mensaje corto puede cerrar la venta."});
-                else if(prom2<=3) insights.push({ic:"⏱️",txt:"Tus clientes deciden en "+prom2+" días.",sub:"Son decisiones rápidas. Si no respondes en ese tiempo, pierdes el momento."});
-                else insights.push({ic:"⏱️",txt:"Tus clientes tardan ~"+prom2+" días en decidir.",sub:"Haz seguimiento a los "+Math.round(prom2/2)+" días , antes de que se enfríe el interés."});
+              // Calcular racha: días consecutivos con actividad (ventas o cotizaciones registradas)
+              var todasFechas=[];
+              ventas.forEach(function(v){ if(v.fecha) todasFechas.push(v.fecha.slice(0,10)); });
+              cotizaciones.forEach(function(c){ if(c.fecha) todasFechas.push(c.fecha.slice(0,10)); });
+              clientes.forEach(function(c){ if(c.fecha) todasFechas.push(c.fecha.slice(0,10)); });
+              var fechasSet={}; todasFechas.forEach(function(f){ fechasSet[f]=true; });
+              var hoyStr=HOY.toISOString().slice(0,10);
+              var rachaActual=0;
+              var d=new Date(HOY);
+              for(var ri=0;ri<365;ri++){
+                var ds=d.toISOString().slice(0,10);
+                if(fechasSet[ds]) rachaActual++;
+                else if(ri>0) break;
+                d.setDate(d.getDate()-1);
               }
-
-              // Canal con mejor conversión
-              var canalTotales={}; var canalCerrados={};
-              clientes.forEach(function(c){ if(c.origen){ canalTotales[c.origen]=(canalTotales[c.origen]||0)+1; if(c.etapa==="Ganado") canalCerrados[c.origen]=(canalCerrados[c.origen]||0)+1; } });
-              var canalConvList=Object.entries(canalTotales).filter(function(e){ return e[1]>=2; }).map(function(e){ return {canal:e[0],total:e[1],cerrados:canalCerrados[e[0]]||0,pct:Math.round(((canalCerrados[e[0]]||0)/e[1])*100)}; }).sort(function(a,b){ return b.pct-a.pct; });
-              if(canalConvList.length>=1&&canalConvList[0].pct>0){
-                var top=canalConvList[0];
-                var sub2=top.pct>=60?"De cada 10 personas que llegan por ahí, "+Math.round(top.pct/10)+" te compran. Eso es muy bueno.":top.pct>=40?"Casi la mitad de quienes llegan por ahí se convierten en clientes.":"No todas las personas que llegan por ese canal compran, pero es donde más cierras.";
-                insights.push({ic:"🎯",txt:top.canal+" es donde mejor vendes ("+top.pct+"% de conversion).",sub:sub2});
+              // Días desde última actividad
+              var diasSinAct=0;
+              var d2=new Date(HOY); d2.setDate(d2.getDate()-1);
+              for(var ri2=0;ri2<365;ri2++){
+                if(fechasSet[d2.toISOString().slice(0,10)]) break;
+                diasSinAct++; d2.setDate(d2.getDate()-1);
               }
+              var tieneHoy=!!fechasSet[hoyStr];
+              // Últimos 7 días para mini-heatmap
+              var ultimos7=[];
+              for(var ui=6;ui>=0;ui--){ var ud=new Date(HOY); ud.setDate(ud.getDate()-ui); ultimos7.push(ud.toISOString().slice(0,10)); }
 
-              // Ticket promedio vs rechazados
-              var ganados2=cotizaciones.filter(function(c){ return c.estatus==="Aceptada"; });
-              var rechazados2=cotizaciones.filter(function(c){ return c.estatus==="Rechazada"; });
-              if(ganados2.length>=2&&rechazados2.length>=1){
-                var ticketG=Math.round(ganados2.reduce(function(s,c){ return s+c.monto; },0)/ganados2.length);
-                var ticketR=Math.round(rechazados2.reduce(function(s,c){ return s+c.monto; },0)/rechazados2.length);
-                if(ticketR>ticketG*1.5) insights.push({ic:"💡",txt:"Las cotizaciones que no cierras son "+Math.round(ticketR/ticketG)+"x más caras que las que sí cierras.",sub:"Cuando el precio es alto, dedica más tiempo a explicar el valor antes de dar el número."});
-                else insights.push({ic:"💰",txt:"Tu venta promedio es de $"+ticketG.toLocaleString()+".",sub:ganados2.length+" ventas cerradas en CLEO. Ese es tu punto de referencia."});
-              } else if(ganados2.length>=3){
-                var ticket=Math.round(ganados2.reduce(function(s,c){ return s+c.monto; },0)/ganados2.length);
-                insights.push({ic:"💰",txt:"Tu venta promedio es de $"+ticket.toLocaleString()+".",sub:"Conocer tu ticket promedio te ayuda a saber cuantas ventas necesitas al mes."});
-              }
+              var mensajeRacha=rachaActual>=7?"¡Llevas "+rachaActual+" días seguidos activo en CLEO. Eso es un hábito real.":
+                rachaActual>=3?"Llevas "+rachaActual+" días registrando actividad. Sigue así.":
+                tieneHoy?"Hoy ya registraste actividad. Buen comienzo.":
+                diasSinAct===0?"Empieza hoy — registrar una venta tarda menos de un minuto.":
+                diasSinAct===1?"Ayer no registraste nada. Hoy puedes retomar el ritmo.":
+                "Han pasado "+diasSinAct+" días desde tu última actividad registrada.";
 
-              // Hora pico / etapa cuello de botella
-              var etapaAbandono=["Cotizacion enviada","Seguimiento","Negociacion"].map(function(et){
-                return {et:et,label:ETAPAS_LABEL[et]||et,n:clientes.filter(function(c){ return c.etapa===et&&diasDesde(c.fechaEtapa||c.fecha)>=7; }).length};
-              }).sort(function(a,b){ return b.n-a.n; })[0];
-              if(etapaAbandono&&etapaAbandono.n>=2) insights.push({ic:"⚠️",txt:etapaAbandono.n+" clientes llevan más de 7 días sin avanzar en \""+etapaAbandono.label+"\".",sub:"Ahí se está atascando tu proceso. Un mensaje directo puede desbloquear esas conversaciones."});
-
-              // Motivo de pérdida más común
-              var motivoCount2={};
-              rechazados2.forEach(function(c){ if(c.motivoPerdida) motivoCount2[c.motivoPerdida]=(motivoCount2[c.motivoPerdida]||0)+1; });
-              var topMotivo=Object.entries(motivoCount2).sort(function(a,b){ return b[1]-a[1]; })[0];
-              if(topMotivo&&topMotivo[1]>=2) insights.push({ic:"🔍",txt:"\""+topMotivo[0]+"\" aparece "+topMotivo[1]+" veces como razón de pérdida.",sub:"Cuando el mismo obstáculo se repite, hay algo que puedes mejorar en cómo presentas tu propuesta."});
-
-              if(insights.length===0) insights.push({ic:"🌱",txt:"CLEO está aprendiendo sobre "+negocioNombre+".",sub:"Registra más conversaciones para ver patrones reales."});
+              var colorRacha=rachaActual>=7?"#FBBF24":rachaActual>=3?"#4ADE80":"#94A3B8";
 
               return e("div",{style:{display:"flex",flexDirection:"column",height:"100%"}},
-                // Header
+                e("div",{style:{marginBottom:20}},
+                  e("div",{style:{fontSize:9,fontWeight:700,color:"#4F46E5",textTransform:"uppercase",letterSpacing:"1.8px",marginBottom:6}},"Tu ritmo de ventas"),
+                  e("div",{style:{fontSize:15,fontWeight:700,color:"#fff",lineHeight:1.3}},"¿Estás construyendo el hábito?")
+                ),
+
+                // Racha grande
+                e("div",{style:{display:"flex",alignItems:"center",gap:16,marginBottom:20}},
+                  e("div",{style:{fontSize:40}},rachaActual>=7?"🔥":rachaActual>=3?"⚡":"🌱"),
+                  e("div",null,
+                    e("div",{style:{fontSize:32,fontWeight:800,color:colorRacha,lineHeight:1}},rachaActual+" días"),
+                    e("div",{style:{fontSize:12,color:"rgba(255,255,255,0.45)",marginTop:2}},rachaActual===1?"de racha activa":"de racha consecutiva")
+                  )
+                ),
+
+                // Mini heatmap últimos 7 días
                 e("div",{style:{marginBottom:16}},
-                  e("div",{style:{fontSize:9,fontWeight:700,color:"#4F46E5",textTransform:"uppercase",letterSpacing:"1.8px",marginBottom:6}},"CLEO está aprendiendo"),
-                  e("div",{style:{fontSize:15,fontWeight:700,color:"#fff",lineHeight:1.3}},"Lo que sabemos de "+negocioNombre)
+                  e("div",{style:{fontSize:10,color:"rgba(255,255,255,0.3)",marginBottom:8,textTransform:"uppercase",letterSpacing:"0.8px"}},"Últimos 7 días"),
+                  e("div",{style:{display:"flex",gap:6}},
+                    ultimos7.map(function(f,i){
+                      var activo=!!fechasSet[f];
+                      var esHoy=f===hoyStr;
+                      return e("div",{key:i,style:{flex:1,display:"flex",flexDirection:"column",alignItems:"center",gap:4}},
+                        e("div",{style:{
+                          width:"100%",aspectRatio:"1",borderRadius:6,
+                          background:activo?(esHoy?colorRacha:"rgba(75,94,252,0.6)"):"rgba(255,255,255,0.06)",
+                          border:esHoy?"1px solid "+colorRacha+"66":"none",
+                          display:"flex",alignItems:"center",justifyContent:"center",
+                          fontSize:10
+                        }},activo?"✓":""),
+                        e("div",{style:{fontSize:8,color:"rgba(255,255,255,0.25)"}},["D","L","M","X","J","V","S"][new Date(f+"T12:00:00").getDay()])
+                      );
+                    })
+                  )
                 ),
-                // Insights
-                e("div",{style:{display:"flex",flexDirection:"column",gap:0,flex:1}},
-                  insights.map(function(ins,i){
-                    return e("div",{key:i,style:{
-                      display:"flex",gap:10,alignItems:"flex-start",
-                      paddingTop:i===0?0:10,paddingBottom:i<insights.length-1?10:0,
-                      borderBottom:i<insights.length-1?"1px solid rgba(255,255,255,0.06)":"none"
-                    }},
-                      e("span",{style:{fontSize:14,flexShrink:0,marginTop:1}},ins.ic),
-                      e("div",null,
-                        e("div",{style:{fontSize:13,color:"#E2E8F0",fontWeight:500,lineHeight:1.4}},ins.txt),
-                        e("div",{style:{fontSize:11,color:"#64748B",marginTop:2,lineHeight:1.4}},ins.sub)
-                      )
-                    );
-                  })
-                ),
+
+                // Mensaje dinámico
+                e("div",{style:{fontSize:12,color:"rgba(255,255,255,0.5)",lineHeight:1.6,flex:1}},mensajeRacha),
+
                 e("button",{style:{marginTop:16,fontSize:11,color:"#6366F1",background:"rgba(99,102,241,0.1)",border:"1px solid rgba(99,102,241,0.2)",cursor:"pointer",padding:"7px 12px",borderRadius:8,fontWeight:600,textAlign:"left",alignSelf:"flex-start"},onClick:function(){ setVista("resumen"); }},"Ver análisis completo →")
               );
             })())
@@ -2201,7 +2208,7 @@ export default function CLEO(){
         return e("div",{style:{display:"flex",flexDirection:"column",gap:0}},
 
           // BOTONES , arriba a la derecha solos
-          e("div",{style:{display:"flex",justifyContent:"flex-end",gap:8,marginLeft:-32,marginRight:-32,marginTop:-32,padding:"14px 32px",background:C.bg}},
+          e("div",{style:{display:"flex",justifyContent:"flex-end",gap:8,marginLeft:-48,marginRight:-48,marginTop:-40,padding:"14px 48px",background:C.bg}},
             e("button",{style:{cursor:"pointer",padding:"9px 18px",borderRadius:14,border:"1px solid "+C.border,background:C.surface,fontSize:13,color:C.textMuted,fontWeight:500},onClick:function(){ setClienteSel(null); setForm(formVacio); setModalCliente(true); }},"+ Cliente"),
             e("button",{style:{cursor:"pointer",padding:"9px 18px",borderRadius:14,border:"1px solid "+C.green+"44",background:C.green+"08",fontSize:13,color:C.green,fontWeight:500},onClick:abrirModalVenta},"+ Venta rápida"),
             !esProductos&&e("button",{style:{cursor:"pointer",padding:"9px 20px",borderRadius:14,border:"none",background:"#5B5CF6",fontSize:13,color:"#fff",fontWeight:600},onClick:function(){ setModalCot(true); }},TXT.nuevaCotizacion)
@@ -2209,8 +2216,8 @@ export default function CLEO(){
 
           // TÍTULO + FRASE EDUCATIVA
           e("div",{style:{paddingTop:24,marginBottom:24}},
-            e("div",{style:{fontSize:28,fontWeight:700,color:C.text,lineHeight:1.1,marginBottom:8}},"Tus clientes"),
-            e("div",{style:{fontSize:14,color:C.textMuted,lineHeight:1.6,maxWidth:600}},frase)
+            e("div",{style:{fontSize:28,fontWeight:700,color:C.text,lineHeight:1.1,marginBottom:6}},"Tus clientes"),
+            e("div",{style:{fontSize:14,color:C.textMuted}},frase)
           ),
 
           // KANBAN
@@ -2430,7 +2437,7 @@ export default function CLEO(){
           }
           var ec2=ETAPA_COLOR[c.etapa]||C.purple;
           return e("div",null,
-            e("div",{style:{display:"flex",alignItems:"center",justifyContent:"space-between",marginLeft:-32,marginRight:-32,marginTop:-32,padding:"14px 32px",background:C.bg,marginBottom:20}},
+            e("div",{style:{display:"flex",alignItems:"center",justifyContent:"space-between",marginLeft:-48,marginRight:-48,marginTop:-40,padding:"14px 48px",background:C.bg,marginBottom:20}},
               e("button",{style:{cursor:"pointer",background:"none",border:"none",fontSize:13,color:C.textMuted,fontWeight:500,padding:"4px 0"},onClick:function(){ setClienteAbierto(null); setTabCliente("perfil"); }},"← Volver"),
               e(BtnCanal,{cliente:c})
             ),
@@ -2625,14 +2632,14 @@ export default function CLEO(){
           );
         }
         return e("div",{style:{display:"flex",flexDirection:"column",gap:0}},
-          e("div",{style:{display:"flex",justifyContent:"flex-end",gap:8,marginLeft:-32,marginRight:-32,marginTop:-32,padding:"14px 32px",background:C.bg}},
+          e("div",{style:{display:"flex",justifyContent:"flex-end",gap:8,marginLeft:-48,marginRight:-48,marginTop:-40,padding:"14px 48px",background:C.bg}},
             e("button",{style:{cursor:"pointer",padding:"9px 18px",borderRadius:14,border:"1px solid "+C.border,background:C.surface,fontSize:13,color:C.textMuted,fontWeight:500},onClick:function(){ setClienteSel(null); setForm(formVacio); setModalCliente(true); }},"+ Cliente"),
             e("button",{style:{cursor:"pointer",padding:"9px 18px",borderRadius:14,border:"1px solid "+C.green+"44",background:C.green+"08",fontSize:13,color:C.green,fontWeight:500},onClick:abrirModalVenta},"+ Venta rápida"),
             !esProductos&&e("button",{style:{cursor:"pointer",padding:"9px 20px",borderRadius:14,border:"none",background:"#5B5CF6",fontSize:13,color:"#fff",fontWeight:600},onClick:function(){ setModalCot(true); }},TXT.nuevaCotizacion)
           ),
           e("div",{style:{paddingTop:20,marginBottom:20}},
             e("div",{style:{fontSize:28,fontWeight:700,color:C.text,lineHeight:1.1,marginBottom:6}},"Tus clientes"),
-            e("div",{style:{fontSize:14,color:C.textMuted}},clientes.length+" contactos registrados")
+            e("div",{style:{fontSize:14,color:C.textMuted,marginBottom:6}},clientes.length+" contactos registrados")
           ),
           e("div",{style:{display:"flex",gap:8,marginBottom:16,flexWrap:"wrap"}},
             e("input",{placeholder:"Buscar...",style:Object.assign({},st.inp,{flex:1,minWidth:120}),value:busqueda,onChange:function(ev){ setBusqueda(ev.target.value); }}),
@@ -2681,7 +2688,7 @@ export default function CLEO(){
 
       // COTIZACIONES
       vista==="cotizaciones"&&e("div",{style:{display:"flex",flexDirection:"column",gap:0}},
-        e("div",{style:{display:"flex",justifyContent:"flex-end",gap:8,marginLeft:-32,marginRight:-32,marginTop:-32,padding:"14px 32px",background:C.bg}},
+        e("div",{style:{display:"flex",justifyContent:"flex-end",gap:8,marginLeft:-48,marginRight:-48,marginTop:-40,padding:"14px 48px",background:C.bg}},
             e("button",{style:{cursor:"pointer",padding:"9px 18px",borderRadius:14,border:"1px solid "+C.border,background:C.surface,fontSize:13,color:C.textMuted,fontWeight:500},onClick:function(){ setClienteSel(null); setForm(formVacio); setModalCliente(true); }},"+ Cliente"),
             e("button",{style:{cursor:"pointer",padding:"9px 18px",borderRadius:14,border:"1px solid "+C.green+"44",background:C.green+"08",fontSize:13,color:C.green,fontWeight:500},onClick:abrirModalVenta},"+ Venta rápida"),
             !esProductos&&e("button",{style:{cursor:"pointer",padding:"9px 20px",borderRadius:14,border:"none",background:"#5B5CF6",fontSize:13,color:"#fff",fontWeight:600},onClick:function(){ setModalCot(true); }},TXT.nuevaCotizacion)
@@ -2689,7 +2696,7 @@ export default function CLEO(){
           // Filtros styled
         e("div",{style:{paddingTop:20,marginBottom:20}},
           e("div",{style:{fontSize:28,fontWeight:700,color:C.text,lineHeight:1.1,marginBottom:4}},"Cotizaciones"),
-          e("div",{style:{fontSize:13,color:C.textMuted}},"Ideal para clientes que necesitan evaluar una propuesta antes de comprar")
+          e("div",{style:{fontSize:14,color:C.textMuted,marginBottom:6}},"Ideal para clientes que necesitan evaluar una propuesta antes de comprar")
         ),
         e("div",{style:{display:"flex",gap:8,marginBottom:16,flexWrap:"wrap",alignItems:"center"}},
           e("input",{placeholder:"Buscar...",value:filtroCot.busqueda,onChange:function(ev){ setFiltroCot(Object.assign({},filtroCot,{busqueda:ev.target.value})); },style:Object.assign({},st.inp,{flex:1,minWidth:120})}),
@@ -2776,7 +2783,10 @@ export default function CLEO(){
                 );
               })()
             ),
-            esRechazada&&cot.motivoPerdida&&e("div",{style:{marginTop:8,fontSize:12,color:C.red}},"Motivo: "+cot.motivoPerdida)
+            esRechazada&&cot.motivoPerdida&&e("div",{style:{marginTop:10,paddingTop:10,borderTop:"0.5px solid "+C.redBorder,display:"flex",alignItems:"center",gap:6}},
+              e("span",{style:{fontSize:12,color:C.red,fontWeight:500}},"Motivo:"),
+              e("span",{style:{fontSize:12,color:C.red}},cot.motivoPerdida)
+            )
           );
         })
       ),
@@ -2914,8 +2924,13 @@ export default function CLEO(){
             })(),color:C.urgent,prioridad:2});
         });
 
-        // P3 , cotizacion enviada sin contacto >3 dias
-        clientes.filter(function(c){ return c.etapa==="Cotizacion enviada"&&!c.seguimientoFecha&&diasSinContacto(c)>3; }).forEach(function(c){
+        // P3 , cotizacion enviada sin contacto >3 dias (por ultimoContacto O por fecha cotizacion)
+        clientes.filter(function(c){ 
+          if(c.etapa!=="Cotizacion enviada"||c.seguimientoFecha) return false;
+          var cotPend=cotizaciones.filter(function(cot){ return cot.clienteId===c.id&&cot.estatus==="Pendiente"; }).sort(function(a,b){ return new Date(b.fecha)-new Date(a.fecha); })[0];
+          var diasCot=cotPend?diasDesde(cotPend.fecha):0;
+          return diasSinContacto(c)>3||diasCot>=3;
+        }).forEach(function(c){
           var ctx=contextoCliente(c);
           urgentes.push({cliente:c,razon:ctx||"Mandó tu precio hace "+diasSinContacto(c)+" días y no ha dicho nada. A veces solo necesitan que alguien les pregunte si tienen dudas.",color:C.textMuted,prioridad:3});
         });
@@ -2973,7 +2988,7 @@ export default function CLEO(){
         return e("div",{style:{display:"flex",flexDirection:"column",gap:0}},
 
           // BOTONES , arriba a la derecha
-          e("div",{style:{display:"flex",justifyContent:"flex-end",gap:8,marginLeft:-32,marginRight:-32,marginTop:-32,padding:"14px 32px",background:C.bg}},
+          e("div",{style:{display:"flex",justifyContent:"flex-end",gap:8,marginLeft:-48,marginRight:-48,marginTop:-40,padding:"14px 48px",background:C.bg}},
             e("button",{style:{cursor:"pointer",padding:"9px 18px",borderRadius:14,border:"1px solid "+C.border,background:C.surface,fontSize:13,color:C.textMuted,fontWeight:500},onClick:function(){ setClienteSel(null); setForm(formVacio); setModalCliente(true); }},"+ Cliente"),
             e("button",{style:{cursor:"pointer",padding:"9px 18px",borderRadius:14,border:"1px solid "+C.green+"44",background:C.green+"08",fontSize:13,color:C.green,fontWeight:500},onClick:abrirModalVenta},"+ Venta rápida"),
             !esProductos&&e("button",{style:{cursor:"pointer",padding:"9px 20px",borderRadius:14,border:"none",background:"#5B5CF6",fontSize:13,color:"#fff",fontWeight:600},onClick:function(){ setModalCot(true); }},TXT.nuevaCotizacion)
@@ -3181,7 +3196,7 @@ export default function CLEO(){
         return e("div",{style:{display:"flex",flexDirection:"column",gap:0}},
 
           // TOP BAR
-          e("div",{style:{display:"flex",alignItems:"center",justifyContent:"space-between",marginLeft:-32,marginRight:-32,marginTop:-32,padding:"14px 32px",background:C.bg}},
+          e("div",{style:{display:"flex",alignItems:"center",justifyContent:"space-between",marginLeft:-48,marginRight:-48,marginTop:-40,padding:"14px 48px",background:C.bg}},
             e("div",{style:{display:"flex",gap:3,background:C.surfaceUp,border:"1px solid "+C.border,borderRadius:10,padding:3}},
               [["semana","Semana"],["mes","Mes"],["trimestre","Trimestre"],["todo","Todo"]].map(function(p){
                 var activo=periodo===p[0];
@@ -3193,183 +3208,132 @@ export default function CLEO(){
           // TITULO
           e("div",{style:{paddingTop:24,marginBottom:24}},
             e("div",{style:{fontSize:32,fontWeight:700,color:C.text,lineHeight:1.1,marginBottom:6}},"Lo que aprendimos"),
-            e("div",{style:{fontSize:14,color:C.textMuted}},"Una revisión de cómo estás vendiendo , no solo cuánto.")
+            e("div",{style:{fontSize:14,color:C.textMuted,marginBottom:6}},"Una revisión de cómo estás vendiendo, no solo cuánto.")
           ),
 
           (function(){
             var cobradoMes=totalG+totalVD;
             var enJuego=cotsPeriodo.filter(function(c){ return c.estatus==="Pendiente"; }).reduce(function(s,c){ return s+c.monto; },0);
-            return e("div",{style:{background:"#0F1729",borderRadius:20,padding:"24px 28px",marginBottom:24,position:"relative",overflow:"hidden",boxShadow:"0 4px 20px rgba(0,0,0,0.12)"}},
-              e("div",{style:{display:"grid",gridTemplateColumns:"1fr 1px 1fr 1px 1fr 1px 1fr",gap:0,alignItems:"start"}},[
-                {label:"Total cobrado",val:"$"+cobradoMes.toLocaleString(),color:"#4ADE80",sub:"cotizaciones + ventas rápidas"},
-                null,
-                {label:"Tasa de cierre",val:cotsPeriodo.length?tasa+"%":"--",color:tasa>=50?"#4ADE80":tasa>=30?"#FCD34D":"#F87171",sub:aceptadas.length+" de "+cotsPeriodo.length+" propuestas"},
-                null,
-                {label:"Ventas rápidas",val:ventasPer.length>0?"$"+totalVD.toLocaleString():"--",color:"#94A3B8",sub:ventasPer.length+" venta"+(ventasPer.length!==1?"s":"")+" este periodo"},
-                null,
-                {label:"En juego",val:enJuego>0?"$"+enJuego.toLocaleString():"$0",color:"#94A3B8",sub:"esperando respuesta"},
-              ].map(function(k,i){
-                if(k===null) return e("div",{key:i,style:{width:1,background:"rgba(255,255,255,0.06)",alignSelf:"stretch"}});
-                return e("div",{key:i,style:{padding:isMobile?"0 6px":"0 12px",textAlign:"center"}},
-                  e("div",{style:{fontSize:isMobile?8:10,color:"rgba(255,255,255,0.4)",textTransform:"uppercase",letterSpacing:"0.8px",marginBottom:4}},k.label),
-                  e("div",{style:{fontSize:isMobile?14:20,fontWeight:700,color:k.color,lineHeight:1,marginBottom:3}},k.val),
-                  e("div",{style:{fontSize:isMobile?9:11,color:"rgba(255,255,255,0.35)",lineHeight:1.3}},k.sub)
-                );
-              }))
-            );
-          })(),
+            var potencial=cobradoMes+enJuego;
 
-          // DESCUBRIMIENTOS UNIFICADOS
-          e("div",{style:{background:C.surface,borderRadius:20,padding:"24px",border:"1px solid "+C.border,boxShadow:"0 2px 12px rgba(0,0,0,0.04)",marginBottom:24}},
-            e("div",{style:{display:"flex",alignItems:"center",gap:10,marginBottom:20}},
-              e("div",{style:{width:32,height:32,borderRadius:10,background:C.purplePale,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}},e("span",{style:{fontSize:16}},"🧠")),
-              e("div",{style:{fontSize:13,fontWeight:700,color:C.text}},"Lo que aprendiste este periodo")
-            ),
-            e("div",{style:{display:"flex",flexDirection:"column"}},
-              (function(){
-                var items=[];
-                // Cotizaciones
-                if(cotsPeriodo.length>0) items.push({ic:"📈",txt:"Cerraste "+aceptadas.length+" de "+cotsPeriodo.length+" cotizaciones — "+tasa+"% de tasa de cierre.",color:tasa>=40?C.green:C.text});
-                // Tiempo de cierre
-                if(promDiasCierre!==null) items.push({ic:"⏱️",txt:promDiasCierre<=1?"Tus clientes deciden muy rápido, casi el mismo día. Ten todo listo desde el primer mensaje.":promDiasCierre<=3?"Tus clientes deciden en "+promDiasCierre+" días — decisiones rápidas.":"Tus clientes tardan ~"+promDiasCierre+" días en decidir. Ese es el momento ideal para hacer seguimiento.",color:C.text});
-                // Ventas rápidas
-                if(ventasPer.length>0) items.push({ic:"⚡",txt:"Tuviste "+ventasPer.length+" venta"+(ventasPer.length!==1?"s":"")+" rápida"+(ventasPer.length!==1?"s":"")+" por $"+totalVD.toLocaleString()+(vdConContacto>0?" — "+vdConContacto+" con cliente identificado":"")+".",color:C.text});
-                // Servicio más vendido
-                if(topConcepto&&topConcepto[1]>=2) items.push({ic:"⭐",txt:"\""+topConcepto[0]+"\" fue tu servicio más vendido este periodo ("+topConcepto[1]+" veces).",color:C.purple});
-                // Objeción principal
-                if(motivoPrincipal) items.push({ic:"🔍",txt:"\""+motivoPrincipal+"\" fue la objeción más frecuente en lo que no cerraste.",color:C.red});
-                // Distribución de ingresos
-                if(totalIngresos>0&&totalVD>0&&totalG>0) items.push({ic:"📊",txt:pctCot+"% de tus ingresos vinieron de cotizaciones y "+pctVD+"% de ventas rápidas.",color:C.text});
-                else if(totalIngresos>0) items.push({ic:"📊",txt:pctCot+"% de tus ingresos vinieron de cotizaciones.",color:C.text});
-                // Saldos pendientes
-                var saldosPendientes=aceptadas.reduce(function(s,cot){ var p=cot.pagos||[]; var pagado=p.reduce(function(x,pg){ return x+Number(pg.monto); },0); return s+(cot.monto-pagado>0?cot.monto-pagado:0); },0);
-                if(saldosPendientes===0&&aceptadas.length>0) items.push({ic:"✅",txt:"Sin cuentas pendientes por cobrar este periodo.",color:C.green});
-                else if(saldosPendientes>0) items.push({ic:"⚠️",txt:"Te deben $"+saldosPendientes.toLocaleString()+" de ventas ya cerradas.",color:C.amber});
-                // Canal
-                if(mejorCanalCierre) items.push({ic:"🎯",txt:mejorCanalCierre[0]+" es tu canal con más clientes cerrados.",color:C.text});
-                // Ticket promedio
-                if(prom>0) items.push({ic:"💰",txt:"Ticket promedio por cotización: $"+prom.toLocaleString()+".",color:C.text});
-                if(items.length===0) items.push({ic:"🌱",txt:"Sigue registrando ventas y conversaciones — CLEO empezará a descubrir patrones.",color:C.textMuted});
-                return items.map(function(item,i){
-                  return e("div",{key:i,style:{display:"flex",gap:14,alignItems:"flex-start",padding:"12px 0",borderBottom:i<items.length-1?"1px solid "+C.border:"none"}},
-                    e("span",{style:{fontSize:20,flexShrink:0}},item.ic),
-                    e("div",{style:{fontSize:14,color:item.color,lineHeight:1.55}},item.txt)
-                  );
-                });
-              })()
-            )
-          ),
+            // ── CARD OSCURA 4 MÉTRICAS ──
+            var stats=[
+              {label:"Total cobrado",val:"$"+cobradoMes.toLocaleString(),sub:aceptadas.length+" cotiz. + "+ventasPer.length+" ventas rápidas",color:"#4ADE80",ic:"💼"},
+              {label:"Ventas rápidas",val:ventasPer.length>0?"$"+totalVD.toLocaleString():"--",sub:ventasPer.length+" venta"+(ventasPer.length!==1?"s":"")+" este periodo",color:"#60A5FA",ic:"⚡"},
+              {label:"En juego",val:enJuego>0?"$"+enJuego.toLocaleString():"$0",sub:"en "+cotsPeriodo.filter(function(c){ return c.estatus==="Pendiente"; }).length+" cotizaciones pendientes",color:"#A78BFA",ic:"⏳"},
+              {label:"Si cierras todo",val:potencial>0?"$"+potencial.toLocaleString():"--",sub:"podrías alcanzar este periodo",color:"#FBBF24",ic:"🏆"},
+            ];
 
-          // FUNCIONANDO + OPORTUNIDAD
-          e("div",{style:{display:"grid",gridTemplateColumns:"1fr 1fr",gap:16,marginBottom:24}},
-            e("div",{style:{background:C.surface,borderRadius:20,padding:"24px",border:"1px solid "+C.border,boxShadow:"0 2px 12px rgba(0,0,0,0.04)"}},
-              e("div",{style:{fontSize:11,fontWeight:700,color:C.textDim,textTransform:"uppercase",letterSpacing:"1.5px",marginBottom:20}},"Esto esta funcionando"),
-              (function(){
-                var items=[];
-                if(tasa>=40) items.push("Tasa de cierre del "+tasa+"% , por encima del promedio.");
-                if(pctCot>=60) items.push("La mayoría de tus ventas vienen de cotizaciones.");
-                if(prom>0) items.push("Ticket promedio de $"+prom.toLocaleString()+".");
-                if(mejorCanalCierre&&mejorCanalCierre[1]>=2) items.push(mejorCanalCierre[0]+" te trae clientes que compran.");
-                if(ventasPer.length>0) items.push(ventasPer.length+" venta"+(ventasPer.length>1?"s rápidas":" rápida")+" este periodo.");
-                if(items.length===0) items.push("Registra más ventas y CLEO identificará qué funciona.");
-                return e("div",{style:{display:"flex",flexDirection:"column",gap:12}},
-                  items.map(function(item,i){ return e("div",{key:i,style:{display:"flex",gap:10,alignItems:"flex-start"}},e("div",{style:{width:18,height:18,borderRadius:"50%",background:C.green+"15",border:"1px solid "+C.green+"40",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,marginTop:2}},e("svg",{width:8,height:8,viewBox:"0 0 24 24",fill:"none"},e("path",{d:"M5 13l4 4L19 7",stroke:C.green,strokeWidth:3,strokeLinecap:"round",strokeLinejoin:"round"}))),e("div",{style:{fontSize:13,color:C.text,lineHeight:1.5}},item)); })
-                );
-              })()
-            ),
-            e("div",{style:{background:"#FFFBEB",borderRadius:20,padding:"24px",border:"1px solid "+C.amberBorder,boxShadow:"0 2px 12px rgba(0,0,0,0.04)"}},
-              e("div",{style:{fontSize:11,fontWeight:700,color:C.amber,textTransform:"uppercase",letterSpacing:"1.5px",marginBottom:20}},"Oportunidad de mejora"),
-              (function(){
-                var ganadosSinRazon=clientes.filter(function(c){ return c.etapa==="Ganado"&&(!c.razonCierre||c.razonCierre.length===0); }).length;
-                if(motivoPrincipal) return e("div",null,
-                  e("div",{style:{fontSize:14,color:"#78350F",lineHeight:1.65,marginBottom:10,fontWeight:500}},"\""+motivoPrincipal+"\" es la objeción más recurrente."),
-                  e("div",{style:{fontSize:13,color:"#92400E",lineHeight:1.65,borderTop:"1px solid "+C.amberBorder,paddingTop:10}},
-                    motivoPrincipal==="Precio alto"?"Dedica más tiempo a mostrar el valor antes de dar el precio.":
-                    motivoPrincipal==="Sin presupuesto"?"Pregunta por el presupuesto al inicio para no perder tiempo.":
-                    motivoPrincipal==="Eligio a otro"?"Revisa cómo presentas tu propuesta frente a la competencia.":
-                    "Cada patrón de pérdida tiene una solución , el primer paso es registrarlo."
-                  )
-                );
-                if(ganadosSinRazon>0) return e("div",null,
-                  e("div",{style:{fontSize:14,color:"#78350F",lineHeight:1.65,marginBottom:10,fontWeight:500}},"¿Por qué te compraron?"),
-                  e("div",{style:{fontSize:13,color:"#92400E",lineHeight:1.65,borderTop:"1px solid "+C.amberBorder,paddingTop:10}},"Tienes "+ganadosSinRazon+" cliente"+(ganadosSinRazon>1?"s que compraron":"  que compró")+" sin razón de cierre registrada. Saber por qué cierras es tan importante como saber por qué pierdes , te dice qué repetir.")
-                );
-                return e("div",null,
-                  e("div",{style:{fontSize:14,color:"#78350F",lineHeight:1.65,fontWeight:500}},"Registra el motivo cuando pierdas una venta."),
-                  e("div",{style:{fontSize:13,color:"#92400E",lineHeight:1.65,borderTop:"1px solid "+C.amberBorder,paddingTop:10,marginTop:10}},"Ese dato es el más valioso para mejorar , CLEO empezará a mostrarte patrones.")
-                );
-              })()
-            )
-          ),
+            // ── INSIGHTS DINÁMICOS (Lo que CLEO descubrió) ──
+            var insights=[];
+            if(promDiasCierre!==null){
+              if(promDiasCierre===0) insights.push({ic:"⏱️",color:"#DCFCE7",icBg:"#166534",titulo:"Tus clientes deciden rápido",desc:"La mayoría de tus ventas se cierran el mismo día que envías el precio."});
+              else if(promDiasCierre<=2) insights.push({ic:"⏱️",color:"#DCFCE7",icBg:"#166534",titulo:"Decisiones muy rápidas",desc:"Tus clientes deciden en "+promDiasCierre+" día"+(promDiasCierre>1?"s":"")+" en promedio. Tienes que estar listo desde el primer mensaje."});
+              else insights.push({ic:"⏱️",color:"#DCFCE7",icBg:"#166534",titulo:"Tus clientes tardan "+promDiasCierre+" días",desc:"Haz seguimiento a los "+Math.round(promDiasCierre/2)+" días — antes de que se enfríe el interés."});
+            }
+            if(mejorCanalCierre&&mejorCanalCierre[1]>=2){
+              var pctCanal=Math.round((mejorCanalCierre[1]/(clientes.filter(function(c){ return c.origen===mejorCanalCierre[0]; }).length||1))*100);
+              insights.push({ic:"🎯",color:"#FCE7F3",icBg:"#9D174D",titulo:mejorCanalCierre[0]+" es tu mejor canal",desc:"El "+pctCanal+"% de tus clientes de ese canal terminan comprando. Es donde más cierras."});
+            }
+            if(motivoPrincipal){
+              insights.push({ic:"⚠️",color:"#FEF3C7",icBg:"#92400E",titulo:'"'+motivoPrincipal+'" es la objeción más común',desc:"Apareció en el "+Math.round((cotsPeriodo.filter(function(c){ return c.motivoPerdida===motivoPrincipal; }).length/Math.max(cotsPeriodo.filter(function(c){ return c.estatus==="Rechazada"; }).length,1))*100)+"% de las cotizaciones que no cerraste."});
+            }
+            var saldosPend=aceptadas.reduce(function(s,cot){ var p=cot.pagos||[]; var pagado=p.reduce(function(x,pg){ return x+Number(pg.monto); },0); return s+(cot.monto-pagado>0?cot.monto-pagado:0); },0);
+            if(saldosPend>0) insights.push({ic:"💼",color:"#DBEAFE",icBg:"#1E40AF",titulo:"Tienes $"+saldosPend.toLocaleString()+" pendientes de cobro",desc:"Son ventas ya cerradas que aún no has cobrado. Recuérdaselo a tu cliente."});
+            if(prom>0) insights.push({ic:"📊",color:"#F3E8FF",icBg:"#6B21A8",titulo:"Tu ticket promedio es de $"+prom.toLocaleString(),desc:aceptadas.length>=3?"Está basado en tus últimas "+aceptadas.length+" ventas cerradas. Ese es tu punto de referencia.":"Con más ventas registradas CLEO podrá darte un análisis más preciso."});
+            if(topConcepto&&topConcepto[1]>=2) insights.push({ic:"⭐",color:"#FEF9C3",icBg:"#713F12",titulo:'"'+topConcepto[0]+'" es tu servicio más vendido',desc:"Lo has vendido "+topConcepto[1]+" veces este periodo. Considera tenerlo siempre listo para ofrecer."});
+            var etAtas=["Cotizacion enviada","Seguimiento","Negociacion"].map(function(et){ return {et:et,n:clientes.filter(function(c){ return c.etapa===et&&diasDesde(c.fechaEtapa||c.fecha)>=7; }).length}; }).sort(function(a,b){ return b.n-a.n; })[0];
+            if(etAtas&&etAtas.n>=2) insights.push({ic:"🔍",color:"#FEE2E2",icBg:"#991B1B",titulo:etAtas.n+" clientes llevan +7 días sin avanzar",desc:"Están atascados en el proceso. Un mensaje directo puede desbloquear esas conversaciones."});
+            if(insights.length===0) insights.push({ic:"🌱",color:"#DCFCE7",icBg:"#166534",titulo:"CLEO está aprendiendo tu negocio",desc:"Registra más ventas y conversaciones para ver patrones reales sobre cómo vendes."});
 
-          // EVOLUCION
-          (function(){
-            var aceptadasAntes=cotizaciones.filter(function(c){ if(periodo!=="mes") return false; var d=new Date(c.fecha); var prev=new Date(HOY); prev.setMonth(prev.getMonth()-1); return c.estatus==="Aceptada"&&d.getMonth()===prev.getMonth()&&d.getFullYear()===prev.getFullYear(); });
-            var tasaAntes=aceptadasAntes.length>0?(function(){ var cotAnt=cotizaciones.filter(function(c){ var d=new Date(c.fecha); var prev=new Date(HOY); prev.setMonth(prev.getMonth()-1); return d.getMonth()===prev.getMonth()&&d.getFullYear()===prev.getFullYear(); }); return cotAnt.length>0?Math.round((aceptadasAntes.length/cotAnt.length)*100):0; })():null;
-            var promAntes=aceptadasAntes.length>0?Math.round(aceptadasAntes.reduce(function(s,c){ return s+c.monto; },0)/aceptadasAntes.length):null;
-            var cobradoAntes=aceptadasAntes.reduce(function(s,c){ return s+c.monto; },0)+ventas.filter(function(v){ var d=new Date(v.fecha); var prev=new Date(HOY); prev.setMonth(prev.getMonth()-1); return d.getMonth()===prev.getMonth()&&d.getFullYear()===prev.getFullYear(); }).reduce(function(s,v){ return s+Number(v.monto); },0);
-            var totalAhora=totalG+totalVD;
-            if(periodo!=="mes"||cobradoAntes===0) return null;
-            var rows=[
-              cobradoAntes>0?{label:"Ingresos",antes:"$"+cobradoAntes.toLocaleString(),ahora:"$"+totalAhora.toLocaleString(),mejor:totalAhora>=cobradoAntes}:null,
-              tasaAntes!==null&&tasa!==tasaAntes?{label:"Tasa de cierre",antes:tasaAntes+"%",ahora:tasa+"%",mejor:tasa>=tasaAntes}:null,
-              promAntes&&prom&&prom!==promAntes?{label:"Ticket promedio",antes:"$"+promAntes.toLocaleString(),ahora:"$"+prom.toLocaleString(),mejor:prom>=promAntes}:null,
-              promDiasCierre!==null&&promAnterior!==null&&promDiasCierre!==promAnterior?{label:"Dias para cerrar",antes:promAnterior+"d",ahora:promDiasCierre+"d",mejor:promDiasCierre<=promAnterior}:null,
-            ].filter(Boolean);
-            if(rows.length===0) return null;
-            return e("div",{style:{background:C.surface,borderRadius:20,padding:"24px",border:"1px solid "+C.border,boxShadow:"0 2px 12px rgba(0,0,0,0.04)",marginBottom:24}},
-              e("div",{style:{display:"flex",alignItems:"center",gap:8,marginBottom:20}},
-                e("div",{style:{fontSize:11,fontWeight:700,color:C.textDim,textTransform:"uppercase",letterSpacing:"1.5px"}},"Tu evolucion"),
-                e("div",{style:{fontSize:11,color:C.textDim,background:C.bg,border:"1px solid "+C.border,borderRadius:20,padding:"2px 10px"}},"vs mes anterior")
-              ),
-              e("div",{style:{display:"flex",flexDirection:"column"}},
-                rows.map(function(row,i){
-                  return e("div",{key:i,style:{display:"flex",alignItems:"center",padding:"13px 0",borderBottom:i<rows.length-1?"1px solid "+C.border:"none",gap:12}},
-                    e("div",{style:{flex:1,fontSize:14,color:C.textMuted}},row.label),
-                    e("div",{style:{fontSize:13,color:C.textDim}},row.antes),
-                    e("svg",{width:16,height:16,viewBox:"0 0 24 24",fill:"none"},e("path",{d:row.mejor?"M5 12h14M12 5l7 7-7 7":"M5 12h14M12 19l7-7-7-7",stroke:row.mejor?C.green:C.red,strokeWidth:2,strokeLinecap:"round",strokeLinejoin:"round"})),
-                    e("div",{style:{fontSize:16,fontWeight:700,color:row.mejor?C.green:C.red,minWidth:60,textAlign:"right"}},row.ahora)
-                  );
-                })
-              )
-            );
-          })(),
+            // ── ACCIONES SEMANALES DINÁMICAS ──
+            var acciones=[];
+            var cotsPend=cotsPeriodo.filter(function(c){ return c.estatus==="Pendiente"; });
+            if(cotsPend.length>0) acciones.push({n:1,ic:"💬",titulo:"Contacta las "+cotsPend.length+" cotizacion"+(cotsPend.length>1?"es":"")+" pendiente"+(cotsPend.length>1?"s":""),desc:"Representan $"+enJuego.toLocaleString()+" posibles."});
+            if(promDiasCierre!==null&&promDiasCierre<=2) acciones.push({n:acciones.length+1,ic:"📅",titulo:"Da seguimiento antes de 48 horas",desc:"Tus ventas más rápidas vienen de ahí."});
+            else if(saldosPend>0) acciones.push({n:acciones.length+1,ic:"📅",titulo:"Cobra los $"+saldosPend.toLocaleString()+" pendientes",desc:"Ya cerraste la venta, ahora cierra el pago."});
+            if(motivoPrincipal) acciones.push({n:acciones.length+1,ic:"🎯",titulo:"Prepara una respuesta para '"+motivoPrincipal+"'",desc:"Si lo tienes listo, no perderás la próxima vez."});
+            else if(promDiasCierre!==null&&promDiasCierre===0) acciones.push({n:acciones.length+1,ic:"🎯",titulo:"Enfócate en cerrar rápido",desc:"Tus clientes deciden el mismo día. Mantén el ritmo."});
+            else acciones.push({n:acciones.length+1,ic:"🎯",titulo:"Registra el motivo cuando pierdas una venta",desc:"Con ese dato CLEO puede mostrarte qué mejorar."});
+            acciones=acciones.slice(0,3);
 
-          // DE DONDE VIENEN TUS CLIENTES
-          e("div",{style:{background:C.surface,borderRadius:20,padding:"24px",border:"1px solid "+C.border,boxShadow:"0 2px 12px rgba(0,0,0,0.04)",marginBottom:24}},
-            e("div",{style:{fontSize:11,fontWeight:700,color:C.textDim,textTransform:"uppercase",letterSpacing:"1.5px",marginBottom:20}},"De donde vienen tus clientes"),
-            (function(){
-              var barColors=["#4B5EFC","#10B981","#F59E0B","#8B5CF6","#EF4444"];
-              var datosCanales=ORIGENES.map(function(o){ var total=clientes.filter(function(c){ return c.origen===o; }).length; var cerrados=canalCierres[o]||0; var tC=total>0?Math.round((cerrados/total)*100):0; return {origen:o,total:total,cerrados:cerrados,tasa:tC}; }).filter(function(d){ return d.total>0; }).sort(function(a,b){ return b.total-a.total; });
-              if(datosCanales.length===0) return e("div",{style:{fontSize:13,color:C.textDim,textAlign:"center",padding:"16px 0"}},"Registra el origen de tus clientes para ver este analisis.");
-              var mejorTasa=datosCanales.filter(function(d){ return d.cerrados>0; }).sort(function(a,b){ return b.tasa-a.tasa; })[0];
-              var mayorVolumen=datosCanales[0];
-              var insight=mejorTasa&&mayorVolumen?(mejorTasa.origen===mayorVolumen.origen?mayorVolumen.origen+" genera más leads y también convierte mejor.":"Recibes más leads de "+mayorVolumen.origen+", pero "+mejorTasa.origen+" convierte mejor ("+mejorTasa.tasa+"%)."):null;
-              return e("div",null,
-                insight&&e("div",{style:{background:C.purplePale,border:"1px solid "+C.purple+"22",borderRadius:12,padding:"12px 16px",marginBottom:20,fontSize:13,color:C.purple,lineHeight:1.6,display:"flex",gap:8,alignItems:"flex-start"}},e("span",{style:{fontSize:14,flexShrink:0}},"💡"),e("span",null,insight)),
-                e("div",{style:{display:"flex",flexDirection:"column"}},
-                  datosCanales.map(function(d,i){
-                    var col=barColors[i%barColors.length];
-                    return e("div",{key:d.origen,style:{padding:"14px 0",borderBottom:i<datosCanales.length-1?"1px solid "+C.border:"none"}},
-                      e("div",{style:{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10}},
-                        e("div",{style:{fontSize:14,fontWeight:600,color:C.text}},d.origen),
-                        e("div",{style:{display:"flex",gap:10,alignItems:"center"}},
-                          e("span",{style:{fontSize:12,color:C.textDim}},d.cerrados+" de "+d.total+" cerraron"),
-                          e("span",{style:{fontSize:14,fontWeight:700,color:d.tasa>=50?C.green:d.tasa>=30?C.amber:C.textDim}},d.tasa+"%")
-                        )
+            // ── MENSAJE DE ÁNIMO DINÁMICO ──
+            var animo=cobradoMes>0&&tasa>=50?"Vas por buen camino. Si sigues haciendo seguimiento rápido y cerrando las pendientes, podrías superar tu mejor periodo. ¡Tú puedes!":
+              cobradoMes>0&&tasa>=30?"Tienes ventas cerradas y propuestas en la calle. Enfócate en las pendientes y este periodo puede mejorar todavía más.":
+              enJuego>0?"Tienes $"+enJuego.toLocaleString()+" en cotizaciones esperando respuesta. Un seguimiento a tiempo puede cerrar todo esto.":
+              "Cada venta registrada es información valiosa. Sigue adelante — los patrones empiezan a aparecer cuando más datos tienes.";
+
+            return e("div",{style:{display:"flex",flexDirection:"column",gap:24}},
+
+              // CARD OSCURA
+              e("div",{style:{background:"#0F1729",borderRadius:24,padding:isMobile?"24px 20px":"44px 48px",position:"relative",overflow:"hidden",boxShadow:"0 8px 32px rgba(0,0,0,0.18)"}},
+                e("div",{style:{display:"grid",gridTemplateColumns:isMobile?"1fr 1fr":"1fr 1px 1fr 1px 1fr 1px 1fr",gap:isMobile?"20px 0":0,alignItems:"start"}},
+                  stats.map(function(k,i){
+                    var isLast=i===stats.length-1;
+                    return [
+                      e("div",{key:"s"+i,style:{padding:isMobile?"0 12px":"0 24px",textAlign:"center",borderBottom:isMobile&&i<2?"1px solid rgba(255,255,255,0.06)":"none",paddingBottom:isMobile&&i<2?"20px":"0"}},
+                        e("div",{style:{fontSize:isMobile?18:28,marginBottom:6}},k.ic),
+                        e("div",{style:{fontSize:isMobile?9:11,color:"rgba(255,255,255,0.4)",textTransform:"uppercase",letterSpacing:"1px",marginBottom:8}},k.label),
+                        e("div",{style:{fontSize:isMobile?20:32,fontWeight:700,color:k.color,lineHeight:1,marginBottom:6}},k.val),
+                        e("div",{style:{fontSize:isMobile?10:12,color:"rgba(255,255,255,0.35)",lineHeight:1.4}},k.sub)
                       ),
-                      e("div",{style:{height:6,background:C.bg,borderRadius:99,overflow:"hidden"}},
-                        e("div",{style:{display:"flex",height:6}},
-                          e("div",{style:{width:d.tasa+"%",background:col,borderRadius:"99px 0 0 99px",transition:"width 0.4s"}}),
-                          e("div",{style:{flex:1,background:col+"20",borderRadius:"0 99px 99px 0"}})
+                      !isLast&&!isMobile?e("div",{key:"d"+i,style:{width:1,background:"rgba(255,255,255,0.08)",alignSelf:"stretch"}}):null
+                    ];
+                  }).flat().filter(Boolean)
+                )
+              ),
+
+              // LO QUE CLEO DESCUBRIÓ
+              e("div",{style:{background:C.surface,borderRadius:20,padding:"24px",border:"1px solid "+C.border,boxShadow:"0 2px 12px rgba(0,0,0,0.04)"}},
+                e("div",{style:{display:"flex",alignItems:"center",gap:10,marginBottom:6}},
+                  e("div",{style:{width:28,height:28,borderRadius:8,background:C.purplePale,display:"flex",alignItems:"center",justifyContent:"center",fontSize:14}},"🧠"),
+                  e("div",{style:{fontSize:11,fontWeight:700,color:C.purple,textTransform:"uppercase",letterSpacing:"1.5px"}},"Lo que CLEO descubrió")
+                ),
+                e("div",{style:{fontSize:13,color:C.textMuted,marginBottom:20}},"Insights clave de tus ventas este periodo"),
+                e("div",{style:{display:"grid",gridTemplateColumns:isMobile?"1fr":"1fr 1fr 1fr",gap:12}},
+                  insights.map(function(ins,i){
+                    return e("div",{key:i,style:{background:C.bg,borderRadius:14,padding:"16px",border:"1px solid "+C.border,display:"flex",gap:12,alignItems:"flex-start"}},
+                      e("div",{style:{width:36,height:36,borderRadius:10,background:ins.color,display:"flex",alignItems:"center",justifyContent:"center",fontSize:18,flexShrink:0}},ins.ic),
+                      e("div",null,
+                        e("div",{style:{fontSize:13,fontWeight:600,color:C.text,marginBottom:4,lineHeight:1.3}},ins.titulo),
+                        e("div",{style:{fontSize:12,color:C.textMuted,lineHeight:1.5}},ins.desc)
+                      )
+                    );
+                  })
+                )
+              ),
+
+              // QUÉ DEBERÍAS HACER ESTA SEMANA
+              e("div",{style:{background:C.surface,borderRadius:20,padding:"24px",border:"1px solid "+C.border,boxShadow:"0 2px 12px rgba(0,0,0,0.04)"}},
+                e("div",{style:{display:"flex",alignItems:"center",gap:10,marginBottom:6}},
+                  e("div",{style:{width:28,height:28,borderRadius:8,background:"#DCFCE7",display:"flex",alignItems:"center",justifyContent:"center",fontSize:14}},"🎯"),
+                  e("div",{style:{fontSize:11,fontWeight:700,color:C.green,textTransform:"uppercase",letterSpacing:"1.5px"}},"Qué deberías hacer esta semana")
+                ),
+                e("div",{style:{fontSize:13,color:C.textMuted,marginBottom:20}},"3 acciones que tendrán el mayor impacto en tus resultados."),
+                e("div",{style:{display:"grid",gridTemplateColumns:isMobile?"1fr":"1fr 1fr 1fr",gap:12}},
+                  acciones.map(function(ac){
+                    return e("div",{key:ac.n,style:{background:C.bg,borderRadius:14,padding:"16px",border:"1px solid "+C.border,display:"flex",gap:12,alignItems:"flex-start"}},
+                      e("div",{style:{width:28,height:28,borderRadius:"50%",background:C.green,display:"flex",alignItems:"center",justifyContent:"center",fontSize:13,fontWeight:700,color:"#fff",flexShrink:0}},ac.n),
+                      e("div",{style:{display:"flex",gap:10,alignItems:"flex-start"}},
+                        e("div",{style:{fontSize:20,flexShrink:0}},ac.ic),
+                        e("div",null,
+                          e("div",{style:{fontSize:13,fontWeight:600,color:C.text,marginBottom:4,lineHeight:1.3}},ac.titulo),
+                          e("div",{style:{fontSize:12,color:C.textMuted,lineHeight:1.5}},ac.desc)
                         )
                       )
                     );
                   })
                 )
-              );
-            })()
-          ),
+              ),
+
+              // MENSAJE DE ÁNIMO
+              e("div",{style:{background:C.purplePale,borderRadius:20,padding:"20px 24px",border:"1px solid "+C.purple+"22",display:"flex",alignItems:"center",gap:16}},
+                e("div",{style:{fontSize:28,flexShrink:0}},"✨"),
+                e("div",{style:{fontSize:14,color:C.text,lineHeight:1.65}},animo)
+              ),
+
+            );
+          })(),
 
         )
       })()
@@ -3541,13 +3505,12 @@ export default function CLEO(){
             }});
           })
         ),
-        e("button",{style:{background:"none",border:"none",cursor:"pointer",color:C.textDim,fontSize:20,lineHeight:1,padding:"0 4px"},onClick:cancelarGanado},"×")
+        pasoGanado===3&&e("button",{style:{background:"none",border:"none",cursor:"pointer",color:C.textDim,fontSize:20,lineHeight:1,padding:"0 4px"},onClick:cancelarGanado},"×")
       );
 
       // PASO 1 , FELICIDADES + POR QUE COMPRO + PAGO
       if(pasoGanado===1) return e("div",{style:st.ov},
         e("div",{style:st.modal,onClick:function(ev){ ev.stopPropagation(); }},
-          headerPasos,
 
           // FELICIDADES
           e("div",{style:{fontSize:11,color:C.green,textTransform:"uppercase",letterSpacing:"0.5px",marginBottom:6}},"Venta cerrada 🎉"),
@@ -3618,7 +3581,7 @@ export default function CLEO(){
           ),
           (pagoGanado.tipo==="completo"||pagoGanado.tipo==="anticipo")&&e("div",{style:{marginBottom:16}},
             e("label",{style:{fontSize:11,color:C.textDim,display:"block",marginBottom:4,textTransform:"uppercase",letterSpacing:"0.5px"}},"Fecha de pago"),
-            e("input",{type:"date",value:pagoGanado.fecha,onChange:function(ev){ setPagoGanado(Object.assign({},pagoGanado,{fecha:ev.target.value})); },style:st.inp})
+            e("input",{type:"date",value:pagoGanado.fecha,onChange:function(ev){ setPagoGanado(Object.assign({},pagoGanado,{fecha:ev.target.value})); },style:Object.assign({},st.inp,{width:"100%",boxSizing:"border-box",display:"block"})})
           ),
           e("div",{style:{display:"flex",justifyContent:"flex-end"}},
             e("button",{style:st.btnP,
@@ -4790,20 +4753,20 @@ export default function CLEO(){
     ),
 
     // MODAL COTIZACION
-    modalCot&&e("div",{style:st.ov,onClick:function(){ setModalCot(false); }},
+    modalCot&&e("div",{style:Object.assign({},st.ov,{overflow:"hidden"}),onClick:function(){ setModalCot(false); }},
       e("div",{style:{background:C.surface,borderRadius:isMobile?"20px 20px 0 0":"20px",width:isMobile?"100%":560,maxWidth:"100%",maxHeight:isMobile?"94vh":"88vh",border:isMobile?"none":"1px solid "+C.border,boxShadow:"0 8px 32px rgba(0,0,0,0.14)",display:"flex",flexDirection:"column",overflow:"hidden",margin:isMobile?0:"auto"},onClick:function(ev){ ev.stopPropagation(); }},
 
         // HEADER
-        e("div",{style:{padding:isMobile?"16px 20px":"20px 24px",borderBottom:"1px solid "+C.border,flexShrink:0,display:"flex",alignItems:"center",justifyContent:"space-between"}},
+        e("div",{style:{padding:"20px 24px 16px",background:"linear-gradient(135deg,"+C.purplePale+" 0%,transparent 70%)",borderBottom:"1px solid "+C.border,flexShrink:0,display:"flex",alignItems:"flex-start",justifyContent:"space-between"}},
           e("div",null,
-            e("div",{style:{fontWeight:700,fontSize:isMobile?15:17,color:C.text}},editCotId?"Editar "+TXT.cotizacion:"Nueva "+TXT.cotizacion),
+            e("div",{style:{fontWeight:700,fontSize:18,color:C.text}},editCotId?"Editar "+TXT.cotizacion:"Nueva cotización"),
             e("div",{style:{fontSize:12,color:C.textMuted,marginTop:2}},"Prepara una propuesta para tu cliente")
           ),
-          e("button",{style:{background:"none",border:"none",cursor:"pointer",color:C.textMuted,fontSize:22,lineHeight:1,padding:"0 2px"},onClick:function(){ setModalCot(false); setEtapaPendiente(null); }},"×")
+          e("button",{style:{background:C.surfaceUp,border:"1px solid "+C.border,borderRadius:10,cursor:"pointer",color:C.textMuted,fontSize:16,lineHeight:1,padding:"6px 10px"},onClick:function(){ setModalCot(false); setEtapaPendiente(null); }},"×")
         ),
 
         // BODY SCROLLABLE
-        e("div",{style:{padding:isMobile?"16px 20px":"20px 24px",overflowY:"auto",flex:1,display:"flex",flexDirection:"column",gap:isMobile?14:18}},
+        e("div",{style:{padding:isMobile?"16px 20px":"20px 24px",overflowY:"auto",overflowX:"hidden",flex:1,display:"flex",flexDirection:"column",gap:isMobile?14:18}},
 
           // CLIENTE
           e("div",{style:{position:"relative"}},
@@ -4915,7 +4878,7 @@ export default function CLEO(){
           ),
 
           // CONDICIONES
-          e("div",null,
+          e("div",{style:{overflow:"hidden"}},
             e("label",{style:st.lbl},"Condiciones para este cliente"),
             e("div",{style:{fontSize:12,color:C.textDim,marginBottom:6}},"Puedes modificar las condiciones para esta cotización sin cambiar tu catálogo."),
             e(RichEditor,{key:"cot-cond-"+(formCot.concepto||""),value:formCot.svCondicionesHtml||formCot.svCondiciones||"",onChange:function(v){ setFormCot(Object.assign({},formCot,{svCondicionesHtml:v,svCondiciones:v.replace(/<[^>]+>/g," ").replace(/\s+/g," ").trim()})); },placeholder:"Entrega, revisiones, forma de pago, excepciones...",minHeight:70})
