@@ -4588,7 +4588,7 @@ export default function CLEO(){
     // MODAL PERFIL
     // MODAL PERFIL , solo datos del negocio
     modalPerfil&&e("div",{style:st.ov,onClick:function(){ setModalPerfil(false); }},
-      e("div",{style:Object.assign({},st.modal,{padding:0,overflow:"hidden",maxWidth:isMobile?"100%":500,borderRadius:isMobile?"20px 20px 0 0":24}),onClick:function(ev){ ev.stopPropagation(); }},
+      e("div",{style:Object.assign({},st.modal,{padding:0,overflow:"hidden",maxWidth:isMobile?"100%":500,borderRadius:isMobile?"20px 20px 0 0":24,display:"flex",flexDirection:"column",overflowY:"hidden"}),onClick:function(ev){ ev.stopPropagation(); }},
 
         // ── HEADER ──
         e("div",{style:{padding:"22px 24px 18px",borderBottom:"1px solid "+C.border,display:"flex",alignItems:"center",justifyContent:"space-between",background:"linear-gradient(135deg,"+C.purplePale+" 0%,transparent 70%)"}},
@@ -4619,7 +4619,7 @@ export default function CLEO(){
         ),
 
         // ── BODY (scrollable) ──
-        e("div",{style:{overflowY:"auto",maxHeight:"calc(88vh - 140px)"}},
+        e("div",{style:{overflowY:"auto",flex:1,minHeight:0}},
 
           // SECCIÓN: Información del negocio
           e("div",{style:{padding:"20px 24px",borderBottom:"1px solid "+C.border}},
