@@ -255,6 +255,7 @@ var clientesDemo=[
   {id:4,nombre:"Roberto Mendez",negocio:"Constructora RM",contacto:"9994567890",origen:"Referido",etapa:"Negociacion",notas:"Interesado pero quiere ajustar el precio",fecha:"2026-05-25",instagram:"",canalPrincipal:"WhatsApp",messenger:"",email:"",fechaEtapa:"2026-05-25"},
   {id:5,nombre:"Sofia Herrera",negocio:"Boutique Sofia",contacto:"9993334455",origen:"Instagram",etapa:"Ganado",notas:"Cerro sin problema, muy contenta con el servicio",fecha:"2026-05-15",instagram:"@sofiaherrera",canalPrincipal:"WhatsApp",messenger:"",email:"",fechaEtapa:"2026-05-22",razonCierre:["Confianza","Seguimiento"]},
   {id:6,nombre:"Diego Torres",negocio:"Bar La Noche",contacto:"9996543210",origen:"Facebook",etapa:"Perdido",notas:"Decidio con otro proveedor",fecha:"2026-05-10",instagram:"",canalPrincipal:"WhatsApp",messenger:"",email:"",fechaEtapa:"2026-05-18",motivoPerdida:"Precio alto"},
+  {id:7,nombre:"Valentina Cruz",negocio:"Studio Pilates",contacto:"9997891234",origen:"Instagram",etapa:"Perdido",notas:"Le pareció caro pero le interesó mucho el servicio",fecha:"2026-04-10",instagram:"@valcruz",canalPrincipal:"WhatsApp",messenger:"",email:"",fechaEtapa:"2026-04-12",motivoPerdida:"Precio alto",seguimientoFecha:"2026-06-16",notaRecontacto:"Le encantó la propuesta pero dijo que en ese momento no podía. Mencionó que en junio tendría más presupuesto.",sugerenciaMensaje:""},
 ];
 var cotDemo=[
   {id:1,clienteId:2,concepto:"Diseno de menu digital",cantidad:1,precioUnit:3500,monto:3500,estatus:"Pendiente",fecha:"2026-05-29",motivoPerdida:"",vigencia:"2026-06-10",vigenciaDias:"12",notas:"Incluye version impresa y digital",anticipo:0,fechaAnticipo:"",pagos:[]},
@@ -903,7 +904,7 @@ function ModalVenta(props){
       ),
       e("div",{style:{marginBottom:12}},
         e("label",{style:st.lbl},"Fecha"),
-        e("input",{type:"date",value:formVenta.fecha||FECHA_HOY,onChange:function(ev){ setFormVenta(Object.assign({},formVenta,{fecha:ev.target.value})); },style:Object.assign({},st.inp,{width:"100%",boxSizing:"border-box",display:"block"})})
+        e("input",{type:"date",value:formVenta.fecha||FECHA_HOY,onChange:function(ev){ setFormVenta(Object.assign({},formVenta,{fecha:ev.target.value})); },style:Object.assign({},st.inp,{width:"100%",maxWidth:"100%",boxSizing:"border-box",display:"block",WebkitAppearance:"none"})})
       ),
       e("div",{style:{marginBottom:12}},
         e("label",{style:st.lbl},"¿Donde fue esta venta? (opcional)"),
@@ -1367,6 +1368,11 @@ export default function CLEO(){
       setEtapaAnteriorPipeline(clienteActual?clienteActual.etapa:null);
       setMotivoPipelineId(id);
       setClientes(clientes.map(function(c){ return c.id===id?Object.assign({},c,{etapa:nueva,fechaEtapa:FECHA_HOY}):c; }));
+      // Marcar cotizaciones pendientes como Rechazadas
+      var cotsPendP=cotizaciones.filter(function(c){ return c.clienteId===id&&c.estatus==="Pendiente"; });
+      if(cotsPendP.length>0){
+        setCotizaciones(cotizaciones.map(function(c){ return c.clienteId===id&&c.estatus==="Pendiente"?Object.assign({},c,{estatus:"Rechazada"}):c; }));
+      }
       return;
     }
     if(nueva==="Ganado"){
@@ -1908,14 +1914,84 @@ export default function CLEO(){
 
         e("div",{style:{padding:isMobile?"20px 16px":sbOpen?"40px 32px":"40px 48px",maxWidth:1280,margin:"0 auto",width:"100%",boxSizing:"border-box"}},
 
-      // INICIO
-      vista==="inicio"&&clientes.length===0&&e("div",{style:{display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",minHeight:"60vh",padding:"0 16px",textAlign:"center"}},
-        e("div",{style:{fontSize:40,marginBottom:20}},"👋"),
-        e("div",{style:{fontSize:22,fontWeight:700,color:C.text,marginBottom:12,lineHeight:1.3}},"¿Por dónde empiezo?"),
-        e("div",{style:{fontSize:15,color:C.textMuted,lineHeight:1.7,marginBottom:32,maxWidth:380}},"Piensa en alguien con quien hayas hablado esta semana , un cliente, alguien que preguntó precio, alguien interesado. Regístralo aquí. Tarda 30 segundos y es todo lo que necesitas para empezar."),
-        e("button",{style:{cursor:"pointer",padding:"14px 28px",borderRadius:12,border:"none",background:C.purple,fontSize:15,color:"#fff",fontWeight:600,marginBottom:20},onClick:function(){ setClienteSel(null); setForm(formVacio); setModalCliente(true); }},"Registrar mi primer cliente →"),
-        e("div",{style:{fontSize:12,color:C.textDim,maxWidth:320,lineHeight:1.6}},"¿Por qué registrarlo? Porque en 2 semanas CLEO te va a decir exactamente qué está funcionando en tu negocio y qué no.")
-      ),
+      // INICIO - ONBOARDING EMPTY STATE
+      vista==="inicio"&&clientes.length===0&&(function(){
+        var perfilCompleto=!!(perfil.nombre&&perfil.nombre!=="Mi Negocio"&&(perfil.tipoPerfil||perfil.telefono||perfil.redesWA||perfil.redesIG));
+        var ambosCompletos=perfilCompleto; // clientes.length===0 so second step never done here
+        return e("div",{style:{display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",minHeight:"60vh",padding:"0 16px"}},
+
+          // Encabezado
+          e("div",{style:{textAlign:"center",marginBottom:36}},
+            e("div",{style:{fontSize:36,marginBottom:16}},"👋"),
+            e("div",{style:{fontSize:22,fontWeight:700,color:C.text,marginBottom:8,lineHeight:1.3}},"¿Por dónde empiezo?"),
+            e("div",{style:{fontSize:14,color:C.textMuted,lineHeight:1.6}},"Solo te faltan ",e("strong",null,"2 pasos")," para comenzar a usar CLEO.")
+          ),
+
+          // Tarjeta con pasos
+          e("div",{style:{width:"100%",maxWidth:420,display:"flex",flexDirection:"column",gap:12,marginBottom:32}},
+
+            // PASO 1 — Completa tu perfil
+            e("div",{style:{
+              background:C.surface,borderRadius:16,padding:"20px 24px",
+              border:"1.5px solid "+(perfilCompleto?C.greenBorder:C.border),
+              boxShadow:"0 2px 8px rgba(0,0,0,0.05)",
+              opacity:perfilCompleto?0.75:1
+            }},
+              e("div",{style:{display:"flex",alignItems:"flex-start",gap:14}},
+                // Checkbox
+                e("div",{style:{
+                  width:24,height:24,borderRadius:8,flexShrink:0,marginTop:2,
+                  background:perfilCompleto?C.green:"transparent",
+                  border:"2px solid "+(perfilCompleto?C.green:C.borderStrong),
+                  display:"flex",alignItems:"center",justifyContent:"center"
+                }},perfilCompleto&&e("svg",{width:13,height:13,viewBox:"0 0 13 13",fill:"none"},e("path",{d:"M2 7L5 10L11 3",stroke:"#fff",strokeWidth:2,strokeLinecap:"round",strokeLinejoin:"round"}))),
+                e("div",{style:{flex:1}},
+                  e("div",{style:{fontWeight:700,fontSize:15,color:C.text,marginBottom:4}},"1. Completa tu perfil"),
+                  e("div",{style:{fontSize:13,color:C.textMuted,lineHeight:1.55,marginBottom:perfilCompleto?0:14}},"Cuéntanos qué haces y cómo pueden contactarte tus clientes."),
+                  !perfilCompleto&&e("button",{
+                    style:{cursor:"pointer",padding:"8px 18px",borderRadius:10,border:"none",background:C.purple,fontSize:13,color:"#fff",fontWeight:600},
+                    onClick:function(){ setFormPerfil(Object.assign({},perfil)); setModalPerfil(true); }
+                  },"Completar perfil →")
+                )
+              )
+            ),
+
+            // PASO 2 — Registra tu primer cliente
+            e("div",{style:{
+              background:C.surface,borderRadius:16,padding:"20px 24px",
+              border:"1.5px solid "+C.border,
+              boxShadow:"0 2px 8px rgba(0,0,0,0.05)"
+            }},
+              e("div",{style:{display:"flex",alignItems:"flex-start",gap:14}},
+                // Checkbox vacío
+                e("div",{style:{
+                  width:24,height:24,borderRadius:8,flexShrink:0,marginTop:2,
+                  background:"transparent",
+                  border:"2px solid "+C.borderStrong
+                }}),
+                e("div",{style:{flex:1}},
+                  e("div",{style:{fontWeight:700,fontSize:15,color:C.text,marginBottom:4}},"2. Registra tu primer cliente"),
+                  e("div",{style:{fontSize:13,color:C.textMuted,lineHeight:1.55,marginBottom:14}},"Piensa en alguien que te haya escrito esta semana, preguntado precios o mostrado interés en lo que haces."),
+                  e("button",{
+                    style:{cursor:"pointer",padding:"8px 18px",borderRadius:10,border:"none",background:C.purple,fontSize:13,color:"#fff",fontWeight:600},
+                    onClick:function(){ setClienteSel(null); setForm(formVacio); setModalCliente(true); }
+                  },"Registrar mi primer cliente →")
+                )
+              )
+            )
+          ),
+
+          // Tip inferior
+          e("div",{style:{
+            display:"flex",alignItems:"flex-start",gap:10,
+            background:C.purplePale,borderRadius:12,padding:"14px 18px",
+            maxWidth:420,width:"100%",boxSizing:"border-box"
+          }},
+            e("div",{style:{fontSize:18,flexShrink:0}},"💡"),
+            e("div",{style:{fontSize:13,color:C.purple,lineHeight:1.6}},"Cada cliente que registres ayuda a CLEO a entender tu negocio y a ayudarte a vender mejor.")
+          )
+        );
+      })(),
 
       vista==="inicio"&&clientes.length>0&&(function(){
         var DIAS=["domingo","lunes","martes","miercoles","jueves","viernes","sabado"];
@@ -2022,39 +2098,58 @@ export default function CLEO(){
           };
         }
 
-        // ── PREGUNTA DE LA SEMANA , basada en datos reales ─────────────────────
+        // ── PREGUNTA DEL DÍA , basada en datos reales ─────────────────────
         var preguntaSemana=null;
-        var semanaNum=Math.floor((HOY-new Date(HOY.getFullYear(),0,1))/604800000);
-        var clientesSemana=clientes.filter(function(c){ return diasDesde(c.fecha)<=7; });
-        var perdidasSemana=cotizaciones.filter(function(c){ return c.estatus==="Rechazada"&&diasDesde(c.fecha)<=7; });
-        var ganadasSemana=cotizaciones.filter(function(c){ return c.estatus==="Aceptada"&&diasDesde(c.fecha)<=7; });
-        if(perdidasSemana.length>=1){
-          var motivo=perdidasSemana[0].motivoPerdida;
-          preguntaSemana=motivo
-            ?"No cerraste esa venta. El motivo fue \""+motivo+"\". ¿Hay otro cliente activo con la misma objeción al que puedas atender diferente esta semana?"
-            :"Perdiste una venta esta semana. ¿Tienes claro en qué momento se enfrió? Identificarlo te ayuda a saber qué cambiar la próxima vez.";
-        } else if(ganadasSemana.length>=1){
-          var cl0=ganadasSemana[0];
-          var cc=clientes.find(function(c){ return c.id===cl0.clienteId; });
-          preguntaSemana="Cerraste una venta"+(cc?" con "+cc.nombre.split(" ")[0]:"")+". ¿Qué hiciste diferente esta vez que podrías repetir con tus próximos clientes?";
-        } else if(clientesSemana.length>=1){
-          var nc=clientesSemana[0];
-          preguntaSemana=clientesSemana.length===1
-            ?"Registraste a "+nc.nombre.split(" ")[0]+" esta semana. ¿Ya le enviaste una propuesta o le diste seguimiento?"
-            :"Tienes "+clientesSemana.length+" contactos nuevos esta semana. ¿A cuál de ellos le urge más resolver su problema?";
-        } else if(sinContacto>=3){
-          preguntaSemana="Hay "+sinContacto+" clientes que no han recibido noticias tuyas. ¿Cuál de ellos tiene más probabilidades de avanzar si le escribes hoy?";
+        var diaNum=Math.floor((HOY-new Date(HOY.getFullYear(),0,1))/86400000);
+        var clientesHoy2=clientes.filter(function(c){ return diasDesde(c.fecha)===0; });
+        var clientesAyer=clientes.filter(function(c){ return diasDesde(c.fecha)===1; });
+        var perdidasRecientes=cotizaciones.filter(function(c){ return c.estatus==="Rechazada"&&diasDesde(c.fecha)<=2; });
+        var ganadasHoy=cotizaciones.filter(function(c){ return c.estatus==="Aceptada"&&diasDesde(c.fecha)<=1; });
+        var ventasHoy=ventas.filter(function(v){ return diasDesde(v.fecha)===0; });
+        var cotsPendientesViejas=cotizaciones.filter(function(c){ return c.estatus==="Pendiente"&&diasDesde(c.fecha)>=3; });
+        var clienteMasDias=clientes.filter(function(c){ return c.etapa!=="Ganado"&&c.etapa!=="Perdido"; }).sort(function(a,b){ return diasSinContacto(b)-diasSinContacto(a); })[0];
+
+        if(perdidasRecientes.length>=1){
+          var mot=perdidasRecientes[0].motivoPerdida;
+          var clP=clientes.find(function(c){ return c.id===perdidasRecientes[0].clienteId; });
+          var nombreP=clP?clP.nombre.split(" ")[0]:"ese cliente";
+          preguntaSemana=mot
+            ?""+nombreP+" no avanzó — mencionó \""+mot+"\". ¿Tienes otro cliente activo con la misma objeción al que puedas responder diferente hoy?"
+            :"No cerraste con "+nombreP+". ¿En qué momento exacto se enfrió la conversación? Identificarlo hoy te prepara para la próxima vez.";
+        } else if(ganadasHoy.length>=1){
+          var clG=clientes.find(function(c){ return c.id===ganadasHoy[0].clienteId; });
+          var nombreG=clG?clG.nombre.split(" ")[0]:"tu cliente";
+          preguntaSemana="Cerraste con "+nombreG+". ¿Qué hiciste en esta venta que no haces siempre? Eso es exactamente lo que deberías repetir.";
+        } else if(ventasHoy.length>=1){
+          var nombreVH=ventasHoy[0].concepto||"esa venta rápida";
+          preguntaSemana="Registraste \""+nombreVH+"\" hoy. ¿Este cliente podría comprarte algo más en los próximos días?";
+        } else if(clientesHoy2.length>=1){
+          var nc2=clientesHoy2[0];
+          preguntaSemana="Acabas de registrar a "+nc2.nombre.split(" ")[0]+". ¿Ya sabes qué necesita exactamente? Si no, pregúntalo antes de mandar precio.";
+        } else if(clientesAyer.length>=1){
+          var ncA=clientesAyer[0];
+          preguntaSemana="Ayer registraste a "+ncA.nombre.split(" ")[0]+". ¿Ya le diste seguimiento o sigue esperando noticias tuyas?";
+        } else if(cotsPendientesViejas.length>=1){
+          var cotV=cotsPendientesViejas[0];
+          var clV=clientes.find(function(c){ return c.id===cotV.clienteId; });
+          var diasEsp=diasDesde(cotV.fecha);
+          var nombreV=clV?clV.nombre.split(" ")[0]:"tu cliente";
+          preguntaSemana=nombreV+" lleva "+diasEsp+" días con tu propuesta sin responder. ¿Ya le escribiste para ver si tiene dudas?";
+        } else if(clienteMasDias&&diasSinContacto(clienteMasDias)>=5){
+          preguntaSemana=clienteMasDias.nombre.split(" ")[0]+" lleva "+diasSinContacto(clienteMasDias)+" días sin noticias tuyas. ¿Qué necesitaría escuchar hoy para volver a la conversación?";
+        } else if(sinContacto>=2){
+          preguntaSemana="Tienes "+sinContacto+" clientes esperando seguimiento. ¿Cuál de ellos tiene el problema más urgente por resolver hoy?";
         } else {
-          var preguntas=[
-            "¿Hay alguna cotización pendiente a la que no le hayas dado seguimiento esta semana? Un mensaje puede ser la diferencia entre cerrar o perder esa oportunidad.",
-            "¿Cuál de tus clientes activos tiene el problema más urgente por resolver? Ese es al que deberías escribirle primero hoy.",
-            "¿Hay algún cliente que lleve más de una semana sin recibir respuesta tuya? Si es así, hoy es el día de retomar esa conversación.",
-            "¿Cuántas cotizaciones tienes abiertas sin respuesta? Cada una de esas es dinero esperando una decisión. ¿Cuál podrías despejar hoy?",
-            "¿Qué oportunidad podría avanzar con un mensaje o llamada de 5 minutos? Identifícala y hazlo antes de que termine el día.",
-            "¿Tienes clientes que ya compraron y a los que no les has vuelto a escribir? Un cliente satisfecho es tu mejor fuente de referidos.",
-            "¿Cuál de tus clientes activos lleva más tiempo sin avanzar de etapa? Ese estancamiento casi siempre tiene una razón que vale la pena explorar."
+          var preguntasDia=[
+            "¿Hay alguna venta que sientes que casi cierra pero nunca se concretó? Hoy puede ser buen día para retomarla.",
+            "¿A cuál de tus clientes activos le vendería más si volviera a escribirte? ¿Ya le preguntaste cómo le fue con lo que compró?",
+            "Si tuvieras que elegir solo un cliente para contactar hoy, ¿cuál sería y por qué?",
+            "¿Hay algo que vendes que no has ofrecido a todos tus clientes? A veces la venta más fácil es la que no hemos hecho todavía.",
+            "¿Qué cotización pendiente tiene más posibilidades de cerrarse esta semana? Ese es el que merece tu energía hoy.",
+            "¿Cuándo fue la última vez que le pediste una recomendación a un cliente satisfecho?",
+            "¿Hay un cliente que compró hace meses y no has vuelto a contactar? Podría estar listo para otra compra."
           ];
-          preguntaSemana=preguntas[semanaNum%preguntas.length];
+          preguntaSemana=preguntasDia[diaNum%preguntasDia.length];
         }
 
         // ── RECONOCIMIENTO , aparece cuando el emprendedor hizo algo bien ────────
@@ -2112,6 +2207,19 @@ export default function CLEO(){
             !isMobile&&e("div",{style:{fontSize:14,color:C.textMuted,marginTop:8}},subtitulo)
           ),
 
+          // CELEBRACIÓN , primer cliente registrado
+          clientes.length===1&&e("div",{style:{
+            background:"#F0FDF4",border:"1px solid #86EFAC",borderRadius:14,
+            padding:"16px 20px",marginBottom:20,
+            display:"flex",alignItems:"center",gap:14
+          }},
+            e("span",{style:{fontSize:24,flexShrink:0}},"🎉"),
+            e("div",{style:{flex:1}},
+              e("div",{style:{fontSize:13,fontWeight:700,color:"#166534",marginBottom:2}},"CLEO ya está listo para ayudarte a vender mejor."),
+              e("div",{style:{fontSize:13,color:"#15803D",lineHeight:1.5}},"Registraste tu primer cliente. Sigue agregando y CLEO te dirá exactamente qué está funcionando.")
+            )
+          ),
+
           // RECONOCIMIENTO , solo visible si aplica, desaparece después de 2 días
           reconocimiento&&e("div",{style:{
             background:"#F0FDF4",border:"1px solid #86EFAC",borderRadius:14,
@@ -2125,12 +2233,12 @@ export default function CLEO(){
             )
           ),
 
-          // PREGUNTA DE LA SEMANA , justo debajo del saludo
+          // PREGUNTA DEL DÍA , justo debajo del saludo
           e("div",{style:{
             background:"#EEF2FF",border:"1px solid #C7D2FE",borderRadius:14,
             padding:"16px 20px",marginBottom:24
           }},
-            e("div",{style:{fontSize:10,fontWeight:700,color:"#4338CA",textTransform:"uppercase",letterSpacing:"1.5px",marginBottom:6}},"Pregunta de la semana"),
+            e("div",{style:{fontSize:10,fontWeight:700,color:"#4338CA",textTransform:"uppercase",letterSpacing:"1.5px",marginBottom:6}},"🧠 Para vender mejor"),
             e("div",{style:{fontSize:14,color:"#312E81",lineHeight:1.6}},preguntaSemana)
           ),
 
@@ -2527,6 +2635,13 @@ export default function CLEO(){
         if(clienteAbierto){
           var c=clientes.find(function(x){ return x.id===clienteAbierto; });
           if(!c) return null;
+          // Auto-corregir: si cliente está en Sin cerrar, sus cots pendientes deben ser Rechazadas
+          if(c.etapa==="Perdido"){
+            var cotsPendFicha=cotizaciones.filter(function(cot){ return Number(cot.clienteId)===Number(c.id)&&cot.estatus==="Pendiente"; });
+            if(cotsPendFicha.length>0){
+              setCotizaciones(cotizaciones.map(function(cot){ return Number(cot.clienteId)===Number(c.id)&&cot.estatus==="Pendiente"?Object.assign({},cot,{estatus:"Rechazada"}):cot; }));
+            }
+          }
           var cotCliente=cotizaciones.filter(function(cot){ return Number(cot.clienteId)===Number(c.id); }).sort(function(a,b){ return new Date(b.fecha)-new Date(a.fecha); });
           var ventasCliente=ventas.filter(function(v){ return v.clienteId===c.id; }).sort(function(a,b){ return new Date(b.fecha)-new Date(a.fecha); });
           var tabs=["perfil","historial","seguimiento"];
@@ -3399,10 +3514,10 @@ export default function CLEO(){
             acciones=acciones.slice(0,3);
 
             // ── MENSAJE DE ÁNIMO DINÁMICO ──
-            var animo=cobradoMes>0&&tasa>=50?"Vas por buen camino. Si sigues haciendo seguimiento rápido y cerrando las pendientes, podrías superar tu mejor periodo. ¡Tú puedes!":
-              cobradoMes>0&&tasa>=30?"Tienes ventas cerradas y propuestas en la calle. Enfócate en las pendientes y este periodo puede mejorar todavía más.":
-              enJuego>0?"Tienes $"+enJuego.toLocaleString()+" en cotizaciones esperando respuesta. Un seguimiento a tiempo puede cerrar todo esto.":
-              "Cada venta registrada es información valiosa. Sigue adelante — los patrones empiezan a aparecer cuando más datos tienes.";
+            var animo=cobradoMes>0&&tasa>=50?"Vas por buen camino. Sigue haciendo seguimiento rápido y este periodo puede ser tu mejor mes.":
+              cobradoMes>0&&tasa>=30?"Estás generando ventas y tienes propuestas activas. Un par de cierres más y este periodo cambia por completo.":
+              enJuego>0?"Tienes $"+enJuego.toLocaleString()+" esperando respuesta. Un mensaje a tiempo puede cerrar todo esto.":
+              "Cada venta registrada es información valiosa. Los patrones empiezan a aparecer cuando más datos tienes.";
 
             return e("div",{style:{display:"flex",flexDirection:"column",gap:24}},
 
@@ -3809,7 +3924,7 @@ export default function CLEO(){
         {
           key:"interesado",
           label:"Sigue interesado",
-          desc:"Lo programo para darle seguimiento en unos dias",
+          desc:"Lo programo para darle seguimiento en unos días.",
           color:C.green,
           accion:function(){
             setClientes(clientes.map(function(x){ return x.id===cl.id?Object.assign({},x,{seguimientoFecha:"",ultimoContacto:FECHA_HOY}):x; }));
@@ -3821,7 +3936,7 @@ export default function CLEO(){
         {
           key:"negociacion",
           label:"Ya casi cierra",
-          desc:"Lo muevo a Negociacion en tu pipeline , esta listo para cerrar",
+          desc:"Lo muevo a Resolviendo dudas — está listo para cerrar.",
           color:C.amber,
           accion:function(){
             setClientes(clientes.map(function(x){ return x.id===cl.id?Object.assign({},x,{etapa:"Negociacion",seguimientoFecha:"",ultimoContacto:FECHA_HOY}):x; }));
@@ -3830,8 +3945,8 @@ export default function CLEO(){
         },
         {
           key:"tiempo",
-          label:"Necesita mas tiempo",
-          desc:"Lo reprogramo para mas adelante , no es el momento pero puede volver",
+          label:"Necesita más tiempo",
+          desc:"Lo reprogramo para más adelante, no es el momento pero puede volver.",
           color:C.textMuted,
           accion:function(){
             setClientes(clientes.map(function(x){ return x.id===cl.id?Object.assign({},x,{ultimoContacto:FECHA_HOY}):x; }));
@@ -3842,11 +3957,12 @@ export default function CLEO(){
         },
         {
           key:"perdido",
-          label:"Ya no esta interesado",
-          desc:"Lo muevo a Perdido , registra el motivo para aprender de esto",
+          label:"Ya no está interesado",
+          desc:"Lo muevo a Sin cerrar — registra el motivo para aprender de esto.",
           color:C.red,
           accion:function(){
             setClientes(clientes.map(function(x){ return x.id===cl.id?Object.assign({},x,{etapa:"Perdido",seguimientoFecha:"",ultimoContacto:FECHA_HOY}):x; }));
+            setCotizaciones(cotizaciones.map(function(c){ return c.clienteId===cl.id&&c.estatus==="Pendiente"?Object.assign({},c,{estatus:"Rechazada"}):c; }));
             setContactadoClienteId(null);
             setMotivoPipelineId(cl.id);
           }
@@ -3855,7 +3971,7 @@ export default function CLEO(){
       return e("div",{style:st.ov,onClick:function(){ setContactadoClienteId(null); }},
         e("div",{style:st.modal,onClick:function(ev){ ev.stopPropagation(); }},
           e("div",{style:{fontSize:15,fontWeight:600,color:C.text,marginBottom:4}},"Hablaste con "+nombre),
-          e("div",{style:{fontSize:13,color:C.textMuted,marginBottom:20}},"Como quedo la conversacion?"),
+          e("div",{style:{fontSize:13,color:C.textMuted,marginBottom:20}},"¿Cómo quedó la conversación?"),
           e("div",{style:{display:"flex",flexDirection:"column",gap:8}},
             opciones.map(function(op){
               return e("button",{key:op.key,style:{cursor:"pointer",padding:"12px 14px",borderRadius:10,border:"0.5px solid "+(op.color===C.textMuted?C.border:op.color+"44"),background:"transparent",textAlign:"left"},onClick:op.accion},

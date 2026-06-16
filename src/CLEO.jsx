@@ -1916,7 +1916,18 @@ export default function CLEO(){
 
       // INICIO - ONBOARDING EMPTY STATE
       vista==="inicio"&&clientes.length===0&&(function(){
-        var perfilCompleto=!!(perfil.nombre&&perfil.nombre!=="Mi Negocio"&&(perfil.tipoPerfil||perfil.telefono||perfil.redesWA||perfil.redesIG));
+        var perfilCompleto=!!(perfil.nombre&&perfil.nombre!=="Mi Negocio");
+        // Porcentaje de perfil (usado también en modal): nombre, tipoPerfil, telefono/redesWA, email/redesIG, logo
+        function calcPctPerfil(p){
+          var pts=0;
+          if(p.nombre&&p.nombre!=="Mi Negocio") pts+=25;
+          if(p.tipoPerfil) pts+=20;
+          if(p.telefono||p.redesWA) pts+=20;
+          if(p.email||p.redesIG) pts+=20;
+          if(p.logo) pts+=15;
+          return pts;
+        }
+        var pctPerfil=calcPctPerfil(perfil);
         var ambosCompletos=perfilCompleto; // clientes.length===0 so second step never done here
         return e("div",{style:{display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",minHeight:"60vh",padding:"0 16px"}},
 
@@ -1946,8 +1957,9 @@ export default function CLEO(){
                   display:"flex",alignItems:"center",justifyContent:"center"
                 }},perfilCompleto&&e("svg",{width:13,height:13,viewBox:"0 0 13 13",fill:"none"},e("path",{d:"M2 7L5 10L11 3",stroke:"#fff",strokeWidth:2,strokeLinecap:"round",strokeLinejoin:"round"}))),
                 e("div",{style:{flex:1}},
-                  e("div",{style:{fontWeight:700,fontSize:15,color:C.text,marginBottom:4}},"1. Completa tu perfil"),
-                  e("div",{style:{fontSize:13,color:C.textMuted,lineHeight:1.55,marginBottom:perfilCompleto?0:14}},"Cuéntanos qué haces y cómo pueden contactarte tus clientes."),
+                  e("div",{style:{fontWeight:700,fontSize:15,color:C.text,marginBottom:4}},"1. Configura tu perfil"),
+                  e("div",{style:{fontSize:13,color:C.textMuted,lineHeight:1.55,marginBottom:perfilCompleto?0:10}},"Cuéntanos qué haces y cómo pueden contactarte tus clientes."),
+                  !perfilCompleto&&e("div",{style:{fontSize:12,color:C.purple,background:C.purplePale,borderRadius:8,padding:"8px 12px",marginBottom:12,lineHeight:1.5}},"💡 No tienes que configurarlo todo hoy. Lo importante es empezar."),
                   !perfilCompleto&&e("button",{
                     style:{cursor:"pointer",padding:"8px 18px",borderRadius:10,border:"none",background:C.purple,fontSize:13,color:"#fff",fontWeight:600},
                     onClick:function(){ setFormPerfil(Object.assign({},perfil)); setModalPerfil(true); }
@@ -2208,17 +2220,25 @@ export default function CLEO(){
           ),
 
           // CELEBRACIÓN , primer cliente registrado
-          clientes.length===1&&e("div",{style:{
-            background:"#F0FDF4",border:"1px solid #86EFAC",borderRadius:14,
-            padding:"16px 20px",marginBottom:20,
-            display:"flex",alignItems:"center",gap:14
-          }},
-            e("span",{style:{fontSize:24,flexShrink:0}},"🎉"),
-            e("div",{style:{flex:1}},
-              e("div",{style:{fontSize:13,fontWeight:700,color:"#166534",marginBottom:2}},"CLEO ya está listo para ayudarte a vender mejor."),
-              e("div",{style:{fontSize:13,color:"#15803D",lineHeight:1.5}},"Registraste tu primer cliente. Sigue agregando y CLEO te dirá exactamente qué está funcionando.")
-            )
-          ),
+          clientes.length===1&&(function(){
+            var pctP=calcPctPerfil(perfil);
+            if(pctP>=80) return e("div",{style:{background:"#F0FDF4",border:"1px solid #86EFAC",borderRadius:14,padding:"16px 20px",marginBottom:20,display:"flex",alignItems:"center",gap:14}},
+              e("span",{style:{fontSize:24,flexShrink:0}},"🎉"),
+              e("div",{style:{flex:1}},
+                e("div",{style:{fontSize:13,fontWeight:700,color:"#166534",marginBottom:2}},"CLEO ya está listo para ayudarte a vender mejor."),
+                e("div",{style:{fontSize:13,color:"#15803D",lineHeight:1.5}},"Registraste tu primer cliente. Sigue agregando y CLEO te dirá exactamente qué está funcionando.")
+              )
+            );
+            return e("div",{style:{background:"#EEF2FF",border:"1px solid #C7D2FE",borderRadius:14,padding:"16px 20px",marginBottom:20,display:"flex",alignItems:"center",gap:14}},
+              e("span",{style:{fontSize:22,flexShrink:0}},"🎉"),
+              e("div",{style:{flex:1}},
+                e("div",{style:{fontSize:13,fontWeight:700,color:"#3730A3",marginBottom:2}},"Ya completaste 1 de 2 pasos para empezar."),
+                e("div",{style:{fontSize:13,color:"#4338CA",lineHeight:1.5,marginBottom:10}},"Solo falta configurar tu perfil para que CLEO pueda ayudarte mejor."),
+                e("button",{style:{cursor:"pointer",padding:"7px 16px",borderRadius:10,border:"none",background:C.purple,fontSize:13,color:"#fff",fontWeight:600},
+                  onClick:function(){ setFormPerfil(Object.assign({},perfil)); setModalPerfil(true); }},"Configurar perfil →")
+              )
+            );
+          })(),
 
           // RECONOCIMIENTO , solo visible si aplica, desaparece después de 2 días
           reconocimiento&&e("div",{style:{
@@ -4572,11 +4592,30 @@ export default function CLEO(){
 
         // ── HEADER ──
         e("div",{style:{padding:"22px 24px 18px",borderBottom:"1px solid "+C.border,display:"flex",alignItems:"center",justifyContent:"space-between",background:"linear-gradient(135deg,"+C.purplePale+" 0%,transparent 70%)"}},
-          e("div",null,
+          e("div",{style:{flex:1,minWidth:0}},
             e("div",{style:{fontWeight:700,fontSize:18,color:C.text}},"Mi perfil"),
-            e("div",{style:{fontSize:12,color:C.textMuted,marginTop:2}},"Datos de tu negocio y apariencia de documentos")
+            e("div",{style:{fontSize:12,color:C.textMuted,marginTop:2}},"Datos de tu negocio y apariencia de documentos"),
+            (function(){
+              var pts=0;
+              if(formPerfil.nombre&&formPerfil.nombre!=="Mi Negocio") pts+=25;
+              if(formPerfil.tipoPerfil) pts+=20;
+              if(formPerfil.telefono||formPerfil.redesWA) pts+=20;
+              if(formPerfil.email||formPerfil.redesIG) pts+=20;
+              if(formPerfil.logo) pts+=15;
+              if(pts>=80) return null;
+              return e("div",{style:{marginTop:12}},
+                e("div",{style:{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:5}},
+                  e("div",{style:{fontSize:12,fontWeight:600,color:C.purple}},"Tu perfil está "+pts+"% completo"),
+                  e("div",{style:{fontSize:11,color:C.textMuted}},pts+"/ 100")
+                ),
+                e("div",{style:{height:6,borderRadius:99,background:C.border,overflow:"hidden"}},
+                  e("div",{style:{width:pts+"%",height:"100%",background:C.purple,borderRadius:99,transition:"width 0.4s"}})
+                ),
+                e("div",{style:{fontSize:12,color:C.textMuted,marginTop:6,lineHeight:1.5}},"Completa tu perfil para que CLEO pueda ayudarte mejor a vender.")
+              );
+            })()
           ),
-          e("button",{style:{background:C.surfaceUp,border:"1px solid "+C.border,cursor:"pointer",color:C.textDim,fontSize:18,lineHeight:1,padding:"6px 10px",borderRadius:10,display:"flex",alignItems:"center",justifyContent:"center"},onClick:function(){ setModalPerfil(false); }},"×")
+          e("button",{style:{background:C.surfaceUp,border:"1px solid "+C.border,cursor:"pointer",color:C.textDim,fontSize:18,lineHeight:1,padding:"6px 10px",borderRadius:10,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,marginLeft:12},onClick:function(){ setModalPerfil(false); }},"×")
         ),
 
         // ── BODY (scrollable) ──
