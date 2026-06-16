@@ -1915,9 +1915,10 @@ export default function CLEO(){
         e("div",{style:{padding:isMobile?"20px 16px":sbOpen?"40px 32px":"40px 48px",maxWidth:1280,margin:"0 auto",width:"100%",boxSizing:"border-box"}},
 
       // INICIO - ONBOARDING EMPTY STATE
-      vista==="inicio"&&clientes.length===0&&(function(){
+      vista==="inicio"&&(function(){
         var perfilCompleto=!!(perfil.nombre&&perfil.nombre!=="Mi Negocio");
-        // Porcentaje de perfil (usado también en modal): nombre, tipoPerfil, telefono/redesWA, email/redesIG, logo
+        var tieneRegistro=clientes.length>0||ventas.length>0;
+        if(perfilCompleto&&tieneRegistro) return null; // ambos completos → dashboard
         function calcPctPerfil(p){
           var pts=0;
           if(p.nombre&&p.nombre!=="Mi Negocio") pts+=25;
@@ -1928,84 +1929,63 @@ export default function CLEO(){
           return pts;
         }
         var pctPerfil=calcPctPerfil(perfil);
-        var ambosCompletos=perfilCompleto; // clientes.length===0 so second step never done here
         return e("div",{style:{display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",minHeight:"60vh",padding:"0 16px"}},
 
-          // Encabezado
           e("div",{style:{textAlign:"center",marginBottom:36}},
             e("div",{style:{fontSize:36,marginBottom:16}},"👋"),
             e("div",{style:{fontSize:22,fontWeight:700,color:C.text,marginBottom:8,lineHeight:1.3}},"¿Por dónde empiezo?"),
-            e("div",{style:{fontSize:14,color:C.textMuted,lineHeight:1.6}},"Solo te faltan ",e("strong",null,"2 pasos")," para comenzar a usar CLEO.")
+            e("div",{style:{fontSize:14,color:C.textMuted,lineHeight:1.6}},(function(){ var falt=(perfilCompleto?0:1)+(tieneRegistro?0:1); return "Solo te "+(falt===1?"falta":"faltan")+" "+falt+" paso"+(falt===1?"":"s")+" para comenzar a usar CLEO."; })())
           ),
 
-          // Tarjeta con pasos
           e("div",{style:{width:"100%",maxWidth:420,display:"flex",flexDirection:"column",gap:12,marginBottom:32}},
 
-            // PASO 1 — Completa tu perfil
-            e("div",{style:{
-              background:C.surface,borderRadius:16,padding:"20px 24px",
-              border:"1.5px solid "+(perfilCompleto?C.greenBorder:C.border),
-              boxShadow:"0 2px 8px rgba(0,0,0,0.05)",
-              opacity:perfilCompleto?0.75:1
-            }},
+            // PASO 1
+            e("div",{style:{background:C.surface,borderRadius:16,padding:"20px 24px",border:"1.5px solid "+(perfilCompleto?C.greenBorder:C.border),boxShadow:"0 2px 8px rgba(0,0,0,0.05)",opacity:perfilCompleto?0.75:1}},
               e("div",{style:{display:"flex",alignItems:"flex-start",gap:14}},
-                // Checkbox
-                e("div",{style:{
-                  width:24,height:24,borderRadius:8,flexShrink:0,marginTop:2,
-                  background:perfilCompleto?C.green:"transparent",
-                  border:"2px solid "+(perfilCompleto?C.green:C.borderStrong),
-                  display:"flex",alignItems:"center",justifyContent:"center"
-                }},perfilCompleto&&e("svg",{width:13,height:13,viewBox:"0 0 13 13",fill:"none"},e("path",{d:"M2 7L5 10L11 3",stroke:"#fff",strokeWidth:2,strokeLinecap:"round",strokeLinejoin:"round"}))),
+                e("div",{style:{width:24,height:24,borderRadius:8,flexShrink:0,marginTop:2,background:perfilCompleto?C.green:"transparent",border:"2px solid "+(perfilCompleto?C.green:C.borderStrong),display:"flex",alignItems:"center",justifyContent:"center"}},
+                  perfilCompleto&&e("svg",{width:13,height:13,viewBox:"0 0 13 13",fill:"none"},e("path",{d:"M2 7L5 10L11 3",stroke:"#fff",strokeWidth:2,strokeLinecap:"round",strokeLinejoin:"round"}))),
                 e("div",{style:{flex:1}},
-                  e("div",{style:{fontWeight:700,fontSize:15,color:C.text,marginBottom:4}},"1. Configura tu perfil"),
-                  e("div",{style:{fontSize:13,color:C.textMuted,lineHeight:1.55,marginBottom:perfilCompleto?0:10}},"Cuéntanos qué haces y cómo pueden contactarte tus clientes."),
+          e("div",{style:{fontWeight:700,fontSize:15,color:C.text,marginBottom:4}},"1. Configura tu perfil"),
+                  e("div",{style:{fontSize:13,color:C.textMuted,lineHeight:1.55,marginBottom:perfilCompleto?0:10}},"Agrega la información básica de tu negocio."),
                   !perfilCompleto&&e("div",{style:{fontSize:12,color:C.purple,background:C.purplePale,borderRadius:8,padding:"8px 12px",marginBottom:12,lineHeight:1.5}},"💡 No tienes que configurarlo todo hoy. Lo importante es empezar."),
-                  !perfilCompleto&&e("button",{
-                    style:{cursor:"pointer",padding:"8px 18px",borderRadius:10,border:"none",background:C.purple,fontSize:13,color:"#fff",fontWeight:600},
-                    onClick:function(){ setFormPerfil(Object.assign({},perfil)); setModalPerfil(true); }
-                  },"Completar perfil →")
+                  !perfilCompleto&&e("button",{style:{cursor:"pointer",padding:"8px 18px",borderRadius:10,border:"none",background:C.purple,fontSize:13,color:"#fff",fontWeight:600,width:"100%"},onClick:function(){ setFormPerfil(Object.assign({},perfil)); setModalPerfil(true); }},"Completar perfil →")
                 )
               )
             ),
 
-            // PASO 2 — Registra tu primer cliente
-            e("div",{style:{
-              background:C.surface,borderRadius:16,padding:"20px 24px",
-              border:"1.5px solid "+C.border,
-              boxShadow:"0 2px 8px rgba(0,0,0,0.05)"
-            }},
+            // PASO 2
+            e("div",{style:{background:C.surface,borderRadius:16,padding:"20px 24px",border:"1.5px solid "+(tieneRegistro?C.greenBorder:C.border),boxShadow:"0 2px 8px rgba(0,0,0,0.05)",opacity:tieneRegistro?0.75:1}},
               e("div",{style:{display:"flex",alignItems:"flex-start",gap:14}},
-                // Checkbox vacío
-                e("div",{style:{
-                  width:24,height:24,borderRadius:8,flexShrink:0,marginTop:2,
-                  background:"transparent",
-                  border:"2px solid "+C.borderStrong
-                }}),
+                e("div",{style:{width:24,height:24,borderRadius:8,flexShrink:0,marginTop:2,background:tieneRegistro?C.green:"transparent",border:"2px solid "+(tieneRegistro?C.green:C.borderStrong),display:"flex",alignItems:"center",justifyContent:"center"}},
+                  tieneRegistro&&e("svg",{width:13,height:13,viewBox:"0 0 13 13",fill:"none"},e("path",{d:"M2 7L5 10L11 3",stroke:"#fff",strokeWidth:2,strokeLinecap:"round",strokeLinejoin:"round"}))),
                 e("div",{style:{flex:1}},
-                  e("div",{style:{fontWeight:700,fontSize:15,color:C.text,marginBottom:4}},"2. Registra tu primer cliente"),
-                  e("div",{style:{fontSize:13,color:C.textMuted,lineHeight:1.55,marginBottom:14}},"Piensa en alguien que te haya escrito esta semana, preguntado precios o mostrado interés en lo que haces."),
-                  e("button",{
-                    style:{cursor:"pointer",padding:"8px 18px",borderRadius:10,border:"none",background:C.purple,fontSize:13,color:"#fff",fontWeight:600},
-                    onClick:function(){ setClienteSel(null); setForm(formVacio); setModalCliente(true); }
-                  },"Registrar mi primer cliente →")
+                  e("div",{style:{fontWeight:700,fontSize:15,color:C.text,marginBottom:4}},"2. Registra tu primera venta o cliente"),
+                  e("div",{style:{fontSize:13,color:C.textMuted,lineHeight:1.55,marginBottom:tieneRegistro?0:10}},"Puede ser una venta que ya cerraste o una persona interesada en lo que ofreces."),
+                  !tieneRegistro&&e("div",{style:{fontSize:12,color:C.purple,background:C.purplePale,borderRadius:8,padding:"10px 12px",lineHeight:1.5,marginBottom:14}},"💡 Cada cliente que registres ayuda a CLEO a entender tu negocio y a ayudarte a vender mejor."),
+                  !tieneRegistro&&e("div",{style:{display:"flex",gap:8}},
+                    e("button",{style:{cursor:"pointer",flex:1,padding:"8px 0",borderRadius:10,border:"none",background:C.purple,fontSize:13,color:"#fff",fontWeight:600},
+                      onClick:function(){ setClienteSel(null); setForm(formVacio); setModalCliente(true); }},"+ Nuevo cliente"),
+                    e("button",{style:{cursor:"pointer",flex:1,padding:"8px 0",borderRadius:10,border:"1.5px solid "+C.purple,background:"transparent",fontSize:13,color:C.purple,fontWeight:600},
+                      onClick:function(){ setModalVenta(true); }},"Venta rápida")
+                  )
                 )
               )
             )
           ),
 
-          // Tip inferior
-          e("div",{style:{
-            display:"flex",alignItems:"flex-start",gap:10,
-            background:C.purplePale,borderRadius:12,padding:"14px 18px",
-            maxWidth:420,width:"100%",boxSizing:"border-box"
-          }},
-            e("div",{style:{fontSize:18,flexShrink:0}},"💡"),
-            e("div",{style:{fontSize:13,color:C.purple,lineHeight:1.6}},"Cada cliente que registres ayuda a CLEO a entender tu negocio y a ayudarte a vender mejor.")
-          )
         );
       })(),
 
-      vista==="inicio"&&clientes.length>0&&(function(){
+      vista==="inicio"&&(clientes.length>0||ventas.length>0)&&!!(perfil.nombre&&perfil.nombre!=="Mi Negocio")&&(function(){
+        function calcPctPerfil(p){
+          var pts=0;
+          if(p.nombre&&p.nombre!=="Mi Negocio") pts+=25;
+          if(p.tipoPerfil) pts+=20;
+          if(p.telefono||p.redesWA) pts+=20;
+          if(p.email||p.redesIG) pts+=20;
+          if(p.logo) pts+=15;
+          return pts;
+        }
         var DIAS=["domingo","lunes","martes","miercoles","jueves","viernes","sabado"];
         var MESES_N=["enero","febrero","marzo","abril","mayo","junio","julio","agosto","septiembre","octubre","noviembre","diciembre"];
         var hoyLabel=DIAS[HOY.getDay()]+" "+HOY.getDate()+" de "+MESES_N[HOY.getMonth()];
@@ -2220,7 +2200,7 @@ export default function CLEO(){
           ),
 
           // CELEBRACIÓN , primer cliente registrado
-          clientes.length===1&&(function(){
+          false&&(function(){
             var pctP=calcPctPerfil(perfil);
             if(pctP>=80) return e("div",{style:{background:"#F0FDF4",border:"1px solid #86EFAC",borderRadius:14,padding:"16px 20px",marginBottom:20,display:"flex",alignItems:"center",gap:14}},
               e("span",{style:{fontSize:24,flexShrink:0}},"🎉"),
