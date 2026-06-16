@@ -903,7 +903,7 @@ function ModalVenta(props){
       ),
       e("div",{style:{marginBottom:12}},
         e("label",{style:st.lbl},"Fecha"),
-        e("input",{type:"date",value:formVenta.fecha||FECHA_HOY,onChange:function(ev){ setFormVenta(Object.assign({},formVenta,{fecha:ev.target.value})); },style:Object.assign({},st.inp,{width:"100%",boxSizing:"border-box",display:"block"})})
+        e("input",{type:"date",value:formVenta.fecha||FECHA_HOY,onChange:function(ev){ setFormVenta(Object.assign({},formVenta,{fecha:ev.target.value})); },style:Object.assign({},st.inp,{width:"100%",maxWidth:"100%",boxSizing:"border-box",display:"block",WebkitAppearance:"none"})})
       ),
       e("div",{style:{marginBottom:12}},
         e("label",{style:st.lbl},"¿Donde fue esta venta? (opcional)"),
@@ -3399,10 +3399,10 @@ export default function CLEO(){
             acciones=acciones.slice(0,3);
 
             // ── MENSAJE DE ÁNIMO DINÁMICO ──
-            var animo=cobradoMes>0&&tasa>=50?"Vas por buen camino. Si sigues haciendo seguimiento rápido y cerrando las pendientes, podrías superar tu mejor periodo. ¡Tú puedes!":
-              cobradoMes>0&&tasa>=30?"Tienes ventas cerradas y propuestas en la calle. Enfócate en las pendientes y este periodo puede mejorar todavía más.":
-              enJuego>0?"Tienes $"+enJuego.toLocaleString()+" en cotizaciones esperando respuesta. Un seguimiento a tiempo puede cerrar todo esto.":
-              "Cada venta registrada es información valiosa. Sigue adelante — los patrones empiezan a aparecer cuando más datos tienes.";
+            var animo=cobradoMes>0&&tasa>=50?"Vas por buen camino. Sigue haciendo seguimiento rápido y este periodo puede ser tu mejor mes.":
+              cobradoMes>0&&tasa>=30?"Estás generando ventas y tienes propuestas activas. Un par de cierres más y este periodo cambia por completo.":
+              enJuego>0?"Tienes $"+enJuego.toLocaleString()+" esperando respuesta. Un mensaje a tiempo puede cerrar todo esto.":
+              "Cada venta registrada es información valiosa. Los patrones empiezan a aparecer cuando más datos tienes.";
 
             return e("div",{style:{display:"flex",flexDirection:"column",gap:24}},
 
