@@ -102,12 +102,12 @@ function contactFallbackCopy(c){
 function msgEtapa(c,concepto){
   var nombre=c.nombre?c.nombre.split(" ")[0]:"";
   if(c.etapa==="Negociacion") return "Hola "+nombre+", quería retomar nuestra plática. ¿Qué es lo que más te preocupa del proyecto?";
-  if(c.etapa==="Cotizacion enviada") return "Hola "+nombre+", te escribo por la cotizacion que te mande"+(concepto?" de "+concepto:"")+". La pudiste revisar?";
-  if(c.etapa==="Seguimiento") return "Hola "+nombre+", queria ver si tuviste oportunidad de revisar lo que te comparti. Tienes alguna duda?";
-  if(c.etapa==="Perdido") return "Hola "+nombre+", hace tiempo que no hablamos. Como va todo?";
-  if(c.etapa==="Ganado") return "Hola "+nombre+", como has estado? Si en algun momento necesitas algo no dudes en escribirme.";
-  if(c.etapa==="Nuevo contacto") return "Hola "+nombre+", vi que te interesa lo que ofrezco. Tienes unos minutos para platicar?";
-  return "Hola "+nombre+", como estas? Queria ponerme en contacto contigo.";
+  if(c.etapa==="Cotizacion enviada") return "Hola "+nombre+", te escribo por la cotización que te mandé"+(concepto?" de "+concepto:"")+". ¿La pudiste revisar?";
+  if(c.etapa==="Seguimiento") return "Hola "+nombre+", quería saber si tuviste oportunidad de revisar lo que te compartí. ¿Tienes alguna duda?";
+  if(c.etapa==="Perdido") return "Hola "+nombre+", hace tiempo que no hablamos. ¿Cómo va todo?";
+  if(c.etapa==="Ganado") return "Hola "+nombre+", ¿cómo has estado? Si en algún momento necesitas algo, no dudes en escribirme.";
+  if(c.etapa==="Nuevo contacto") return "Hola "+nombre+", vi que te interesa lo que ofrezco. ¿Tienes unos minutos para platicar?";
+  return "Hola "+nombre+", ¿cómo estás? Quería ponerme en contacto contigo.";
 }
 function loadLS(k,d){ return d; }
 function saveLS(k,v){}
@@ -276,7 +276,7 @@ var serviciosDemo=[
   {id:2,nombre:"Diseno grafico",precio:2800,descripcion:"Incluye 3 revisiones"},
   {id:3,nombre:"Sesion fotografica",precio:4500,descripcion:"20 fotos editadas en alta resolucion"},
 ];
-var perfilDemo={nombre:"Mi Negocio",tuNombre:"",telefono:"",email:"",direccion:"",color:C.purple,colorSecundario:"#E4E2F8",colorTexto:"#1A1635",logo:"",mensaje:"Gracias por tu confianza.",condicionesPago:"50% anticipo, 50% al entregar.",redesTT:"",redesIG:"",redesFB:"",tipoPerfil:""};
+var perfilDemo={nombre:"Mi Negocio",tuNombre:"",telefono:"",email:"",direccion:"",color:C.purple,colorSecundario:"#E4E2F8",colorTexto:"#1A1635",logo:"",mensaje:"Gracias por tu confianza.",condicionesPago:"50% anticipo, 50% al entregar.",redesTT:"",redesIG:"",redesFB:"",tipoPerfil:"",banco:"",bancotitular:"",bancoclabe:"",bancoaccount:"",bancoinstrucciones:""};
 var productosDemo=["Aretes plata","Collar dorado","Pulsera tejida","Anillo boda custom","Aretes dorados","Collar perlas"];
 var ventasDemo=[
   {id:1,monto:800,fecha:"2026-06-01",concepto:"Venta directa",tipo:"dia",etiqueta:"",clienteId:null},
@@ -323,242 +323,274 @@ function generarPDFCot(cot,cliente,perfil){
   var ps=perfil.colorSecundario||"#F0EEFF";
   var pt=perfil.colorTexto||"#ffffff";
   var folio="COT-"+String(cot.id).slice(-4).padStart(4,"0");
+  var initCl=(cliente&&cliente.nombre)?cliente.nombre.split(" ").slice(0,2).map(function(w){return w[0];}).join("").toUpperCase():"?";
+  var redesHtml=_redesHtml(perfil,pc);
 
-  // SVG redes para footer
-  var svgTT='<svg width="16" height="16" viewBox="0 0 24 24" fill="'+pc+'"><path d="M19.59 6.69a4.83 4.83 0 01-3.77-4.25V2h-3.45v13.67a2.89 2.89 0 01-2.88 2.5 2.89 2.89 0 01-2.89-2.89 2.89 2.89 0 012.89-2.89c.28 0 .54.04.79.1V9.01a6.33 6.33 0 00-.79-.05 6.34 6.34 0 00-6.34 6.34 6.34 6.34 0 006.34 6.34 6.34 6.34 0 006.33-6.34V8.75a8.16 8.16 0 004.77 1.52V6.82a4.85 4.85 0 01-1-.13z"/></svg>';
-  var svgIG='<svg width="16" height="16" viewBox="0 0 24 24" fill="none"><defs><linearGradient id="ig2" x1="2" y1="22" x2="22" y2="2" gradientUnits="userSpaceOnUse"><stop stop-color="#F58529"/><stop offset="0.5" stop-color="#DD2A7B"/><stop offset="1" stop-color="#8134AF"/></linearGradient></defs><rect x="2" y="2" width="20" height="20" rx="5" fill="url(#ig2)"/><circle cx="12" cy="12" r="4" stroke="#fff" stroke-width="2"/><circle cx="17" cy="7" r="1.2" fill="#fff"/></svg>';
-  var svgFB='<svg width="16" height="16" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="10" fill="#185FA5"/><path d="M13.5 8H15V6h-1.5C12.1 6 11 7.1 11 8.5V10H9.5v2H11v6h2v-6h1.5l.5-2H13V8.5c0-.3.2-.5.5-.5z" fill="#fff"/></svg>';
-  var redesHtml="";
-  if(perfil.redesTT) redesHtml+='<span style="display:inline-flex;align-items:center;gap:5px;margin-right:16px;">'+svgTT+'<span>'+perfil.redesTT+'</span></span>';
-  if(perfil.redesIG) redesHtml+='<span style="display:inline-flex;align-items:center;gap:5px;margin-right:16px;">'+svgIG+'<span>'+perfil.redesIG+'</span></span>';
-  if(perfil.redesFB) redesHtml+='<span style="display:inline-flex;align-items:center;gap:5px;">'+svgFB+'<span>'+perfil.redesFB+'</span></span>';
-
-  // Iniciales cliente
-  var initCl=(cliente&&cliente.nombre)?cliente.nombre.split(" ").slice(0,2).map(function(w){ return w[0]; }).join("").toUpperCase():"CL";
-
-  var html='<!DOCTYPE html><html><head><meta charset="utf-8"><title>Cotizacion '+(cliente?cliente.nombre:folio)+'</title>';
-  html+='<style>';
-  html+='*{margin:0;padding:0;box-sizing:border-box;}';
-  html+='@media print{body{-webkit-print-color-adjust:exact;print-color-adjust:exact;}.wrap{border:none!important;}}';
-  html+='@page{margin:0;size:A4;}';
-  html+='body{font-family:"Helvetica Neue",Helvetica,Arial,sans-serif;background:#f4f4f8;color:#1a1a2e;font-size:13px;line-height:1.5;}';
-  html+='.wrap{max-width:720px;margin:32px auto;border-radius:16px;overflow:hidden;box-shadow:0 4px 32px rgba(0,0,0,0.10);}';
-  // HEADER FULL COLOR
-  html+='.header{background:'+pc+';padding:40px 48px 36px;color:'+pt+';}';
-  html+='.header-top{display:flex;align-items:flex-start;justify-content:space-between;gap:24px;}';
-  html+='.logo-box{width:52px;height:52px;border-radius:12px;background:rgba(255,255,255,0.2);display:flex;align-items:center;justify-content:center;font-size:22px;font-weight:700;color:'+pt+';flex-shrink:0;overflow:hidden;margin-bottom:16px;}';
-  html+='.logo-box img{width:52px;height:52px;object-fit:cover;}';
-  html+='.biz-name{font-size:22px;font-weight:700;color:'+pt+';line-height:1.2;}';
-  html+='.biz-meta{font-size:12px;color:'+pt+';opacity:0.75;margin-top:4px;}';
-  html+='.doc-block{text-align:right;flex-shrink:0;}';
-  html+='.doc-label{font-size:10px;text-transform:uppercase;letter-spacing:2px;color:'+pt+';opacity:0.65;font-weight:600;margin-bottom:4px;}';
-  html+='.doc-folio{font-size:32px;font-weight:800;color:'+pt+';letter-spacing:-0.5px;}';
-  html+='.doc-dates{display:flex;gap:24px;margin-top:10px;justify-content:flex-end;}';
-  html+='.doc-date-item{text-align:center;}';
-  html+='.doc-date-val{font-size:13px;font-weight:700;color:'+pt+';}';
-  html+='.doc-date-lbl{font-size:10px;color:'+pt+';opacity:0.65;margin-top:2px;}';
-  // BODY
-  html+='.body{background:#fff;padding:40px 48px;}';
-  // PARA
-  html+='.para-block{display:flex;align-items:center;gap:14px;padding:16px 20px;background:'+ps+';border-radius:12px;margin-bottom:32px;border-left:4px solid '+pc+';}';
-  html+='.para-avatar{width:40px;height:40px;border-radius:50%;background:'+pc+';display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:700;color:#fff;flex-shrink:0;}';
-  html+='.para-label{font-size:9px;text-transform:uppercase;letter-spacing:2px;color:'+pc+';font-weight:700;margin-bottom:2px;}';
-  html+='.para-name{font-size:16px;font-weight:700;color:#1a1a2e;}';
-  html+='.para-sub{font-size:12px;color:#777;margin-top:1px;}';
-  // SECCIÓN SERVICIO
-  html+='.sv-label{font-size:10px;text-transform:uppercase;letter-spacing:2px;color:'+pc+';font-weight:700;margin-bottom:10px;}';
-  html+='.sv-card{border:1px solid #eee;border-radius:12px;padding:20px 24px;margin-bottom:24px;}';
-  html+='.sv-row{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:12px;}';
-  html+='.sv-name{font-size:16px;font-weight:700;color:#1a1a2e;}';
-  html+='.sv-qty{font-size:12px;color:#888;margin-top:3px;}';
-  html+='.sv-total-lbl{font-size:9px;text-transform:uppercase;letter-spacing:1px;color:#aaa;text-align:right;margin-bottom:2px;}';
-  html+='.sv-total-orig{font-size:12px;color:#aaa;text-decoration:line-through;text-align:right;}';
-  html+='.sv-total-val{font-size:20px;font-weight:800;color:'+pc+';text-align:right;}';
-  html+='.sv-desc{font-size:12px;color:#555;line-height:1.7;padding-top:12px;border-top:1px solid #f0f0f0;}';
-  html+='.sv-desc ul,.sv-desc ol{padding-left:18px;margin:6px 0;}';
-  html+='.sv-desc li{margin-bottom:3px;}';
-  html+='.sv-desc h4{font-size:11px;font-weight:700;color:'+pc+';text-transform:uppercase;letter-spacing:1px;margin:10px 0 4px;}';
-  // TOTALES
-  html+='.total-line{display:flex;justify-content:space-between;padding:9px 0;font-size:13px;color:#888;border-bottom:1px solid #f5f5f5;}';
-  html+='.total-line.discount{color:'+pc+';font-weight:500;}';
-  html+='.total-line.paid-line{color:#1A7A5E;font-weight:500;}';
-  html+='.total-main{display:flex;justify-content:space-between;align-items:center;padding:16px 24px;background:'+pc+';border-radius:10px;margin-top:10px;}';
-  html+='.total-main-lbl{font-size:14px;font-weight:600;color:'+pt+';}';
-  html+='.total-main-val{font-size:22px;font-weight:800;color:'+pt+';}';
-  // CONDICIONES
-  html+='.conditions{margin-top:24px;padding:14px 18px;border-left:3px solid '+pc+';background:'+ps+';border-radius:0 8px 8px 0;font-size:12px;color:#555;line-height:1.7;}';
-  html+='.cond-label{font-size:9px;text-transform:uppercase;letter-spacing:2px;color:'+pc+';font-weight:700;margin-bottom:5px;}';
-  // FOOTER
-  html+='.footer{background:#f8f8fb;padding:20px 48px;display:flex;justify-content:space-between;align-items:center;border-top:1px solid #eee;}';
-  html+='.footer-folio{font-size:11px;color:#bbb;font-weight:600;letter-spacing:0.5px;}';
-  html+='.footer-redes{display:flex;align-items:center;gap:4px;font-size:11px;color:#999;}';
-  html+='</style></head><body><div class="wrap">';
+  var html='<!DOCTYPE html><html><head><meta charset="utf-8"><title>'+folio+'</title>';
+  html+='<style>*{margin:0;padding:0;box-sizing:border-box;}@media print{body{-webkit-print-color-adjust:exact;print-color-adjust:exact;}@page{margin:0;size:Letter;}}body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Helvetica,Arial,sans-serif;background:#fff;color:#1a1a2e;font-size:13px;line-height:1.5;padding:48px 56px;max-width:760px;margin:0 auto;}';
+  html+='.header{display:flex;justify-content:space-between;align-items:flex-start;padding-bottom:24px;border-bottom:2px solid '+pc+';margin-bottom:32px;}';
+  html+='.logo-box{width:56px;height:56px;border-radius:12px;display:flex;align-items:center;justify-content:center;color:#aaa;font-size:22px;overflow:hidden;margin-bottom:12px;}';
+  html+='.logo-box img{width:56px;height:56px;object-fit:cover;border-radius:10px;}';
+  html+='.biz-name{font-size:17px;font-weight:700;color:#1a1a2e;}';
+  html+='.biz-meta{font-size:12px;color:#888;margin-top:2px;}';
+  html+='.doc-label{font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:2px;color:'+pc+';text-align:right;margin-bottom:4px;}';
+  html+='.doc-folio{font-size:34px;font-weight:800;color:#1a1a2e;text-align:right;letter-spacing:-1px;}';
+  html+='.doc-dates{display:flex;gap:24px;justify-content:flex-end;margin-top:10px;}';
+  html+='.doc-date-label{font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:#aaa;margin-bottom:2px;}';
+  html+='.doc-date-val{font-size:13px;font-weight:700;color:#1a1a2e;}';
+  html+='.para-block{display:flex;align-items:center;gap:12px;padding:14px 18px;background:'+ps+';border-radius:10px;margin-bottom:28px;}';
+  html+='.para-avatar{width:38px;height:38px;border-radius:50%;background:'+pc+';display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:700;color:#fff;flex-shrink:0;}';
+  html+='.para-label{font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:2px;color:'+pc+';margin-bottom:2px;}';
+  html+='.para-name{font-size:15px;font-weight:700;color:#1a1a2e;}';
+  html+='.para-sub{font-size:11px;color:#777;}';
+  html+='table{width:100%;border-collapse:collapse;margin-bottom:24px;}';
+  html+='thead th{font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:1.5px;color:#999;padding:0 0 10px;border-bottom:1.5px solid #e5e5e5;}';
+  html+='thead th.right{text-align:right;}';
+  html+='thead th.center{text-align:center;}';
+  html+='tbody tr td{padding:16px 0 4px;vertical-align:top;border-bottom:none;}';
+  html+='.sv-name{font-size:14px;font-weight:700;color:#1a1a2e;}';
+  html+='.sv-desc{font-size:12px;color:#555;line-height:1.7;padding:8px 0 12px;max-width:100%;}';
+  html+='.sv-desc p{margin-bottom:4px;}';
+  html+='.sv-desc ul,.sv-desc ol{padding-left:0;list-style:none;column-count:2;column-gap:24px;margin-top:8px;}';
+  html+='.sv-desc li{break-inside:avoid;padding-left:14px;position:relative;margin-bottom:6px;font-size:12px;color:#555;line-height:1.6;}';
+  html+='.sv-desc li::before{content:"●";color:'+pc+';font-size:8px;position:absolute;left:0;top:4px;}';
+  html+='.sv-desc h4,.sv-desc strong{font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:1.5px;color:'+pc+';display:block;margin:12px 0 6px;column-span:all;}';
+  html+='.sv-desc b{font-weight:600;color:#1a1a2e;}';
+  html+='.sv-qty{font-size:13px;text-align:center;color:#555;}';
+  html+='.sv-price{font-size:13px;text-align:right;color:#555;}';
+  html+='.sv-total{font-size:14px;font-weight:700;text-align:right;color:'+pc+';}';
+  html+='.sv-total-orig{font-size:11px;text-align:right;color:#aaa;text-decoration:line-through;display:block;}';
+  html+='.divider{height:1.5px;background:#f0f0f0;margin:8px 0 20px;}';
+  html+='.totals{margin-bottom:24px;}';
+  html+='.total-line{display:flex;justify-content:space-between;align-items:center;padding:8px 0;font-size:13px;color:#888;border-bottom:1px solid #f5f5f5;}';
+  html+='.total-line.discount{color:'+pc+';}';
+  html+='.total-line.paid{color:#1A7A5E;}';
+  html+='.badge{display:inline-block;padding:2px 7px;border-radius:20px;font-size:10px;font-weight:700;border:1.5px solid '+pc+';color:'+pc+';margin-left:6px;}';
+  html+='.total-final{display:flex;justify-content:space-between;align-items:center;padding:20px 0 24px;border-bottom:1.5px solid '+pc+';margin-bottom:24px;}';
+  html+='.total-final-label{font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:2px;color:#999;}';
+  html+='.total-final-val{font-size:32px;font-weight:800;color:'+pc+';}';
+  html+='.bank-block{display:grid;grid-template-columns:1fr 1fr;gap:24px;padding:20px 24px;background:#f9f9fb;border-radius:10px;margin-bottom:24px;}';
+  html+='.bank-title{font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:2px;color:#aaa;margin-bottom:12px;}';
+  html+='.bank-row{display:flex;gap:8px;margin-bottom:6px;}';
+  html+='.bank-key{font-size:11px;color:#aaa;flex-shrink:0;width:54px;}';
+  html+='.bank-val{font-size:11px;font-weight:700;color:#1a1a2e;}';
+  html+='.conditions{font-size:12px;color:#666;line-height:1.7;padding:14px 18px;border-left:3px solid '+pc+';background:'+ps+';border-radius:0 8px 8px 0;margin-bottom:20px;}';
+  html+='.cond-label{font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:1.5px;color:'+pc+';margin-bottom:5px;}';
+  html+='.footer-msg{font-size:12px;color:#aaa;font-style:italic;margin-bottom:28px;}';
+  html+='.footer-bar{display:flex;justify-content:space-between;align-items:center;padding-top:16px;border-top:1px solid #eee;font-size:11px;color:#bbb;}';
+  html+='</style></head><body>';
 
   // HEADER
-  html+='<div class="header">';
-  html+='<div class="header-top">';
-  html+='<div>';
+  html+='<div class="header"><div>';
   if(perfil.logo) html+='<div class="logo-box"><img src="'+perfil.logo+'"></div>';
-  else html+='<div class="logo-box">'+(perfil.nombre?perfil.nombre[0].toUpperCase():"N")+'</div>';
-  html+='<div class="biz-name">'+(perfil.nombre||"Mi Negocio")+'</div>';
-  html+='<div class="biz-meta">'+(perfil.telefono||"")+(perfil.telefono&&(perfil.email||perfil.direccion)?" &middot; ":"")+(perfil.email||"")+(perfil.direccion?" &middot; "+perfil.direccion:"")+'</div>';
-  html+='</div>';
-  html+='<div class="doc-block">';
-  html+='<div class="doc-label">Cotizaci&oacute;n</div>';
-  html+='<div class="doc-folio">'+folio+'</div>';
-  html+='<div class="doc-dates">';
-  html+='<div class="doc-date-item"><div class="doc-date-val">'+cot.fecha+'</div><div class="doc-date-lbl">Fecha</div></div>';
-  if(cot.vigencia) html+='<div class="doc-date-item"><div class="doc-date-val">'+cot.vigencia+'</div><div class="doc-date-lbl">Vigencia</div></div>';
-  html+='</div></div></div></div>';
-
-  // BODY
-  html+='<div class="body">';
+  else html+='<div class="logo-box">📷</div>';
+  html+='<div class="biz-name">'+( perfil.nombre||"Mi negocio")+'</div>';
+  var metaParts=[];
+  if(perfil.telefono) metaParts.push(perfil.telefono);
+  if(perfil.email) metaParts.push(perfil.email);
+  if(perfil.direccion) metaParts.push(perfil.direccion);
+  if(metaParts.length) html+='<div class="biz-meta">'+metaParts.join(' · ')+'</div>';
+  html+='</div><div><div class="doc-label">Cotizaci&oacute;n</div><div class="doc-folio">'+folio+'</div><div class="doc-dates">';
+  html+='<div><div class="doc-date-label">Fecha</div><div class="doc-date-val">'+cot.fecha+'</div></div>';
+  if(cot.vigencia) html+='<div><div class="doc-date-label">Vigencia</div><div class="doc-date-val">'+cot.vigencia+'</div></div>';
+  html+='</div></div></div>';
 
   // PARA
-  html+='<div class="para-block">';
-  html+='<div class="para-avatar">'+initCl+'</div>';
-  html+='<div><div class="para-label">Para</div><div class="para-name">'+(cliente?cliente.nombre:"--")+'</div>';
+  html+='<div class="para-block"><div class="para-avatar">'+initCl+'</div><div><div class="para-label">Para</div><div class="para-name">'+( cliente?cliente.nombre:"--")+'</div>';
   if(cliente&&cliente.negocio) html+='<div class="para-sub">'+cliente.negocio+'</div>';
   if(cliente&&cliente.contacto) html+='<div class="para-sub">'+cliente.contacto+'</div>';
   html+='</div></div>';
 
-  // SERVICIO
-  html+='<div class="sv-label">Servicio</div>';
-  html+='<div class="sv-card">';
-  html+='<div class="sv-row">';
-  html+='<div><div class="sv-name">'+cot.concepto+'</div><div class="sv-qty">Cantidad: '+(cot.cantidad||1)+'</div></div>';
-  html+='<div style="text-align:right;">';
-  html+='<div class="sv-total-lbl">Total</div>';
-  if(cot.subtotal&&cot.descuento&&Number(cot.descuento)>0) html+='<div class="sv-total-orig">$'+Number(cot.subtotal).toLocaleString()+'</div>';
-  html+='<div class="sv-total-val">$'+Number(cot.monto).toLocaleString()+' MXN</div>';
-  html+='</div></div>';
-  if(cot.notas) html+='<div class="sv-desc">'+cot.notas+'</div>';
-  if(cot.svCondicionesHtml||cot.svCondiciones){
-    html+='<div class="sv-desc" style="margin-top:10px;padding-top:10px;border-top:1px solid #f0f0f0;">';
-    html+='<div style="font-size:10px;text-transform:uppercase;letter-spacing:1px;color:'+pc+';font-weight:700;margin-bottom:6px;">Condiciones para este cliente</div>';
-    html+=(cot.svCondicionesHtml||cot.svCondiciones);
-    html+='</div>';
+  // TABLA SERVICIOS
+  html+='<table><thead><tr><th style="text-align:left;width:52%">Concepto</th><th class="center" style="width:10%">Cant.</th><th class="right" style="width:19%">Precio unit.</th><th class="right" style="width:19%">Total</th></tr></thead><tbody>';
+
+  var subtotalItems=(cot.subtotal&&Number(cot.subtotal)>0)?Number(cot.subtotal):Number(cot.monto);
+  var descAmt=0;
+  if(cot.descuento&&Number(cot.descuento)>0){
+    descAmt=cot.tipoDescuento==="porcentaje"?subtotalItems*Number(cot.descuento)/100:Number(cot.descuento);
   }
-  html+='</div>';
+
+  html+='<tr><td><div class="sv-name">'+cot.concepto+'</div></td>';
+  html+='<td class="sv-qty">'+( cot.cantidad||1)+'</td>';
+  html+='<td class="sv-price">$'+Number(cot.precioUnit||cot.monto).toLocaleString()+'</td>';
+  if(descAmt>0){
+    html+='<td style="text-align:right;"><span class="sv-total-orig">$'+subtotalItems.toLocaleString()+'</span><span class="sv-total">$'+Number(cot.monto).toLocaleString()+'</span></td>';
+  } else {
+    html+='<td><div class="sv-total">$'+Number(cot.monto).toLocaleString()+'</div></td>';
+  }
+  html+='</tr>';
+  if(cot.notas) html+='<tr><td colspan="4" style="padding:6px 0 16px;"><div class="sv-desc">'+cot.notas+'</div></td></tr>';
+  if(cot.svCondicionesHtml||cot.svCondiciones){
+    html+='<tr><td colspan="4" style="padding:4px 0 16px;border-top:1px solid #f0f0f0;"><div class="sv-desc"><strong>Condiciones</strong>'+(cot.svCondicionesHtml||cot.svCondiciones)+'</div></td></tr>';
+  }
+  html+='</tbody></table>';
 
   // TOTALES
-  if(cot.subtotal&&cot.descuento&&Number(cot.descuento)>0){
-    var descLabel=cot.tipoDescuento==="porcentaje"?"Descuento especial ("+cot.descuento+"% OFF)":"Descuento especial";
-    var descMonto=cot.tipoDescuento==="porcentaje"?Number(cot.subtotal)*Number(cot.descuento)/100:Number(cot.descuento);
-    html+='<div class="total-line"><span>Precio regular</span><span>$'+Number(cot.subtotal).toLocaleString()+' MXN</span></div>';
-    html+='<div class="total-line discount"><span>'+descLabel+'</span><span>- $'+Math.round(descMonto).toLocaleString()+' MXN</span></div>';
+  html+='<div class="totals">';
+  if(descAmt>0){
+    html+='<div class="total-line"><span>Subtotal</span><span>$'+subtotalItems.toLocaleString()+' MXN</span></div>';
+    html+='<div class="total-line discount"><span>Descuento especial <span class="badge">'+cot.descuento+(cot.tipoDescuento==="porcentaje"?"%":"")+' OFF</span></span><span>- $'+Math.round(descAmt).toLocaleString()+' MXN</span></div>';
   }
   pagos.forEach(function(p){
-    html+='<div class="total-line paid-line"><span>'+(p.concepto||"Pago recibido")+' &middot; '+p.fecha+'</span><span>- $'+Number(p.monto).toLocaleString()+' MXN</span></div>';
+    html+='<div class="total-line paid"><span>'+( p.concepto||"Pago recibido")+' · '+p.fecha+'</span><span>- $'+Number(p.monto).toLocaleString()+' MXN</span></div>';
   });
-  html+='<div class="total-main"><span class="total-main-lbl">'+(saldo<=0?"Pagado completamente":"Saldo a cubrir")+'</span><span class="total-main-val">$'+Math.max(0,saldo).toLocaleString()+' MXN</span></div>';
-
-  // CONDICIONES GENERALES
-  if(perfil.condicionesPago) html+='<div class="conditions"><div class="cond-label">Condiciones de pago</div>'+perfil.condicionesPago+'</div>';
-  if(perfil.mensaje) html+='<div style="margin-top:24px;text-align:center;font-size:13px;color:#aaa;font-style:italic;">&ldquo;'+perfil.mensaje+'&rdquo;</div>';
   html+='</div>';
+
+  // TOTAL FINAL
+  var labelFinal=saldo<=0?"Pagado completamente":"Saldo a cubrir";
+  html+='<div class="total-final"><div class="total-final-label">'+labelFinal+'</div><div class="total-final-val">$'+Math.max(0,saldo).toLocaleString()+' MXN</div></div>';
+
+  // DATOS BANCARIOS
+  if(perfil.banco||perfil.bancoclabe||perfil.bancoaccount){
+    html+='<div class="bank-block" style="grid-template-columns:1fr;"><div><div class="bank-title">Datos para transferencia</div>';
+    if(perfil.banco) html+='<div class="bank-row"><span class="bank-key">Banco</span><span class="bank-val">'+perfil.banco+'</span></div>';
+    if(perfil.bancotitular) html+='<div class="bank-row"><span class="bank-key">Titular</span><span class="bank-val">'+perfil.bancotitular+'</span></div>';
+    if(perfil.bancoclabe){
+      html+='<div class="bank-row"><span class="bank-key">CLABE</span><span class="bank-val">'+perfil.bancoclabe.replace(/(\d{3})(\d{3})(\d{5})(\d{5})(\d{2})/,"$1 $2 $3 $4 $5")+'</span></div>';
+    }
+    if(perfil.bancoaccount) html+='<div class="bank-row"><span class="bank-key">Cuenta</span><span class="bank-val">'+perfil.bancoaccount+'</span></div>';
+    if(perfil.bancoinstrucciones) html+='<div style="font-size:11px;color:#888;margin-top:8px;line-height:1.5;">'+perfil.bancoinstrucciones+'</div>';
+    html+='</div></div>';
+  }
+
+  // CONDICIONES
+  if(perfil.condicionesPago) html+='<div class="conditions"><div class="cond-label">Condiciones de pago</div>'+perfil.condicionesPago+'</div>';
+
+  // MENSAJE
+  if(perfil.mensaje) html+='<div class="footer-msg" style="text-align:center;">&ldquo;'+perfil.mensaje+'&rdquo;</div>';
 
   // FOOTER
-  html+='<div class="footer">';
-  html+='<div class="footer-folio">'+folio+' &nbsp;&middot;&nbsp; '+cot.fecha+'</div>';
-  html+='<div class="footer-redes">'+(redesHtml||('<span style="color:#999;font-size:11px;">'+perfil.nombre+'</span>'))+'</div>';
-  html+='</div>';
-  html+='</div></body></html>';
+  var footerRedes=redesHtml||"";
+  var footerContact=metaParts[0]||"";
+  html+='<div class="footer-bar"><span>'+(footerContact&&perfil.nombre&&footerContact!==perfil.nombre?footerContact+' &middot; '+perfil.nombre:perfil.nombre||footerContact)+'</span>';
+  if(footerRedes) html+='<span style="display:inline-flex;align-items:center;gap:8px;">'+footerRedes+'</span>';
+  html+='<span style="color:#ccc;font-size:10px;">'+folio+' · '+cot.fecha+'</span></div>';
+  html+='</body></html>';
 
-  var win=window.open('','_blank');
-  if(win){
-    win.document.write(html);
-    win.document.close();
-    win.focus();
-    setTimeout(function(){ win.print(); },800);
-  } else {
-    var blob=new Blob([html],{type:'text/html'});
-    var url=URL.createObjectURL(blob);
-    var a=document.createElement('a');
-    a.href=url; a.download='Cotizacion_'+(cliente?cliente.nombre.replace(/ /g,'_'):'cliente')+'_'+cot.fecha+'.html';
-    document.body.appendChild(a); a.click(); document.body.removeChild(a); URL.revokeObjectURL(url);
-  }
+  _abrirHTML(html,'Cotizacion_'+(cliente?cliente.nombre.replace(/ /g,"_"):"cliente")+'_'+cot.fecha+'.html');
 }
-function generarComprobante(cot,cliente,perfil){
-  var saldo=cot.monto-cot.anticipo;
-  var pc=perfil.color||"#534AB7"; var ps=perfil.colorSecundario||"#F0EEFF"; var pt=perfil.colorTexto||"#ffffff";
-  var folio="ANT-"+String(cot.id).slice(-4).padStart(4,"0")+"-"+String(Date.now()).slice(-4);
-  var initCl=(cliente&&cliente.nombre)?cliente.nombre.split(" ").slice(0,2).map(function(w){return w[0];}).join("").toUpperCase():"CL";
+
+function _comprobanteShared(tipo,folio,concepto,monto,pagos,saldo,cliente,perfil,extraInfo){
+  var pc=perfil.color||"#534AB7"; var ps=perfil.colorSecundario||"#F0EEFF";
+  var initCl=(cliente&&cliente.nombre)?cliente.nombre.split(" ").slice(0,2).map(function(w){return w[0];}).join("").toUpperCase():"?";
   var redesHtml=_redesHtml(perfil,pc);
-  var css=_comprobanteCSS(pc,ps,pt);
-  var html='<!DOCTYPE html><html><head><meta charset="utf-8"><title>Comprobante '+folio+'</title><style>'+css+'</style></head><body><div class="wrap">';
-  html+=_comprobanteHeader(perfil,pc,pt,"Comprobante de Anticipo",folio,cot.fechaAnticipo,"Fecha de pago");
-  html+='<div class="body">';
-  html+=_comprobanteCliente(cliente,initCl,pc,ps);
-  html+='<div class="sv-label">Concepto</div><div class="sv-card" style="margin-bottom:24px;"><div class="sv-name">'+cot.concepto+'</div></div>';
-  html+='<div class="total-line"><span>Total acordado</span><span>$'+Number(cot.monto).toLocaleString()+' MXN</span></div>';
-  html+='<div class="total-line" style="color:#1A7A5E;font-weight:500;"><span>Anticipo recibido</span><span>- $'+Number(cot.anticipo).toLocaleString()+' MXN</span></div>';
-  if(saldo<=0) html+='<div class="total-main"><span class="total-main-lbl">Pagado completamente ✓</span><span class="total-main-val">$0 MXN</span></div>';
-  else html+='<div class="total-main"><span class="total-main-lbl">Saldo pendiente</span><span class="total-main-val">$'+Number(saldo).toLocaleString()+' MXN</span></div>';
-  if(perfil.mensaje) html+='<div style="margin-top:20px;text-align:center;font-size:12px;color:#aaa;font-style:italic;">&ldquo;'+perfil.mensaje+'&rdquo;</div>';
-  html+='</div>';
-  html+=_comprobanteFooter(folio,FECHA_HOY,redesHtml,perfil);
-  html+='</div></body></html>';
-  _abrirHTML(html,'Comprobante_'+(cliente?cliente.nombre.replace(/ /g,'_'):'cliente')+'_'+cot.fechaAnticipo+'.html');
+  var metaParts=[]; if(perfil.telefono) metaParts.push(perfil.telefono); if(perfil.email) metaParts.push(perfil.email);
+
+  var html='<!DOCTYPE html><html><head><meta charset="utf-8"><title>'+tipo+' '+folio+'</title>';
+  html+='<style>*{margin:0;padding:0;box-sizing:border-box;}@media print{body{-webkit-print-color-adjust:exact;print-color-adjust:exact;}@page{margin:0;size:Letter;}}body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Helvetica,Arial,sans-serif;background:#fff;color:#1a1a2e;font-size:13px;line-height:1.5;padding:48px 56px;max-width:680px;margin:0 auto;}';
+  html+='.header{display:flex;justify-content:space-between;align-items:flex-start;padding-bottom:20px;border-bottom:2px solid '+pc+';margin-bottom:28px;}';
+  html+='.logo-box{width:48px;height:48px;border-radius:10px;display:flex;align-items:center;justify-content:center;overflow:hidden;margin-bottom:10px;}';
+  html+='.logo-box img{width:48px;height:48px;object-fit:cover;border-radius:8px;}';
+  html+='.biz-name{font-size:16px;font-weight:700;color:#1a1a2e;}';
+  html+='.biz-meta{font-size:11px;color:#888;margin-top:2px;}';
+  html+='.doc-label{font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:2px;color:'+pc+';text-align:right;margin-bottom:4px;}';
+  html+='.doc-folio{font-size:28px;font-weight:800;color:#1a1a2e;text-align:right;letter-spacing:-0.5px;}';
+  html+='.doc-date{font-size:11px;color:#888;text-align:right;margin-top:6px;}';
+  html+='.para-block{display:flex;align-items:center;gap:12px;padding:12px 16px;background:'+ps+';border-radius:10px;margin-bottom:24px;}';
+  html+='.para-avatar{width:34px;height:34px;border-radius:50%;background:'+pc+';display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;color:#fff;flex-shrink:0;}';
+  html+='.para-label{font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:2px;color:'+pc+';margin-bottom:1px;}';
+  html+='.para-name{font-size:14px;font-weight:700;color:#1a1a2e;}';
+  html+='.concepto-block{padding:14px 0;border-bottom:1.5px solid #f0f0f0;margin-bottom:20px;}';
+  html+='.concepto-label{font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:2px;color:#aaa;margin-bottom:6px;}';
+  html+='.concepto-name{font-size:16px;font-weight:700;color:#1a1a2e;}';
+  html+='.total-line{display:flex;justify-content:space-between;align-items:center;padding:8px 0;font-size:13px;color:#888;border-bottom:1px solid #f5f5f5;}';
+  html+='.total-line.accent{color:'+pc+';font-weight:600;}';
+  html+='.total-line.paid{color:#1A7A5E;font-weight:500;}';
+  html+='.total-final{display:flex;justify-content:space-between;align-items:center;padding:20px 0 24px;border-bottom:1.5px solid '+pc+';margin:8px 0 24px;}';
+  html+='.total-final-label{font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:2px;color:#999;}';
+  html+='.total-final-val{font-size:30px;font-weight:800;color:'+pc+';}';
+  html+='.bank-block{display:grid;grid-template-columns:1fr 1fr;gap:20px;padding:18px 20px;background:#f9f9fb;border-radius:10px;margin-bottom:20px;}';
+  html+='.bank-title{font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:2px;color:#aaa;margin-bottom:10px;}';
+  html+='.bank-row{display:flex;gap:8px;margin-bottom:5px;}';
+  html+='.bank-key{font-size:10px;color:#aaa;flex-shrink:0;width:50px;}';
+  html+='.bank-val{font-size:11px;font-weight:700;color:#1a1a2e;}';
+  html+='.footer-msg{font-size:12px;color:#aaa;font-style:italic;margin-bottom:24px;}';
+  html+='.footer-bar{display:flex;justify-content:space-between;padding-top:14px;border-top:1px solid #eee;font-size:10px;color:#bbb;}';
+  html+='</style></head><body>';
+
+  // HEADER
+  html+='<div class="header"><div>';
+  if(perfil.logo) html+='<div class="logo-box"><img src="'+perfil.logo+'"></div>';
+  html+='<div class="biz-name">'+( perfil.nombre||"Mi negocio")+'</div>';
+  if(metaParts.length) html+='<div class="biz-meta">'+metaParts.join(' · ')+'</div>';
+  html+='</div><div><div class="doc-label">'+tipo+'</div><div class="doc-folio">'+folio+'</div><div class="doc-date">'+extraInfo.fecha+'</div></div></div>';
+
+  // PARA
+  html+='<div class="para-block"><div class="para-avatar">'+initCl+'</div><div><div class="para-label">Para</div><div class="para-name">'+( cliente?cliente.nombre:"--")+'</div>';
+  if(cliente&&cliente.negocio) html+='<div style="font-size:11px;color:#777;">'+cliente.negocio+'</div>';
+  html+='</div></div>';
+
+  // CONCEPTO
+  html+='<div class="concepto-block"><div class="concepto-label">Concepto</div><div class="concepto-name">'+concepto+'</div></div>';
+
+  // LÍNEAS
+  html+='<div class="total-line"><span>Total acordado</span><span style="font-weight:600;color:#1a1a2e;">$'+Number(monto).toLocaleString()+' MXN</span></div>';
+  (pagos||[]).forEach(function(p){
+    html+='<div class="total-line paid"><span>'+( p.concepto||"Pago recibido")+' · '+p.fecha+'</span><span>- $'+Number(p.monto).toLocaleString()+' MXN</span></div>';
+  });
+
+  // TOTAL FINAL
+  var labelFinal=saldo<=0?"Pagado completamente":"Saldo pendiente";
+  html+='<div class="total-final"><div class="total-final-label">'+labelFinal+'</div><div class="total-final-val">$'+Math.max(0,saldo).toLocaleString()+' MXN</div></div>';
+
+  // DATOS BANCARIOS
+  if(perfil.banco||perfil.bancoclabe||perfil.bancoaccount){
+    html+='<div class="bank-block" style="grid-template-columns:1fr;"><div><div class="bank-title">Datos para transferencia</div>';
+    if(perfil.banco) html+='<div class="bank-row"><span class="bank-key">Banco</span><span class="bank-val">'+perfil.banco+'</span></div>';
+    if(perfil.bancotitular) html+='<div class="bank-row"><span class="bank-key">Titular</span><span class="bank-val">'+perfil.bancotitular+'</span></div>';
+    if(perfil.bancoclabe){
+      html+='<div class="bank-row"><span class="bank-key">CLABE</span><span class="bank-val">'+perfil.bancoclabe+'</span></div>';
+    }
+    if(perfil.bancoaccount) html+='<div class="bank-row"><span class="bank-key">Cuenta</span><span class="bank-val">'+perfil.bancoaccount+'</span></div>';
+    if(perfil.bancoinstrucciones) html+='<div style="font-size:11px;color:#888;margin-top:8px;line-height:1.5;">'+perfil.bancoinstrucciones+'</div>';
+    html+='</div></div>';
+  }
+
+  if(perfil.mensaje) html+='<div class="footer-msg">&ldquo;'+perfil.mensaje+'&rdquo;</div>';
+  html+='<div class="footer-bar"><span>'+( metaParts[0]||"")+( perfil.nombre?' &middot; '+perfil.nombre:"")+'</span><span>'+folio+' · '+extraInfo.fecha+'</span></div>';
+  html+='</body></html>';
+  return html;
+}
+
+function generarComprobante(cot,cliente,perfil){
+  var pagos=[{concepto:"Anticipo recibido",fecha:cot.fechaAnticipo,monto:cot.anticipo}];
+  var saldo=cot.monto-cot.anticipo;
+  var folio="ANT-"+String(cot.id).slice(-4).padStart(4,"0")+"-"+String(Date.now()).slice(-4);
+  var html=_comprobanteShared("Comprobante de Anticipo",folio,cot.concepto,cot.monto,pagos,saldo,cliente,perfil,{fecha:cot.fechaAnticipo||FECHA_HOY});
+  _abrirHTML(html,"Comprobante_"+(cliente?cliente.nombre.replace(/ /g,"_"):"cliente")+"_"+(cot.fechaAnticipo||FECHA_HOY)+".html");
 }
 
 function generarComprobantePago(pago,cot,cliente,perfil){
-  var pagos=cot.pagos||[]; var totalPagado=pagos.reduce(function(s,p){return s+Number(p.monto);},0); var saldo=Number(cot.monto)-totalPagado;
-  var pc=perfil.color||"#534AB7"; var ps=perfil.colorSecundario||"#F0EEFF"; var pt=perfil.colorTexto||"#ffffff";
+  var allPagos=cot.pagos||[];
+  var totalPagado=allPagos.reduce(function(s,p){return s+Number(p.monto);},0);
+  var saldo=Number(cot.monto)-totalPagado;
   var folio="PAG-"+String(pago.id).slice(-4);
-  var initCl=(cliente&&cliente.nombre)?cliente.nombre.split(" ").slice(0,2).map(function(w){return w[0];}).join("").toUpperCase():"CL";
-  var redesHtml=_redesHtml(perfil,pc);
-  var css=_comprobanteCSS(pc,ps,pt);
-  var html='<!DOCTYPE html><html><head><meta charset="utf-8"><title>Comprobante '+folio+'</title><style>'+css+'</style></head><body><div class="wrap">';
-  html+=_comprobanteHeader(perfil,pc,pt,"Comprobante de Pago",folio,pago.fecha,"Fecha de pago");
-  html+='<div class="body">';
-  html+=_comprobanteCliente(cliente,initCl,pc,ps);
-  html+='<div class="sv-label">Concepto</div><div class="sv-card" style="margin-bottom:24px;"><div class="sv-name">'+(cot.concepto||"Venta")+'</div></div>';
-  html+='<div class="total-line"><span>Total acordado</span><span>$'+Number(cot.monto).toLocaleString()+' MXN</span></div>';
-  html+='<div class="total-line" style="color:#1A7A5E;font-weight:500;"><span>'+(pago.concepto||"Pago recibido")+'</span><span>- $'+Number(pago.monto).toLocaleString()+' MXN</span></div>';
-  if(saldo<=0) html+='<div class="total-main"><span class="total-main-lbl">Pagado completamente ✓</span><span class="total-main-val">$0 MXN</span></div>';
-  else html+='<div class="total-main"><span class="total-main-lbl">Saldo pendiente</span><span class="total-main-val">$'+Math.max(0,saldo).toLocaleString()+' MXN</span></div>';
-  if(perfil.mensaje) html+='<div style="margin-top:20px;text-align:center;font-size:12px;color:#aaa;font-style:italic;">&ldquo;'+perfil.mensaje+'&rdquo;</div>';
-  html+='</div>';
-  html+=_comprobanteFooter(folio,pago.fecha,redesHtml,perfil);
-  html+='</div></body></html>';
-  _abrirHTML(html,'ComprobantePago_'+(cliente?cliente.nombre.replace(/ /g,'_'):'cliente')+'_'+pago.fecha+'.html');
+  var html=_comprobanteShared("Comprobante de Pago",folio,cot.concepto||"Venta",cot.monto,allPagos,saldo,cliente,perfil,{fecha:pago.fecha});
+  _abrirHTML(html,"ComprobantePago_"+(cliente?cliente.nombre.replace(/ /g,"_"):"cliente")+"_"+pago.fecha+".html");
 }
 
 function generarComprobanteGeneral(cot,cliente,perfil){
-  var pagos=cot.pagos||[]; var totalPagado=pagos.reduce(function(s,p){return s+Number(p.monto);},0); var saldo=cot.monto-totalPagado;
-  var pc=perfil.color||"#534AB7"; var ps=perfil.colorSecundario||"#F0EEFF"; var pt=perfil.colorTexto||"#ffffff";
+  var pagos=cot.pagos||[];
+  var totalPagado=pagos.reduce(function(s,p){return s+Number(p.monto);},0);
+  var saldo=cot.monto-totalPagado;
   var folio="EST-"+String(cot.id).slice(-4).padStart(4,"0");
-  var initCl=(cliente&&cliente.nombre)?cliente.nombre.split(" ").slice(0,2).map(function(w){return w[0];}).join("").toUpperCase():"CL";
-  var redesHtml=_redesHtml(perfil,pc);
-  var css=_comprobanteCSS(pc,ps,pt);
-  var html='<!DOCTYPE html><html><head><meta charset="utf-8"><title>Estado de cuenta '+folio+'</title><style>'+css+'</style></head><body><div class="wrap">';
-  html+=_comprobanteHeader(perfil,pc,pt,"Estado de Cuenta",folio,FECHA_HOY,"Emitido");
-  html+='<div class="body">';
-  html+=_comprobanteCliente(cliente,initCl,pc,ps);
-  html+='<div class="sv-label">Concepto</div><div class="sv-card" style="margin-bottom:24px;"><div class="sv-name">'+cot.concepto+'</div></div>';
-  // Tabla de pagos
-  if(pagos.length>0){
-    html+='<div class="sv-label" style="margin-bottom:8px;">Historial de pagos</div>';
-    html+='<table style="width:100%;border-collapse:collapse;margin-bottom:16px;">';
-    html+='<thead><tr style="border-bottom:2px solid '+pc+';"><th style="text-align:left;padding:8px 0;font-size:10px;font-weight:700;color:'+pc+';text-transform:uppercase;letter-spacing:1px;">Tipo</th><th style="text-align:left;padding:8px 0;font-size:10px;font-weight:700;color:'+pc+';text-transform:uppercase;letter-spacing:1px;">Fecha</th><th style="text-align:right;padding:8px 0;font-size:10px;font-weight:700;color:'+pc+';text-transform:uppercase;letter-spacing:1px;">Monto</th></tr></thead><tbody>';
-    pagos.forEach(function(p){
-      html+='<tr style="border-bottom:1px solid #f0f0f0;"><td style="padding:10px 0;font-size:13px;font-weight:600;">'+(p.concepto||"Pago")+'</td><td style="padding:10px 0;font-size:12px;color:#888;">'+p.fecha+'</td><td style="padding:10px 0;text-align:right;font-size:13px;font-weight:700;color:#1A7A5E;">$'+Number(p.monto).toLocaleString()+' MXN</td></tr>';
-    });
-    html+='</tbody></table>';
-  }
-  html+='<div class="total-line"><span>Total acordado</span><span style="font-weight:600;color:#1a1a2e;">$'+Number(cot.monto).toLocaleString()+' MXN</span></div>';
-  html+='<div class="total-line" style="color:#1A7A5E;font-weight:500;"><span>Total pagado</span><span>$'+totalPagado.toLocaleString()+' MXN</span></div>';
-  if(saldo<=0) html+='<div class="total-main"><span class="total-main-lbl">Pagado completamente ✓</span><span class="total-main-val">$0 MXN</span></div>';
-  else html+='<div class="total-main"><span class="total-main-lbl">Saldo pendiente</span><span class="total-main-val">$'+Math.max(0,saldo).toLocaleString()+' MXN</span></div>';
-  if(perfil.mensaje) html+='<div style="margin-top:20px;text-align:center;font-size:12px;color:#aaa;font-style:italic;">&ldquo;'+perfil.mensaje+'&rdquo;</div>';
-  html+='</div>';
-  html+=_comprobanteFooter(folio,FECHA_HOY,redesHtml,perfil);
-  html+='</div></body></html>';
-  _abrirHTML(html,'EstadoCuenta_'+(cliente?cliente.nombre.replace(/ /g,'_'):'cliente')+'_'+FECHA_HOY+'.html');
+  var html=_comprobanteShared("Estado de Cuenta",folio,cot.concepto||"Venta directa",cot.monto,pagos,saldo,cliente,perfil,{fecha:FECHA_HOY});
+  _abrirHTML(html,"EstadoCuenta_"+(cliente?cliente.nombre.replace(/ /g,"_"):"cliente")+"_"+FECHA_HOY+".html");
 }
 
-// Helpers compartidos para comprobantes
+
+function _bancoPDFBlock(perfil,pc,ps){
+  if(!perfil.banco&&!perfil.bancoclabe&&!perfil.bancoaccount) return '';
+  var h='<div style="margin-top:20px;padding:14px 16px;background:'+ps+';border-radius:10px;border-left:3px solid '+pc+';">';
+  h+='<div style="font-size:9px;text-transform:uppercase;letter-spacing:2px;color:'+pc+';font-weight:700;margin-bottom:8px;">Datos para tu pago</div>';
+  if(perfil.banco) h+='<div style="font-size:12px;color:#555;margin-bottom:3px;"><b>Banco:</b> '+perfil.banco+'</div>';
+  if(perfil.bancotitular) h+='<div style="font-size:12px;color:#555;margin-bottom:3px;"><b>Titular:</b> '+perfil.bancotitular+'</div>';
+  if(perfil.bancoclabe) h+='<div style="font-size:12px;color:#555;margin-bottom:3px;font-family:monospace;"><b>CLABE:</b> '+perfil.bancoclabe+'</div>';
+  if(perfil.bancoaccount) h+='<div style="font-size:12px;color:#555;margin-bottom:3px;"><b>Cuenta:</b> '+perfil.bancoaccount+'</div>';
+  if(perfil.bancoinstrucciones) h+='<div style="font-size:11px;color:#888;margin-top:6px;padding-top:6px;border-top:1px solid '+pc+'22;">'+perfil.bancoinstrucciones+'</div>';
+  h+='</div>';
+  return h;
+}
 function _redesHtml(perfil,pc){
   var svgTT='<svg width="14" height="14" viewBox="0 0 24 24" fill="'+pc+'"><path d="M19.59 6.69a4.83 4.83 0 01-3.77-4.25V2h-3.45v13.67a2.89 2.89 0 01-2.88 2.5 2.89 2.89 0 01-2.89-2.89 2.89 2.89 0 012.89-2.89c.28 0 .54.04.79.1V9.01a6.33 6.33 0 00-.79-.05 6.34 6.34 0 00-6.34 6.34 6.34 6.34 0 006.34 6.34 6.34 6.34 0 006.33-6.34V8.75a8.16 8.16 0 004.77 1.52V6.82a4.85 4.85 0 01-1-.13z"/></svg>';
   var svgIG='<svg width="14" height="14" viewBox="0 0 24 24" fill="none"><defs><linearGradient id="igc" x1="2" y1="22" x2="22" y2="2" gradientUnits="userSpaceOnUse"><stop stop-color="#F58529"/><stop offset="0.5" stop-color="#DD2A7B"/><stop offset="1" stop-color="#8134AF"/></linearGradient></defs><rect x="2" y="2" width="20" height="20" rx="5" fill="url(#igc)"/><circle cx="12" cy="12" r="4" stroke="#fff" stroke-width="2"/><circle cx="17" cy="7" r="1.2" fill="#fff"/></svg>';
@@ -1232,9 +1264,9 @@ export default function CLEO(){
   function editarCliente(c){ setClienteSel(c); setForm({nombre:c.nombre,negocio:c.negocio,contacto:c.contacto,origen:c.origen,etapa:c.etapa,notas:c.notas,instagram:c.instagram||"",canalPrincipal:c.canalPrincipal||"WhatsApp",messenger:c.messenger||"",email:c.email||"",notaRecontacto:c.notaRecontacto||""}); setModalCliente(true); }
   function eliminarCliente(id){ setClientes(clientes.filter(function(c){ return c.id!==id; })); setCotizaciones(cotizaciones.filter(function(c){ return c.clienteId!==id; })); }
   var ETAPA_INFO={
-    "Cotizacion enviada":{msg:"Cotización enviada,ya le mandaste el precio por escrito.",accion:"¿La registramos en CLEO?",requiereCot:true},
-    "Seguimiento":{msg:"Esperando decisión,enviaste el precio y esperas respuesta.",accion:"Es el momento de escribirle y ver si tiene dudas.",requiereCot:true},
-    "Negociacion":{msg:"Resolviendo dudas,tu cliente tiene preguntas o condiciones.",accion:"¿Sabes qué le frena? Eso es lo que necesitas resolver.",requiereCot:true},
+    "Cotizacion enviada":{msg:"Ya le enviaste una propuesta formal con precio.",accion:"En esta etapa el cliente ya sabe cuánto cuesta. Está evaluando si te contrata.",requiereCot:true},
+    "Seguimiento":{msg:"Le enviaste precio y estás esperando que decida.",accion:"El cliente ya recibió tu propuesta. Aquí tu trabajo es mantenerte presente sin presionar.",requiereCot:true},
+    "Negociacion":{msg:"El cliente está interesado pero algo lo frena.",accion:"Puede ser el precio, las condiciones o el momento. Esta etapa es donde se define la venta.",requiereCot:true},
   };
 
   function moverEtapa(id,nueva){
@@ -1899,8 +1931,8 @@ export default function CLEO(){
         // Subtitulo educativo , sin repetir numeros
         var subtitulo;
         var enNegociacion=clientes.filter(function(c){ return c.etapa==="Negociacion"; }).length;
-        if(enNegociacion>0) subtitulo="Tu siguiente venta para "+empresa+" ya está en tu pipeline, solo necesita seguimiento.";
-        else if(cotsPend.length>0) subtitulo="Tu siguiente venta para "+empresa+" probablemente ya está en tu pipeline, solo necesita seguimiento.";
+        if(enNegociacion>0) subtitulo="Tu siguiente cierre para "+empresa+" ya está cerca, solo necesita seguimiento.";
+        else if(cotsPend.length>0) subtitulo="Tu siguiente cierre para "+empresa+" probablemente ya está cerca, solo necesita seguimiento.";
         else if(clientes.length<5) subtitulo="Registra la actividad de ventas para "+empresa+" y descubre qué acciones generan más resultados.";
         else subtitulo="La herramienta que ayuda a "+empresa+" a vender mejor con cada cliente que registras.";
 
@@ -2011,7 +2043,7 @@ export default function CLEO(){
           preguntaSemana="Registraste \""+nombreVH+"\" hoy. ¿Este cliente podría comprarte algo más en los próximos días?";
         } else if(clientesHoy2.length>=1){
           var nc2=clientesHoy2[0];
-          preguntaSemana="Acabas de registrar a "+nc2.nombre.split(" ")[0]+". ¿Ya sabes qué necesita exactamente? Si no, pregúntalo antes de mandar precio.";
+          preguntaSemana="Acabas de registrar a "+nc2.nombre.split(" ")[0]+". El primer mensaje importa más de lo que crees. No empieces con el precio, empieza con una pregunta que demuestre que entendiste su problema.";
         } else if(clientesAyer.length>=1){
           var ncA=clientesAyer[0];
           preguntaSemana="Ayer registraste a "+ncA.nombre.split(" ")[0]+". ¿Ya le diste seguimiento o sigue esperando noticias tuyas?";
@@ -3739,7 +3771,7 @@ export default function CLEO(){
               ),
               (pagoGanado.tipo==="completo"||pagoGanado.tipo==="anticipo")&&e("div",{style:{marginTop:12}},
                 e("label",{style:{fontSize:12,color:C.textDim,display:"block",marginBottom:6,fontWeight:500}},"Fecha de pago"),
-                e("input",{type:"date",value:pagoGanado.fecha,onChange:function(ev){ setPagoGanado(Object.assign({},pagoGanado,{fecha:ev.target.value})); },style:Object.assign({},st.inp,{width:"100%",maxWidth:"100%",boxSizing:"border-box",display:"block"})})
+              e("input",{type:"date",value:pagoGanado.fecha,onChange:function(ev){ setPagoGanado(Object.assign({},pagoGanado,{fecha:ev.target.value})); },style:Object.assign({},st.inp,{width:"100%",maxWidth:"100%",boxSizing:"border-box",display:"block",minWidth:0})})
               )
             )
           ),
@@ -4168,8 +4200,9 @@ export default function CLEO(){
       var info=modalEtapa.info;
       return e("div",{style:st.ov,onClick:function(){ setModalEtapa(null); }},
         e("div",{style:Object.assign({},st.modal,{maxWidth:isMobile?"100%":400}),onClick:function(ev){ ev.stopPropagation(); }},
-          modalEtapa.esPrimeraVez&&e("div",{style:{fontSize:11,color:C.purple,fontWeight:600,marginBottom:8,textTransform:"uppercase",letterSpacing:"0.5px"}},"💡 ¿Qué significa esta etapa?"),
-          e("div",{style:{fontSize:15,fontWeight:600,color:C.text,marginBottom:6}},info.msg),
+          e("div",{style:{fontSize:11,color:C.purple,fontWeight:600,marginBottom:10,textTransform:"uppercase",letterSpacing:"0.5px"}},"💡 ¿Qué significa esta etapa?"),
+          e("div",{style:{fontSize:15,fontWeight:600,color:C.text,marginBottom:6}},modalEtapa.etapa),
+          e("div",{style:{fontSize:13,color:C.textMuted,marginBottom:6,lineHeight:1.6}},info.msg),
           e("div",{style:{fontSize:13,color:C.textMuted,marginBottom:20,lineHeight:1.6}},info.accion),
           e("div",{style:{padding:"12px 14px",background:C.amberBg,borderRadius:8,border:"0.5px solid "+C.amberBorder,marginBottom:20,fontSize:13,color:C.amber}},
             "Para mover a "+cl.nombre+" aquí necesitas registrar una cotización primero."
@@ -4382,76 +4415,92 @@ export default function CLEO(){
       var pagos=cot?cot.pagos||[]:[];
       var totalPagado=pagos.reduce(function(s,p){ return s+Number(p.monto); },0);
       var saldoReal=cot?cot.monto-totalPagado:0;
+      var pc=perfil.color||C.purple;
       return e("div",{style:st.ov,onClick:function(){ setPagosModalId(null); }},
-        e("div",{style:st.modal,onClick:function(ev){ ev.stopPropagation(); }},
-          e("div",{style:{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:4}},
-            e("div",{style:{fontWeight:600,fontSize:15,color:C.text}},"Registrar pago"),
-            e("button",{style:{background:"none",border:"none",cursor:"pointer",color:C.textDim,fontSize:20},onClick:function(){ setPagosModalId(null); }},"×")
-          ),
-          e("div",{style:{fontSize:12,color:C.textMuted,marginBottom:16}},(cl?cl.nombre:"--")+" · "+(cot?cot.concepto:"")+" · $"+(cot?Number(cot.monto).toLocaleString():"")),
+        e("div",{style:Object.assign({},st.modal,{padding:0,overflow:"hidden"}),onClick:function(ev){ ev.stopPropagation(); }},
 
-          // Historial de pagos existentes
-          pagos.length>0&&e("div",{style:{marginBottom:16}},
-            e("div",{style:{fontSize:11,color:C.textDim,marginBottom:6,textTransform:"uppercase",letterSpacing:"0.5px"}},"Pagos registrados"),
-            pagos.map(function(p){
-              return e("div",{key:p.id,style:{display:"flex",alignItems:"center",gap:8,padding:"8px 0",borderBottom:"0.5px solid "+C.border}},
-                e("div",{style:{flex:1}},
-                  e("div",{style:{fontSize:12,fontWeight:500,color:C.text}},p.concepto||"Pago"),
-                  e("div",{style:{fontSize:11,color:C.textDim}},p.fecha)
-                ),
-                e("div",{style:{fontSize:13,fontWeight:600,color:C.green}},"$"+Number(p.monto).toLocaleString()),
-                e("button",{style:Object.assign({},st.btn,{fontSize:10,padding:"2px 8px",color:C.amber,borderColor:C.amberBorder}),
-                  onClick:function(){ generarComprobantePago(p,cot,cl,perfil); }
-                },"Comprobante"),
-                e("button",{style:{background:"none",border:"none",cursor:"pointer",color:C.red,fontSize:16,padding:"2px 6px",borderRadius:6},
-                  onClick:(function(pid){ return function(){ var updated=cotizaciones.map(function(c){ return c.id===pagosModalId?Object.assign({},c,{pagos:(c.pagos||[]).filter(function(x){ return x.id!==pid; })}):c; }); setCotizaciones(updated); }; })(p.id)
-                },"×")
-              );
-            }),
-            e("div",{style:{display:"flex",justifyContent:"space-between",padding:"8px 0",marginTop:4}},
-              e("span",{style:{fontSize:12,color:C.textMuted}},"Saldo pendiente"),
-              e("span",{style:{fontSize:14,fontWeight:600,color:saldoReal<=0?C.green:C.amber}},"$"+Math.max(0,saldoReal).toLocaleString())
-            )
+          // HEADER
+          e("div",{style:{padding:"20px 24px 16px",borderBottom:"1px solid "+C.border,display:"flex",justifyContent:"space-between",alignItems:"flex-start"}},
+            e("div",null,
+              e("div",{style:{fontWeight:700,fontSize:16,color:C.text,marginBottom:3}},"Registrar pago"),
+              e("div",{style:{fontSize:12,color:C.textMuted}},(cl?cl.nombre:"--")+" · "+(cot?cot.concepto:"")+" · $"+(cot?Number(cot.monto).toLocaleString():""))
+            ),
+            e("button",{style:{background:"transparent",border:"1px solid "+C.border,cursor:"pointer",color:C.textDim,fontSize:16,width:28,height:28,borderRadius:8,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0},onClick:function(){ setPagosModalId(null); }},"×")
           ),
 
-          // Formulario nuevo pago
-          saldoReal>0&&e("div",{style:{paddingTop:12,borderTop:"0.5px solid "+C.border}},
-            e("div",{style:{fontSize:11,color:C.textDim,marginBottom:10,textTransform:"uppercase",letterSpacing:"0.5px"}},"Agregar pago"),
-            e("div",{style:{marginBottom:10}},
-              e("label",{style:st.lbl},"Tipo de pago"),
-              e("div",{style:{display:"flex",gap:6,flexWrap:"wrap"}},
-                ["Anticipo","Segundo pago","Pago final","Otro"].map(function(c){
-                  var activo=formPago.concepto===c;
-                  return e("button",{key:c,style:{cursor:"pointer",padding:"5px 12px",borderRadius:20,border:"0.5px solid "+(activo?C.purple:C.border),background:activo?C.purplePale:"transparent",fontSize:12,color:activo?C.purple:C.textMuted},onClick:function(){
-                    var nuevoMonto=formPago.monto;
-                    if(c==="Pago final") nuevoMonto=String(Math.max(0,saldoReal));
-                    setFormPago(Object.assign({},formPago,{concepto:c,monto:nuevoMonto}));
-                  }},c);
+          // BODY
+          e("div",{style:{padding:"20px 24px",overflowY:"auto",maxHeight:"65vh"}},
+
+            // Pagos existentes
+            pagos.length>0&&e("div",{style:{marginBottom:20}},
+              e("div",{style:{fontSize:11,fontWeight:700,color:C.textDim,textTransform:"uppercase",letterSpacing:"1px",marginBottom:10}},"Pagos registrados"),
+              e("div",{style:{display:"flex",flexDirection:"column",gap:8}},
+                pagos.map(function(p){
+                  return e("div",{key:p.id,style:{display:"flex",alignItems:"center",gap:10,padding:"10px 14px",background:C.surfaceUp,borderRadius:10,border:"1px solid "+C.border}},
+                    e("div",{style:{flex:1}},
+                      e("div",{style:{fontSize:13,fontWeight:600,color:C.text}},p.concepto||"Pago"),
+                      e("div",{style:{fontSize:11,color:C.textDim,marginTop:1}},p.fecha)
+                    ),
+                    e("div",{style:{fontSize:14,fontWeight:700,color:C.green,marginRight:6}},"$"+Number(p.monto).toLocaleString()),
+                    e("button",{style:{cursor:"pointer",padding:"4px 10px",borderRadius:8,border:"1px solid "+C.amberBorder,background:"transparent",fontSize:11,color:C.amber,fontWeight:500,whiteSpace:"nowrap"},
+                      onClick:function(){ generarComprobantePago(p,cot,cl,perfil); }
+                    },"Comprobante"),
+                    e("button",{style:{background:"none",border:"none",cursor:"pointer",color:C.red,fontSize:16,padding:"2px 4px",marginLeft:2},
+                      onClick:(function(pid){ return function(){ var updated=cotizaciones.map(function(c){ return c.id===pagosModalId?Object.assign({},c,{pagos:(c.pagos||[]).filter(function(x){ return x.id!==pid; })}):c; }); setCotizaciones(updated); }; })(p.id)
+                    },"×")
+                  );
                 })
+              ),
+              e("div",{style:{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"12px 14px",borderRadius:10,background:saldoReal<=0?"#F0FDF4":C.amberBg,border:"1px solid "+(saldoReal<=0?"#86EFAC":C.amberBorder),marginTop:10}},
+                e("span",{style:{fontSize:13,color:saldoReal<=0?"#166534":C.amber,fontWeight:500}},"Saldo pendiente"),
+                e("span",{style:{fontSize:16,fontWeight:700,color:saldoReal<=0?C.green:C.amber}},"$"+Math.max(0,saldoReal).toLocaleString())
               )
             ),
-            e("div",{style:{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,marginBottom:12}},
-              e("div",null,e("label",{style:st.lbl},"Monto"),e(MontoInput,{value:formPago.monto,onChange:function(ev){ setFormPago(Object.assign({},formPago,{monto:ev.target.value})); },placeholder:"0",style:st.inp})),
-              e("div",null,e("label",{style:st.lbl},"Fecha"),e("input",{type:"date",value:formPago.fecha,onChange:function(ev){ setFormPago(Object.assign({},formPago,{fecha:ev.target.value})); },style:st.inp}))
+
+            // Formulario nuevo pago
+            saldoReal>0&&e("div",null,
+              pagos.length>0&&e("div",{style:{height:1,background:C.border,marginBottom:20}}),
+              e("div",{style:{fontSize:11,fontWeight:700,color:C.textDim,textTransform:"uppercase",letterSpacing:"1px",marginBottom:12}},"Agregar pago"),
+              e("div",{style:{marginBottom:14}},
+                e("label",{style:st.lbl},"Tipo de pago"),
+                e("div",{style:{display:"flex",gap:6,flexWrap:"wrap",marginTop:4}},
+                  ["Anticipo","Segundo pago","Pago final","Otro"].map(function(c){
+                    var activo=formPago.concepto===c;
+                    return e("button",{key:c,style:{cursor:"pointer",padding:"7px 14px",borderRadius:10,border:"1.5px solid "+(activo?pc:C.border),background:activo?pc:"transparent",fontSize:12,color:activo?"#fff":C.textMuted,fontWeight:activo?600:400,transition:"all 0.15s"},onClick:function(){
+                      var nuevoMonto=formPago.monto;
+                      if(c==="Pago final") nuevoMonto=String(Math.max(0,saldoReal));
+                      setFormPago(Object.assign({},formPago,{concepto:c,monto:nuevoMonto}));
+                    }},c);
+                  })
+                )
+              ),
+              e("div",{style:{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}},
+                e("div",null,e("label",{style:st.lbl},"Monto"),e(MontoInput,{value:formPago.monto,onChange:function(ev){ setFormPago(Object.assign({},formPago,{monto:ev.target.value})); },placeholder:"0",style:st.inp})),
+                e("div",null,e("label",{style:st.lbl},"Fecha"),e("input",{type:"date",value:formPago.fecha,onChange:function(ev){ setFormPago(Object.assign({},formPago,{fecha:ev.target.value})); },style:Object.assign({},st.inp,{width:"100%",maxWidth:"100%",boxSizing:"border-box",minWidth:0})}))
+              )
             ),
-            e("div",{style:{display:"flex",gap:8,justifyContent:"flex-end"}},
-              e("button",{style:st.btn,onClick:function(){ setPagosModalId(null); }},"Cerrar"),
-              e("button",{style:st.btnP,
-                disabled:!formPago.monto||Number(formPago.monto)<=0,
-                onClick:function(){
-                  var nuevoPago={id:"p_"+Date.now(),monto:Number(formPago.monto),fecha:formPago.fecha,concepto:formPago.concepto};
-                  setCotizaciones(cotizaciones.map(function(c){ return c.id===pagosModalId?Object.assign({},c,{pagos:[...(c.pagos||[]),nuevoPago]}):c; }));
-                  setFormPago({monto:"",fecha:FECHA_HOY,concepto:"Pago"});
-                }
-              },"+ Guardar pago")
+
+            // Pagado completo
+            saldoReal<=0&&e("div",{style:{display:"flex",alignItems:"center",gap:10,padding:"14px 16px",background:"#F0FDF4",borderRadius:12,border:"1px solid #86EFAC"}},
+              e("span",{style:{fontSize:20}},"✅"),
+              e("div",null,
+                e("div",{style:{fontSize:13,fontWeight:700,color:"#166534"}},"Pagado completamente"),
+                e("button",{style:{cursor:"pointer",marginTop:4,padding:"4px 12px",borderRadius:8,border:"1px solid "+C.amberBorder,background:"transparent",fontSize:12,color:C.amber,fontWeight:500},onClick:function(){ generarComprobanteGeneral(cot,cl,perfil); }},"Ver comprobante general")
+              )
             )
           ),
-          saldoReal<=0&&e("div",{style:{display:"flex",gap:8,justifyContent:"space-between",alignItems:"center",paddingTop:12,borderTop:"0.5px solid "+C.border}},
-            e("div",{style:{fontSize:12,color:C.green,fontWeight:600}},"✓ Pagado completamente"),
-            e("div",{style:{display:"flex",gap:6}},
-              e("button",{style:Object.assign({},st.btn,{fontSize:12,color:C.amber,borderColor:C.amberBorder}),onClick:function(){ generarComprobanteGeneral(cot,cl,perfil); }},"Comprobante general"),
-              e("button",{style:st.btn,onClick:function(){ setPagosModalId(null); }},"Cerrar")
-            )
+
+          // FOOTER
+          e("div",{style:{padding:"14px 24px",borderTop:"1px solid "+C.border,display:"flex",justifyContent:"flex-end",gap:8,background:C.surfaceUp}},
+            e("button",{style:st.btn,onClick:function(){ setPagosModalId(null); }},"Cerrar"),
+            saldoReal>0&&e("button",{style:Object.assign({},st.btnP,{opacity:!formPago.monto||Number(formPago.monto)<=0?0.4:1}),
+              disabled:!formPago.monto||Number(formPago.monto)<=0,
+              onClick:function(){
+                var nuevoPago={id:"p_"+Date.now(),monto:Number(formPago.monto),fecha:formPago.fecha,concepto:formPago.concepto};
+                setCotizaciones(cotizaciones.map(function(c){ return c.id===pagosModalId?Object.assign({},c,{pagos:[...(c.pagos||[]),nuevoPago]}):c; }));
+                setFormPago({monto:"",fecha:FECHA_HOY,concepto:"Pago"});
+              }
+            },"+ Guardar pago")
           )
         )
       );
@@ -4467,7 +4516,7 @@ export default function CLEO(){
           e("div",{style:{fontWeight:600,fontSize:15,marginBottom:4,color:C.text}},"Registrar anticipo"),
           e("div",{style:{fontSize:12,color:C.textMuted,marginBottom:16}},(cl?cl.nombre:"--")+" · "+(cot?cot.concepto:"")+" · $"+(cot?Number(cot.monto).toLocaleString():"")),
           e("div",{style:{marginBottom:12}},e("label",{style:st.lbl},"Monto del anticipo"),e(MontoInput,{value:anticVal.monto,onChange:function(ev){ setAnticVal(Object.assign({},anticVal,{monto:ev.target.value})); },placeholder:"0",style:st.inp})),
-          e("div",{style:{marginBottom:16}},e("label",{style:st.lbl},"Fecha de pago"),e("input",{type:"date",value:anticVal.fecha,onChange:function(ev){ setAnticVal(Object.assign({},anticVal,{fecha:ev.target.value})); },style:st.inp})),
+          e("div",{style:{marginBottom:16}},e("label",{style:st.lbl},"Fecha de pago"),e("input",{type:"date",value:anticVal.fecha,onChange:function(ev){ setAnticVal(Object.assign({},anticVal,{fecha:ev.target.value})); },style:Object.assign({},st.inp,{width:"100%",maxWidth:"100%",boxSizing:"border-box",minWidth:0})})),
           Number(anticVal.monto)>0&&e("div",{style:{background:C.surfaceUp,borderRadius:8,padding:"10px 12px",marginBottom:16}},
             e("div",{style:{display:"flex",justifyContent:"space-between",marginBottom:6}},e("span",{style:{fontSize:13,color:C.textMuted}},"Total"),e("span",{style:{fontSize:13,color:C.text}},"$"+(cot?Number(cot.monto).toLocaleString():""))),
             e("div",{style:{display:"flex",justifyContent:"space-between",marginBottom:6}},e("span",{style:{fontSize:13,color:C.textMuted}},"Anticipo"),e("span",{style:{fontSize:13,color:C.green}},"$"+Number(anticVal.monto).toLocaleString())),
@@ -4568,10 +4617,23 @@ export default function CLEO(){
             )
           ),
 
-          // SECCIÓN: Colores de documentos
+          // SECCIÓN: Redes sociales
           e("div",{style:{padding:"20px 24px",borderBottom:"1px solid "+C.border}},
-            e("div",{style:{fontSize:11,fontWeight:700,color:C.textDim,textTransform:"uppercase",letterSpacing:"1px",marginBottom:4}},"Colores de cotizaciones y comprobantes"),
-            e("div",{style:{fontSize:12,color:C.textDim,marginBottom:16}},"Estos colores aparecen en los PDFs que generas para tus clientes."),
+            e("div",{style:{fontSize:11,fontWeight:700,color:C.textDim,textTransform:"uppercase",letterSpacing:"1px",marginBottom:14}},"Redes sociales"),
+            [{key:"redesIG",color:"#D85A30",icon:e(SvgIG,{size:15}),ph:"@Instagram",label:"Instagram"},{key:"redesTT",color:"#000",icon:e("svg",{width:15,height:15,viewBox:"0 0 24 24",fill:"currentColor",style:{color:"#000"}},e("path",{d:"M19.59 6.69a4.83 4.83 0 01-3.77-4.25V2h-3.45v13.67a2.89 2.89 0 01-2.88 2.5 2.89 2.89 0 01-2.89-2.89 2.89 2.89 0 012.89-2.89c.28 0 .54.04.79.1V9.01a6.33 6.33 0 00-.79-.05 6.34 6.34 0 00-6.34 6.34 6.34 6.34 0 006.34 6.34 6.34 6.34 0 006.33-6.34V8.75a8.16 8.16 0 004.77 1.52V6.82a4.85 4.85 0 01-1-.13z"})),ph:"@TikTok",label:"TikTok"},{key:"redesFB",color:"#185FA5",icon:e(SvgFB,{size:15}),ph:"Facebook",label:"Facebook"}].map(function(r){
+              return e("div",{key:r.key,style:{display:"flex",alignItems:"center",gap:10,marginBottom:10}},
+                e("div",{style:{width:34,height:34,borderRadius:10,background:r.color+"15",border:"1px solid "+r.color+"30",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}},r.icon),
+                e("div",{style:{flex:1}},
+                  e("input",{value:formPerfil[r.key]||"",onChange:function(ev){ setFormPerfil(Object.assign({},formPerfil,{[r.key]:ev.target.value})); },placeholder:r.ph,style:Object.assign({},st.inp,{marginBottom:0})})
+                )
+              );
+            })
+          ),
+
+          // SECCIÓN: Cotizaciones y comprobantes
+          e("div",{style:{padding:"20px 24px",borderBottom:"1px solid "+C.border}},
+            e("div",{style:{fontSize:12,fontWeight:700,color:C.text,marginBottom:2}},"Cotizaciones y comprobantes"),
+            e("div",{style:{fontSize:12,color:C.textDim,marginBottom:16}},"Así se verán los documentos que generas para tus clientes."),
 
             // Paletas presets
             e("div",{style:{marginBottom:16}},
@@ -4649,19 +4711,23 @@ export default function CLEO(){
                 )
               )
             )
-          ),
+,
 
-          // SECCIÓN: Redes sociales
-          e("div",{style:{padding:"20px 24px",borderBottom:"1px solid "+C.border}},
-            e("div",{style:{fontSize:11,fontWeight:700,color:C.textDim,textTransform:"uppercase",letterSpacing:"1px",marginBottom:14}},"Redes sociales"),
-            [{key:"redesIG",color:"#D85A30",icon:e(SvgIG,{size:15}),ph:"@Instagram",label:"Instagram"},{key:"redesTT",color:"#000",icon:e("svg",{width:15,height:15,viewBox:"0 0 24 24",fill:"currentColor",style:{color:"#000"}},e("path",{d:"M19.59 6.69a4.83 4.83 0 01-3.77-4.25V2h-3.45v13.67a2.89 2.89 0 01-2.88 2.5 2.89 2.89 0 01-2.89-2.89 2.89 2.89 0 012.89-2.89c.28 0 .54.04.79.1V9.01a6.33 6.33 0 00-.79-.05 6.34 6.34 0 00-6.34 6.34 6.34 6.34 0 006.34 6.34 6.34 6.34 0 006.33-6.34V8.75a8.16 8.16 0 004.77 1.52V6.82a4.85 4.85 0 01-1-.13z"})),ph:"@TikTok",label:"TikTok"},{key:"redesFB",color:"#185FA5",icon:e(SvgFB,{size:15}),ph:"Facebook",label:"Facebook"}].map(function(r){
-              return e("div",{key:r.key,style:{display:"flex",alignItems:"center",gap:10,marginBottom:10}},
-                e("div",{style:{width:34,height:34,borderRadius:10,background:r.color+"15",border:"1px solid "+r.color+"30",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}},r.icon),
-                e("div",{style:{flex:1}},
-                  e("input",{value:formPerfil[r.key]||"",onChange:function(ev){ setFormPerfil(Object.assign({},formPerfil,{[r.key]:ev.target.value})); },placeholder:r.ph,style:Object.assign({},st.inp,{marginBottom:0})})
-                )
-              );
-            })
+            // Datos para cobrar
+            e("div",{style:{marginTop:16,padding:"16px",background:C.surfaceUp,borderRadius:12,border:"1px solid "+C.border}},
+              e("div",{style:{fontSize:12,fontWeight:600,color:C.text,marginBottom:10}},"💳 Datos para cobrar"),
+              e("div",{style:{fontSize:11,color:C.textDim,marginBottom:12}},"Aparecen en cotizaciones y comprobantes."),
+            e("div",{style:{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,marginBottom:10}},
+              e("div",null,e("label",{style:st.lbl},"Banco"),e("input",{value:formPerfil.banco||"",onChange:function(ev){ setFormPerfil(Object.assign({},formPerfil,{banco:ev.target.value})); },placeholder:"ej. BBVA, Banamex",style:st.inp})),
+              e("div",null,e("label",{style:st.lbl},"Titular"),e("input",{value:formPerfil.bancotitular||"",onChange:function(ev){ setFormPerfil(Object.assign({},formPerfil,{bancotitular:ev.target.value})); },placeholder:"Nombre completo",style:st.inp}))
+            ),
+            e("div",{style:{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,marginBottom:10}},
+              e("div",null,e("label",{style:st.lbl},"CLABE (18 dígitos)"),e("input",{value:formPerfil.bancoclabe||"",onChange:function(ev){ var v=ev.target.value.replace(/\D/g,"").slice(0,18); setFormPerfil(Object.assign({},formPerfil,{bancoclabe:v})); },placeholder:"000000000000000000",maxLength:18,inputMode:"numeric",style:st.inp})),
+              e("div",null,e("label",{style:st.lbl},"Número de cuenta"),e("input",{value:formPerfil.bancoaccount||"",onChange:function(ev){ var v=ev.target.value.replace(/\D/g,"").slice(0,20); setFormPerfil(Object.assign({},formPerfil,{bancoaccount:v})); },placeholder:"Solo números",maxLength:20,inputMode:"numeric",style:st.inp}))
+            ),
+            e("div",null,e("label",{style:st.lbl},"Instrucciones adicionales"),e("textarea",{value:formPerfil.bancoinstrucciones||"",onChange:function(ev){ setFormPerfil(Object.assign({},formPerfil,{bancoinstrucciones:ev.target.value})); },placeholder:"ej. Manda captura al 932...",style:Object.assign({},st.inp,{minHeight:50,resize:"vertical"})}))
+
+            )
           ),
 
           // SECCIÓN: Zona de peligro
@@ -4865,82 +4931,99 @@ export default function CLEO(){
       var pagos=v.pagos||[];
       var totalPagado=pagos.reduce(function(s,p){ return s+Number(p.monto); },0);
       var saldoReal=v.monto-totalPagado;
+      var pc=perfil.color||C.purple;
       return e("div",{style:st.ov,onClick:function(){ setPagoVentaData(null); }},
-        e("div",{style:st.modal,onClick:function(ev){ ev.stopPropagation(); }},
-          e("div",{style:{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:4}},
-            e("div",{style:{fontWeight:600,fontSize:15,color:C.text}},"Registrar pago"),
-            e("button",{style:{background:"none",border:"none",cursor:"pointer",color:C.textDim,fontSize:20},onClick:function(){ setPagoVentaData(null); }},"×")
-          ),
-          e("div",{style:{fontSize:12,color:C.textMuted,marginBottom:16}},(cl?cl.nombre:"--")+" · "+(v.concepto||"Venta directa")+" · $"+Number(v.monto).toLocaleString()),
+        e("div",{style:Object.assign({},st.modal,{padding:0,overflow:"hidden"}),onClick:function(ev){ ev.stopPropagation(); }},
 
-          // Historial de pagos existentes
-          pagos.length>0&&e("div",{style:{marginBottom:16}},
-            e("div",{style:{fontSize:11,color:C.textDim,marginBottom:6,textTransform:"uppercase",letterSpacing:"0.5px"}},"Pagos registrados"),
-            pagos.map(function(p){
-              return e("div",{key:p.id,style:{display:"flex",alignItems:"center",gap:8,padding:"8px 0",borderBottom:"0.5px solid "+C.border}},
-                e("div",{style:{flex:1}},
-                  e("div",{style:{fontSize:12,fontWeight:500,color:C.text}},p.concepto||"Pago"),
-                  e("div",{style:{fontSize:11,color:C.textDim}},p.fecha)
-                ),
-                e("div",{style:{fontSize:13,fontWeight:600,color:C.green}},"$"+Number(p.monto).toLocaleString()),
-                e("button",{style:Object.assign({},st.btn,{fontSize:10,padding:"2px 8px",color:C.amber,borderColor:C.amberBorder}),
-                  onClick:function(){ generarComprobantePago(p,{id:v.id,concepto:v.concepto,monto:v.monto},cl||{nombre:"Cliente"},perfil); }
-                },"Comprobante"),
-                e("button",{style:{background:"none",border:"none",cursor:"pointer",color:C.red,fontSize:16,padding:"2px 6px",borderRadius:6},
-                  onClick:(function(pid){ return function(){
-                    var updated=ventas.map(function(vv){ return vv.id===v.id?Object.assign({},vv,{pagos:(vv.pagos||[]).filter(function(x){ return x.id!==pid; })}):vv; });
-                    setVentas(updated);
-                    setPagoVentaData(Object.assign({},v,{pagos:(v.pagos||[]).filter(function(x){ return x.id!==pid; })}));
-                  }; })(p.id)
-                },"×")
-              );
-            }),
-            e("div",{style:{display:"flex",justifyContent:"space-between",padding:"8px 0",marginTop:4}},
-              e("span",{style:{fontSize:12,color:C.textMuted}},"Saldo pendiente"),
-              e("span",{style:{fontSize:14,fontWeight:600,color:saldoReal<=0?C.green:C.amber}},"$"+Math.max(0,saldoReal).toLocaleString())
-            )
+          // HEADER
+          e("div",{style:{padding:"20px 24px 16px",borderBottom:"1px solid "+C.border,display:"flex",justifyContent:"space-between",alignItems:"flex-start"}},
+            e("div",null,
+              e("div",{style:{fontWeight:700,fontSize:16,color:C.text,marginBottom:3}},"Registrar pago"),
+              e("div",{style:{fontSize:12,color:C.textMuted}},(cl?cl.nombre:"--")+" · "+(v.concepto||"Venta directa")+" · $"+Number(v.monto).toLocaleString())
+            ),
+            e("button",{style:{background:"transparent",border:"1px solid "+C.border,cursor:"pointer",color:C.textDim,fontSize:16,width:28,height:28,borderRadius:8,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0},onClick:function(){ setPagoVentaData(null); }},"×")
           ),
 
-          // Formulario nuevo pago
-          saldoReal>0&&e("div",{style:{paddingTop:12,borderTop:"0.5px solid "+C.border}},
-            e("div",{style:{fontSize:11,color:C.textDim,marginBottom:10,textTransform:"uppercase",letterSpacing:"0.5px"}},"Agregar pago"),
-            e("div",{style:{marginBottom:10}},
-              e("label",{style:st.lbl},"Tipo de pago"),
-              e("div",{style:{display:"flex",gap:6,flexWrap:"wrap"}},
-                ["Anticipo","Segundo pago","Pago final","Otro"].map(function(c){
-                  var activo=formPagoVenta.concepto===c;
-                  return e("button",{key:c,style:{cursor:"pointer",padding:"5px 12px",borderRadius:20,border:"0.5px solid "+(activo?C.purple:C.border),background:activo?C.purplePale:"transparent",fontSize:12,color:activo?C.purple:C.textMuted},onClick:function(){
-                    var nuevoMonto=formPagoVenta.monto;
-                    if(c==="Pago final") nuevoMonto=String(Math.max(0,saldoReal));
-                    setFormPagoVenta(Object.assign({},formPagoVenta,{concepto:c,monto:nuevoMonto}));
-                  }},c);
+          // BODY
+          e("div",{style:{padding:"20px 24px",overflowY:"auto",maxHeight:"65vh"}},
+
+            // Pagos existentes
+            pagos.length>0&&e("div",{style:{marginBottom:20}},
+              e("div",{style:{fontSize:11,fontWeight:700,color:C.textDim,textTransform:"uppercase",letterSpacing:"1px",marginBottom:10}},"Pagos registrados"),
+              e("div",{style:{display:"flex",flexDirection:"column",gap:8}},
+                pagos.map(function(p){
+                  return e("div",{key:p.id,style:{display:"flex",alignItems:"center",gap:10,padding:"10px 14px",background:C.surfaceUp,borderRadius:10,border:"1px solid "+C.border}},
+                    e("div",{style:{flex:1}},
+                      e("div",{style:{fontSize:13,fontWeight:600,color:C.text}},p.concepto||"Pago"),
+                      e("div",{style:{fontSize:11,color:C.textDim,marginTop:1}},p.fecha)
+                    ),
+                    e("div",{style:{fontSize:14,fontWeight:700,color:C.green,marginRight:6}},"$"+Number(p.monto).toLocaleString()),
+                    e("button",{style:{cursor:"pointer",padding:"4px 10px",borderRadius:8,border:"1px solid "+C.amberBorder,background:"transparent",fontSize:11,color:C.amber,fontWeight:500,whiteSpace:"nowrap"},
+                      onClick:function(){ generarComprobantePago(p,{id:v.id,concepto:v.concepto,monto:v.monto},cl||{nombre:"Cliente"},perfil); }
+                    },"Comprobante"),
+                    e("button",{style:{background:"none",border:"none",cursor:"pointer",color:C.red,fontSize:16,padding:"2px 4px",marginLeft:2},
+                      onClick:(function(pid){ return function(){
+                        var updated=ventas.map(function(vv){ return vv.id===v.id?Object.assign({},vv,{pagos:(vv.pagos||[]).filter(function(x){ return x.id!==pid; })}):vv; });
+                        setVentas(updated);
+                        setPagoVentaData(Object.assign({},v,{pagos:(v.pagos||[]).filter(function(x){ return x.id!==pid; })}));
+                      }; })(p.id)
+                    },"×")
+                  );
                 })
+              ),
+              e("div",{style:{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"12px 14px",borderRadius:10,background:saldoReal<=0?"#F0FDF4":C.amberBg,border:"1px solid "+(saldoReal<=0?"#86EFAC":C.amberBorder),marginTop:10}},
+                e("span",{style:{fontSize:13,color:saldoReal<=0?"#166534":C.amber,fontWeight:500}},"Saldo pendiente"),
+                e("span",{style:{fontSize:16,fontWeight:700,color:saldoReal<=0?C.green:C.amber}},"$"+Math.max(0,saldoReal).toLocaleString())
               )
             ),
-            e("div",{style:{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,marginBottom:12}},
-              e("div",null,e("label",{style:st.lbl},"Monto"),e(MontoInput,{value:formPagoVenta.monto,onChange:function(ev){ setFormPagoVenta(Object.assign({},formPagoVenta,{monto:ev.target.value})); },placeholder:"0",style:st.inp})),
-              e("div",null,e("label",{style:st.lbl},"Fecha"),e("input",{type:"date",value:formPagoVenta.fecha,onChange:function(ev){ setFormPagoVenta(Object.assign({},formPagoVenta,{fecha:ev.target.value})); },style:Object.assign({},st.inp,{boxSizing:"border-box",display:"block"})}))
+
+            // Formulario nuevo pago
+            saldoReal>0&&e("div",null,
+              pagos.length>0&&e("div",{style:{height:1,background:C.border,marginBottom:20}}),
+              e("div",{style:{fontSize:11,fontWeight:700,color:C.textDim,textTransform:"uppercase",letterSpacing:"1px",marginBottom:12}},"Agregar pago"),
+              e("div",{style:{marginBottom:14}},
+                e("label",{style:st.lbl},"Tipo de pago"),
+                e("div",{style:{display:"flex",gap:6,flexWrap:"wrap",marginTop:4}},
+                  ["Anticipo","Segundo pago","Pago final","Otro"].map(function(c){
+                    var activo=formPagoVenta.concepto===c;
+                    return e("button",{key:c,style:{cursor:"pointer",padding:"7px 14px",borderRadius:10,border:"1.5px solid "+(activo?pc:C.border),background:activo?pc:"transparent",fontSize:12,color:activo?"#fff":C.textMuted,fontWeight:activo?600:400,transition:"all 0.15s"},onClick:function(){
+                      var nuevoMonto=formPagoVenta.monto;
+                      if(c==="Pago final") nuevoMonto=String(Math.max(0,saldoReal));
+                      setFormPagoVenta(Object.assign({},formPagoVenta,{concepto:c,monto:nuevoMonto}));
+                    }},c);
+                  })
+                )
+              ),
+              e("div",{style:{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}},
+                e("div",null,e("label",{style:st.lbl},"Monto"),e(MontoInput,{value:formPagoVenta.monto,onChange:function(ev){ setFormPagoVenta(Object.assign({},formPagoVenta,{monto:ev.target.value})); },placeholder:"0",style:st.inp})),
+                e("div",null,e("label",{style:st.lbl},"Fecha"),e("input",{type:"date",value:formPagoVenta.fecha,onChange:function(ev){ setFormPagoVenta(Object.assign({},formPagoVenta,{fecha:ev.target.value})); },style:Object.assign({},st.inp,{width:"100%",maxWidth:"100%",boxSizing:"border-box",minWidth:0})}))
+              )
             ),
-            e("div",{style:{display:"flex",gap:8,justifyContent:"flex-end"}},
-              e("button",{style:st.btn,onClick:function(){ setPagoVentaData(null); }},"Cerrar"),
-              e("button",{style:st.btnP,disabled:!formPagoVenta.monto||Number(formPagoVenta.monto)<=0,
-                onClick:function(){
-                  var nuevoPago={id:"pv_"+Date.now(),monto:Number(formPagoVenta.monto),fecha:formPagoVenta.fecha,concepto:formPagoVenta.concepto||"Pago"};
-                  var nuevosPagos=[...(v.pagos||[]),nuevoPago];
-                  var updatedV=Object.assign({},v,{pagos:nuevosPagos});
-                  setVentas(ventas.map(function(vv){ return vv.id===v.id?updatedV:vv; }));
-                  setPagoVentaData(updatedV);
-                  setFormPagoVenta({monto:"",fecha:FECHA_HOY,concepto:"Pago"});
-                }
-              },"+ Guardar pago")
+
+            // Pagado completo
+            saldoReal<=0&&e("div",{style:{display:"flex",alignItems:"center",gap:10,padding:"14px 16px",background:"#F0FDF4",borderRadius:12,border:"1px solid #86EFAC"}},
+              e("span",{style:{fontSize:20}},"✅"),
+              e("div",null,
+                e("div",{style:{fontSize:13,fontWeight:700,color:"#166534"}},"Pagado completamente"),
+                e("button",{style:{cursor:"pointer",marginTop:4,padding:"4px 12px",borderRadius:8,border:"1px solid "+C.amberBorder,background:"transparent",fontSize:12,color:C.amber,fontWeight:500},onClick:function(){ generarComprobanteVenta(v,cl); }},"Ver comprobante general")
+              )
             )
           ),
-          saldoReal<=0&&e("div",{style:{display:"flex",gap:8,justifyContent:"space-between",alignItems:"center",paddingTop:12,borderTop:"0.5px solid "+C.border}},
-            e("div",{style:{fontSize:12,color:C.green,fontWeight:600}},"✓ Pagado completamente"),
-            e("div",{style:{display:"flex",gap:6}},
-              e("button",{style:Object.assign({},st.btn,{fontSize:12,color:C.amber,borderColor:C.amberBorder}),onClick:function(){ generarComprobanteVenta(v,cl); }},"Comprobante general"),
-              e("button",{style:st.btn,onClick:function(){ setPagoVentaData(null); }},"Cerrar")
-            )
+
+          // FOOTER
+          e("div",{style:{padding:"14px 24px",borderTop:"1px solid "+C.border,display:"flex",justifyContent:"flex-end",gap:8,background:C.surfaceUp}},
+            e("button",{style:st.btn,onClick:function(){ setPagoVentaData(null); }},"Cerrar"),
+            saldoReal>0&&e("button",{style:Object.assign({},st.btnP,{opacity:!formPagoVenta.monto||Number(formPagoVenta.monto)<=0?0.4:1}),
+              disabled:!formPagoVenta.monto||Number(formPagoVenta.monto)<=0,
+              onClick:function(){
+                var nuevoPago={id:"pv_"+Date.now(),monto:Number(formPagoVenta.monto),fecha:formPagoVenta.fecha,concepto:formPagoVenta.concepto||"Pago"};
+                var nuevosPagos=[...(v.pagos||[]),nuevoPago];
+                var updatedV=Object.assign({},v,{pagos:nuevosPagos});
+                setVentas(ventas.map(function(vv){ return vv.id===v.id?updatedV:vv; }));
+                setPagoVentaData(updatedV);
+                setFormPagoVenta({monto:"",fecha:FECHA_HOY,concepto:"Pago"});
+              }
+            },"+ Guardar pago")
           )
         )
       );
@@ -4979,7 +5062,7 @@ export default function CLEO(){
             e("button",{
               style:{cursor:"pointer",padding:"10px",borderRadius:14,border:"none",background:"none",fontSize:13,color:C.textMuted,width:"100%"},
               onClick:function(){ setModalVentaRapidaPipeline(null); }
-            },"Cancelar,dejar la ficha donde está")
+            },"Cancelar")
           )
         )
       );
@@ -5261,7 +5344,7 @@ export default function CLEO(){
 
           // CONDICIONES
           e("div",{style:{background:"#FFFBEB",borderRadius:12,padding:"14px",border:"1px solid "+C.amberBorder}},
-            e("label",{style:Object.assign({},st.lbl,{color:C.amber})},"Condiciones para este cliente"),
+            e("label",{style:Object.assign({},st.lbl,{color:C.amber})},"Condiciones"),
             e("div",{style:{fontSize:12,color:"#92400E",marginBottom:8}},"Solo aplican a esta cotización,no modifican tu catálogo."),
             e(RichEditor,{key:"cot-cond-"+(editCotId||"new"),value:formCot.svCondicionesHtml||formCot.svCondiciones||"",onChange:function(v){ setFormCot(Object.assign({},formCot,{svCondicionesHtml:v,svCondiciones:v.replace(/<[^>]+>/g," ").replace(/\s+/g," ").trim()})); },placeholder:"Entrega, revisiones, forma de pago, excepciones...",minHeight:70})
           )
