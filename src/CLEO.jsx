@@ -3216,6 +3216,7 @@ export default function CLEO(){
           // LISTA DE URGENTES
           e("div",{style:{display:"flex",flexDirection:"column",gap:10}},
             urgentes.map(function(u){
+              try {
               var c=u.cliente;
               var urlContactar=contactUrl(c,msgEtapa(c));
               var esPerdido=c.etapa==="Perdido";
@@ -3270,6 +3271,7 @@ export default function CLEO(){
                   )
                 )
               );
+              } catch(err){ return e("div",{key:u.cliente&&u.cliente.id,style:{padding:8,fontSize:11,color:C.red}},"Error cargando cliente"); }
             })
           )
         );
