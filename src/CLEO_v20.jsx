@@ -3130,7 +3130,7 @@ export default function CLEO(){
         }).forEach(function(c){
           var diasGanado=Math.floor((HOY-new Date(c.fechaEtapa||c.fecha))/86400000);
           var meses=Math.floor(diasGanado/30);
-          razon=meses>=2
+          var razon=meses>=2
             ?c.nombre.split(" ")[0]+" te compró hace "+meses+" meses y no has vuelto a escribirle. Es buen momento para saber cómo le fue y pedirle un referido."
             :c.nombre.split(" ")[0]+" te compró hace 30 días. Es el mejor momento para preguntar cómo le fue , y si conoce a alguien que pueda necesitarte.";
           urgentes.push({cliente:c,razon:razon,color:C.green,prioridad:6});
