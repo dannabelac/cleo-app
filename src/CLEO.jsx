@@ -272,6 +272,7 @@ var cotDemo=[
   {id:3,clienteId:4,concepto:"Remodelacion oficina",cantidad:1,precioUnit:8000,monto:8000,estatus:"Aceptada",fecha:"2026-05-25",motivoPerdida:"",vigencia:"",vigenciaDias:"",notas:"Incluye materiales basicos",anticipo:0,fechaAnticipo:"",pagos:[{id:"p_401",monto:2000,fecha:"2026-05-26",concepto:"Anticipo"}]},
   {id:4,clienteId:5,concepto:"Consultoria redes sociales",cantidad:1,precioUnit:5500,monto:5500,estatus:"Aceptada",fecha:"2026-05-15",motivoPerdida:"",vigencia:"",vigenciaDias:"",notas:"3 meses de consultoria",anticipo:0,fechaAnticipo:"",pagos:[{id:"p_501",monto:5500,fecha:"2026-05-22",concepto:"Pago completo"}]},
   {id:5,clienteId:6,concepto:"Branding completo",cantidad:1,precioUnit:12000,monto:12000,estatus:"Rechazada",fecha:"2026-05-10",motivoPerdida:"Precio alto",vigencia:"",vigenciaDias:"",notas:"",anticipo:0,fechaAnticipo:"",pagos:[]},
+  {id:6,clienteId:7,concepto:"Sesion de fotos premium",cantidad:1,precioUnit:4500,monto:4500,estatus:"Rechazada",fecha:"2026-04-11",motivoPerdida:"Precio alto",vigencia:"",vigenciaDias:"",notas:"Incluye 30 fotos editadas",anticipo:0,fechaAnticipo:"",pagos:[]},
 ];
 var serviciosDemo=[
   {id:1,nombre:"Consultoria",precio:3500,descripcion:"Sesion de consultoria de 2 horas"},
@@ -2372,8 +2373,8 @@ export default function CLEO(){
           ),
 
           // KANBAN
-          e("div",{style:{overflowX:"auto",paddingBottom:8}},
-            e("div",{style:{display:"flex",gap:12,minWidth:isMobile?"unset":960}},
+          e("div",{style:{overflowX:"auto",paddingBottom:8,marginLeft:isMobile?-16:0,marginRight:isMobile?-16:0}},
+            e("div",{style:{display:"flex",gap:12,minWidth:isMobile?"unset":"max-content",width:"100%"}},
               ETAPAS.map(function(etapa){
                 var cols=clientesFiltrados.filter(function(c){
                   if(c.etapa!==etapa) return false;
@@ -2394,7 +2395,7 @@ export default function CLEO(){
                   return s+(cot?cot.monto:0);
                 },0);
                 return e("div",{key:etapa,
-                  style:{flex:isMobile?"0 0 85vw":"0 0 175px",minWidth:isMobile?"85vw":175,display:"flex",flexDirection:"column"},
+                  style:{flex:isMobile?"0 0 85vw":"1 1 0",minWidth:isMobile?"85vw":150,display:"flex",flexDirection:"column"},
                   onDragOver:function(ev){ onDragOver(ev,etapa); },
                   onDrop:function(ev){ onDrop(ev,etapa); },
                   onDragLeave:function(){ setDragOver(null); }
@@ -2503,6 +2504,9 @@ export default function CLEO(){
                             );
                           }
                           // Activo: días + concepto + rojo si urgente
+                          if(c.etapa==="Perdido"){
+                            return e("div",{style:{fontSize:10,lineHeight:"22px",height:22,padding:"0 7px",borderRadius:6,flexShrink:0,whiteSpace:"nowrap",color:C.red,background:C.red+"08",border:"0.5px solid "+C.red+"30"}},"Por recuperar");
+                          }
                           var umbral=c.etapa==="Nuevo contacto"?5:3;
                           var diasRojo=dias>=umbral;
                           var cot3=cotAcep||cotPend;
@@ -3163,7 +3167,7 @@ export default function CLEO(){
         return e("div",{style:{display:"flex",flexDirection:"column",gap:0}},
 
           // BOTONES , arriba a la derecha
-          e("div",{style:{display:"flex",justifyContent:"flex-end",gap:isMobile?6:8,marginLeft:isMobile?-16:-48,marginRight:isMobile?-16:-48,marginTop:isMobile?-20:-40,padding:isMobile?"12px 16px":"14px 48px",background:C.bg}},
+          e("div",{style:{display:"flex",justifyContent:"flex-end",gap:isMobile?6:8,marginBottom:16,padding:isMobile?"12px 16px":"14px 0"}},
             isMobile&&e("div",{style:{
               width:36,height:36,borderRadius:10,
               background:C.dark,
@@ -3233,41 +3237,59 @@ export default function CLEO(){
                 return "\u201cHola "+(c.nombre.split(" ")[0])+", \u00bfc\u00f3mo has estado? La \u00faltima vez que hablamos me comentaste que "+s+". \u00bfC\u00f3mo van las cosas?\u201d";
               })():("\u201c"+coach.mensaje+"\u201d");
 
+              var prioLabel=u.prioridad===1?"Alta":u.prioridad===2?"Alta":u.prioridad===3?"Media":u.prioridad===4?"Media":u.prioridad===5?"Media baja":"Normal";
+              var prioBg=u.prioridad<=2?C.red+"15":u.prioridad<=4?C.amber+"15":C.border;
+              var prioColor=u.prioridad<=2?C.red:u.prioridad<=4?C.amber:C.textMuted;
+              var [msgVisible,setMsgVisible]=useState ? [false,function(){}] : [false,function(){}];
+
               return e("div",{key:c.id,style:{
                 background:C.surface,borderRadius:16,
                 border:"0.5px solid "+C.border,borderLeft:"3px solid "+borderColor,
-                overflow:"hidden",marginBottom:0
+                overflow:"hidden",padding:"14px 16px"
               }},
-                e("div",{style:{padding:"12px 16px"}},
-                  // Header: avatar + nombre + etapa + badge hoy
-                  e("div",{style:{display:"flex",alignItems:"center",gap:10,marginBottom:10}},
-                    e("div",{style:{width:34,height:34,borderRadius:"50%",background:ec+"18",display:"flex",alignItems:"center",justifyContent:"center",fontSize:12,fontWeight:600,color:ec,flexShrink:0}},iniciales(c.nombre)),
-                    e("div",{style:{flex:1,minWidth:0}},
-                      e("div",{style:{fontWeight:600,color:C.text,fontSize:14,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}},c.nombre),
-                      e("div",{style:{fontSize:12,color:C.textMuted,marginTop:1}},
-                        (c.negocio?c.negocio+" · ":"")+( esPerdido?"Para recuperar":ETAPAS_LABEL[c.etapa]||c.etapa)+" · "+diasSinContacto(c)+"d sin contacto"
+                e("div",{style:{display:"flex",gap:16,alignItems:"flex-start"}},
+
+                  // COLUMNA 1: Avatar + info cliente
+                  e("div",{style:{flex:"0 0 220px",minWidth:0}},
+                    e("div",{style:{display:"flex",alignItems:"center",gap:10,marginBottom:8}},
+                      e("div",{style:{width:36,height:36,borderRadius:"50%",background:ec+"18",display:"flex",alignItems:"center",justifyContent:"center",fontSize:13,fontWeight:600,color:ec,flexShrink:0}},iniciales(c.nombre)),
+                      e("div",{style:{minWidth:0}},
+                        e("div",{style:{fontWeight:600,color:C.text,fontSize:14,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}},c.nombre),
+                        e("div",{style:{fontSize:12,color:C.textMuted}},c.negocio||"")
                       )
                     ),
-                    u.prioridad===1&&e("span",{style:{fontSize:11,padding:"2px 8px",borderRadius:20,background:borderColor+"18",color:borderColor,border:"0.5px solid "+borderColor+"44",flexShrink:0,fontWeight:600}},"Hoy")
+                    e("div",{style:{display:"flex",alignItems:"center",gap:6,marginBottom:c.notaRecontacto?8:0}},
+                      e("span",{style:{fontSize:11,color:C.textMuted}},"◎"),
+                      e("span",{style:{fontSize:12,color:C.textMuted}},(esPerdido?"Para recuperar":ETAPAS_LABEL[c.etapa]||c.etapa)+" · "),
+                      e("span",{style:{fontSize:12,fontWeight:600,color:diasSinContacto(c)>=30?C.red:C.amber}},diasSinContacto(c)+" días"),
+                      e("span",{style:{fontSize:12,color:C.textMuted}}," sin contacto")
+                    ),
+                    c.notaRecontacto&&e("div",{style:{fontSize:12,color:C.textMuted,fontStyle:"italic",padding:"7px 10px",borderRadius:8,background:C.bg,lineHeight:1.6,borderLeft:"2px solid "+borderColor+"66"}},
+                      "\u201c"+c.notaRecontacto+"\u201d"
+                    )
                   ),
 
-                  // Nota de recontacto
-                  c.notaRecontacto&&e("div",{style:{fontSize:12,color:C.textMuted,fontStyle:"italic",padding:"8px 12px",borderRadius:8,background:C.bg,marginBottom:10,lineHeight:1.6,borderLeft:"2px solid "+C.border}},
-                    "\u201c"+c.notaRecontacto+"\u201d"
+                  // COLUMNA 2: Sugerencia CLEO
+                  e("div",{style:{flex:1,minWidth:0}},
+                    e("div",{style:{display:"flex",alignItems:"center",gap:6,marginBottom:6}},
+                      e("span",{style:{fontSize:13}},"⚙️"),
+                      e("span",{style:{fontSize:11,fontWeight:700,color:u.prioridad<=2?C.red:C.amber,textTransform:"uppercase",letterSpacing:"0.5px"}},"Sugerencia CLEO")
+                    ),
+                    e("div",{style:{fontSize:13,color:C.textMuted,lineHeight:1.6,marginBottom:10}},coach.consejo),
+                    e("div",{style:{fontSize:12,color:C.textMuted,fontStyle:"italic",background:C.bg,padding:"8px 10px",borderRadius:8,lineHeight:1.6}},msgSugerido)
                   ),
 
-                  // Consejo una línea
-                  e("div",{style:{fontSize:12,color:C.textMuted,lineHeight:1.6,marginBottom:10}},coach.consejo),
-
-                  // Mensaje sugerido
-                  e("div",{style:{fontSize:12,color:C.textMuted,fontStyle:"italic",background:C.bg,padding:"8px 12px",borderRadius:8,marginBottom:12,lineHeight:1.6}},msgSugerido),
-
-                  // Botones
-                  e("div",{style:{display:"flex",gap:8}},
+                  // COLUMNA 3: Prioridad + botones
+                  e("div",{style:{flex:"0 0 140px",display:"flex",flexDirection:"column",alignItems:"stretch",gap:8}},
+                    e("div",{style:{textAlign:"right",marginBottom:2}},
+                      e("span",{style:{fontSize:11,fontWeight:600,color:prioColor,background:prioBg,padding:"2px 8px",borderRadius:20,border:"0.5px solid "+prioColor+"44"}},prioLabel)
+                    ),
                     urlContactar&&e("a",{href:urlContactar,target:"_blank",rel:"noreferrer",
-                      style:{flex:1,cursor:"pointer",padding:"8px",borderRadius:10,border:"none",background:C.green,fontSize:12,color:"#fff",fontWeight:600,textDecoration:"none",display:"inline-flex",alignItems:"center",justifyContent:"center",gap:5}
-                    },e(SvgIcon,{canal:c.canalPrincipal||"WhatsApp",size:12}),contactLabel(c)),
-                    e("button",{style:{flex:1,cursor:"pointer",padding:"8px",borderRadius:10,border:"1px solid "+C.border,background:"transparent",fontSize:12,color:C.textMuted,fontWeight:500},onClick:function(){ setContactadoClienteId(c.id); }},"Ya contacté")
+                      style:{cursor:"pointer",padding:"9px",borderRadius:10,border:"none",background:C.green,fontSize:12,color:"#fff",fontWeight:600,textDecoration:"none",display:"flex",alignItems:"center",justifyContent:"center",gap:6}
+                    },e(SvgIcon,{canal:c.canalPrincipal||"WhatsApp",size:13}),contactLabel(c)),
+                    e("button",{style:{cursor:"pointer",padding:"9px",borderRadius:10,border:"1px solid "+C.border,background:"transparent",fontSize:12,color:C.textMuted,fontWeight:500},
+                      onClick:function(){ setContactadoClienteId(c.id); }
+                    },"Ya contacté")
                   )
                 )
               );
@@ -3891,62 +3913,148 @@ export default function CLEO(){
 
       // FLUJO SIMPLE para clientes NO perdidos
       if(!esPerdidoC){
+        var opExpand=contactadoOpcion==="expand_interesado"?"interesado":contactadoOpcion==="expand_noresponde"?"noresponde":null;
         return e("div",{style:st.ov,onClick:cerrar},
-          e("div",{style:st.modal,onClick:function(ev){ ev.stopPropagation(); }},
-            e("div",{style:{fontSize:15,fontWeight:600,color:C.text,marginBottom:4}},"Hablaste con "+nombre),
-            e("div",{style:{fontSize:13,color:C.textMuted,marginBottom:20}},"¿Cómo quedó la conversación?"),
-            e("div",{style:{display:"flex",flexDirection:"column",gap:8}},
-              [
-                {key:"interesado",label:"Sigue interesado",desc:"¿En cuántos días le doy seguimiento?",color:C.green,dias:[1,3,5,7],accion:function(d){
-                  setClientes(clientes.map(function(x){ return x.id===cl.id?Object.assign({},x,{ultimoContacto:FECHA_HOY}):x; }));
-                  cerrar(); setSeguimientoClienteId(cl.id); setSeguimientoDias(String(d||3));
-                }},
-                {key:"negociacion",label:"Ya casi cierra",desc:"Lo muevo a Negociación",color:C.amber,accion:function(){
-                  setClientes(clientes.map(function(x){ return x.id===cl.id?Object.assign({},x,{etapa:"Negociacion",ultimoContacto:FECHA_HOY}):x; }));
+          e("div",{style:Object.assign({},st.modal,{padding:0,overflow:"hidden"}),onClick:function(ev){ ev.stopPropagation(); }},
+
+            // Header
+            e("div",{style:{padding:"20px 20px 12px",borderBottom:"1px solid "+C.border}},
+              e("div",{style:{fontSize:16,fontWeight:600,color:C.text,marginBottom:2}},"¿Qué pasó con "+nombre+"?"),
+              e("div",{style:{fontSize:13,color:C.textMuted}},"Elige lo que mejor describe la conversación.")
+            ),
+
+            // Opciones
+            e("div",{style:{padding:"12px 16px",display:"flex",flexDirection:"column",gap:8}},
+
+              // Sigue interesado
+              e("div",{style:{borderRadius:12,border:"1px solid "+(opExpand==="interesado"?C.green+"66":C.border),overflow:"hidden"}},
+                e("div",{style:{padding:"12px 14px",display:"flex",justifyContent:"space-between",alignItems:"center",cursor:"pointer"},
+                  onClick:function(){ setContactadoOpcion(opExpand==="interesado"?null:"expand_interesado"); }
+                },
+                  e("div",null,
+                    e("div",{style:{fontSize:14,fontWeight:500,color:C.green}},"Sigue interesado"),
+                    e("div",{style:{fontSize:12,color:C.textMuted,marginTop:1}},"¿En cuántos días le doy seguimiento?")
+                  ),
+                  e("span",{style:{fontSize:16,color:C.textDim}},opExpand==="interesado"?"▲":"▼")
+                ),
+                opExpand==="interesado"&&e("div",{style:{borderTop:"1px solid "+C.border}},
+                  e("div",{style:{display:"flex",borderBottom:"1px solid "+C.border}},
+                    [1,3,5,7].map(function(d){
+                      return e("div",{key:d,style:{flex:1,textAlign:"center",padding:"9px 0",fontSize:13,fontWeight:500,color:C.green,borderRight:"1px solid "+C.border,cursor:"pointer"},
+                        onClick:function(){ setClientes(clientes.map(function(x){ return x.id===cl.id?Object.assign({},x,{ultimoContacto:FECHA_HOY}):x; })); cerrar(); setSeguimientoClienteId(cl.id); setSeguimientoDias(String(d)); }
+                      },d+"d");
+                    })
+                  ),
+                  e("div",{style:{display:"flex",alignItems:"center",gap:8,padding:"8px 12px"}},
+                    e("input",{id:"dias-interesado",type:"number",min:1,placeholder:"Otro...",inputMode:"numeric",
+                      style:Object.assign({},st.inp,{flex:1,marginBottom:0,padding:"6px 10px",fontSize:13}),
+                      onKeyDown:function(ev){ if(ev.key==="Enter"&&ev.target.value){ setClientes(clientes.map(function(x){ return x.id===cl.id?Object.assign({},x,{ultimoContacto:FECHA_HOY}):x; })); cerrar(); setSeguimientoClienteId(cl.id); setSeguimientoDias(ev.target.value); } }
+                    }),
+                    e("span",{style:{fontSize:12,color:C.textDim}},"días"),
+                    e("button",{style:{cursor:"pointer",padding:"6px 14px",borderRadius:8,border:"none",background:C.green,color:"#fff",fontSize:12,fontWeight:500},
+                      onClick:function(){ var inp=document.getElementById("dias-interesado"); if(inp&&inp.value){ setClientes(clientes.map(function(x){ return x.id===cl.id?Object.assign({},x,{ultimoContacto:FECHA_HOY}):x; })); cerrar(); setSeguimientoClienteId(cl.id); setSeguimientoDias(inp.value); } }
+                    },"OK")
+                  )
+                )
+              ),
+
+              // No respondió
+              e("div",{style:{borderRadius:12,border:"1px solid "+(opExpand==="noresponde"?C.border:C.border),overflow:"hidden"}},
+                e("div",{style:{padding:"12px 14px",display:"flex",justifyContent:"space-between",alignItems:"center",cursor:"pointer"},
+                  onClick:function(){ setContactadoOpcion(opExpand==="noresponde"?null:"expand_noresponde"); }
+                },
+                  e("div",null,
+                    e("div",{style:{fontSize:14,fontWeight:500,color:C.text}},"No respondió"),
+                    e("div",{style:{fontSize:12,color:C.textMuted,marginTop:1}},"¿Cuándo intento de nuevo?")
+                  ),
+                  e("span",{style:{fontSize:16,color:C.textDim}},opExpand==="noresponde"?"▲":"▼")
+                ),
+                opExpand==="noresponde"&&e("div",{style:{borderTop:"1px solid "+C.border}},
+                  e("div",{style:{display:"flex",borderBottom:"1px solid "+C.border}},
+                    [2,3,5,7].map(function(d){
+                      return e("div",{key:d,style:{flex:1,textAlign:"center",padding:"9px 0",fontSize:13,fontWeight:500,color:C.textMuted,borderRight:"1px solid "+C.border,cursor:"pointer"},
+                        onClick:function(){ setClientes(clientes.map(function(x){ return x.id===cl.id?Object.assign({},x,{ultimoContacto:FECHA_HOY}):x; })); cerrar(); setSeguimientoClienteId(cl.id); setSeguimientoDias(String(d)); }
+                      },d+"d");
+                    })
+                  ),
+                  e("div",{style:{display:"flex",alignItems:"center",gap:8,padding:"8px 12px"}},
+                    e("input",{id:"dias-noresponde",type:"number",min:1,placeholder:"Otro...",inputMode:"numeric",
+                      style:Object.assign({},st.inp,{flex:1,marginBottom:0,padding:"6px 10px",fontSize:13}),
+                      onKeyDown:function(ev){ if(ev.key==="Enter"&&ev.target.value){ setClientes(clientes.map(function(x){ return x.id===cl.id?Object.assign({},x,{ultimoContacto:FECHA_HOY}):x; })); cerrar(); setSeguimientoClienteId(cl.id); setSeguimientoDias(ev.target.value); } }
+                    }),
+                    e("span",{style:{fontSize:12,color:C.textDim}},"días"),
+                    e("button",{style:{cursor:"pointer",padding:"6px 14px",borderRadius:8,border:"none",background:C.purple,color:"#fff",fontSize:12,fontWeight:500},
+                      onClick:function(){ var inp=document.getElementById("dias-noresponde"); if(inp&&inp.value){ setClientes(clientes.map(function(x){ return x.id===cl.id?Object.assign({},x,{ultimoContacto:FECHA_HOY}):x; })); cerrar(); setSeguimientoClienteId(cl.id); setSeguimientoDias(inp.value); } }
+                    },"OK")
+                  )
+                )
+              ),
+
+              // Ya cerró
+              e("div",{style:{borderRadius:12,border:"1px solid "+C.green+"44",overflow:"hidden",cursor:"pointer"},
+                onClick:function(){
                   cerrar();
-                }},
-                {key:"tiempo",label:"Necesita más tiempo",desc:"¿En cuántos días lo retomo?",color:C.textMuted,dias:[7,15,30,60],accion:function(d){
-                  setClientes(clientes.map(function(x){ return x.id===cl.id?Object.assign({},x,{ultimoContacto:FECHA_HOY}):x; }));
-                  cerrar(); setSeguimientoClienteId(cl.id); setSeguimientoDias(String(d||15));
-                }},
-                {key:"perdido",label:"Ya no está interesado",desc:"Lo marco como perdido",color:C.red,accion:function(){
+                  setCotAceptadaId(cotizaciones.find(function(x){ return x.clienteId===cl.id&&x.estatus==="Pendiente"; })||{id:null});
+                  setPasoGanado(1); setPagoGanado({tipo:"",monto:"",fecha:FECHA_HOY}); setRazonCierre([]);
+                }
+              },
+                e("div",{style:{padding:"12px 14px",display:"flex",justifyContent:"space-between",alignItems:"center"}},
+                  e("div",null,
+                    e("div",{style:{fontSize:14,fontWeight:500,color:C.green}},"Ya cerró"),
+                    e("div",{style:{fontSize:12,color:C.textMuted,marginTop:1}},"Marcar como cliente ganado")
+                  ),
+                  e("span",{style:{fontSize:18}},"\uD83C\uDFC6")
+                )
+              ),
+
+              // Ya no está interesado
+              e("div",{style:{borderRadius:12,border:"1px solid "+C.red+"44",overflow:"hidden",cursor:"pointer"},
+                onClick:function(){
                   setClientes(clientes.map(function(x){ return x.id===cl.id?Object.assign({},x,{etapa:"Perdido",ultimoContacto:FECHA_HOY,seguimientoFecha:""}):x; }));
                   setCotizaciones(cotizaciones.map(function(c){ return c.clienteId===cl.id&&c.estatus==="Pendiente"?Object.assign({},c,{estatus:"Rechazada"}):c; }));
                   cerrar(); setMotivoPipelineId(cl.id);
-                }},
-              ].map(function(op){
-                return e("div",{key:op.key,style:{borderRadius:10,border:"0.5px solid "+(op.color===C.textMuted?C.border:op.color+"44"),overflow:"hidden"}},
-                  e("button",{style:{cursor:"pointer",padding:"12px 14px",background:"transparent",textAlign:"left",display:"flex",justifyContent:"space-between",alignItems:"center",width:"100%",border:"none"},
-                    onClick:op.dias?undefined:op.accion
-                  },
-                    e("div",null,
-                      e("div",{style:{fontSize:13,fontWeight:500,color:op.color===C.textMuted?C.text:op.color}},op.label),
-                      e("div",{style:{fontSize:11,color:C.textDim,marginTop:2}},op.desc)
-                    )
+                }
+              },
+                e("div",{style:{padding:"12px 14px",display:"flex",justifyContent:"space-between",alignItems:"center"}},
+                  e("div",null,
+                    e("div",{style:{fontSize:14,fontWeight:500,color:C.red}},"Ya no está interesado"),
+                    e("div",{style:{fontSize:12,color:C.textMuted,marginTop:1}},"Marcar como perdido")
                   ),
-                  op.dias&&e("div",{style:{borderTop:"0.5px solid "+C.border}},
-                    e("div",{style:{display:"flex"}},
-                      op.dias.map(function(d){
-                        return e("button",{key:d,style:{flex:1,cursor:"pointer",padding:"7px 4px",background:"transparent",border:"none",borderRight:"0.5px solid "+C.border,fontSize:12,color:op.color===C.textMuted?C.textMuted:op.color,fontWeight:500},
-                          onClick:function(){ op.accion(d); }
-                        },d+"d");
-                      })
-                    ),
-                    e("div",{style:{display:"flex",alignItems:"center",gap:6,padding:"8px 12px",borderTop:"0.5px solid "+C.border}},
-                      e("input",{key:"inp-"+op.key,id:"dias-input-"+op.key,type:"number",min:1,max:365,placeholder:"Otro...",inputMode:"numeric",
-                        style:Object.assign({},st.inp,{flex:1,marginBottom:0,padding:"6px 10px",fontSize:12}),
-                        onKeyDown:function(ev){ if(ev.key==="Enter"&&ev.target.value){ op.accion(Number(ev.target.value)); } }
-                      }),
-                      e("span",{style:{fontSize:12,color:C.textDim}},"días"),
-                      e("button",{style:{cursor:"pointer",padding:"6px 12px",borderRadius:8,border:"none",background:op.color===C.textMuted?C.purple:op.color,color:"#fff",fontSize:12,fontWeight:500},
-                        onClick:function(){ var inp=document.getElementById("dias-input-"+op.key); if(inp&&inp.value){ op.accion(Number(inp.value)); inp.value=""; } }
-                      },"OK")
-                    )
-                  )
-                );
-              })
+                  e("span",{style:{fontSize:18}},"\u2715")
+                )
+              )
             ),
-            e("button",{style:Object.assign({},st.btn,{width:"100%",fontSize:12,marginTop:12}),onClick:cerrar},"Cancelar")
+
+            // Footer
+            e("div",{style:{padding:"4px 16px 16px"}},
+              e("button",{style:Object.assign({},st.btn,{width:"100%",fontSize:13}),onClick:cerrar},"Cancelar")
+            )
+          )
+        );
+      }
+
+      // PASO 2: Confirmación restaurar cotización
+      if(contactadoOpcion==="confirmar_restaurar"){
+        var cot=window._cotPreviaTemp||{};
+        return e("div",{style:st.ov,onClick:cerrar},
+          e("div",{style:Object.assign({},st.modal,{textAlign:"center"}),onClick:function(ev){ ev.stopPropagation(); }},
+            e("div",{style:{fontSize:24,marginBottom:12}},"📋"),
+            e("div",{style:{fontSize:15,fontWeight:600,color:C.text,marginBottom:8}},"Reactivamos su cotización"),
+            e("div",{style:{fontSize:13,color:C.textMuted,lineHeight:1.6,marginBottom:16}},"Restauraremos:"),
+            e("div",{style:{padding:"12px 16px",background:C.purplePale,borderRadius:10,border:"1px solid "+C.purple+"33",marginBottom:20}},
+              e("div",{style:{fontSize:14,fontWeight:600,color:C.text,marginBottom:2}},cot.concepto||"Cotización"),
+              e("div",{style:{fontSize:13,color:C.purple,fontWeight:600}},"$"+(cot.monto?Number(cot.monto).toLocaleString():"--"))
+            ),
+            e("div",{style:{fontSize:12,color:C.textMuted,marginBottom:20,lineHeight:1.6}},"La verás en seguimientos como Cotización enviada."),
+            e("div",{style:{display:"flex",flexDirection:"column",gap:8}},
+              e("button",{style:st.btnP,onClick:function(){
+                setCotizaciones(cotizaciones.map(function(c){ return c.id===cot.id?Object.assign({},c,{estatus:"Pendiente"}):c; }));
+                setClientes(clientes.map(function(x){ return x.id===cl.id?Object.assign({},x,{etapa:"Cotizacion enviada",ultimoContacto:FECHA_HOY,seguimientoFecha:"",motivoPerdida:""}):x; }));
+                setContactadoResult({titulo:"Oportunidad recuperada 🎉",desc:"Se restauró: "+(cot.concepto||"Cotización")+" — $"+(cot.monto?Number(cot.monto).toLocaleString():"--")+". Ya aparece en Cotización enviada."});
+                window._cotPreviaTemp=null;
+              }},"Confirmar"),
+              e("button",{style:st.btn,onClick:cerrar},"Cancelar")
+            )
           )
         );
       }
@@ -3992,25 +4100,19 @@ export default function CLEO(){
         )
       );
 
-      // PASO 1: Opciones principales
-      var opciones=[
-        {key:"interes",label:"Mostró interés nuevamente",color:C.green,icon:"🟢"},
-        {key:"quiere_cotizacion",label:"Quiere cotización",color:C.purple,icon:"📋"},
-        {key:"recordatorio",label:"Aún no responde",color:C.textMuted,icon:"⏳"},
-        {key:"despues",label:"Lo pensará después",color:C.amber,icon:"🕐"},
-        {key:"perdido",label:"Ya no está interesada",color:C.red,icon:"✗"},
-      ];
+      // PASO 1: Opciones principales (perdido)
+      var opExpandP=contactadoOpcion==="expand_aun"?"aun":contactadoOpcion==="expand_despues"?"despues":null;
 
       function ejecutarOpcion(key){
-        if(key==="quiere_cotizacion"||key==="recordatorio"){ setContactadoOpcion(key); return; }
-        if(key==="despues"){ setContactadoOpcion("recordatorio"); return; }
+        if(key==="quiere_cotizacion"){ setContactadoOpcion(key); return; }
+        if(key==="aun"||key==="despues"){ setContactadoOpcion("expand_"+key); return; }
 
         if(key==="interes"){
           var cotPrevia=cotizaciones.filter(function(c){ return c.clienteId===cl.id; }).sort(function(a,b){ return new Date(b.fecha)-new Date(a.fecha); })[0];
           if(cotPrevia){
-            setContactadoResult({titulo:"Oportunidad recuperada",desc:"Se restauró: "+cotPrevia.concepto+" — $"+Number(cotPrevia.monto).toLocaleString()});
-            setCotizaciones(cotizaciones.map(function(c){ return c.id===cotPrevia.id?Object.assign({},c,{estatus:"Pendiente"}):c; }));
-            setClientes(clientes.map(function(x){ return x.id===cl.id?Object.assign({},x,{etapa:"Cotizacion enviada",ultimoContacto:FECHA_HOY,seguimientoFecha:"",motivoPerdida:""}):x; }));
+            setContactadoOpcion("confirmar_restaurar");
+            setContactadoResult(null);
+            window._cotPreviaTemp={id:cotPrevia.id,concepto:cotPrevia.concepto,monto:cotPrevia.monto};
           } else {
             setContactadoResult({titulo:"Oportunidad reactivada",desc:nombre+" regresó al pipeline como nuevo contacto."});
             setClientes(clientes.map(function(x){ return x.id===cl.id?Object.assign({},x,{etapa:"Nuevo contacto",ultimoContacto:FECHA_HOY,seguimientoFecha:"",motivoPerdida:""}):x; }));
@@ -4025,25 +4127,127 @@ export default function CLEO(){
         }
       }
 
+      function diasExpandido(key,dias,color){
+        return e("div",{style:{borderTop:"1px solid "+C.border}},
+          e("div",{style:{display:"flex",borderBottom:"1px solid "+C.border}},
+            dias.map(function(d){
+              return e("div",{key:d,style:{flex:1,textAlign:"center",padding:"9px 0",fontSize:13,fontWeight:500,color:color,borderRight:"1px solid "+C.border,cursor:"pointer"},
+                onClick:function(){
+                  var fecha=new Date(HOY); fecha.setDate(fecha.getDate()+d);
+                  setClientes(clientes.map(function(x){ return x.id===cl.id?Object.assign({},x,{seguimientoFecha:fecha.toISOString().slice(0,10),ultimoContacto:FECHA_HOY}):x; }));
+                  setContactadoResult({titulo:"Recordatorio programado",desc:"Te avisaré en "+d+" días para retomar con "+nombre+"."});
+                }
+              },d+"d");
+            })
+          ),
+          e("div",{style:{display:"flex",alignItems:"center",gap:8,padding:"8px 12px"}},
+            e("input",{id:"dias-perdido-"+key,type:"number",min:1,placeholder:"Otro...",inputMode:"numeric",
+              style:Object.assign({},st.inp,{flex:1,marginBottom:0,padding:"6px 10px",fontSize:13}),
+              onKeyDown:function(ev){
+                if(ev.key==="Enter"&&ev.target.value){
+                  var d=Number(ev.target.value);
+                  var fecha=new Date(HOY); fecha.setDate(fecha.getDate()+d);
+                  setClientes(clientes.map(function(x){ return x.id===cl.id?Object.assign({},x,{seguimientoFecha:fecha.toISOString().slice(0,10),ultimoContacto:FECHA_HOY}):x; }));
+                  setContactadoResult({titulo:"Recordatorio programado",desc:"Te avisaré en "+d+" días para retomar con "+nombre+"."});
+                }
+              }
+            }),
+            e("span",{style:{fontSize:12,color:C.textDim}},"días"),
+            e("button",{style:{cursor:"pointer",padding:"6px 14px",borderRadius:8,border:"none",background:color,color:"#fff",fontSize:12,fontWeight:500},
+              onClick:function(){
+                var inp=document.getElementById("dias-perdido-"+key);
+                if(inp&&inp.value){
+                  var d=Number(inp.value);
+                  var fecha=new Date(HOY); fecha.setDate(fecha.getDate()+d);
+                  setClientes(clientes.map(function(x){ return x.id===cl.id?Object.assign({},x,{seguimientoFecha:fecha.toISOString().slice(0,10),ultimoContacto:FECHA_HOY}):x; }));
+                  setContactadoResult({titulo:"Recordatorio programado",desc:"Te avisaré en "+d+" días para retomar con "+nombre+"."});
+                }
+              }
+            },"OK")
+          )
+        );
+      }
+
       return e("div",{style:st.ov,onClick:cerrar},
         e("div",{style:Object.assign({},st.modal,{padding:0,overflow:"hidden"}),onClick:function(ev){ ev.stopPropagation(); }},
-          e("div",{style:{padding:"20px 24px 16px",borderBottom:"1px solid "+C.border,display:"flex",justifyContent:"space-between",alignItems:"center"}},
+
+          // Header
+          e("div",{style:{padding:"20px 20px 12px",borderBottom:"1px solid "+C.border,display:"flex",justifyContent:"space-between",alignItems:"flex-start"}},
             e("div",null,
-              e("div",{style:{fontSize:15,fontWeight:600,color:C.text,marginBottom:2}},"¿Qué pasó con "+nombre+"?"),
+              e("div",{style:{fontSize:16,fontWeight:600,color:C.text,marginBottom:2}},"¿Qué pasó con "+nombre+"?"),
               e("div",{style:{fontSize:13,color:C.textMuted}},"Elige lo que mejor describe la conversación.")
             ),
-            e("button",{style:{background:"transparent",border:"1px solid "+C.border,cursor:"pointer",color:C.textDim,fontSize:16,width:28,height:28,borderRadius:8,display:"flex",alignItems:"center",justifyContent:"center"},onClick:cerrar},"×")
+            e("button",{style:{background:"transparent",border:"1px solid "+C.border,cursor:"pointer",color:C.textDim,fontSize:16,width:28,height:28,borderRadius:8,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0},onClick:cerrar},"×")
           ),
-          e("div",{style:{padding:"12px 24px 20px",display:"flex",flexDirection:"column",gap:8}},
-            opciones.map(function(op){
-              return e("button",{key:op.key,
-                style:{cursor:"pointer",padding:"12px 14px",borderRadius:10,border:"0.5px solid "+C.border,background:"transparent",textAlign:"left",display:"flex",alignItems:"center",gap:10},
-                onClick:function(){ ejecutarOpcion(op.key); }
+
+          // Opciones
+          e("div",{style:{padding:"12px 16px",display:"flex",flexDirection:"column",gap:8}},
+
+            // Mostró interés
+            e("div",{style:{borderRadius:12,border:"1px solid "+C.green+"44",overflow:"hidden",cursor:"pointer"},onClick:function(){ ejecutarOpcion("interes"); }},
+              e("div",{style:{padding:"12px 14px",display:"flex",justifyContent:"space-between",alignItems:"center"}},
+                e("div",null,
+                  e("div",{style:{fontSize:14,fontWeight:500,color:C.green}},"Mostró interés nuevamente"),
+                  e("div",{style:{fontSize:12,color:C.textMuted,marginTop:1}},"Reactivar oportunidad")
+                ),
+                e("span",{style:{fontSize:18}},"🟢")
+              )
+            ),
+
+            // Quiere cotización
+            e("div",{style:{borderRadius:12,border:"1px solid "+C.purple+"44",overflow:"hidden",cursor:"pointer"},onClick:function(){ ejecutarOpcion("quiere_cotizacion"); }},
+              e("div",{style:{padding:"12px 14px",display:"flex",justifyContent:"space-between",alignItems:"center"}},
+                e("div",null,
+                  e("div",{style:{fontSize:14,fontWeight:500,color:C.purple}},"Quiere cotización"),
+                  e("div",{style:{fontSize:12,color:C.textMuted,marginTop:1}},"Crear nueva propuesta")
+                ),
+                e("span",{style:{fontSize:18}},"📋")
+              )
+            ),
+
+            // Aún no responde
+            e("div",{style:{borderRadius:12,border:"1px solid "+(opExpandP==="aun"?C.border:C.border),overflow:"hidden"}},
+              e("div",{style:{padding:"12px 14px",display:"flex",justifyContent:"space-between",alignItems:"center",cursor:"pointer"},
+                onClick:function(){ setContactadoOpcion(opExpandP==="aun"?null:"expand_aun"); }
               },
-                e("span",{style:{fontSize:16,flexShrink:0}},op.icon),
-                e("span",{style:{fontSize:13,color:op.color===C.textMuted?C.text:op.color,fontWeight:500}},op.label)
-              );
-            })
+                e("div",null,
+                  e("div",{style:{fontSize:14,fontWeight:500,color:C.text}},"Aún no responde"),
+                  e("div",{style:{fontSize:12,color:C.textMuted,marginTop:1}},"¿Cuándo intento de nuevo?")
+                ),
+                e("span",{style:{fontSize:16,color:C.textDim}},opExpandP==="aun"?"▲":"▼")
+              ),
+              opExpandP==="aun"&&diasExpandido("aun",[3,7,14,30],C.purple)
+            ),
+
+            // Lo pensará después
+            e("div",{style:{borderRadius:12,border:"1px solid C.border",overflow:"hidden"}},
+              e("div",{style:{padding:"12px 14px",display:"flex",justifyContent:"space-between",alignItems:"center",cursor:"pointer"},
+                onClick:function(){ setContactadoOpcion(opExpandP==="despues"?null:"expand_despues"); }
+              },
+                e("div",null,
+                  e("div",{style:{fontSize:14,fontWeight:500,color:C.amber}},"Lo pensará después"),
+                  e("div",{style:{fontSize:12,color:C.textMuted,marginTop:1}},"¿En cuántos días lo retomo?")
+                ),
+                e("span",{style:{fontSize:16,color:C.textDim}},opExpandP==="despues"?"▲":"▼")
+              ),
+              opExpandP==="despues"&&diasExpandido("despues",[15,30,60,90],C.amber)
+            ),
+
+            // Ya no está interesada
+            e("div",{style:{borderRadius:12,border:"1px solid "+C.red+"44",overflow:"hidden",cursor:"pointer"},onClick:function(){ ejecutarOpcion("perdido"); }},
+              e("div",{style:{padding:"12px 14px",display:"flex",justifyContent:"space-between",alignItems:"center"}},
+                e("div",null,
+                  e("div",{style:{fontSize:14,fontWeight:500,color:C.red}},"Ya no está interesada"),
+                  e("div",{style:{fontSize:12,color:C.textMuted,marginTop:1}},"Marcar como perdido")
+                ),
+                e("span",{style:{fontSize:16,color:C.red}},"✕")
+              )
+            )
+          ),
+
+          // Footer
+          e("div",{style:{padding:"4px 16px 16px"}},
+            e("button",{style:Object.assign({},st.btn,{width:"100%",fontSize:13}),onClick:cerrar},"Cancelar")
           )
         )
       );
