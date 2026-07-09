@@ -1242,7 +1242,7 @@ function migrarCots(cots){
   });
 }
 
-export default function CLEO(){
+export default function CLEO(props){
   var e=React.createElement;
 
   // Estados principales , forzar datos frescos si version cambio
@@ -1910,6 +1910,11 @@ export default function CLEO(){
   var s_hyd=useState(false); var hydrated=s_hyd[0]; var setHydrated=s_hyd[1];
   var sMas=useState(false); var mostrarMas=sMas[0]; var setMostrarMas=sMas[1];
   var sMoverC=useState(null); var moverClienteId=sMoverC[0]; var setMoverClienteId=sMoverC[1];
+  var sMenuUsuario=useState(false); var menuUsuario=sMenuUsuario[0]; var setMenuUsuario=sMenuUsuario[1];
+  var sModalCuenta=useState(false); var modalCuenta=sModalCuenta[0]; var setModalCuenta=sModalCuenta[1];
+  var sHoverDemo=useState(false); var hoverDemo=sHoverDemo[0]; var setHoverDemo=sHoverDemo[1];
+  var sHoverCero=useState(false); var hoverCero=sHoverCero[0]; var setHoverCero=sHoverCero[1];
+  var sHoverSalir=useState(false); var hoverSalir=sHoverSalir[0]; var setHoverSalir=sHoverSalir[1];
   var sCancPed=useState(null); var cancelarPedidoId=sCancPed[0]; var setCancelarPedidoId=sCancPed[1];
   var sCancMot=useState(""); var motivoCancelPedido=sCancMot[0]; var setMotivoCancelPedido=sCancMot[1];
   var sCancLibre=useState(""); var motivoCancelLibre=sCancLibre[0]; var setMotivoCancelLibre=sCancLibre[1];
@@ -1994,17 +1999,10 @@ export default function CLEO(){
         height:"100vh",
         zIndex:40
       }},
-        // LOGO + HAMBURGER dentro del sidebar
+        // LOGO + HAMBURGER dentro del sidebar (desktop: sin logo ni leyenda, solo CLEO)
         e("div",{style:{padding:"16px 8px 8px",display:"flex",flexDirection:sbOpen?"row":"column",alignItems:"center",gap:sbOpen?10:8,borderBottom:"1px solid "+C.darkBorder,marginBottom:8,flexShrink:0,justifyContent:sbOpen?"flex-start":"center"}},
           e("button",{style:{cursor:"pointer",background:"none",border:"none",color:"rgba(255,255,255,0.4)",fontSize:18,padding:"2px",lineHeight:1,flexShrink:0},onClick:function(){ setSbOpen(!sbOpen); }},"☰"),
-          e("svg",{width:32,height:32,viewBox:"0 0 100 100",fill:"none",flexShrink:0},
-            e("path",{d:"M72 28C65 20 54 16 44 18C28 21 17 35 17 50C17 65 28 79 44 82C54 84 65 80 72 72",stroke:"#fff",strokeWidth:12,strokeLinecap:"round",fill:"none"}),
-            e("path",{d:"M62 38C57 33 50 30 44 31C34 33 27 41 27 50C27 59 34 67 44 69C50 70 57 67 62 62",stroke:"rgba(255,255,255,0.35)",strokeWidth:8,strokeLinecap:"round",fill:"none"})
-          ),
-          sbOpen&&e("div",{style:{display:"flex",flexDirection:"column"}},
-            e("div",{style:{fontWeight:700,fontSize:15,color:"#fff",letterSpacing:"1px"}},"CLEO"),
-            e("div",{style:{fontSize:10,color:"rgba(255,255,255,0.35)",lineHeight:1.3,maxWidth:140}},"El sistema que te ayuda a vender mejor")
-          )
+          sbOpen&&e("div",{style:{fontWeight:700,fontSize:15,color:"#fff",letterSpacing:"1px"}},"CLEO")
         ),
 
         e("div",{style:{padding:"8px",display:"flex",flexDirection:"column",gap:0,flex:1,overflowY:"auto"}},
@@ -2090,16 +2088,34 @@ export default function CLEO(){
               e("div",{style:{fontSize:10,color:"rgba(255,255,255,0.3)"}},catActivo.length>0?catActivo.length+(esProductos?" productos":" servicios"):"Sin "+(esProductos?"productos":"servicios"))
             )
           ),
-          // Mi Perfil
-          e("div",{style:{padding:sbOpen?"10px 14px":"8px",display:"flex",alignItems:"center",gap:10,cursor:"pointer",justifyContent:sbOpen?"flex-start":"center",borderTop:"0.5px solid "+C.darkBorder},onClick:function(){ setFormPerfil(Object.assign({},perfil)); setModalPerfil(true); }},
-            e("div",{style:{width:28,height:28,borderRadius:8,background:"rgba(255,255,255,0.06)",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}},
-              e("svg",{width:14,height:14,viewBox:"0 0 24 24",fill:"none",stroke:"rgba(255,255,255,0.45)",strokeWidth:2,strokeLinecap:"round",strokeLinejoin:"round"},
-                e("path",{d:"M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2M12 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8z"})
+          // Usuario — avatar + nombre + negocio, con dropdown
+          e("div",{style:{position:"relative",borderTop:"0.5px solid "+C.darkBorder}},
+            e("div",{style:{padding:sbOpen?"10px 14px":"8px",display:"flex",alignItems:"center",gap:10,cursor:"pointer",justifyContent:sbOpen?"flex-start":"center"},onClick:function(){ setMenuUsuario(!menuUsuario); }},
+              e("div",{style:{width:28,height:28,borderRadius:"50%",background:C.purple,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,fontSize:11,fontWeight:700,color:"#fff"}},
+                (perfil.tuNombre||perfil.nombre||"?").slice(0,2).toUpperCase()
+              ),
+              sbOpen&&e("div",{style:{flex:1,minWidth:0}},
+                e("div",{style:{fontSize:12,color:"rgba(255,255,255,0.7)",fontWeight:500,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}},perfil.tuNombre||"Mi cuenta"),
+                perfil.nombre&&e("div",{style:{fontSize:10,color:"rgba(255,255,255,0.3)",whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}},perfil.nombre)
+              ),
+              sbOpen&&e("svg",{width:14,height:14,viewBox:"0 0 24 24",fill:"none",stroke:"rgba(255,255,255,0.4)",strokeWidth:2,strokeLinecap:"round",strokeLinejoin:"round",style:{flexShrink:0,transform:menuUsuario?"rotate(180deg)":"none",transition:"transform 0.15s"}},
+                e("path",{d:"M6 9l6 6 6-6"})
               )
             ),
-            sbOpen&&e("div",{style:{flex:1}},
-              e("div",{style:{fontSize:12,color:"rgba(255,255,255,0.7)",fontWeight:500}},"Mi perfil"),
-              e("div",{style:{fontSize:10,color:"rgba(255,255,255,0.3)"}},perfil.nombre||"Sin nombre")
+            menuUsuario&&e("div",{style:{position:"absolute",bottom:"100%",left:sbOpen?8:"100%",right:sbOpen?8:"auto",marginBottom:6,background:"#1E1B33",border:"1px solid "+C.darkBorder,borderRadius:12,padding:6,boxShadow:"0 12px 32px rgba(0,0,0,0.4)",zIndex:60,minWidth:sbOpen?"auto":180}},
+              e("button",{style:{cursor:"pointer",width:"100%",textAlign:"left",padding:"9px 10px",borderRadius:8,border:"none",background:"transparent",fontSize:13,color:"#fff",display:"flex",alignItems:"center",gap:8},onClick:function(){ setFormPerfil(Object.assign({},perfil)); setModalPerfil(true); setMenuUsuario(false); }},
+                e("svg",{width:14,height:14,viewBox:"0 0 24 24",fill:"none",stroke:"rgba(255,255,255,0.6)",strokeWidth:2,strokeLinecap:"round",strokeLinejoin:"round"},e("rect",{x:2,y:7,width:20,height:14,rx:2,ry:2}),e("path",{d:"M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"})),
+                "Mi negocio"
+              ),
+              e("button",{style:{cursor:"pointer",width:"100%",textAlign:"left",padding:"9px 10px",borderRadius:8,border:"none",background:"transparent",fontSize:13,color:"#fff",display:"flex",alignItems:"center",gap:8},onClick:function(){ setModalCuenta(true); setMenuUsuario(false); }},
+                e("svg",{width:14,height:14,viewBox:"0 0 24 24",fill:"none",stroke:"rgba(255,255,255,0.6)",strokeWidth:2,strokeLinecap:"round",strokeLinejoin:"round"},e("circle",{cx:12,cy:8,r:4}),e("path",{d:"M4 20c0-4 4-6 8-6s8 2 8 6"})),
+                "Mi cuenta"
+              ),
+              e("div",{style:{height:1,background:C.darkBorder,margin:"4px 0"}}),
+              e("button",{style:{cursor:"pointer",width:"100%",textAlign:"left",padding:"9px 10px",borderRadius:8,border:"none",background:"transparent",fontSize:13,color:"#F87171",display:"flex",alignItems:"center",gap:8},onClick:function(){ setMenuUsuario(false); if(window.confirm("¿Cerrar sesión?")){ if(props.onSignOut) props.onSignOut(); } }},
+                e("svg",{width:14,height:14,viewBox:"0 0 24 24",fill:"none",stroke:"#F87171",strokeWidth:2,strokeLinecap:"round",strokeLinejoin:"round"},e("path",{d:"M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9"})),
+                "Cerrar sesión"
+              )
             )
           )
         )
@@ -3213,8 +3229,8 @@ export default function CLEO(){
                 // Construir eventos
                 var eventos=[];
                 eventos.push({fecha:c.fecha,tipo:"registro",titulo:"Cliente registrado",desc:"Origen: "+c.origen,color:C.purple,orden:0});
-                if(c.etapa==="Perdido") eventos.push({fecha:c.fecha,tipo:"perdido",titulo:"Marcado como perdido",desc:c.motivoPerdida?"Motivo: "+c.motivoPerdida:"Sin motivo registrado",color:C.red,orden:1});
-                if(c.etapa==="Ganado") eventos.push({fecha:c.fecha,tipo:"ganado",titulo:"Venta cerrada",desc:"Cliente ganado",color:C.green,orden:1});
+                if(c.etapa==="Perdido") eventos.push({fecha:c.fecha,tipo:"perdido",titulo:"Marcado como perdido",desc:c.motivoPerdida?"Motivo: "+c.motivoPerdida:"Sin motivo registrado",color:C.red,orden:6});
+                if(c.etapa==="Ganado") eventos.push({fecha:c.fecha,tipo:"ganado",titulo:"Venta cerrada",desc:"Cliente ganado",color:C.green,orden:6});
                 // Historial de contactos
                 (c.historialContactos||[]).forEach(function(h){
                   var isRecup=h.resultado&&(h.resultado.includes("recuperad")||h.resultado.includes("Recuperad")||h.resultado.includes("reactivad"));
@@ -3222,20 +3238,20 @@ export default function CLEO(){
                 });
 
                 cotCliente.forEach(function(cot){
-                  eventos.push({fecha:cot.fecha,tipo:"cotizacion",titulo:"Cotizacion enviada",desc:cot.concepto+" · $"+Number(cot.monto).toLocaleString(),color:C.amber,orden:0});
-                  if(cot.estatus==="Aceptada") eventos.push({fecha:cot.fecha,tipo:"aceptada",titulo:"Cotizacion aceptada",desc:"$"+Number(cot.monto).toLocaleString(),color:C.green,orden:1});
-                  if(cot.estatus==="Rechazada") eventos.push({fecha:cot.fecha,tipo:"rechazada",titulo:"Cotizacion rechazada",desc:cot.motivoPerdida?"Motivo: "+cot.motivoPerdida:"Sin motivo registrado",color:C.red,orden:1});
+                  eventos.push({fecha:cot.fecha,tipo:"cotizacion",titulo:"Cotizacion enviada",desc:cot.concepto+" · $"+Number(cot.monto).toLocaleString(),color:C.amber,orden:2});
+                  if(cot.estatus==="Aceptada") eventos.push({fecha:cot.fecha,tipo:"aceptada",titulo:"Cotizacion aceptada",desc:"$"+Number(cot.monto).toLocaleString(),color:C.green,orden:3});
+                  if(cot.estatus==="Rechazada") eventos.push({fecha:cot.fecha,tipo:"rechazada",titulo:"Cotizacion rechazada",desc:cot.motivoPerdida?"Motivo: "+cot.motivoPerdida:"Sin motivo registrado",color:C.red,orden:3});
                   // Pagos del nuevo sistema
                   var pagosH=cot.pagos||[];
                   pagosH.forEach(function(p){
                     var totalPagadoH=pagosH.reduce(function(s,x){ return s+Number(x.monto); },0);
                     var saldoH=cot.monto-totalPagadoH;
-                    eventos.push({fecha:p.fecha,tipo:"pago",titulo:(p.concepto||"Pago")+" recibido",desc:"$"+Number(p.monto).toLocaleString()+(saldoH>0?" · Saldo: $"+saldoH.toLocaleString():" · Pagado completamente"),color:C.green,orden:1});
+                    eventos.push({fecha:p.fecha,tipo:"pago",titulo:(p.concepto||"Pago")+" recibido",desc:"$"+Number(p.monto).toLocaleString()+(saldoH>0?" · Saldo: $"+saldoH.toLocaleString():" · Pagado completamente"),color:C.green,orden:4});
                   });
                 });
 
                 ventasCliente.forEach(function(v){
-                  eventos.push({fecha:v.fecha,tipo:"venta",titulo:"Venta directa"+(v.concepto?" · "+v.concepto:""),desc:"$"+Number(v.monto).toLocaleString()+(v.etiqueta?" · "+v.etiqueta:""),color:C.green,orden:0});
+                  eventos.push({fecha:v.fecha,tipo:"venta",titulo:"Venta directa"+(v.concepto?" · "+v.concepto:""),desc:"$"+Number(v.monto).toLocaleString()+(v.etiqueta?" · "+v.etiqueta:""),color:C.green,orden:5});
                 });
 
                 // Ordenar , reciente primero, futuros al fondo, registro siempre último
@@ -6017,8 +6033,12 @@ export default function CLEO(){
           e("span",{style:{fontSize:13,color:"rgba(255,255,255,0.7)"}},esProductos?"Mis productos":"Mi catálogo")
         ),
         e("button",{style:{display:"flex",alignItems:"center",gap:10,width:"100%",padding:"12px 16px",background:"none",border:"none",cursor:"pointer",borderRadius:10},onClick:function(){ setFormPerfil(Object.assign({},perfil)); setModalPerfil(true); setMostrarMas(false); }},
-          e("svg",{width:18,height:18,viewBox:"0 0 24 24",fill:"none",stroke:"rgba(255,255,255,0.6)",strokeWidth:2,strokeLinecap:"round",strokeLinejoin:"round"},e("path",{d:"M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2M12 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8z"})),
-          e("span",{style:{fontSize:13,color:"rgba(255,255,255,0.7)"}},"Mi perfil")
+          e("svg",{width:18,height:18,viewBox:"0 0 24 24",fill:"none",stroke:"rgba(255,255,255,0.6)",strokeWidth:2,strokeLinecap:"round",strokeLinejoin:"round"},e("rect",{x:2,y:7,width:20,height:14,rx:2,ry:2}),e("path",{d:"M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"})),
+          e("span",{style:{fontSize:13,color:"rgba(255,255,255,0.7)"}},"Mi negocio")
+        ),
+        e("button",{style:{display:"flex",alignItems:"center",gap:10,width:"100%",padding:"12px 16px",background:"none",border:"none",cursor:"pointer",borderRadius:10},onClick:function(){ setModalCuenta(true); setMostrarMas(false); }},
+          e("svg",{width:18,height:18,viewBox:"0 0 24 24",fill:"none",stroke:"rgba(255,255,255,0.6)",strokeWidth:2,strokeLinecap:"round",strokeLinejoin:"round"},e("circle",{cx:12,cy:8,r:4}),e("path",{d:"M4 20c0-4 4-6 8-6s8 2 8 6"})),
+          e("span",{style:{fontSize:13,color:"rgba(255,255,255,0.7)"}},"Mi cuenta")
         )
       )
     )
@@ -7589,6 +7609,129 @@ export default function CLEO(){
 
     // MODAL PERFIL
     // MODAL PERFIL , solo datos del negocio
+    // MODAL MI CUENTA
+    modalCuenta&&e("div",{style:st.ov,onClick:function(){ setModalCuenta(false); }},
+      e("div",{style:Object.assign({},st.modal,{padding:0,overflow:"hidden",maxWidth:isMobile?"100%":460,borderRadius:isMobile?"20px 20px 0 0":24,display:"flex",flexDirection:"column"}),onClick:function(ev){ ev.stopPropagation(); }},
+
+        // HEADER
+        e("div",{style:{padding:"20px 24px 16px",borderBottom:"1px solid "+C.border,display:"flex",alignItems:"flex-start",justifyContent:"space-between"}},
+          e("div",null,
+            e("div",{style:{fontWeight:700,fontSize:18,color:C.text,lineHeight:1.2}},"Mi cuenta"),
+            e("div",{style:{fontSize:12,color:C.textMuted,marginTop:3}},"Gestiona tu cuenta y herramientas para tu negocio en CLEO.")
+          ),
+          e("button",{style:{background:"transparent",border:"1px solid "+C.border,cursor:"pointer",color:C.textDim,fontSize:16,width:28,height:28,borderRadius:8,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,marginLeft:12,marginTop:2},onClick:function(){ setModalCuenta(false); }},"×")
+        ),
+
+        // BODY scrollable
+        e("div",{style:{overflowY:"auto",maxHeight:"calc(88vh - 80px)",padding:"20px 24px 24px"}},
+
+          // Tarjeta de usuario
+          e("div",{style:{border:"1px solid "+C.border,borderRadius:16,padding:"16px",display:"flex",alignItems:"center",gap:12,marginBottom:20}},
+            e("div",{style:{width:44,height:44,borderRadius:"50%",background:C.purplePale,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,fontSize:15,fontWeight:700,color:C.purple}},
+              (perfil.tuNombre||perfil.nombre||"?").slice(0,2).toUpperCase()
+            ),
+            e("div",{style:{flex:1,minWidth:0}},
+              e("div",{style:{fontWeight:700,fontSize:15,color:C.text}},perfil.tuNombre||"Sin nombre"),
+              e("div",{style:{fontSize:12,color:C.textMuted,marginTop:1}},perfil.email||"Sin correo registrado")
+            )
+          ),
+
+          // HERRAMIENTAS
+          e("div",{style:{fontSize:11,fontWeight:700,color:C.textDim,textTransform:"uppercase",letterSpacing:"1px",marginBottom:10}},"Herramientas"),
+          e("div",{style:{border:"1px solid "+C.border,borderRadius:16,overflow:"hidden",marginBottom:20}},
+
+            // Cargar datos de ejemplo
+            e("button",{style:{cursor:"pointer",width:"100%",textAlign:"left",padding:"14px 16px",border:"none",background:hoverDemo?C.surfaceUp:"transparent",display:"flex",alignItems:"center",gap:12,transition:"background 0.12s"},onMouseEnter:function(){ setHoverDemo(true); },onMouseLeave:function(){ setHoverDemo(false); },onClick:function(){
+              if(esProductos){
+                if(window.confirm("¿Cargar demo de productos? Se borrarán los datos actuales y se cargará un negocio de joyería de ejemplo.")){
+                  setClientesRaw(clientesDemoProductos);
+                  setCotizacionesRaw([]);
+                  setVentasRaw(ventasDemoProductos);
+                  setServiciosRaw([]);
+                  setPedidos(pedidosDemoProductos);
+                  setPerfil(Object.assign({},perfilDemoProductos));
+                  try{ localStorage.setItem("cleo_pedidos",JSON.stringify(pedidosDemoProductos)); }catch(ex){}
+                  setAlertasCerradas([]);
+                  setVista("inicio");
+                  setModalCuenta(false);
+                }
+              } else {
+                if(window.confirm("¿Cargar datos de ejemplo? Se reemplazarán tus datos actuales.")){
+                  setClientesRaw(clientesDemo); setCotizacionesRaw(migrarCots(cotDemo));
+                  setVentasRaw(ventasDemo||[]); setServiciosRaw(serviciosDemo);
+                  setPerfil(Object.assign({},perfilDemo,{nombre:"Negocio Demo",tipoPerfil:"Servicios"}));
+                  setAlertasCerradas([]); setModalCuenta(false);
+                }
+              }
+            }},
+              e("div",{style:{width:38,height:38,borderRadius:10,background:C.purplePale,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}},
+                e("svg",{width:18,height:18,viewBox:"0 0 24 24",fill:"none",stroke:C.purple,strokeWidth:1.7,strokeLinecap:"round",strokeLinejoin:"round"},
+                  e("path",{d:"M9.5 3l1 2 2 1-2 1-1 2-1-2-2-1 2-1 1-2zM19 9l.7 1.4 1.4.7-1.4.7-.7 1.4-.7-1.4-1.4-.7 1.4-.7.7-1.4zM6 14l.6 1.2 1.2.6-1.2.6-.6 1.2-.6-1.2-1.2-.6 1.2-.6.6-1.2z"})
+                )
+              ),
+              e("div",{style:{flex:1,minWidth:0}},
+                e("div",{style:{display:"flex",alignItems:"center",gap:8}},
+                  e("span",{style:{fontWeight:700,fontSize:14,color:C.text}},"Cargar datos de ejemplo"),
+                  e("span",{style:{fontSize:10,fontWeight:700,color:C.purple,background:C.purplePale,borderRadius:20,padding:"2px 8px"}},"Nuevo")
+                ),
+                e("div",{style:{fontSize:12,color:C.textMuted,marginTop:2,lineHeight:1.4}},"Llena CLEO con información ficticia para explorar todas las funciones.")
+              )
+            ),
+
+            // Empezar desde cero
+            e("button",{style:{cursor:"pointer",width:"100%",textAlign:"left",padding:"14px 16px",border:"none",borderTop:"1px solid "+C.border,background:hoverCero?C.redBg:"transparent",display:"flex",alignItems:"center",gap:12,transition:"background 0.12s"},onMouseEnter:function(){ setHoverCero(true); },onMouseLeave:function(){ setHoverCero(false); },onClick:function(){
+              if(window.confirm("¿Borrar todos tus datos? Esta acción no se puede deshacer.")){
+                setClientes([]); setCotizaciones([]);
+                setVentas([]); setServicios([]);
+                setPedidos([]);
+                setProductosCat([]);
+                setProductos([]);
+                setPerfil(perfilDemo);
+                setEtapasVistas([]);
+                try{
+                  localStorage.removeItem("cleo_alertas_cerradas");
+                  localStorage.removeItem("cleo_etapas_vistas");
+                  localStorage.removeItem("cleo_tipo_perfil");
+                  localStorage.removeItem("cleo_demo_productos_loaded_v2");
+                  localStorage.removeItem("cleo_productos");
+                }catch(e){}
+                setAlertasCerradas([]); setModalCuenta(false);
+              }
+            }},
+              e("div",{style:{width:38,height:38,borderRadius:10,background:C.redBg,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}},
+                e("svg",{width:18,height:18,viewBox:"0 0 24 24",fill:"none",stroke:C.red,strokeWidth:1.7,strokeLinecap:"round",strokeLinejoin:"round"},
+                  e("path",{d:"M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"})
+                )
+              ),
+              e("div",{style:{flex:1,minWidth:0}},
+                e("div",{style:{fontWeight:700,fontSize:14,color:C.text}},"Empezar desde cero"),
+                e("div",{style:{fontSize:12,color:C.textMuted,marginTop:2,lineHeight:1.4}},"Elimina todos tus datos (clientes, ventas, productos y más) para comenzar nuevamente.")
+              )
+            )
+
+          ),
+
+          // Cerrar sesión
+          e("button",{style:{cursor:"pointer",width:"100%",padding:"13px",borderRadius:14,border:"1px solid "+C.red+(hoverSalir?"88":"44"),background:hoverSalir?C.red+"22":C.redBg,fontSize:14,fontWeight:600,color:C.red,display:"flex",alignItems:"center",justifyContent:"center",gap:8,marginBottom:20,transition:"background 0.12s, border-color 0.12s"},onMouseEnter:function(){ setHoverSalir(true); },onMouseLeave:function(){ setHoverSalir(false); },onClick:function(){
+            if(window.confirm("¿Cerrar sesión?")){ if(props.onSignOut) props.onSignOut(); }
+          }},
+            e("svg",{width:16,height:16,viewBox:"0 0 24 24",fill:"none",stroke:C.red,strokeWidth:2,strokeLinecap:"round",strokeLinejoin:"round"},e("path",{d:"M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4M16 17l5-5-5-5M21 12H9"})),
+            "Cerrar sesión"
+          ),
+
+          // Nota de seguridad
+          e("div",{style:{background:C.purplePale,borderRadius:14,padding:"14px 16px",display:"flex",gap:12,alignItems:"flex-start"}},
+            e("svg",{width:18,height:18,viewBox:"0 0 24 24",fill:"none",stroke:C.purple,strokeWidth:1.7,strokeLinecap:"round",strokeLinejoin:"round",style:{flexShrink:0,marginTop:1}},e("path",{d:"M12 2l7 3v6c0 5-3.5 8.5-7 10-3.5-1.5-7-5-7-10V5l7-3z"})),
+            e("div",null,
+              e("div",{style:{fontWeight:700,fontSize:13,color:C.purple}},"Tu información está segura"),
+              e("div",{style:{fontSize:12,color:C.purple,opacity:0.85,marginTop:2,lineHeight:1.4}},"En CLEO protegemos tus datos y nunca los compartimos con terceros.")
+            )
+          )
+
+        )
+      )
+    ),
+
     modalPerfil&&e("div",{style:st.ov,onClick:function(){ setModalPerfil(false); }},
       e("div",{style:Object.assign({},st.modal,{padding:0,overflow:"hidden",maxWidth:isMobile?"100%":500,borderRadius:isMobile?"20px 20px 0 0":24,display:"flex",flexDirection:"column",overflowY:"hidden"}),onClick:function(ev){ ev.stopPropagation(); }},
 
@@ -7597,7 +7740,7 @@ export default function CLEO(){
           // Title row
           e("div",{style:{display:"flex",alignItems:"flex-start",justifyContent:"space-between",marginBottom:4}},
             e("div",null,
-              e("div",{style:{fontWeight:700,fontSize:18,color:C.text,lineHeight:1.2}},"Mi perfil"),
+              e("div",{style:{fontWeight:700,fontSize:18,color:C.text,lineHeight:1.2}},"Mi negocio"),
               e("div",{style:{fontSize:12,color:C.textMuted,marginTop:3}},"Datos de tu negocio y apariencia de documentos")
             ),
             e("button",{style:{background:"transparent",border:"1px solid "+C.border,cursor:"pointer",color:C.textDim,fontSize:16,width:28,height:28,borderRadius:8,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,marginLeft:12,marginTop:2},onClick:function(){ setModalPerfil(false); }},"×")
@@ -7788,63 +7931,6 @@ export default function CLEO(){
 
             )
           ),
-
-          // SECCIÓN: Zona de peligro
-          e("div",{style:{padding:"20px 24px"}},
-            e("div",{style:{fontSize:11,fontWeight:700,color:C.red,textTransform:"uppercase",letterSpacing:"1px",marginBottom:12}},"Zona de peligro"),
-            e("div",{style:{display:"flex",flexDirection:"column",gap:8}},
-              e("button",{style:{cursor:"pointer",padding:"10px 16px",borderRadius:12,border:"1px solid "+C.red+"33",background:C.redBg,fontSize:13,color:C.red,width:"100%",textAlign:"left",display:"flex",alignItems:"center",gap:8},onClick:function(){
-                if(window.confirm("¿Borrar todos tus datos? Esta acción no se puede deshacer.")){
-                  setClientes([]); setCotizaciones([]);
-                  setVentas([]); setServicios([]);
-                  setPedidos([]);
-                  setProductosCat([]);
-                  setProductos([]);
-                  setPerfil(perfilDemo);
-                  setEtapasVistas([]);
-                  try{
-                    localStorage.removeItem("cleo_alertas_cerradas");
-                    localStorage.removeItem("cleo_etapas_vistas");
-                    localStorage.removeItem("cleo_tipo_perfil");
-                    localStorage.removeItem("cleo_demo_productos_loaded_v2");
-                    localStorage.removeItem("cleo_productos");
-                  }catch(e){}
-                  setAlertasCerradas([]); setModalPerfil(false);
-                }
-              }},
-                e("svg",{width:15,height:15,viewBox:"0 0 24 24",fill:"none"},e("path",{d:"M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16",stroke:C.red,strokeWidth:1.5,strokeLinecap:"round",strokeLinejoin:"round"})),
-                "Borrar todos mis datos"
-              ),
-              !esProductos&&e("button",{style:{cursor:"pointer",padding:"10px 16px",borderRadius:12,border:"1px solid "+C.border,background:C.surfaceUp,fontSize:13,color:C.textMuted,width:"100%",textAlign:"left",display:"flex",alignItems:"center",gap:8},onClick:function(){
-                if(window.confirm("¿Cargar datos de ejemplo? Se reemplazarán tus datos actuales.")){
-                  setClientesRaw(clientesDemo); setCotizacionesRaw(migrarCots(cotDemo));
-                  setVentasRaw(ventasDemo||[]); setServiciosRaw(serviciosDemo);
-                  setPerfil(Object.assign({},perfilDemo,{nombre:"Negocio Demo",tipoPerfil:"Servicios"}));
-                  setAlertasCerradas([]); setModalPerfil(false);
-                }
-              }},
-                e("svg",{width:15,height:15,viewBox:"0 0 24 24",fill:"none"},e("path",{d:"M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15",stroke:C.textMuted,strokeWidth:1.5,strokeLinecap:"round",strokeLinejoin:"round"})),
-                "Cargar datos de ejemplo"
-              ),
-              esProductos&&e("button",{style:{cursor:"pointer",padding:"10px 16px",borderRadius:12,border:"1px solid #C7D2FE",background:"#EEF2FF",fontSize:13,color:C.purple,width:"100%",textAlign:"left",display:"flex",alignItems:"center",gap:8},onClick:function(){
-                if(window.confirm("¿Cargar demo de productos? Se borrarán los datos actuales y se cargará un negocio de joyería de ejemplo.")){
-                  setClientesRaw(clientesDemoProductos);
-                  setCotizacionesRaw([]);
-                  setVentasRaw(ventasDemoProductos);
-                  setServiciosRaw([]);
-                  setPedidos(pedidosDemoProductos);
-                  setPerfil(Object.assign({},perfilDemoProductos));
-                  try{ localStorage.setItem("cleo_pedidos",JSON.stringify(pedidosDemoProductos)); }catch(ex){}
-                  setAlertasCerradas([]);
-                  setVista("inicio");
-                  setModalPerfil(false);
-                }
-              }},
-                e("svg",{width:15,height:15,viewBox:"0 0 24 24",fill:"none"},e("path",{d:"M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 10V7",stroke:C.purple,strokeWidth:1.5,strokeLinecap:"round",strokeLinejoin:"round"})),
-                "Cargar demo · Productos (joyería)"
-              )
-            )
-          )
         ),
 
         // ── FOOTER con botones ──

@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from "react";
 import { supabase } from "./supabaseClient";
-import { pullUserData, startCloudSync } from "./cloudSync";
+import { pullUserData, startCloudSync, CLEO_KEYS } from "./cloudSync";
 import CLEO from "./CLEO.jsx";
 
 var C = {
@@ -316,8 +316,23 @@ export default function AuthGate() {
     );
   }
 
+  function cerrarSesion() {
+    if (syncRef.current) {
+      syncRef.current.stop();
+      syncRef.current = null;
+    }
+    CLEO_KEYS.forEach(function (key) {
+      try {
+        localStorage.removeItem(key);
+      } catch (e) {}
+    });
+    supabase.auth.signOut();
+    // No hace falta redirigir a mano: onAuthStateChange detecta la sesión nula
+    // y AuthGate regresa solo a la pantalla de login.
+  }
+
   if (estado === "listo") {
-    return React.createElement(CLEO, null);
+    return React.createElement(CLEO, { onSignOut: cerrarSesion });
   }
 
   return React.createElement(
