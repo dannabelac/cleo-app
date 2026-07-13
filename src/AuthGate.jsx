@@ -46,14 +46,12 @@ var st = {
   },
   brandPanel: {
     flex: "1 1 340px",
-    background:
-      "linear-gradient(160deg," + C.purpleInk + " 0%," + C.purpleDeep + " 55%," + C.purple + " 100%)",
-    color: "#fff",
+    background: "#EDEBFC",
+    color: C.text,
     display: "flex",
     flexDirection: "column",
     justifyContent: "space-between",
     position: "relative",
-    overflow: "hidden",
     minHeight: 280,
   },
   formPanel: {
@@ -172,6 +170,9 @@ export default function AuthGate() {
   var s9 = useState(null);
   var userId = s9[0];
   var setUserId = s9[1];
+  var s10 = useState(null);
+  var userEmail = s10[0];
+  var setUserEmail = s10[1];
   var syncRef = useRef(null);
   var ring = useFocusRing();
 
@@ -190,6 +191,7 @@ export default function AuthGate() {
         detenerSync();
         if (!activo) return;
         setUserId(null);
+        setUserEmail(null);
         setEstado("sinSesion");
         return;
       }
@@ -199,6 +201,7 @@ export default function AuthGate() {
       if (!activo) return;
 
       setUserId(session.user.id);
+      setUserEmail(session.user.email || null);
       setEstado("listo");
     }
 
@@ -332,7 +335,7 @@ export default function AuthGate() {
   }
 
   if (estado === "listo") {
-    return React.createElement(CLEO, { onSignOut: cerrarSesion });
+    return React.createElement(CLEO, { onSignOut: cerrarSesion, userEmail: userEmail });
   }
 
   return React.createElement(
@@ -341,14 +344,15 @@ export default function AuthGate() {
     React.createElement(
       "style",
       null,
-      ".cleo-auth-brand{padding:44px 40px}" +
+      "@import url('https://fonts.googleapis.com/css2?family=Caveat:wght@600;700&display=swap');" +
+        ".cleo-auth-brand{padding:44px 40px}" +
         ".cleo-auth-form{padding:44px 48px}" +
         "@media(max-width:640px){" +
         ".cleo-auth-page{padding:0!important}" +
         ".cleo-auth-shell{border-radius:0!important;min-height:100vh!important;box-shadow:none!important}" +
         ".cleo-auth-brand{padding:32px 24px 28px!important;min-height:0!important}" +
         ".cleo-auth-form{padding:32px 24px 40px!important}" +
-        ".cleo-auth-headline{font-size:22px!important}" +
+        ".cleo-auth-greeting{font-size:34px!important}" +
         "}"
     ),
     React.createElement(
@@ -358,34 +362,12 @@ export default function AuthGate() {
       React.createElement(
         "div",
         { style: st.brandPanel, className: "cleo-auth-brand" },
-        React.createElement("div", {
-          style: {
-            position: "absolute",
-            width: 340,
-            height: 340,
-            borderRadius: "50%",
-            background: "rgba(255,255,255,0.06)",
-            top: -120,
-            right: -100,
-          },
-        }),
-        React.createElement("div", {
-          style: {
-            position: "absolute",
-            width: 220,
-            height: 220,
-            borderRadius: "50%",
-            background: "rgba(255,255,255,0.05)",
-            bottom: -80,
-            left: -60,
-          },
-        }),
         React.createElement(
           "div",
-          { style: { position: "relative", zIndex: 1 } },
+          { style: { position: "relative", zIndex: 1, marginBottom: 28 } },
           React.createElement(
             "div",
-            { style: { fontSize: 22, fontWeight: 800 } },
+            { style: { fontSize: 15, fontWeight: 700, color: C.purple, letterSpacing: "1px" } },
             "CLEO"
           )
         ),
@@ -395,13 +377,14 @@ export default function AuthGate() {
           React.createElement(
             "div",
             {
-              className: "cleo-auth-headline",
+              className: "cleo-auth-greeting",
               style: {
-                fontSize: 27,
+                fontFamily: "'Caveat',cursive",
+                fontSize: 44,
                 fontWeight: 700,
-                lineHeight: 1.28,
-                marginBottom: 14,
-                maxWidth: 280,
+                color: C.purple,
+                lineHeight: 1.1,
+                marginBottom: 16,
               },
             },
             "Hecho para emprendedores como tú."
@@ -412,11 +395,68 @@ export default function AuthGate() {
               style: {
                 fontSize: 14,
                 lineHeight: 1.6,
-                color: "rgba(255,255,255,0.78)",
-                maxWidth: 280,
+                color: "#5C596E",
+                maxWidth: 300,
+                marginBottom: 22,
               },
             },
-            "Porque emprender ya es suficientemente difícil. CLEO organiza tu negocio, te recuerda lo importante y te ayuda a enfocarte en hacerlo crecer."
+            "Emprender ya es suficientemente difícil. CLEO te ayuda a organizar tu negocio, recordar lo importante y tener claridad sobre qué hacer para hacerlo crecer."
+          ),
+          React.createElement(
+            "div",
+            {
+              style: {
+                fontSize: 13,
+                fontWeight: 600,
+                color: "#5C596E",
+                marginBottom: 12,
+              },
+            },
+            "Hay demasiadas cosas que recordar:"
+          ),
+          React.createElement(
+            "div",
+            { style: { display: "flex", flexDirection: "column", gap: 12, maxWidth: 300, marginBottom: 36 } },
+            [
+              { icon: "💬", bg: "#EDEBFC", label: "Clientes que no puedes perder de vista" },
+              { icon: "📄", bg: "#FDF3DC", label: "Cotizaciones que hay que dar seguimiento" },
+              { icon: "💰", bg: "#E3F5EC", label: "Cobros que no se te deben olvidar" },
+              { icon: "💡", bg: "#FCE7EF", label: "Ideas que no quieres dejar escapar" },
+            ].map(function (item, i) {
+              return React.createElement(
+                "div",
+                {
+                  key: i,
+                  style: {
+                    display: "flex",
+                    alignItems: "flex-start",
+                    gap: 12,
+                  },
+                },
+                React.createElement(
+                  "div",
+                  {
+                    style: {
+                      width: 34,
+                      height: 34,
+                      borderRadius: 10,
+                      background: item.bg,
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      fontSize: 15,
+                      flexShrink: 0,
+                    },
+                  },
+                  item.icon
+                ),
+                React.createElement(
+                  "div",
+                  { style: { fontSize: 13, fontWeight: 600, color: "#5C596E", paddingTop: 6 } },
+                  item.label
+                )
+              );
+            })
           )
         ),
         React.createElement(
@@ -425,11 +465,18 @@ export default function AuthGate() {
             style: {
               position: "relative",
               zIndex: 1,
-              fontSize: 12,
-              color: "rgba(255,255,255,0.5)",
+              background: C.purple,
+              borderRadius: 14,
+              padding: "16px",
+              maxWidth: 300,
+              fontSize: 13,
+              color: "#fff",
+              lineHeight: 1.5,
+              marginTop: "auto",
             },
           },
-          "Tu próximo cliente probablemente ya te escribió. CLEO te ayuda a no dejarlo pasar."
+          "No tienes que emprender solo. ",
+          React.createElement("b", null, "CLEO está contigo.")
         )
       ),
 
@@ -449,7 +496,7 @@ export default function AuthGate() {
                 marginBottom: 6,
               },
             },
-            modo === "login" ? "Inicia sesión" : "Crea tu cuenta"
+            "Hola, emprendedor"
           ),
           React.createElement(
             "div",
@@ -461,8 +508,8 @@ export default function AuthGate() {
               },
             },
             modo === "login"
-              ? "Entra con tu correo y contraseña."
-              : "Empieza a organizar tus ventas con CLEO."
+              ? "Inicia sesión para continuar donde lo dejaste."
+              : "Regístrate para empezar a organizar tu negocio."
           ),
 
           React.createElement(

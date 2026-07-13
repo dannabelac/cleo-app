@@ -57,6 +57,65 @@ const avatarColors = [C.purple,"#1D9E75","#D85A30","#185FA5","#BA7517","#993556"
 function iniciales(n){ return n.split(" ").slice(0,2).map(function(x){return x[0];}).join("").toUpperCase(); }
 function diasDesde(f){ return Math.floor((HOY-new Date(f))/86400000); }
 function diasSinContacto(c){ var ref=c.ultimoContacto&&c.ultimoContacto!==""?c.ultimoContacto:c.fecha; return Math.max(0,Math.floor((HOY-new Date(ref))/86400000)); }
+
+// Cuenta cuántos pendientes hay realmente en la vista "Hoy", usando el MISMO
+// criterio que esa vista (P1-P7 para servicios, oportunidades+pedidos para productos).
+// Se usa para el badge de la barra de navegación, para que nunca se desincronice
+// del contenido real de la pestaña.
+function contarPendientesHoy(clientes,cotizaciones,pedidos,esProductos){
+  if(esProductos){
+    var opsRetomarN=clientes.filter(function(c){
+      if(!c.estadoProspecto||c.estadoProspecto==="Convertido"||c.estadoProspecto==="Perdido") return false;
+      var dias=diasDesde(c.fechaEtapa||c.fecha);
+      if(c.estadoProspecto==="Nueva") return dias>=3;
+      if(c.estadoProspecto==="En seguimiento") return dias>=4;
+      return false;
+    }).length;
+    var pedidosAccionN=0;
+    (pedidos||[]).forEach(function(ped){
+      var estadoNorm=ped.estadoPedido==="pendiente"?"preparando":ped.estadoPedido;
+      if(estadoNorm==="cancelado") return;
+      var pagado=(ped.pagos||[]).reduce(function(s,p){ return s+Number(p.monto); },0);
+      var saldo=Math.max(0,Number(ped.total||0)-pagado);
+      if(saldo>0&&ped.total>0&&estadoNorm==="preparando") pedidosAccionN++;
+      if(estadoNorm==="entregado"&&saldo>0&&ped.total>0) pedidosAccionN++;
+    });
+    return opsRetomarN+pedidosAccionN;
+  }
+  var hoyN=new Date();
+  var idsVistoN={};
+  var countN=0;
+  function marcar(c){
+    if(idsVistoN[c.id]) return;
+    idsVistoN[c.id]=true;
+    if((diasSinContacto(c)>=1||c.seguimientoFecha)&&!c.archivado) countN++;
+  }
+  clientes.filter(function(c){ return c.seguimientoFecha&&new Date(c.seguimientoFecha)<=hoyN; }).forEach(marcar);
+  clientes.filter(function(c){ return c.etapa==="Negociacion"&&!c.seguimientoFecha&&diasSinContacto(c)>=2; }).forEach(marcar);
+  clientes.filter(function(c){
+    if(c.etapa!=="Cotizacion enviada"||c.seguimientoFecha) return false;
+    var cotPend=cotizaciones.filter(function(cot){ return cot.clienteId===c.id&&cot.estatus==="Pendiente"; }).sort(function(a,b){ return new Date(b.fecha)-new Date(a.fecha); })[0];
+    var diasCot=cotPend?diasDesde(cotPend.fecha):0;
+    var d=diasSinContacto(c);
+    return d>=3||diasCot>=3;
+  }).forEach(marcar);
+  clientes.filter(function(c){ return c.etapa==="Seguimiento"&&!c.seguimientoFecha&&diasSinContacto(c)>=2; }).forEach(marcar);
+  clientes.filter(function(c){ return c.etapa==="Nuevo contacto"&&!c.seguimientoFecha&&diasSinContacto(c)>=2; }).forEach(marcar);
+  clientes.filter(function(c){
+    if(c.etapa!=="Ganado") return false;
+    if(c.seguimientoFecha) return false;
+    var diasGanado=Math.floor((HOY-new Date(c.fechaEtapa||c.fecha))/86400000);
+    return diasGanado>=45;
+  }).forEach(marcar);
+  clientes.filter(function(c){
+    if(c.etapa!=="Perdido") return false;
+    if(c.seguimientoFecha) return false;
+    var diasPerdido=Math.floor((HOY-new Date(c.fechaEtapa||c.fecha))/86400000);
+    return diasPerdido>=60;
+  }).forEach(marcar);
+  return countN;
+}
+
 function avatarColor(id){ return avatarColors[id%avatarColors.length]; }
 function canalColor(c){ return c==="WhatsApp"?C.green:c==="Instagram"?"#D85A30":c==="Messenger"?"#185FA5":C.purple; }
 function enPeriodo(f,p){
@@ -810,9 +869,15 @@ function ModalVenta(props){
               type:formVenta.nuevoCanal==="WhatsApp"?"tel":"text",
               placeholder:formVenta.nuevoCanal==="WhatsApp"?"Número de WhatsApp (10 dígitos)":formVenta.nuevoCanal==="Instagram"?"Usuario de Instagram (@...)":"Nombre en Facebook",
               value:formVenta.nuevoContacto||"",
-              onChange:function(ev){ setFormVenta(Object.assign({},formVenta,{nuevoContacto:ev.target.value})); },
+              onChange:function(ev){
+                var v=formVenta.nuevoCanal==="WhatsApp"?ev.target.value.replace(/\D/g,"").slice(0,10):ev.target.value;
+                setFormVenta(Object.assign({},formVenta,{nuevoContacto:v}));
+              },
+              maxLength:formVenta.nuevoCanal==="WhatsApp"?10:undefined,
+              inputMode:formVenta.nuevoCanal==="WhatsApp"?"numeric":undefined,
               style:st.inp
-            })
+            }),
+            formVenta.nuevoCanal==="WhatsApp"&&formVenta.nuevoContacto&&formVenta.nuevoContacto.length>0&&formVenta.nuevoContacto.length<10&&e("div",{style:{fontSize:11,color:"#E53E3E",marginTop:-4,marginBottom:8}},"Faltan "+(10-formVenta.nuevoContacto.length)+" dígitos")
           )
         )
       ),
@@ -861,11 +926,24 @@ function ModalVenta(props){
                 cat.map(function(sv){ return e("option",{key:sv.id,value:sv.id},sv.nombre+" , $"+Number(sv.precio).toLocaleString()); })
               );
             })(),
-            e("button",{
-              onClick:function(){ addItem(null); },
-              style:{cursor:"pointer",padding:"8px 14px",borderRadius:10,border:"1px dashed "+C.border,background:"transparent",fontSize:12,color:C.textMuted,fontWeight:500,flexShrink:0,whiteSpace:"nowrap"}
-            },"+ Manual")
+            (function(){
+              var cat=esProductos?(props.productosCat||[]):servicios;
+              if(cat.length>0){
+                return e("button",{
+                  onClick:function(){ addItem(null); },
+                  style:{cursor:"pointer",padding:"8px 14px",borderRadius:10,border:"1px dashed "+C.border,background:"transparent",fontSize:12,color:C.textMuted,fontWeight:500,flexShrink:0,whiteSpace:"nowrap"}
+                },"+ Manual");
+              }
+              return e("button",{
+                onClick:function(){ addItem(null); },
+                style:{cursor:"pointer",padding:"8px 14px",borderRadius:10,border:"1px dashed "+C.border,background:"transparent",fontSize:12,color:C.textMuted,fontWeight:500,flex:1,whiteSpace:"nowrap"}
+              },"+ Agregar "+(esProductos?"producto":"servicio"));
+            })()
           ),
+          (function(){
+            var cat=esProductos?(props.productosCat||[]):servicios;
+            return cat.length===0&&e("div",{style:{fontSize:11,color:C.textDim,marginTop:6,lineHeight:1.4}},"Aún no tienes "+(esProductos?"productos":"servicios")+" guardados en tu catálogo. Puedes agregarlo aquí a mano, o crear tu catálogo en \"Mi catálogo\" para reusarlo después.");
+          })(),
         );
       })(),
       tipoActual==="dia"&&e("div",{style:{marginBottom:12}},
@@ -1575,9 +1653,13 @@ export default function CLEO(props){
         alert("Selecciona por dónde contactas a este cliente antes de guardar.");
         return;
       }
+      if(formCot.nuevoCanal==="WhatsApp"&&formCot.nuevoContacto.replace(/\D/g,"").length!==10){
+        alert("El número de WhatsApp debe tener exactamente 10 dígitos.");
+        return;
+      }
       var nuevoClienteIdCot=Date.now();
       var canalCot=formCot.nuevoCanal||"WhatsApp";
-      setClientes([Object.assign({},formVacio,{
+      var nuevoClienteCot=Object.assign({},formVacio,{
         id:nuevoClienteIdCot,
         nombre:formCot.nuevoNombre.trim(),
         fecha:FECHA_HOY,
@@ -1589,7 +1671,8 @@ export default function CLEO(props){
         contacto:canalCot==="WhatsApp"?(formCot.nuevoContacto||"").replace(/\D/g,""):"",
         instagram:canalCot==="Instagram"?(formCot.nuevoContacto||""):"",
         messenger:canalCot==="Facebook"?(formCot.nuevoContacto||""):""
-      }),...clientes]);
+      });
+      setClientes(function(prev){ return [nuevoClienteCot,...prev]; });
       formCot=Object.assign({},formCot,{clienteId:String(nuevoClienteIdCot)});
     }
     var subtotal=Number(formCot.cantidad||1)*Number(formCot.precioUnit||formCot.monto||0);
@@ -1608,12 +1691,14 @@ export default function CLEO(props){
     } else {
       setCotizaciones([...cotizaciones,Object.assign({},formCot,{id:Date.now(),clienteId:Number(formCot.clienteId),monto:monto,fecha:FECHA_HOY,motivoPerdida:"",anticipo:0,fechaAnticipo:"",pagos:[]},descuentoData)]);
       // Sincronizar precioInteres/productoInteres del cliente para que la ficha refleje el monto real de la cotización
-      setClientes(clientes.map(function(c){
-        if(c.id!==Number(formCot.clienteId)) return c;
-        var upd=Object.assign({},c,{precioInteres:String(monto),productoInteres:formCot.concepto||c.productoInteres});
-        if(c.etapa!=="Ganado"&&c.etapa!=="Perdido"&&c.etapa!=="Negociacion") upd=Object.assign(upd,{etapa:"Cotizacion enviada",fechaEtapa:FECHA_HOY});
-        return upd;
-      }));
+      setClientes(function(prev){
+        return prev.map(function(c){
+          if(c.id!==Number(formCot.clienteId)) return c;
+          var upd=Object.assign({},c,{precioInteres:String(monto),productoInteres:formCot.concepto||c.productoInteres});
+          if(c.etapa!=="Ganado"&&c.etapa!=="Perdido"&&c.etapa!=="Negociacion") upd=Object.assign(upd,{etapa:"Cotizacion enviada",fechaEtapa:FECHA_HOY});
+          return upd;
+        });
+      });
     }
     // Aplicar etapa pendiente solo si se guardo la cotizacion
     if(etapaPendiente&&Number(formCot.clienteId)===etapaPendiente.clienteId){
@@ -1784,6 +1869,10 @@ export default function CLEO(props){
     var creandoClienteV=!formVenta.clienteId&&formVenta.nuevoNombre&&formVenta.nuevoNombre.trim();
     if(creandoClienteV&&(!formVenta.nuevoCanal||!formVenta.nuevoContacto||!formVenta.nuevoContacto.trim())){
       alert("Selecciona por dónde contactas a este cliente antes de guardar.");
+      return;
+    }
+    if(creandoClienteV&&formVenta.nuevoCanal==="WhatsApp"&&formVenta.nuevoContacto.replace(/\D/g,"").length!==10){
+      alert("El número de WhatsApp debe tener exactamente 10 dígitos.");
       return;
     }
     // Si es generico o dia, mostrar momento educativo antes de guardar
@@ -1962,6 +2051,7 @@ export default function CLEO(props){
               onClick:function(){
                 var nuevoPerfil=Object.assign({},perfil,{tipoPerfil:op.k});
                 setPerfil(nuevoPerfil);
+                setVista("inicio");
               }
             },
               e("span",{style:{fontSize:28,flexShrink:0}},op.emoji),
@@ -2022,10 +2112,7 @@ export default function CLEO(props){
           // Hoy
           (function(){
             var v="hoy"; var activo=vista===v;
-            var hoyNav=new Date();
-            var prog=clientes.filter(function(c){ return c.seguimientoFecha&&new Date(c.seguimientoFecha)<=hoyNav; }).length;
-            var atac=clientes.filter(function(c){ var ref=c.ultimoContacto||c.fecha; var d=Math.floor((hoyNav-new Date(ref))/86400000); return !c.seguimientoFecha&&((c.etapa==="Negociacion"&&d>2)||(c.etapa==="Cotizacion enviada"&&d>3)||(c.etapa==="Seguimiento"&&d>4)||(c.etapa==="Nuevo contacto"&&d>5)); }).length;
-            var nUrgentes=prog+atac;
+            var nUrgentes=contarPendientesHoy(clientes,cotizaciones,pedidos,esProductos);
             return e("button",{key:v,style:{cursor:"pointer",padding:"9px 10px",borderRadius:8,border:"none",background:activo?"#5B5CF6":"transparent",fontSize:13,color:activo?"#FFFFFF":"#CBD5E1",fontWeight:activo?600:400,textAlign:"left",width:"100%",display:"flex",alignItems:"center",gap:sbOpen?10:0,justifyContent:sbOpen?"flex-start":"center",borderLeft:"none",whiteSpace:"nowrap",overflow:"hidden",marginBottom:1,position:"relative"},onClick:function(){ setVista(v); }},
               e("svg",{width:16,height:16,viewBox:"0 0 24 24",fill:"none",stroke:activo?"#fff":"rgba(255,255,255,0.4)",strokeWidth:2,strokeLinecap:"round",strokeLinejoin:"round",flexShrink:0},e("path",{d:NAV_SVG[v]||""})),
               sbOpen&&e("span",{style:{flex:1}},NAV_LABELS[v]),
@@ -2190,6 +2277,10 @@ export default function CLEO(props){
       })(),
 
       vista==="inicio"&&(clientes.length>0||ventas.length>0)&&(function(){
+        var perfilCompletoDash=!!(perfil.nombre&&perfil.nombre!=="Mi Negocio");
+        var tieneRegistroDash=clientes.length>0||ventas.length>0;
+        // Mientras el checklist de arriba siga visible (perfil incompleto y pocos datos), no mostrar el dashboard debajo
+        if(tieneRegistroDash&&!perfilCompletoDash&&clientes.length<=2) return null;
         function calcPctPerfil(p){
           var pts=0;
           if(p.nombre&&p.nombre!=="Mi Negocio") pts+=25;
@@ -2653,13 +2744,27 @@ export default function CLEO(props){
                   var tieneHoy=!!fechasSet[hoyStr2];
                   var ultimos7=[];
                   for(var ui=6;ui>=0;ui--){ var ud=new Date(HOY); ud.setDate(ud.getDate()-ui); ultimos7.push(ud.toISOString().slice(0,10)); }
-                  var mensajeRacha=rachaActual>=7?"¡Llevas "+rachaActual+" días seguidos activo en CLEO. Eso es un hábito real.":
+                  // Récord histórico: racha consecutiva más larga que ha tenido nunca
+                  var fechasOrdenadas=Object.keys(fechasSet).sort();
+                  var mejorRacha=0,rachaTmp=0,diaAnterior=null;
+                  fechasOrdenadas.forEach(function(f){
+                    var diaNum=Math.floor(new Date(f+"T12:00:00").getTime()/86400000);
+                    rachaTmp=(diaAnterior!==null&&diaNum===diaAnterior+1)?rachaTmp+1:1;
+                    diaAnterior=diaNum;
+                    if(rachaTmp>mejorRacha) mejorRacha=rachaTmp;
+                  });
+                  mejorRacha=Math.max(mejorRacha,rachaActual);
+                  var esRecordActual=rachaActual>0&&rachaActual>=mejorRacha;
+                  var horaActual=new Date().getHours();
+                  var esTarde=horaActual>=18;
+                  var mensajeRacha=(!tieneHoy&&esTarde&&rachaActual>=2)?"Se está acabando el día y aún no registras nada. No pierdas tu racha de "+rachaActual+" días.":
+                    rachaActual>=7?"¡Llevas "+rachaActual+" días seguidos activo en CLEO. Eso es un hábito real.":
                     rachaActual>=3?"Llevas "+rachaActual+" días registrando actividad. Sigue así.":
                     tieneHoy?"Hoy ya registraste actividad. Buen comienzo.":
                     diasSinAct===0?"Empieza hoy, registrar un pedido tarda menos de un minuto.":
                     diasSinAct===1?"Ayer no registraste nada. Hoy puedes retomar el ritmo.":
                     "Han pasado "+diasSinAct+" días desde tu última actividad registrada.";
-                  var colorRacha=rachaActual>=7?"#FBBF24":rachaActual>=3?"#4ADE80":"#94A3B8";
+                  var colorRacha=(!tieneHoy&&esTarde&&rachaActual>=2)?"#F87171":rachaActual>=7?"#FBBF24":rachaActual>=3?"#4ADE80":"#94A3B8";
                   return e("div",{style:{display:"flex",flexDirection:"column",height:"100%"}},
                     e("div",{style:{marginBottom:20}},
                       e("div",{style:{fontSize:9,fontWeight:700,color:"#4F46E5",textTransform:"uppercase",letterSpacing:"1.8px",marginBottom:6}},"Tu ritmo de ventas"),
@@ -2669,7 +2774,10 @@ export default function CLEO(props){
                       e("div",{style:{fontSize:40}},rachaActual>=7?"🔥":rachaActual>=3?"⚡":"🌱"),
                       e("div",null,
                         e("div",{style:{fontSize:32,fontWeight:800,color:colorRacha,lineHeight:1}},rachaActual+" días"),
-                        e("div",{style:{fontSize:12,color:"rgba(255,255,255,0.45)",marginTop:2}},"de racha consecutiva")
+                        e("div",{style:{fontSize:12,color:"rgba(255,255,255,0.45)",marginTop:2}},"de racha consecutiva"),
+                        e("div",{style:{fontSize:11,color:esRecordActual?"#FBBF24":"rgba(255,255,255,0.35)",marginTop:4,fontWeight:esRecordActual?700:400}},
+                          esRecordActual&&rachaActual>1?"🏆 ¡Este es tu récord personal!":"Tu récord: "+mejorRacha+" día"+(mejorRacha===1?"":"s")
+                        )
                       )
                     ),
                     e("div",{style:{marginBottom:16}},
@@ -2776,15 +2884,29 @@ export default function CLEO(props){
               // Últimos 7 días para mini-heatmap
               var ultimos7=[];
               for(var ui=6;ui>=0;ui--){ var ud=new Date(HOY); ud.setDate(ud.getDate()-ui); ultimos7.push(ud.toISOString().slice(0,10)); }
+              // Récord histórico: racha consecutiva más larga que ha tenido nunca
+              var fechasOrdenadas=Object.keys(fechasSet).sort();
+              var mejorRacha=0,rachaTmp=0,diaAnterior=null;
+              fechasOrdenadas.forEach(function(f){
+                var diaNum=Math.floor(new Date(f+"T12:00:00").getTime()/86400000);
+                rachaTmp=(diaAnterior!==null&&diaNum===diaAnterior+1)?rachaTmp+1:1;
+                diaAnterior=diaNum;
+                if(rachaTmp>mejorRacha) mejorRacha=rachaTmp;
+              });
+              mejorRacha=Math.max(mejorRacha,rachaActual);
+              var esRecordActual=rachaActual>0&&rachaActual>=mejorRacha;
 
-              var mensajeRacha=rachaActual>=7?"¡Llevas "+rachaActual+" días seguidos activo en CLEO. Eso es un hábito real.":
+              var horaActual=new Date().getHours();
+              var esTarde=horaActual>=18;
+              var mensajeRacha=(!tieneHoy&&esTarde&&rachaActual>=2)?"Se está acabando el día y aún no registras nada. No pierdas tu racha de "+rachaActual+" días.":
+                rachaActual>=7?"¡Llevas "+rachaActual+" días seguidos activo en CLEO. Eso es un hábito real.":
                 rachaActual>=3?"Llevas "+rachaActual+" días registrando actividad. Sigue así.":
                 tieneHoy?"Hoy ya registraste actividad. Buen comienzo.":
                 diasSinAct===0?"Empieza hoy,registrar una venta tarda menos de un minuto.":
                 diasSinAct===1?"Ayer no registraste nada. Hoy puedes retomar el ritmo.":
                 "Han pasado "+diasSinAct+" días desde tu última actividad registrada.";
 
-              var colorRacha=rachaActual>=7?"#FBBF24":rachaActual>=3?"#4ADE80":"#94A3B8";
+              var colorRacha=(!tieneHoy&&esTarde&&rachaActual>=2)?"#F87171":rachaActual>=7?"#FBBF24":rachaActual>=3?"#4ADE80":"#94A3B8";
 
               return e("div",{style:{display:"flex",flexDirection:"column",height:"100%"}},
                 e("div",{style:{marginBottom:20}},
@@ -2797,7 +2919,10 @@ export default function CLEO(props){
                   e("div",{style:{fontSize:40}},rachaActual>=7?"🔥":rachaActual>=3?"⚡":"🌱"),
                   e("div",null,
                     e("div",{style:{fontSize:32,fontWeight:800,color:colorRacha,lineHeight:1}},rachaActual+" días"),
-                    e("div",{style:{fontSize:12,color:"rgba(255,255,255,0.45)",marginTop:2}},rachaActual===1?"de racha activa":"de racha consecutiva")
+                    e("div",{style:{fontSize:12,color:"rgba(255,255,255,0.45)",marginTop:2}},rachaActual===1?"de racha activa":"de racha consecutiva"),
+                    e("div",{style:{fontSize:11,color:esRecordActual?"#FBBF24":"rgba(255,255,255,0.35)",marginTop:4,fontWeight:esRecordActual?700:400}},
+                      esRecordActual&&rachaActual>1?"🏆 ¡Este es tu récord personal!":"Tu récord: "+mejorRacha+" día"+(mejorRacha===1?"":"s")
+                    )
                   )
                 ),
 
@@ -4424,10 +4549,16 @@ export default function CLEO(props){
                       nuevoPedidoForm.nuevoCanal&&e("input",{
                         placeholder:nuevoPedidoForm.nuevoCanal==="WhatsApp"?"Número de WhatsApp (10 dígitos)":nuevoPedidoForm.nuevoCanal==="Instagram"?"Usuario de Instagram (@...)":"Usuario de Facebook",
                         value:nuevoPedidoForm.nuevoContacto||"",
-                        onChange:function(ev){ setNuevoPedidoForm(Object.assign({},nuevoPedidoForm,{nuevoContacto:ev.target.value})); },
+                        onChange:function(ev){
+                          var v=nuevoPedidoForm.nuevoCanal==="WhatsApp"?ev.target.value.replace(/\D/g,"").slice(0,10):ev.target.value;
+                          setNuevoPedidoForm(Object.assign({},nuevoPedidoForm,{nuevoContacto:v}));
+                        },
                         type:nuevoPedidoForm.nuevoCanal==="WhatsApp"?"tel":"text",
+                        maxLength:nuevoPedidoForm.nuevoCanal==="WhatsApp"?10:undefined,
+                        inputMode:nuevoPedidoForm.nuevoCanal==="WhatsApp"?"numeric":undefined,
                         style:st.inp
-                      })
+                      }),
+                      nuevoPedidoForm.nuevoCanal==="WhatsApp"&&nuevoPedidoForm.nuevoContacto&&nuevoPedidoForm.nuevoContacto.length>0&&nuevoPedidoForm.nuevoContacto.length<10&&e("div",{style:{fontSize:11,color:"#E53E3E",marginTop:4}},"Faltan "+(10-nuevoPedidoForm.nuevoContacto.length)+" dígitos")
                     )
                   )
                 ),
@@ -4504,6 +4635,10 @@ export default function CLEO(props){
                     var fp=nuevoPedidoForm;
                     if(!fp.clienteId&&fp.nuevoNombre&&(!fp.nuevoCanal||!fp.nuevoContacto||!fp.nuevoContacto.trim())){
                       alert("Selecciona por dónde contactas a este cliente antes de guardar.");
+                      return;
+                    }
+                    if(!fp.clienteId&&fp.nuevoNombre&&fp.nuevoCanal==="WhatsApp"&&fp.nuevoContacto.replace(/\D/g,"").length!==10){
+                      alert("El número de WhatsApp debe tener exactamente 10 dígitos.");
                       return;
                     }
                     var clienteIdFinal=fp.clienteId?Number(fp.clienteId):null;
@@ -5982,14 +6117,7 @@ export default function CLEO(props){
       (esProductos?["inicio","hoy","prospectos","pedidos","ventas_productos"]:["inicio","hoy","pipeline","ventas","cotizaciones"]).map(function(v){
         var activo=vista===v;
         var nBadge=0;
-        if(v==="hoy"&&esProductos) nBadge=clientes.filter(function(c){
-          if(!c.estadoProspecto||c.estadoProspecto==="Convertido"||c.estadoProspecto==="Perdido") return false;
-          var dias=diasDesde(c.fechaEtapa||c.fecha);
-          if(c.estadoProspecto==="Nueva") return dias>=3;
-          if(c.estadoProspecto==="En seguimiento") return dias>=4;
-          return false;
-        }).length;
-        if(v==="hoy"&&!esProductos) nBadge=clientes.filter(function(c){ return c.etapa!=="Ganado"&&c.etapa!=="Perdido"&&diasDesde(c.fechaEtapa||c.fecha)>=3; }).length;
+        if(v==="hoy") nBadge=contarPendientesHoy(clientes,cotizaciones,pedidos,esProductos);
         var labelShort={
           inicio:"Inicio",hoy:"Hoy",pipeline:"Seguim.",ventas:"Ventas",cotizaciones:"Cotiz.",
           prospectos:"Oportun.",pedidos:"Pedidos",ventas_productos:"Ventas"
@@ -7632,7 +7760,7 @@ export default function CLEO(props){
             ),
             e("div",{style:{flex:1,minWidth:0}},
               e("div",{style:{fontWeight:700,fontSize:15,color:C.text}},perfil.tuNombre||"Sin nombre"),
-              e("div",{style:{fontSize:12,color:C.textMuted,marginTop:1}},perfil.email||"Sin correo registrado")
+              e("div",{style:{fontSize:12,color:C.textMuted,marginTop:1}},props.userEmail||perfil.email||"Sin correo registrado")
             )
           ),
 
@@ -8457,10 +8585,16 @@ export default function CLEO(props){
                 formCot.nuevoCanal&&e("input",{
                   placeholder:formCot.nuevoCanal==="WhatsApp"?"Número de WhatsApp (10 dígitos)":formCot.nuevoCanal==="Instagram"?"Usuario de Instagram (@...)":"Usuario de Facebook",
                   value:formCot.nuevoContacto||"",
-                  onChange:function(ev){ setFormCot(Object.assign({},formCot,{nuevoContacto:ev.target.value})); },
+                  onChange:function(ev){
+                    var v=formCot.nuevoCanal==="WhatsApp"?ev.target.value.replace(/\D/g,"").slice(0,10):ev.target.value;
+                    setFormCot(Object.assign({},formCot,{nuevoContacto:v}));
+                  },
                   type:formCot.nuevoCanal==="WhatsApp"?"tel":"text",
+                  maxLength:formCot.nuevoCanal==="WhatsApp"?10:undefined,
+                  inputMode:formCot.nuevoCanal==="WhatsApp"?"numeric":undefined,
                   style:st.inp
-                })
+                }),
+                formCot.nuevoCanal==="WhatsApp"&&formCot.nuevoContacto&&formCot.nuevoContacto.length>0&&formCot.nuevoContacto.length<10&&e("div",{style:{fontSize:11,color:"#E53E3E",marginTop:4}},"Faltan "+(10-formCot.nuevoContacto.length)+" dígitos")
               )
             )
           ),
@@ -8578,6 +8712,10 @@ export default function CLEO(props){
               if(!clienteIdPDF&&formCot.nuevoNombre&&formCot.nuevoNombre.trim()){
                 if(!formCot.nuevoCanal||!formCot.nuevoContacto||!formCot.nuevoContacto.trim()){
                   alert("Selecciona por dónde contactas a este cliente antes de guardar.");
+                  return;
+                }
+                if(formCot.nuevoCanal==="WhatsApp"&&formCot.nuevoContacto.replace(/\D/g,"").length!==10){
+                  alert("El número de WhatsApp debe tener exactamente 10 dígitos.");
                   return;
                 }
                 var nuevoClienteIdPDF=Date.now();
