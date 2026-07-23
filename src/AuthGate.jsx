@@ -46,8 +46,8 @@ var st = {
   },
   brandPanel: {
     flex: "1 1 340px",
-    background: "#EDEBFC",
-    color: C.text,
+    background: "linear-gradient(160deg," + C.purpleInk + " 0%," + C.purpleDeep + " 55%," + C.purple + " 100%)",
+    color: "#fff",
     display: "flex",
     flexDirection: "column",
     justifyContent: "space-between",
@@ -174,6 +174,9 @@ export default function AuthGate() {
   var userEmail = s10[0];
   var setUserEmail = s10[1];
   var syncRef = useRef(null);
+  var s11 = useState(false);
+  var syncError = s11[0];
+  var setSyncError = s11[1];
   var ring = useFocusRing();
 
   useEffect(function () {
@@ -197,7 +200,14 @@ export default function AuthGate() {
       }
 
       setEstado("sincronizando");
-      await pullUserData(session.user.id);
+      try {
+        await Promise.race([
+          pullUserData(session.user.id),
+          new Promise(function (resolve) {
+            setTimeout(resolve, 8000);
+          }),
+        ]);
+      } catch (e) {}
       if (!activo) return;
 
       setUserId(session.user.id);
@@ -212,6 +222,18 @@ export default function AuthGate() {
 
     var sub = supabase.auth.onAuthStateChange(function (_event, session) {
       if (!activo) return;
+      // Solo procesar eventos reales de inicio/cierre de sesión. Supabase también
+      // dispara este listener al renovar el token en segundo plano (por ejemplo
+      // al regresar a una pestaña en pausa) — eso no debe volver a jalar datos
+      // de la nube ni mandar al usuario a la pantalla de carga, o se arriesga a
+      // pisar cambios locales recientes que aún no se han subido.
+      if (_event !== "SIGNED_IN" && _event !== "SIGNED_OUT" && _event !== "INITIAL_SESSION") {
+        if (session) {
+          setUserId(session.user.id);
+          setUserEmail(session.user.email || null);
+        }
+        return;
+      }
       manejarSesion(session);
     });
     var listener = sub.data;
@@ -226,7 +248,9 @@ export default function AuthGate() {
   // Arranca la sincronización en segundo plano solo cuando ya montamos CLEO.
   useEffect(function () {
     if (estado !== "listo" || !userId) return;
-    syncRef.current = startCloudSync(userId);
+    syncRef.current = startCloudSync(userId, function (estadoSync) {
+      setSyncError(estadoSync === "error");
+    });
     return function () {
       if (syncRef.current) {
         syncRef.current.stop();
@@ -334,8 +358,14 @@ export default function AuthGate() {
     // y AuthGate regresa solo a la pantalla de login.
   }
 
+  function forzarSync() {
+    if (syncRef.current && syncRef.current.flush) {
+      syncRef.current.flush();
+    }
+  }
+
   if (estado === "listo") {
-    return React.createElement(CLEO, { onSignOut: cerrarSesion, userEmail: userEmail });
+    return React.createElement(CLEO, { onSignOut: cerrarSesion, userEmail: userEmail, syncError: syncError, forzarSync: forzarSync });
   }
 
   return React.createElement(
@@ -367,7 +397,7 @@ export default function AuthGate() {
           { style: { position: "relative", zIndex: 1, marginBottom: 28 } },
           React.createElement(
             "div",
-            { style: { fontSize: 15, fontWeight: 700, color: C.purple, letterSpacing: "1px" } },
+            { style: { fontSize: 15, fontWeight: 700, color: "#fff", letterSpacing: "1px" } },
             "CLEO"
           )
         ),
@@ -382,12 +412,14 @@ export default function AuthGate() {
                 fontFamily: "'Caveat',cursive",
                 fontSize: 44,
                 fontWeight: 700,
-                color: C.purple,
+                color: "#fff",
                 lineHeight: 1.1,
                 marginBottom: 16,
               },
             },
-            "Hecho para emprendedores como tú."
+            "Hecho para",
+            React.createElement("br", null),
+            "emprendedores como tú."
           ),
           React.createElement(
             "div",
@@ -395,68 +427,12 @@ export default function AuthGate() {
               style: {
                 fontSize: 14,
                 lineHeight: 1.6,
-                color: "#5C596E",
+                color: "rgba(255,255,255,0.82)",
                 maxWidth: 300,
                 marginBottom: 22,
               },
             },
             "Emprender ya es suficientemente difícil. CLEO te ayuda a organizar tu negocio, recordar lo importante y tener claridad sobre qué hacer para hacerlo crecer."
-          ),
-          React.createElement(
-            "div",
-            {
-              style: {
-                fontSize: 13,
-                fontWeight: 600,
-                color: "#5C596E",
-                marginBottom: 12,
-              },
-            },
-            "Hay demasiadas cosas que recordar:"
-          ),
-          React.createElement(
-            "div",
-            { style: { display: "flex", flexDirection: "column", gap: 12, maxWidth: 300, marginBottom: 36 } },
-            [
-              { icon: "💬", bg: "#EDEBFC", label: "Clientes que no puedes perder de vista" },
-              { icon: "📄", bg: "#FDF3DC", label: "Cotizaciones que hay que dar seguimiento" },
-              { icon: "💰", bg: "#E3F5EC", label: "Cobros que no se te deben olvidar" },
-              { icon: "💡", bg: "#FCE7EF", label: "Ideas que no quieres dejar escapar" },
-            ].map(function (item, i) {
-              return React.createElement(
-                "div",
-                {
-                  key: i,
-                  style: {
-                    display: "flex",
-                    alignItems: "flex-start",
-                    gap: 12,
-                  },
-                },
-                React.createElement(
-                  "div",
-                  {
-                    style: {
-                      width: 34,
-                      height: 34,
-                      borderRadius: 10,
-                      background: item.bg,
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "center",
-                      fontSize: 15,
-                      flexShrink: 0,
-                    },
-                  },
-                  item.icon
-                ),
-                React.createElement(
-                  "div",
-                  { style: { fontSize: 13, fontWeight: 600, color: "#5C596E", paddingTop: 6 } },
-                  item.label
-                )
-              );
-            })
           )
         ),
         React.createElement(
@@ -465,18 +441,15 @@ export default function AuthGate() {
             style: {
               position: "relative",
               zIndex: 1,
-              background: C.purple,
-              borderRadius: 14,
-              padding: "16px",
-              maxWidth: 300,
               fontSize: 13,
-              color: "#fff",
+              color: "rgba(255,255,255,0.85)",
               lineHeight: 1.5,
+              maxWidth: 300,
               marginTop: "auto",
             },
           },
           "No tienes que emprender solo. ",
-          React.createElement("b", null, "CLEO está contigo.")
+          React.createElement("b", { style: { color: "#fff" } }, "CLEO está contigo.")
         )
       ),
 

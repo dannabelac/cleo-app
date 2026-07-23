@@ -82,9 +82,17 @@ export async function pullUserData(userId) {
 // ── PUSH ──────────────────────────────────────────────────────────────────
 // Sincroniza localStorage -> user_data cada 5s, más flush en beforeunload y
 // al ocultarse la pestaña. Devuelve { stop } para cortar la sincronización.
-export function startCloudSync(userId) {
+export function startCloudSync(userId, onEstadoCambia) {
   var ultimoEnviado = "";
   var enVuelo = false;
+
+  function avisar(estado) {
+    if (typeof onEstadoCambia === "function") {
+      try {
+        onEstadoCambia(estado);
+      } catch (e) {}
+    }
+  }
 
   function tipoPerfilActual() {
     try {
@@ -119,17 +127,21 @@ export function startCloudSync(userId) {
         enVuelo = false;
         if (res.error) {
           console.error("cloudSync: error al guardar user_data", res.error);
+          avisar("error");
           return;
         }
         ultimoEnviado = serializado;
+        avisar("ok");
       })
       .catch(function (err) {
         enVuelo = false;
         console.error("cloudSync: excepción al guardar user_data", err);
+        avisar("error");
       });
   }
 
   var intervalId = setInterval(sincronizar, 5000);
+  sincronizar();
 
   function flush() {
     sincronizar();
@@ -148,5 +160,6 @@ export function startCloudSync(userId) {
       document.removeEventListener("visibilitychange", alOcultarse);
       window.removeEventListener("beforeunload", flush);
     },
+    flush: flush,
   };
 }
