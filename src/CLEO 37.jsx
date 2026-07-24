@@ -1470,10 +1470,11 @@ export default function CLEO(props){
   var sOnbSnapshot=useState(null); var onbSnapshot=sOnbSnapshot[0]; var setOnbSnapshot=sOnbSnapshot[1];
   var sResizeTick=useState(0); var setResizeTick=sResizeTick[1];
   var sOnbFlujoCompletado=useState(null); var onbFlujoCompletado=sOnbFlujoCompletado[0]; var setOnbFlujoCompletado=sOnbFlujoCompletado[1];
-  var formPreguntoPVacio={nombre:"",negocio:"",canal:"",contacto:"",instagram:"",messenger:"",productoInteres:"",cantidadInteres:"1",notaAdicional:"",yaEnvio:null,monto:"",fechaEnvioPlaneada:"",fechaEnvioPlaneadaCustom:""};
+  var formPreguntoPVacio={nombre:"",negocio:"",canal:"",contacto:"",instagram:"",messenger:"",productoInteres:"",cantidadInteres:"1",notaAdicional:"",yaEnvio:null,monto:"",fechaEnvioPlaneada:"",fechaEnvioPlaneadaCustom:"",clienteExistenteId:""};
   var sFormPreguntoP=useState(formPreguntoPVacio); var formPreguntoP=sFormPreguntoP[0]; var setFormPreguntoP=sFormPreguntoP[1];
   function cerrarPreguntoP(){ setPasoPreguntoP(null); setFormPreguntoP(formPreguntoPVacio); }
   var sMostrarCatPreguntoP=useState(false); var mostrarCatPreguntoP=sMostrarCatPreguntoP[0]; var setMostrarCatPreguntoP=sMostrarCatPreguntoP[1];
+  var sMostrarCoincidencias1P=useState(false); var mostrarCoincidencias1P=sMostrarCoincidencias1P[0]; var setMostrarCoincidencias1P=sMostrarCoincidencias1P[1];
   function guardarPreguntoP(overrides){
     var fp=Object.assign({},formPreguntoP,overrides||{});
     if(!fp.nombre.trim()) return;
@@ -1484,6 +1485,20 @@ export default function CLEO(props){
     var precioFinal=fp.monto?String(fp.monto):(prodCatalogo&&prodCatalogo.precio?String(prodCatalogo.precio):"");
     var estadoAuto=(fp.yaEnvio&&fp.monto)?"En seguimiento":"Nueva";
     var seguimientoFechaFinal=(!fp.yaEnvio)?resolverFechaPregunto(fp.fechaEnvioPlaneada,fp.fechaEnvioPlaneadaCustom):"";
+    if(fp.clienteExistenteId){
+      setClientes(clientes.map(function(c){
+        if(c.id!==fp.clienteExistenteId) return c;
+        return Object.assign({},c,{
+          nombre:fp.nombre.trim(),negocio:fp.negocio||c.negocio,
+          fechaEtapa:FECHA_HOY,etapa:"Nuevo contacto",estadoProspecto:estadoAuto,
+          productoInteres:fp.productoInteres,precioInteres:precioFinal,cantidadInteres:fp.cantidadInteres||"1",
+          notasProspecto:fp.notaAdicional,seguimientoFecha:seguimientoFechaFinal,ultimoContacto:FECHA_HOY
+        });
+      }));
+      setFormPreguntoP(fp);
+      setPasoPreguntoP(5);
+      return;
+    }
     var nuevoId=Date.now();
     setClientes([Object.assign({},formVacio,{
       id:nuevoId,
@@ -1605,6 +1620,7 @@ export default function CLEO(props){
   var sMostrarCatEnvie=useState(false); var mostrarCatEnvie=sMostrarCatEnvie[0]; var setMostrarCatEnvie=sMostrarCatEnvie[1];
   var sMostrarCatCerre=useState(false); var mostrarCatCerre=sMostrarCatCerre[0]; var setMostrarCatCerre=sMostrarCatCerre[1];
   var sMostrarCatPregunto=useState(false); var mostrarCatPregunto=sMostrarCatPregunto[0]; var setMostrarCatPregunto=sMostrarCatPregunto[1];
+  var sMostrarCoincidencias1=useState(false); var mostrarCoincidencias1=sMostrarCoincidencias1[0]; var setMostrarCoincidencias1=sMostrarCoincidencias1[1];
   var sMandoPrecioForm=useState({concepto:"",monto:""}); var mandoPrecioForm=sMandoPrecioForm[0]; var setMandoPrecioForm=sMandoPrecioForm[1];
   var sMostrarCatMandoPrecio=useState(false); var mostrarCatMandoPrecio=sMostrarCatMandoPrecio[0]; var setMostrarCatMandoPrecio=sMostrarCatMandoPrecio[1];
   var sReconocimientoCerrado=useState(""); var reconocimientoCerrado=sReconocimientoCerrado[0]; var setReconocimientoCerrado=sReconocimientoCerrado[1];
@@ -6400,10 +6416,12 @@ export default function CLEO(props){
         ventasPer.forEach(function(v){ if(v.concepto){ var k=v.concepto.trim(); productoCount[k]=(productoCount[k]||0)+1; } });
         var topProducto=Object.entries(productoCount).sort(function(a,b){ return b[1]-a[1]; })[0]||null;
 
-        // Canal que más trae
+        // Canal que más trae , se excluyen los que no tienen origen registrado (no es un canal real)
+        // Sin depender de estadoProspecto, ya que ese campo es exclusivo de Productos y en Servicios nunca existe
         var canalCount={};
-        clientes.filter(function(c){ return c.estadoProspecto; }).forEach(function(c){ var k=c.origen||"Sin origen"; canalCount[k]=(canalCount[k]||0)+1; });
+        clientes.forEach(function(c){ if(c.origen) canalCount[c.origen]=(canalCount[c.origen]||0)+1; });
         var topCanal=Object.entries(canalCount).sort(function(a,b){ return b[1]-a[1]; })[0]||null;
+        var sinOrigenCount=clientes.filter(function(c){ return !c.origen; }).length;
 
         // Por qué compraron (razones de cierre)
         var razonCount={};
@@ -6502,7 +6520,8 @@ export default function CLEO(props){
         // Insights
         var insights=[];
         if(topProducto) insights.push({ic:"📦",color:"#DCFCE7",icBg:"#166534",titulo:"Tu producto más pedido es "+topProducto[0],desc:topProducto[1]+" veces pedido. Asegúrate de tenerlo siempre disponible y con precio actualizado."});
-        if(topCanal) insights.push({ic:"📣",color:"#EDE9FE",icBg:"#4C1D95",titulo:"La mayoría de tus clientes llegan por "+topCanal[0],desc:topCanal[1]+" clientes vinieron de ahí. Ese canal merece más atención y presencia."});
+        if(topCanal) insights.push({ic:"📣",color:"#EDE9FE",icBg:"#4C1D95",titulo:"La mayoría de tus clientes llegan por "+topCanal[0],desc:topCanal[1]+(topCanal[1]===1?" cliente vino":" clientes vinieron")+" de ahí. Ese canal merece más atención y presencia."});
+        if(sinOrigenCount>0) insights.push({ic:"❓",color:"#FEF3C7",icBg:"#92400E",titulo:sinOrigenCount+(sinOrigenCount===1?" cliente no tiene":" clientes no tienen")+" registrado cómo te encontró",desc:"Registrarlo te ayuda a ver con más claridad qué canal te está trayendo clientes de verdad."});
         if(promDiasConv!==null) insights.push({ic:"⏱️",color:promDiasConv<=3?"#DCFCE7":"#FEF3C7",icBg:promDiasConv<=3?"#166534":"#92400E",titulo:promDiasConv===0?"Tus clientes deciden rápido":"En promedio tardas "+promDiasConv+" días en cerrar",desc:promDiasConv<=3?"La mayoría de tus ventas se cierran muy rápido. Eso es buena señal de confianza.":"Entre más rápido le mandas el precio, más probabilidad de que compre."});
         if(topRazon) insights.push({ic:"🏆",color:"#FEF9C3",icBg:"#713F12",titulo:"La razón de compra más común es "+topRazon[0],desc:"Registrada "+topRazon[1]+" veces. Eso es lo que más convence a tus clientes — úsalo en tu comunicación."});
         if(topMotivoPerdida&&topMotivoPerdida[1]>=2) insights.push({ic:"⚠️",color:"#FEE2E2",icBg:"#991B1B",titulo:'"'+topMotivoPerdida[0]+'" es el motivo más común de que se te vayan clientes',desc:"Apareció en "+topMotivoPerdida[1]+" de "+totalPerdidasProd+" oportunidades o pedidos que no se concretaron."});
@@ -7473,6 +7492,21 @@ export default function CLEO(props){
           return cl===nl||cl.indexOf(nl)===0||nl.indexOf(cl)===0;
         });
       })();
+      var coincidenciasNombre1=pasoPregunto===1&&fp.nombre.trim().length>0&&!fp.clienteExistenteId
+        ?clientes.filter(function(c){ return c.nombre.toLowerCase().indexOf(fp.nombre.trim().toLowerCase())===0; }).slice(0,5)
+        :[];
+      function elegirClienteExistente1(c){
+        var servicioGuardado=c.servicioInteres||c.notas||"";
+        var svCatalogo=servicios.find(function(sv){ return sv.nombre===servicioGuardado; });
+        setFormPregunto(Object.assign({},fp,{
+          nombre:c.nombre,negocio:c.negocio||"",
+          canal:c.canalPrincipal||"",contacto:c.contacto||"",instagram:c.instagram||"",messenger:c.messenger||"",
+          servicioInteres:servicioGuardado,
+          monto:svCatalogo?String(svCatalogo.precio):"",
+          clienteExistenteId:c.id
+        }));
+        setMostrarCoincidencias1(false);
+      }
       var canalElegido=!!fp.canal;
       var paso2Completo=canalElegido&&(fp.canal!=="WhatsApp"||!fp.contacto||fp.contacto.length===10);
       return e("div",{style:st.ov,onClick:cerrarPregunto},
@@ -7485,7 +7519,21 @@ export default function CLEO(props){
           pasoPregunto===1&&e("div",null,
             e("div",{style:{fontSize:14,fontWeight:700,color:C.purple,marginBottom:18,lineHeight:1.4}},"¡Qué bien! No dejemos que esa conversación se enfríe."),
             e("div",{style:{marginBottom:6}},e("label",{style:st.lbl},"¿Quién mostró interés?")),
-            e("input",{value:fp.nombre,onChange:function(ev){ setFormPregunto(Object.assign({},fp,{nombre:ev.target.value})); },placeholder:"Nombre de la persona",style:st.inp,autoFocus:true}),
+            e("div",{style:{position:"relative"}},
+              e("input",{
+                value:fp.nombre,
+                onChange:function(ev){ setFormPregunto(Object.assign({},fp,{nombre:ev.target.value,clienteExistenteId:""})); },
+                onFocus:function(){ setMostrarCoincidencias1(true); },
+                onBlur:function(){ setTimeout(function(){ setMostrarCoincidencias1(false); },150); },
+                placeholder:"Nombre de la persona",style:st.inp,autoFocus:true
+              }),
+              mostrarCoincidencias1&&coincidenciasNombre1.length>0&&e("div",{style:{position:"absolute",top:"100%",left:0,right:0,zIndex:10,background:C.surface,border:"1px solid "+C.border,borderRadius:10,marginTop:4,boxShadow:"0 4px 12px rgba(0,0,0,0.08)",overflow:"hidden"}},
+                coincidenciasNombre1.map(function(c){
+                  return e("button",{key:c.id,style:{display:"block",width:"100%",textAlign:"left",padding:"9px 12px",border:"none",background:"transparent",cursor:"pointer",fontSize:13,color:C.text},onClick:function(){ elegirClienteExistente1(c); }},c.nombre+" · "+(ETAPAS_LABEL[c.etapa]||c.etapa));
+                })
+              )
+            ),
+            fp.clienteExistenteId&&e("div",{style:{marginTop:6,fontSize:12,color:C.purple,fontWeight:600}},"✓ Usando los datos que ya tenías de "+fp.nombre.split(" ")[0]),
             dupPaso1&&dupPaso1.etapa==="Nuevo contacto"&&e("div",{style:{marginTop:8,padding:"10px 12px",background:C.purplePale,border:"1px solid "+C.purple+"33",borderRadius:10,fontSize:12,color:C.text,lineHeight:1.5}},
               "Ya tienes a ",e("b",null,dupPaso1.nombre)," registrado, sin haberle enviado precio todavía. ¿Es la misma persona?",
               e("div",{style:{display:"flex",gap:8,marginTop:8}},
@@ -7653,6 +7701,21 @@ export default function CLEO(props){
       var nombreCorto=fp.nombre?fp.nombre.split(" ")[0]:"";
       var canalElegido=!!fp.canal;
       var paso2Completo=canalElegido&&(fp.canal!=="WhatsApp"||!fp.contacto||fp.contacto.length===10);
+      var coincidenciasNombre1P=fp.nombre.trim().length>0&&!fp.clienteExistenteId
+        ?clientes.filter(function(c){ return c.nombre.toLowerCase().indexOf(fp.nombre.trim().toLowerCase())===0; }).slice(0,5)
+        :[];
+      function elegirClienteExistente1P(c){
+        var prodCatalogoSel=productosCat.find(function(p){ return p.nombre===c.productoInteres; });
+        setFormPreguntoP(Object.assign({},fp,{
+          nombre:c.nombre,negocio:c.negocio||"",
+          canal:c.canalPrincipal||"",contacto:c.contacto||"",instagram:c.instagram||"",messenger:c.messenger||"",
+          productoInteres:c.productoInteres||"",
+          monto:prodCatalogoSel?String(prodCatalogoSel.precio):(c.precioInteres||""),
+          cantidadInteres:c.cantidadInteres||"1",
+          clienteExistenteId:c.id
+        }));
+        setMostrarCoincidencias1P(false);
+      }
       // Catálogo unificado de productos, igual criterio que crearOportunidad()
       var catalogoUnificadoP=[];
       productosCat.forEach(function(sv){ catalogoUnificadoP.push({nombre:sv.nombre,precio:sv.precio}); });
@@ -7669,7 +7732,21 @@ export default function CLEO(props){
           pasoPreguntoP===1&&e("div",null,
             e("div",{style:{fontSize:14,fontWeight:700,color:C.purple,marginBottom:18,lineHeight:1.4}},"¡Qué bien! No dejemos que esa oportunidad se enfríe."),
             e("div",{style:{marginBottom:6}},e("label",{style:st.lbl},"¿Quién mostró interés?")),
-            e("input",{value:fp.nombre,onChange:function(ev){ setFormPreguntoP(Object.assign({},fp,{nombre:ev.target.value})); },placeholder:"Nombre de la persona",style:st.inp,autoFocus:true}),
+            e("div",{style:{position:"relative"}},
+              e("input",{
+                value:fp.nombre,
+                onChange:function(ev){ setFormPreguntoP(Object.assign({},fp,{nombre:ev.target.value,clienteExistenteId:""})); },
+                onFocus:function(){ setMostrarCoincidencias1P(true); },
+                onBlur:function(){ setTimeout(function(){ setMostrarCoincidencias1P(false); },150); },
+                placeholder:"Nombre de la persona",style:st.inp,autoFocus:true
+              }),
+              mostrarCoincidencias1P&&coincidenciasNombre1P.length>0&&e("div",{style:{position:"absolute",top:"100%",left:0,right:0,zIndex:10,background:C.surface,border:"1px solid "+C.border,borderRadius:10,marginTop:4,boxShadow:"0 4px 12px rgba(0,0,0,0.08)",overflow:"hidden"}},
+                coincidenciasNombre1P.map(function(c){
+                  return e("button",{key:c.id,style:{display:"block",width:"100%",textAlign:"left",padding:"9px 12px",border:"none",background:"transparent",cursor:"pointer",fontSize:13,color:C.text},onClick:function(){ elegirClienteExistente1P(c); }},c.nombre+(c.estadoProspecto==="Nueva"?" (oportunidad nueva)":c.estadoProspecto==="En seguimiento"?" (en seguimiento)":c.estadoProspecto==="Convertido"?" (ya compró)":""));
+                })
+              )
+            ),
+            fp.clienteExistenteId&&e("div",{style:{marginTop:6,fontSize:12,color:C.purple,fontWeight:600}},"✓ Usando los datos que ya tenías de "+fp.nombre.split(" ")[0]),
             e("div",{style:{marginTop:14,marginBottom:6}},e("label",{style:st.lbl},"Nombre de su negocio (si tiene)")),
             e("input",{value:fp.negocio,onChange:function(ev){ setFormPreguntoP(Object.assign({},fp,{negocio:ev.target.value})); },placeholder:"Opcional",style:st.inp}),
             e("div",{style:{fontSize:12,color:C.textDim,marginTop:8,marginBottom:20,lineHeight:1.5}},"Con su nombre es suficiente. El negocio puedes agregarlo después."),
