@@ -976,9 +976,19 @@ function _comprobanteFooter(folio,fecha,redesHtml,perfil){
   return '<div class="footer"><span>'+folio+' &nbsp;&middot;&nbsp; '+fecha+'</span><span>'+(redesHtml||perfil.nombre)+'</span></div>';
 }
 function _abrirHTML(html,filename){
-  var win=window.open('','_blank');
-  if(win){ win.document.write(html); win.document.close(); win.focus(); setTimeout(function(){ win.print(); },800); }
-  else { var blob=new Blob([html],{type:'text/html'}); var url=URL.createObjectURL(blob); var a=document.createElement('a'); a.href=url; a.download=filename; document.body.appendChild(a); a.click(); document.body.removeChild(a); URL.revokeObjectURL(url); }
+  var blob=new Blob([html],{type:'text/html'});
+  var url=URL.createObjectURL(blob);
+  var win=window.open(url,'_blank');
+  if(win){
+    var yaImprimio=false;
+    function imprimirUnaVez(){ if(yaImprimio) return; yaImprimio=true; try{ win.print(); }catch(e){} }
+    win.addEventListener("load",imprimirUnaVez);
+    setTimeout(imprimirUnaVez,1500); // respaldo, por si el evento load no se dispara en algún navegador
+  } else {
+    // Ventana bloqueada: se descarga el archivo directamente en su lugar
+    var a=document.createElement('a'); a.href=url; a.download=filename; document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  }
+  setTimeout(function(){ URL.revokeObjectURL(url); },60000);
 }
 
 function ModalVenta(props){
