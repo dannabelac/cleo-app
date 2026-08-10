@@ -2,6 +2,7 @@ import React, { useEffect, useRef, useState } from "react";
 import { supabase } from "./supabaseClient";
 import { pullUserData, startCloudSync, clearCleoLocalData, crearDemoSession, eliminarDemoSession, leerDemoSessionValida } from "./cloudSync";
 import CLEO from "./CLEO.jsx";
+import { PRIVACY_VERSION, TERMS_VERSION, LegalModal, useDocumentoLegal } from "./LegalDocuments.jsx";
 
 var C = {
   bg: "#F7F7FB",
@@ -76,7 +77,7 @@ var st = {
     border: "1.5px solid " + C.border,
     background: C.surface,
     color: C.text,
-    fontSize: 14.5,
+    fontSize: 16,
     boxSizing: "border-box",
     fontFamily: FONT,
     outline: "none",
@@ -326,6 +327,30 @@ export default function AuthGate() {
 
   // ── Confirmación de correo al registrarse ───────────────────────────────
   var s29 = useState(""); var confirmarPasswordRegistro = s29[0]; var setConfirmarPasswordRegistro = s29[1];
+
+  // ── Consentimiento legal ────────────────────────────────────────────
+  // Casilla del formulario de registro , NO sustituye el control real
+  // (la fila en legal_acceptances), es solo una primera fricción para no
+  // dejar avanzar sin marcarla. La fuente de verdad real es el control
+  // que corre dentro de manejarSesionReal después de autenticar.
+  var sAceptoLegal = useState(false); var aceptoLegalRegistro = sAceptoLegal[0]; var setAceptoLegalRegistro = sAceptoLegal[1];
+  // Estado de la pantalla legal obligatoria (post-autenticación).
+  var sSessionLegalPendiente = useState(null); var sessionLegalPendiente = sSessionLegalPendiente[0]; var setSessionLegalPendiente = sSessionLegalPendiente[1];
+  var sAceptoLegalPantalla = useState(false); var aceptoLegalPantalla = sAceptoLegalPantalla[0]; var setAceptoLegalPantalla = sAceptoLegalPantalla[1];
+  var sGuardandoLegal = useState(false); var guardandoLegal = sGuardandoLegal[0]; var setGuardandoLegal = sGuardandoLegal[1];
+  var sErrorLegalPantalla = useState(""); var errorLegalPantalla = sErrorLegalPantalla[0]; var setErrorLegalPantalla = sErrorLegalPantalla[1];
+  var sCerrandoSesionLegal = useState(false); var cerrandoSesionLegal = sCerrandoSesionLegal[0]; var setCerrandoSesionLegal = sCerrandoSesionLegal[1];
+  var guardandoLegalRef = useRef(false); // bloqueo síncrono, además del estado visual
+  var cerrandoSesionLegalRef = useRef(false);
+  // Documento legal abierto (desde el registro, la pantalla obligatoria, o "Mi cuenta")
+  var docLegalRegistro = useDocumentoLegal();
+  var docLegalPantalla = useDocumentoLegal();
+  // Permite reanudar el MISMO flujo (manejarSesionReal) desde fuera del
+  // efecto una vez aceptados los documentos , así "continuar tras aceptar"
+  // nunca duplica la lógica de demo/pullUserData/montar CLEO: literalmente
+  // vuelve a llamar la misma función, que esta vez sí encontrará la fila.
+  var manejarSesionRef = useRef(null);
+
   var s30 = useState(false); var verConfirmarPasswordRegistro = s30[0]; var setVerConfirmarPasswordRegistro = s30[1];
   var s31 = useState(""); var correoRegistro = s31[0]; var setCorreoRegistro = s31[1]; // solo en memoria, nunca en storage
   var s32 = useState(false); var reenviandoCorreo = s32[0]; var setReenviandoCorreo = s32[1];
@@ -367,6 +392,49 @@ export default function AuthGate() {
         setUserId(null);
         setUserEmail(null);
         setEstado("sinSesion");
+        return;
+      }
+
+      // ── Control legal obligatorio ──────────────────────────────────
+      // Antes de CUALQUIER otra cosa (demo, pullUserData, montar CLEO,
+      // sincronizar): ¿esta cuenta ya aceptó EXACTAMENTE las versiones
+      // vigentes? Ninguna aceptación con una versión distinta cuenta como
+      // válida , cambiar PRIVACY_VERSION o TERMS_VERSION en
+      // LegalDocuments.jsx hace que esto vuelva a pedirse solo.
+      // Vive DENTRO de manejarSesionReal a propósito: ya está protegido
+      // por el mismo bloqueo de manejarSesion() que evita procesar la
+      // misma sesión 2 veces en paralelo (getSession + INITIAL_SESSION),
+      // así que no hace falta ningún bloqueo adicional aquí.
+      var resultadoLegal;
+      try {
+        resultadoLegal = await supabase
+          .from("legal_acceptances")
+          .select("id")
+          .eq("user_id", session.user.id)
+          .eq("privacy_version", PRIVACY_VERSION)
+          .eq("terms_version", TERMS_VERSION)
+          .eq("adult_confirmed", true)
+          .eq("financial_consent", true)
+          .eq("acceptance_channel", "web")
+          .maybeSingle();
+      } catch (excepcionLegal) {
+        resultadoLegal = { error: excepcionLegal };
+      }
+      if (!activo) return;
+      if (enRecuperacionRef.current) return; // pudo cambiar mientras esperábamos
+      if (resultadoLegal.error) {
+        // Nunca se monta CLEO ni se sincroniza si no pudimos confirmar la
+        // aceptación , mismo criterio que errorCarga: mejor bloquear que
+        // arriesgarnos a dejar pasar a alguien sin consentimiento válido.
+        setSessionLegalPendiente(session);
+        setEstado("errorLegal");
+        return;
+      }
+      if (!resultadoLegal.data) {
+        setSessionLegalPendiente(session);
+        setAceptoLegalPantalla(false);
+        setErrorLegalPantalla("");
+        setEstado("requiereAceptacionLegal");
         return;
       }
 
@@ -462,6 +530,7 @@ export default function AuthGate() {
       procesandoRef.current = { userId: uid, promise: promesa };
       return promesa;
     }
+    manejarSesionRef.current = manejarSesion;
 
     // Decide cuál de las 2 vistas de recuperación mostrar: si la contraseña
     // ya se guardó en un intento anterior (la página se recargó antes de que
@@ -553,6 +622,7 @@ export default function AuthGate() {
     setMensajeRecuperacion(null);
     setConfirmarPasswordRegistro("");
     setMensajeReenvio(null);
+    setAceptoLegalRegistro(false);
   }
 
   function detectarLimiteCorreos(err) {
@@ -697,6 +767,10 @@ export default function AuthGate() {
         setError("Las contraseñas no coinciden.");
         return;
       }
+      if (!aceptoLegalRegistro) {
+        setError("Necesitas confirmar que eres mayor de edad y aceptar los documentos legales para crear tu cuenta.");
+        return;
+      }
     } else {
       if (!email.trim() || !password) {
         setError("Escribe tu correo y contraseña.");
@@ -795,6 +869,121 @@ export default function AuthGate() {
     window.location.reload();
   }
 
+  // ── Pantalla legal obligatoria ───────────────────────────────────────
+  function reintentarControlLegal() {
+    // Se reintenta reinvocando exactamente la misma función que ya hizo la
+    // consulta la primera vez (manejarSesionReal, vía el ref) , nunca se
+    // duplica esa lógica aquí. Solo si no hay sesión guardada (caso
+    // extremo) se recurre a recargar la página, igual que reintentarCarga.
+    if (sessionLegalPendiente && manejarSesionRef.current) {
+      setErrorLegalPantalla("");
+      manejarSesionRef.current(sessionLegalPendiente);
+    } else {
+      window.location.reload();
+    }
+  }
+
+  async function noAceptarYCerrarSesion() {
+    if (cerrandoSesionLegalRef.current) return; // bloqueo síncrono, primera línea
+    cerrandoSesionLegalRef.current = true;
+    setCerrandoSesionLegal(true);
+    setErrorLegalPantalla("");
+    // Deliberadamente NO se usa cerrarSesion() (el cierre normal de CLEO):
+    // en este punto todavía no debe existir ninguna sincronización activa,
+    // así que no hay nada que hacer flush antes de cerrar , un signOut
+    // local simple y directo es lo correcto aquí.
+    var resultado;
+    try {
+      resultado = await supabase.auth.signOut({ scope: "local" });
+    } catch (excepcionSignOut) {
+      resultado = { error: excepcionSignOut };
+    }
+    if (resultado && resultado.error) {
+      // Nunca se permite entrar a CLEO por un fallo de cierre , la
+      // pantalla se mantiene bloqueada, con opción de reintentar.
+      cerrandoSesionLegalRef.current = false;
+      setCerrandoSesionLegal(false);
+      setErrorLegalPantalla("No se pudo cerrar la sesión. Intenta de nuevo.");
+      return;
+    }
+    // Éxito: el listener de onAuthStateChange ya existente se encarga de
+    // limpiar el estado (session:null → manejarSesionReal → "sinSesion"),
+    // así que no hace falta tocar nada más aquí ni duplicar esa lógica.
+    cerrandoSesionLegalRef.current = false;
+    setCerrandoSesionLegal(false);
+  }
+
+  async function aceptarDocumentosLegales() {
+    if (guardandoLegalRef.current) return; // bloqueo síncrono, primera línea, antes que cualquier otra cosa
+    if (!aceptoLegalPantalla || !sessionLegalPendiente) return;
+    guardandoLegalRef.current = true;
+    setGuardandoLegal(true);
+    setErrorLegalPantalla("");
+
+    var uid = sessionLegalPendiente.user.id;
+    var resultadoInsert;
+    try {
+      resultadoInsert = await supabase.from("legal_acceptances").insert({
+        user_id: uid,
+        privacy_version: PRIVACY_VERSION,
+        terms_version: TERMS_VERSION,
+        adult_confirmed: true,
+        financial_consent: true,
+        acceptance_channel: "web",
+      });
+    } catch (excepcionInsert) {
+      resultadoInsert = { error: excepcionInsert };
+    }
+    if (resultadoInsert.error) {
+      // No se asume fracaso todavía , podría tratarse de la restricción
+      // única por usuario+versiones rechazando un doble envío. La fuente
+      // de verdad real es la reconsulta de abajo, nunca este error solo.
+    }
+
+    // Se vuelve a consultar la fila EXACTA antes de continuar , nunca se
+    // da por hecho que se guardó solo porque el INSERT terminó (con o sin
+    // error). Si la fila exacta ya existe (por este intento o por un doble
+    // envío previo), se considera éxito; nunca se crea una fila alternativa
+    // ni se cambian versiones.
+    var resultadoConfirmacion;
+    try {
+      resultadoConfirmacion = await supabase
+        .from("legal_acceptances")
+        .select("id")
+        .eq("user_id", uid)
+        .eq("privacy_version", PRIVACY_VERSION)
+        .eq("terms_version", TERMS_VERSION)
+        .eq("adult_confirmed", true)
+        .eq("financial_consent", true)
+        .eq("acceptance_channel", "web")
+        .maybeSingle();
+    } catch (excepcionConfirmacion) {
+      resultadoConfirmacion = { error: excepcionConfirmacion };
+    }
+
+    if (resultadoConfirmacion.error || !resultadoConfirmacion.data) {
+      // El guardado no pudo confirmarse , se mantiene bloqueado el acceso,
+      // se conserva la casilla marcada para facilitar el reintento, y se
+      // muestra un error comprensible. Nunca se monta CLEO ni se sincroniza.
+      guardandoLegalRef.current = false;
+      setGuardandoLegal(false);
+      setErrorLegalPantalla("No se pudo guardar tu aceptación. Revisa tu conexión e intenta de nuevo.");
+      return;
+    }
+
+    // Confirmado: la fila exacta existe. Se continúa UNA SOLA VEZ con el
+    // flujo normal de esta misma sesión (demo/pullUserData/CLEO/sync),
+    // reinvocando literalmente la misma función que ya lo hace , nunca se
+    // duplica esa lógica aquí.
+    guardandoLegalRef.current = false;
+    setGuardandoLegal(false);
+    var sessionParaContinuar = sessionLegalPendiente;
+    setSessionLegalPendiente(null);
+    if (manejarSesionRef.current) {
+      manejarSesionRef.current(sessionParaContinuar);
+    }
+  }
+
   if (estado === "errorCarga") {
     return React.createElement(
       "div",
@@ -845,6 +1034,176 @@ export default function AuthGate() {
           },
           "Reintentar"
         )
+      )
+    );
+  }
+
+  // ── Pantalla: no se pudo confirmar la aceptación legal (error de red/Supabase) ──
+  if (estado === "errorLegal") {
+    return React.createElement(
+      "div",
+      {
+        style: Object.assign({}, st.page, {
+          alignItems: "center",
+          justifyContent: "center",
+          textAlign: "center",
+        }),
+      },
+      React.createElement(
+        "div",
+        { style: { maxWidth: 320 } },
+        React.createElement("div", { style: { fontSize: 32, marginBottom: 12 } }, "📡"),
+        React.createElement(
+          "div",
+          { style: { fontSize: 16, fontWeight: 700, color: C.text, marginBottom: 8 } },
+          "No pudimos confirmar tu aceptación"
+        ),
+        React.createElement(
+          "div",
+          { style: { fontSize: 13.5, color: C.textMuted, marginBottom: 22, lineHeight: 1.5 } },
+          "Revisa tu conexión a internet e intenta de nuevo. Por seguridad, no podemos continuar sin confirmar esto."
+        ),
+        React.createElement(
+          "button",
+          { style: Object.assign({}, st.btnPrimary, { marginBottom: 10 }), onClick: reintentarControlLegal },
+          "Reintentar"
+        ),
+        React.createElement(
+          "button",
+          {
+            style: Object.assign({}, st.btnPrimary, {
+              background: "transparent",
+              color: C.textMuted,
+              border: "1px solid " + C.border,
+              opacity: cerrandoSesionLegal ? 0.6 : 1,
+            }),
+            disabled: cerrandoSesionLegal,
+            onClick: noAceptarYCerrarSesion,
+          },
+          cerrandoSesionLegal ? "Cerrando sesión…" : "Cerrar sesión"
+        )
+      )
+    );
+  }
+
+  // ── Pantalla: aceptación legal obligatoria ──────────────────────────
+  if (estado === "requiereAceptacionLegal") {
+    return React.createElement(
+      "div",
+      { style: Object.assign({}, st.page, { alignItems: "center", justifyContent: "center" }) },
+      React.createElement(
+        "div",
+        { style: { width: "100%", maxWidth: 420 } },
+        React.createElement(
+          "div",
+          { style: { fontSize: 19, fontWeight: 700, color: C.text, marginBottom: 10, textAlign: "center" } },
+          "Antes de continuar"
+        ),
+        React.createElement(
+          "div",
+          { style: { fontSize: 13.5, color: C.textMuted, lineHeight: 1.55, marginBottom: 22, textAlign: "center" } },
+          "Queremos que sepas con claridad cómo funciona CLEO y cómo protegemos la información que decides registrar."
+        ),
+        React.createElement(
+          "div",
+          { style: { display: "flex", flexDirection: "column", gap: 10, marginBottom: 20 } },
+          React.createElement(
+            "button",
+            {
+              type: "button",
+              onClick: docLegalPantalla.abrirPrivacidad,
+              style: Object.assign({}, st.btnPrimary, {
+                background: "transparent",
+                color: C.purple,
+                border: "1.5px solid " + C.purple,
+              }),
+            },
+            "Ver Aviso de Privacidad"
+          ),
+          React.createElement(
+            "button",
+            {
+              type: "button",
+              onClick: docLegalPantalla.abrirTerminos,
+              style: Object.assign({}, st.btnPrimary, {
+                background: "transparent",
+                color: C.purple,
+                border: "1.5px solid " + C.purple,
+              }),
+            },
+            "Ver Términos de la Beta"
+          )
+        ),
+
+        React.createElement(
+          "div",
+          { style: { display: "flex", alignItems: "flex-start", gap: 10, marginBottom: 18 } },
+          React.createElement("input", {
+            type: "checkbox",
+            id: "acepto-legal-pantalla",
+            checked: aceptoLegalPantalla,
+            onChange: function (ev) {
+              setAceptoLegalPantalla(ev.target.checked);
+              setErrorLegalPantalla("");
+            },
+            style: { marginTop: 3, width: 18, height: 18, minWidth: 18, flexShrink: 0, cursor: "pointer" },
+          }),
+          React.createElement(
+            "label",
+            { htmlFor: "acepto-legal-pantalla", style: { fontSize: 13, color: C.text, lineHeight: 1.55, cursor: "pointer" } },
+            "Confirmo que soy mayor de 18 años y que leí y acepto los Términos de la Beta y el Aviso de Privacidad. Autorizo expresamente el tratamiento de la información financiera o patrimonial que decida registrar en CLEO."
+          )
+        ),
+
+        errorLegalPantalla &&
+          React.createElement(
+            "div",
+            {
+              style: {
+                fontSize: 12.5,
+                color: C.red,
+                background: C.redBg,
+                borderRadius: 10,
+                padding: "10px 12px",
+                marginBottom: 14,
+                lineHeight: 1.5,
+              },
+            },
+            errorLegalPantalla
+          ),
+
+        React.createElement(
+          "button",
+          {
+            style: Object.assign({}, st.btnPrimary, {
+              marginBottom: 10,
+              opacity: !aceptoLegalPantalla || guardandoLegal ? 0.55 : 1,
+            }),
+            disabled: !aceptoLegalPantalla || guardandoLegal,
+            onClick: aceptarDocumentosLegales,
+          },
+          guardandoLegal ? "Guardando…" : "Aceptar y continuar"
+        ),
+        React.createElement(
+          "button",
+          {
+            style: Object.assign({}, st.btnPrimary, {
+              background: "transparent",
+              color: C.textMuted,
+              border: "1px solid " + C.border,
+              opacity: cerrandoSesionLegal ? 0.6 : 1,
+            }),
+            disabled: cerrandoSesionLegal,
+            onClick: noAceptarYCerrarSesion,
+          },
+          cerrandoSesionLegal ? "Cerrando sesión…" : "No aceptar y cerrar sesión"
+        ),
+
+        docLegalPantalla.documentoAbierto &&
+          React.createElement(LegalModal, {
+            tipo: docLegalPantalla.documentoAbierto,
+            onClose: docLegalPantalla.cerrarDocumento,
+          })
       )
     );
   }
@@ -1911,6 +2270,7 @@ export default function AuthGate() {
                         setConfirmarPasswordRegistro("");
                         setMensajeReenvio(null);
                         setCorreoRegistro("");
+                        setAceptoLegalRegistro(false);
                         setModo("signup");
                       },
                     },
@@ -2126,6 +2486,60 @@ export default function AuthGate() {
                   )
                 )
               ),
+
+            modo === "signup" &&
+              React.createElement(
+                "div",
+                { style: { display: "flex", alignItems: "flex-start", gap: 10, marginBottom: 16, marginTop: 2 } },
+                React.createElement("input", {
+                  type: "checkbox",
+                  id: "acepto-legal-registro",
+                  checked: aceptoLegalRegistro,
+                  onChange: function (ev) {
+                    setAceptoLegalRegistro(ev.target.checked);
+                  },
+                  style: { marginTop: 3, width: 18, height: 18, minWidth: 18, flexShrink: 0, cursor: "pointer" },
+                }),
+                React.createElement(
+                  "label",
+                  { htmlFor: "acepto-legal-registro", style: { fontSize: 12.5, color: C.textMuted, lineHeight: 1.55, cursor: "pointer" } },
+                  "Confirmo que soy mayor de 18 años y que leí los ",
+                  React.createElement(
+                    "button",
+                    {
+                      type: "button",
+                      onClick: function (ev) {
+                        ev.preventDefault();
+                        ev.stopPropagation();
+                        docLegalRegistro.abrirTerminos();
+                      },
+                      style: { background: "none", border: "none", padding: 0, cursor: "pointer", color: C.purple, fontWeight: 600, fontSize: 12.5, textDecoration: "underline" },
+                    },
+                    "Términos de la Beta"
+                  ),
+                  " y el ",
+                  React.createElement(
+                    "button",
+                    {
+                      type: "button",
+                      onClick: function (ev) {
+                        ev.preventDefault();
+                        ev.stopPropagation();
+                        docLegalRegistro.abrirPrivacidad();
+                      },
+                      style: { background: "none", border: "none", padding: 0, cursor: "pointer", color: C.purple, fontWeight: 600, fontSize: 12.5, textDecoration: "underline" },
+                    },
+                    "Aviso de Privacidad"
+                  ),
+                  ". Entiendo que CLEO se encuentra en etapa beta gratuita."
+                )
+              ),
+
+            docLegalRegistro.documentoAbierto &&
+              React.createElement(LegalModal, {
+                tipo: docLegalRegistro.documentoAbierto,
+                onClose: docLegalRegistro.cerrarDocumento,
+              }),
 
             modo === "login" &&
               React.createElement(

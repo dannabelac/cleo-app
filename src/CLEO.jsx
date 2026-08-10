@@ -1,6 +1,33 @@
 import { useState, useMemo, useEffect, useRef } from "react";
 import React from "react";
 import DOMPurify from "dompurify";
+import { PRIVACY_VERSION, TERMS_VERSION, LegalModal, useDocumentoLegal } from "./LegalDocuments.jsx";
+
+// ── Detección de móvil , centralizada y reactiva ────────────────────────
+// Antes existían 2 cálculos independientes de "isMobile" en el archivo, y
+// ninguno reaccionaba a un resize/rotación real (se recalculaban solo si
+// otra cosa causaba un re-render). Este hook es la única fuente , se
+// recalcula en cada resize/orientationchange, y todo el resto del árbol
+// (incluidos componentes hijos como ModalVenta) lo recibe de aquí, ya sea
+// llamando al hook directamente o recibiéndolo por props.
+function calcularEsMobile(){
+  if(typeof window==="undefined") return false;
+  var w=window.innerWidth,h=window.innerHeight;
+  return w<768||(w>=768&&w<1024&&h>w);
+}
+function useEsMobile(){
+  var s=useState(calcularEsMobile); var val=s[0]; var setVal=s[1];
+  useEffect(function(){
+    function onResize(){ setVal(calcularEsMobile()); }
+    window.addEventListener("resize",onResize);
+    window.addEventListener("orientationchange",onResize);
+    return function(){
+      window.removeEventListener("resize",onResize);
+      window.removeEventListener("orientationchange",onResize);
+    };
+  },[]);
+  return val;
+}
 import { CotizacionAdjunto } from "./CotizacionAdjunto.jsx";
 
 const ETAPAS = ["Nuevo contacto","Cotizacion enviada","Negociacion","Ganado","Perdido"];
@@ -92,7 +119,7 @@ var FRASES_SEGUIMIENTO_POR_DIAS={"15":"pedirle una recomendación.","30":"ver si
 // nunca se pierde un recordatorio existente por el cambio de modelo.
 function recordatoriosDe(c){
   if(Array.isArray(c.recordatorios)) return c.recordatorios;
-  if(c&&c.seguimientoFecha) return [{id:"legacy",fecha:c.seguimientoFecha,nota:c.mensajeSeguimientoPostVenta||"",esPersonalizada:false,origen:"cleo"}];
+  if(c&&c.seguimientoFecha) return [{id:"legacy",fecha:c.seguimientoFecha,nota:c.mensajeSeguimientoPostVenta||"",esPersonalizada:!!c.seguimientoEsPersonalizada,origen:"cleo"}];
   return [];
 }
 // Guarda una nueva lista de recordatorios ya ordenada por fecha, y deja
@@ -111,6 +138,148 @@ function conRecordatoriosActualizados(c,nuevaLista){
     seguimientoEsPersonalizada:prox?!!prox.esPersonalizada:false
   });
 }
+// ── Categoría de recordatorios ─────────────────────────────────────────
+// Textos automáticos EXACTOS que ya se conocen de los puntos de creación de
+// preventa , usados para reconocer registros ANTIGUOS (creados antes de
+// que existiera el campo categoria) que en realidad eran de pipeline.
+var MENSAJES_PIPELINE_CONOCIDOS=[
+  "Ya le enviaste la cotización. Dijiste que le darías seguimiento.",
+  "Seguía interesado. Le dijiste que le darías seguimiento.",
+  "No respondió la vez pasada. Vale la pena intentar de nuevo."
+];
+function esTextoPipelineConocido(texto){
+  if(!texto) return false;
+  if(MENSAJES_PIPELINE_CONOCIDOS.indexOf(texto)!==-1) return true;
+  if(/^Preguntó por .+ y quedaste en enviarle el precio\.$/.test(texto)) return true;
+  return false;
+}
+
+// true SOLO cuando el cliente ya está en una etapa final (Ganado, Perdido,
+// o Convertido en Productos) Y el recordatorio pertenece claramente al
+// pipeline de ANTES de llegar ahí , nunca se marca como obsoleto nada
+// manual, posventa, reactivación, ni con nota personal escrita por la
+// persona.
+function esRecordatorioPipelineObsoleto(recordatorio,cliente){
+  if(!recordatorio||!cliente) return false;
+  var enEtapaFinal=cliente.etapa==="Ganado"||cliente.etapa==="Perdido"||cliente.estadoProspecto==="Convertido";
+  if(!enEtapaFinal) return false;
+
+  if(recordatorio.categoria==="manual") return false;
+  if(recordatorio.categoria==="postventa") return false;
+  if(recordatorio.categoria==="reactivacion") return false;
+  if(recordatorio.origen==="manual") return false;
+
+  // Una categoría explícita pipeline sí debe cancelarse al cerrar
+  // el proceso, incluso si la fecha o nota fueron personalizadas.
+  if(recordatorio.categoria==="pipeline") return true;
+
+  // Solo para registros antiguos sin categoría:
+  if(!recordatorio.categoria){
+    if(recordatorio.esPersonalizada) return false;
+    if(recordatorio.origen==="cleo"&&!recordatorio.nota) return true;
+    if(esTextoPipelineConocido(recordatorio.nota)) return true;
+  }
+  return false;
+}
+
+// Quita únicamente los recordatorios de pipeline que ya quedaron obsoletos
+// , reconstruye recordatorios/seguimientoFecha/mensajeSeguimientoPostVenta/
+// seguimientoEsPersonalizada con conRecordatoriosActualizados. Idempotente:
+// si no hay nada que quitar, devuelve el mismo cliente sin tocarlo.
+function cancelarRecordatoriosPipeline(cliente){
+  var lista=recordatoriosDe(cliente);
+  var listaFiltrada=lista.filter(function(r){ return !esRecordatorioPipelineObsoleto(r,cliente); });
+  if(listaFiltrada.length===lista.length) return cliente;
+  return conRecordatoriosActualizados(cliente,listaFiltrada);
+}
+
+// true SOLO cuando el recordatorio es realmente una reactivación válida.
+// La categoria EXPLÍCITA "reactivacion" es la fuente de verdad más
+// confiable , una reactivación real puede perfectamente tener nota
+// personal (la persona escribió por qué quiere retomarlo), eso nunca la
+// invalida. Las protecciones de origen manual/nota personal SOLO se aplican
+// a la inferencia de registros LEGACY (sin categoria), donde no hay ninguna
+// fuente de verdad explícita , ahí sí un manual antiguo o uno con nota
+// escrita por la persona nunca se infiere como reactivación, aunque el
+// cliente esté Perdido.
+function esRecordatorioReactivacionValida(recordatorio,cliente){
+  if(!recordatorio) return false;
+  if(recordatorio.categoria==="reactivacion") return true;
+  if(recordatorio.categoria==="manual"||recordatorio.categoria==="postventa"||recordatorio.categoria==="pipeline") return false;
+  // Registro antiguo sin categoria , inferencia conservadora. Se rechaza
+  // explícitamente cualquier indicio de que la persona lo escribió a
+  // propósito (manual u origen "cleo" con nota personal): eso nunca se
+  // borra solo. Solo se infiere reactivación si, además de que el cliente
+  // esté Perdido, hay evidencia de que vino del sistema (origen "cleo",
+  // sin marca de personalizada) con un mensaje real , si es ambiguo, se
+  // conserva.
+  if(!recordatorio.categoria){
+    if(recordatorio.origen==="manual") return false;
+    if(recordatorio.esPersonalizada===true) return false;
+    if(cliente&&cliente.etapa==="Perdido"&&recordatorio.origen==="cleo"&&recordatorio.nota&&recordatorio.nota.trim()){
+      return true;
+    }
+  }
+  return false;
+}
+// Cuando una oportunidad Perdida se reactiva (vuelve al pipeline), se debe
+// quitar exactamente el recordatorio de reactivación que originó la acción
+// , cuando la interfaz no conserva un id específico, se usa el criterio
+// conservador de atender solo el de reactivación MÁS PRÓXIMO (el que
+// realmente causó que el cliente apareciera para retomar), preservando
+// cualquier otro manual/postventa/reactivación adicional que exista. Nunca
+// elimina una entrada solo porque su id coincidió , siempre se confirma
+// primero que sea una reactivación válida.
+function atenderRecordatorioReactivacion(cliente,idRecordatorio){
+  var lista=recordatoriosDe(cliente);
+  var idxAtender=-1;
+  if(idRecordatorio){
+    var idxCandidato=lista.findIndex(function(r){ return (r.id||r.fecha)===idRecordatorio; });
+    if(idxCandidato!==-1&&esRecordatorioReactivacionValida(lista[idxCandidato],cliente)){
+      idxAtender=idxCandidato;
+    }
+    // Si el id coincidió pero NO era una reactivación válida (por ejemplo,
+    // apuntaba por error a un manual o postventa), nunca se elimina esa
+    // entrada , se sigue de largo hacia el fallback conservador de abajo.
+  }
+  if(idxAtender===-1){
+    var masProxima=null;
+    lista.forEach(function(r,i){
+      if(esRecordatorioReactivacionValida(r,cliente)&&(!masProxima||new Date(r.fecha)<new Date(masProxima.fecha))){ masProxima=r; idxAtender=i; }
+    });
+  }
+  if(idxAtender===-1) return cliente; // no había ninguna reactivación válida que atender , no se toca nada
+  var listaSinEsa=lista.filter(function(r,i){ return i!==idxAtender; });
+  return conRecordatoriosActualizados(cliente,listaSinEsa);
+}
+
+// Para un recordatorio ANTIGUO sin categoria , se usa al reprogramar, para
+// asignarle una categoria razonable de ahí en adelante sin arriesgar borrar
+// algo ambiguo automáticamente en otro lado.
+function inferirCategoriaConservadora(recordatorio,cliente){
+  if(recordatorio.categoria) return recordatorio.categoria;
+  if(recordatorio.origen==="manual") return "manual";
+  if(cliente&&cliente.etapa==="Perdido"&&recordatorio.nota) return "reactivacion";
+  if(cliente&&(cliente.etapa==="Ganado"||cliente.estadoProspecto==="Convertido")&&recordatorio.nota&&!esTextoPipelineConocido(recordatorio.nota)) return "postventa";
+  if(esTextoPipelineConocido(recordatorio.nota)) return "pipeline";
+  if(recordatorio.origen==="cleo"&&!recordatorio.nota) return "pipeline";
+  return null; // ambiguo , no se le asigna nada
+}
+
+// Solo devuelve un id de recordatorio cuando la tarjeta que se está viendo
+// REALMENTE fue causada por un seguimientoFecha persistido y ya vencido ,
+// replica exactamente la condición que usa NIVEL 1 de obtenerAccionesHoy.
+// Si la alerta vino de una regla genérica (días sin contacto, etapa,
+// estancamiento), nunca hay un recordatorio real que atender, así que se
+// devuelve null a propósito , esto nunca cambia el motor de Hoy en sí,
+// solo decide si hay o no un id válido para pasar después.
+function idRecordatorioSiFueDetonante(cliente){
+  if(!cliente||!cliente.seguimientoFecha) return null;
+  if(new Date(cliente.seguimientoFecha)>new Date()) return null;
+  var lista=recordatoriosDe(cliente);
+  return lista.length>0?(lista[0].id||lista[0].fecha):null;
+}
+
 function motivoSeguimientoDe(c){
   if(c.mensajeSeguimientoPostVenta) return c.mensajeSeguimientoPostVenta;
   if(c.notaRecontacto) return c.notaRecontacto;
@@ -122,7 +291,10 @@ function motivoSeguimientoDe(c){
 // uno se "filtre" y aparezca duplicada en otro que nunca tuvo nota propia.
 function motivoInferidoDe(c){
   if(c.etapa==="Perdido"&&c.motivoPerdida) return "En su momento no siguió adelante ("+c.motivoPerdida+"). Vale la pena ver si su situación cambió.";
-  if(c.etapa==="Ganado") return "Ya le vendiste , "+(FRASES_SEGUIMIENTO_POR_DIAS[c.tipoSeguimientoPostVenta]||"ver si hay una posible recompra.");
+  // Mensaje neutral a propósito , nunca inventa "pedir recomendación",
+  // "recompra", "proyecto nuevo" ni un plazo específico. Esos mensajes
+  // concretos solo deben venir de recordatorio.nota, nunca inferirse aquí.
+  if(c.etapa==="Ganado") return "Retomar contacto con este cliente.";
   return "Retomar la conversación donde se quedó (etapa: "+(c.etapa||"Nuevo contacto")+").";
 }
 // Usa las notas como nombre de servicio solo si son razonablemente cortas , unas notas
@@ -223,7 +395,16 @@ function obtenerAccionesHoy(clientes,cotizaciones,esProductos,limite){
       }
       else if(c.estadoProspecto==="Nueva") descP="Sin retomar hace "+dias+" días";
       else descP="En seguimiento hace "+dias+" días";
-      return {cliente:c,dias:dias,tipo:c.estadoProspecto,prioridad:(c.estadoProspecto==="Convertido"||c.estadoProspecto==="Perdido")?"alta":dias>=10?"alta":dias>=5?"media":"baja",desc:descP,mensajeSugerido:mensajeSugeridoP};
+      // Entrada EXACTA que originó esta tarjeta , solo cuando realmente
+      // viene de un seguimientoFecha persistido y vencido (nunca para los
+      // casos de "días sin contacto" genéricos de este mismo listado).
+      var vieneDeRecordatorioP=!!(c.seguimientoFecha&&c.seguimientoFecha<=FECHA_HOY);
+      var recordatorioNivelP=vieneDeRecordatorioP?(recordatoriosDe(c)[0]||null):null;
+      return {cliente:c,dias:dias,tipo:c.estadoProspecto,prioridad:(c.estadoProspecto==="Convertido"||c.estadoProspecto==="Perdido")?"alta":dias>=10?"alta":dias>=5?"media":"baja",desc:descP,mensajeSugerido:mensajeSugeridoP,
+        recordatorioId:recordatorioNivelP?(recordatorioNivelP.id||recordatorioNivelP.fecha):null,
+        recordatorioNota:recordatorioNivelP?recordatorioNivelP.nota:null,
+        recordatorioEsManualOPersonalizado:recordatorioNivelP?(recordatorioNivelP.categoria==="manual"||recordatorioNivelP.esPersonalizada===true):false
+      };
     });
     listaP.sort(function(a,b){ return b.dias-a.dias; });
     return limite?listaP.slice(0,limite):listaP;
@@ -237,12 +418,12 @@ function obtenerAccionesHoy(clientes,cotizaciones,esProductos,limite){
   function cotAceptadaDe(clienteId){
     return cotizaciones.filter(function(cot){ return cot.clienteId===clienteId&&cot.estatus==="Aceptada"; }).sort(function(a,b){ return new Date(b.fecha)-new Date(a.fecha); })[0];
   }
-  function agregar(c,tipo,desc,prioridad,ordenReal,monto,mensajeSugerido,estancado){
+  function agregar(c,tipo,desc,prioridad,ordenReal,monto,mensajeSugerido,estancado,recordatorioId,recordatorioNota,recordatorioEsManualOPersonalizado){
     if(idsVistoA[c.id]) return;
     var dias=diasSinContacto(c);
     if(!((dias>=1||c.seguimientoFecha)&&!c.archivado)) return;
     idsVistoA[c.id]=true;
-    lista.push({cliente:c,tipo:tipo,desc:desc,prioridad:prioridad,dias:dias,ordenReal:ordenReal,monto:monto||0,mensajeSugerido:mensajeSugerido||"",estancado:!!estancado});
+    lista.push({cliente:c,tipo:tipo,desc:desc,prioridad:prioridad,dias:dias,ordenReal:ordenReal,monto:monto||0,mensajeSugerido:mensajeSugerido||"",estancado:!!estancado,recordatorioId:recordatorioId||null,recordatorioNota:recordatorioNota||null,recordatorioEsManualOPersonalizado:!!recordatorioEsManualOPersonalizado});
   }
 
   // NIVEL 1 , seguimiento agendado vencido (cualquier etapa)
@@ -272,7 +453,14 @@ function obtenerAccionesHoy(clientes,cotizaciones,esProductos,limite){
     else if(servicio) desc1="Preguntó por "+servicio+" y todavía no ha recibido el precio. Hoy habías quedado en enviárselo.";
     else if(!cotP&&c.notas) desc1='Anotaste: "'+c.notas+'" — hoy habías programado retomar esta conversación.';
     else desc1="Hoy habías programado retomar esta conversación.";
-    agregar(c,"Seguimiento programado",desc1,"alta",1,cotP?Number(cotP.monto):0,c.mensajeSeguimientoPostVenta||"");
+    // Entrada EXACTA que originó esta acción , se calcula AQUÍ, en el
+    // momento de construir la tarjeta, y viaja pegada a la acción misma ,
+    // nunca se vuelve a deducir después con [0] ni con ningún fallback.
+    var recordatorioNivel1=recordatoriosDe(c)[0]||null;
+    agregar(c,"Seguimiento programado",desc1,"alta",1,cotP?Number(cotP.monto):0,c.mensajeSeguimientoPostVenta||"",false,
+      recordatorioNivel1?(recordatorioNivel1.id||recordatorioNivel1.fecha):null,
+      recordatorioNivel1?recordatorioNivel1.nota:null,
+      recordatorioNivel1?(recordatorioNivel1.categoria==="manual"||recordatorioNivel1.esPersonalizada===true):false);
   });
 
   // NIVEL 2 , en negociación (absorbe lo que antes era "en seguimiento")
@@ -382,27 +570,25 @@ function obtenerAccionesHoy(clientes,cotizaciones,esProductos,limite){
 // Cotizaciones aceptadas con saldo pendiente (ya vendiste, falta cobrar), ordenadas
 // por cuántos días llevan sin cobrarse completo (más antiguo = más urgente).
 function obtenerCobrosPendientesHoy(cotizaciones,ventas,clientes,limite,ignorarGracia){
-  function pasaGraciaYSaldo(pagos,monto){
-    var pagado=(pagos||[]).reduce(function(s,p){ return s+Number(p.monto); },0);
-    if(pagado>=Number(monto)) return false;
+  function pasaGraciaYSaldo(item){
+    if(saldoPendienteDe(item,item.monto)<=0) return false;
     // Si ya registró algún pago, se le da un respiro de 3 días desde el último pago
     // antes de volver a insistir , acaba de hacer algo, no hace falta presionarlo el mismo día.
     // (se puede omitir con ignorarGracia, para vistas que quieren ver todo sin excepción)
-    if(!ignorarGracia&&pagos&&pagos.length>0){
+    var pagos=pagosDe(item);
+    if(!ignorarGracia&&pagos.length>0){
       var ultimoPago=pagos.slice().sort(function(a,b){ return new Date(b.fecha)-new Date(a.fecha); })[0];
       if(diasDesde(ultimoPago.fecha)<3) return false;
     }
     return true;
   }
-  var deCot=cotizaciones.filter(function(c){ return c.estatus==="Aceptada"&&pasaGraciaYSaldo(c.pagos,c.monto); }).map(function(c){
+  var deCot=cotizaciones.filter(function(c){ return c.estatus==="Aceptada"&&pasaGraciaYSaldo(c); }).map(function(c){
     var cl=clientes.find(function(x){ return x.id===c.clienteId; });
-    var pagado=(c.pagos||[]).reduce(function(s,p){ return s+Number(p.monto); },0);
-    return {cliente:cl,cot:c,tipo:"cotizacion",saldo:Number(c.monto)-pagado,dias:diasDesde(c.fecha)};
+    return {cliente:cl,cot:c,tipo:"cotizacion",saldo:saldoPendienteDe(c,c.monto),dias:diasDesde(c.fecha)};
   });
-  var deVentas=(ventas||[]).filter(function(v){ return v.clienteId&&v.tipoPago==="anticipo"&&pasaGraciaYSaldo(v.pagos,v.monto); }).map(function(v){
+  var deVentas=(ventas||[]).filter(function(v){ return v.clienteId&&pasaGraciaYSaldo(v); }).map(function(v){
     var cl=clientes.find(function(x){ return x.id===v.clienteId; });
-    var pagado=(v.pagos||[]).reduce(function(s,p){ return s+Number(p.monto); },0);
-    return {cliente:cl,cot:v,tipo:"venta",saldo:Number(v.monto)-pagado,dias:diasDesde(v.fecha)};
+    return {cliente:cl,cot:v,tipo:"venta",saldo:saldoPendienteDe(v,v.monto),dias:diasDesde(v.fecha)};
   });
   var lista=deCot.concat(deVentas).filter(function(x){ return x.cliente; }).sort(function(a,b){ return b.dias-a.dias; });
   return limite?lista.slice(0,limite):lista;
@@ -440,7 +626,7 @@ function enPeriodo(f,p){
 // no en el periodo en que se cerró la cotización o venta que lo originó.
 function totalPagadoCotizacionesPeriodo(cotizaciones,periodo){
   var total=0;
-  cotizaciones.filter(function(c){ return c.estatus==="Aceptada"; }).forEach(function(c){
+  cotizaciones.forEach(function(c){
     (c.pagos||[]).forEach(function(p){
       if(enPeriodo(p.fecha||c.fecha,periodo)) total+=Number(p.monto);
     });
@@ -450,13 +636,9 @@ function totalPagadoCotizacionesPeriodo(cotizaciones,periodo){
 function totalPagadoVentasPeriodo(ventas,periodo){
   var total=0;
   ventas.forEach(function(v){
-    if(v.pagos&&v.pagos.length>0){
-      v.pagos.forEach(function(p){
-        if(enPeriodo(p.fecha||v.fecha,periodo)) total+=Number(p.monto);
-      });
-    } else if(v.tipoPago!=="anticipo"){
-      if(enPeriodo(v.fecha,periodo)) total+=Number(v.monto);
-    }
+    (v.pagos||[]).forEach(function(p){
+      if(enPeriodo(p.fecha||v.fecha,periodo)) total+=Number(p.monto);
+    });
   });
   return total;
 }
@@ -793,13 +975,13 @@ var clientesDemo=[
   {id:7,nombre:"Valentina Cruz",negocio:"Studio Pilates",contacto:"9997891234",origen:"Instagram",etapa:"Perdido",notas:"Le pareció caro pero le interesó mucho el servicio",fecha:diasAtras(54),instagram:"@valcruz",canalPrincipal:"WhatsApp",messenger:"",email:"",fechaEtapa:diasAtras(49),ultimoContacto:diasAtras(49),motivoPerdida:"Precio alto",seguimientoFecha:diasAtras(-2),notaRecontacto:"Le encantó la propuesta pero dijo que en ese momento no podía. Mencionó que a mediados de mes tendría más presupuesto."},
 ];
 var cotDemo=[
-  {id:1,clienteId:2,concepto:"Diseño de menú digital",cantidad:1,precioUnit:3500,monto:3500,estatus:"Pendiente",fecha:diasAtras(15),motivoPerdida:"",vigencia:diasAtras(1),vigenciaDias:"14",notas:"Incluye versión impresa y digital",anticipo:0,fechaAnticipo:"",pagos:[]},
-  {id:7,clienteId:1,concepto:"Sesión fotográfica para catálogo",cantidad:1,precioUnit:4500,monto:4500,estatus:"Pendiente",fecha:diasAtras(11),motivoPerdida:"",vigencia:diasAtras(4),vigenciaDias:"7",notas:"20 fotos editadas para su catálogo de ropa",anticipo:0,fechaAnticipo:"",pagos:[]},
-  {id:2,clienteId:3,concepto:"Sesión fotográfica",cantidad:1,precioUnit:4500,monto:4500,estatus:"Pendiente",fecha:diasAtras(25),motivoPerdida:"",vigencia:diasAtras(11),vigenciaDias:"14",notas:"20 fotos editadas",anticipo:0,fechaAnticipo:"",pagos:[]},
-  {id:3,clienteId:4,concepto:"Remodelación de oficina",cantidad:1,precioUnit:8000,monto:8000,estatus:"Aceptada",fecha:diasAtras(13),motivoPerdida:"",vigencia:"",vigenciaDias:"",notas:"Incluye materiales básicos",anticipo:2000,fechaAnticipo:diasAtras(12),pagos:[{id:"p_401",monto:2000,fecha:diasAtras(12),concepto:"Anticipo"}]},
-  {id:4,clienteId:5,concepto:"Consultoría redes sociales",cantidad:1,precioUnit:5500,monto:5500,estatus:"Aceptada",fecha:diasAtras(23),motivoPerdida:"",vigencia:"",vigenciaDias:"",notas:"3 meses de consultoría",anticipo:0,fechaAnticipo:"",pagos:[{id:"p_501",monto:5500,fecha:diasAtras(19),concepto:"Pago completo"}]},
-  {id:5,clienteId:6,concepto:"Branding completo",cantidad:1,precioUnit:12000,monto:12000,estatus:"Rechazada",fecha:diasAtras(38),motivoPerdida:"Eligió otro proveedor",vigencia:"",vigenciaDias:"",notas:"",anticipo:0,fechaAnticipo:"",pagos:[]},
-  {id:6,clienteId:7,concepto:"Sesión de fotos premium",cantidad:1,precioUnit:4500,monto:4500,estatus:"Rechazada",fecha:diasAtras(54),motivoPerdida:"Precio alto",vigencia:"",vigenciaDias:"",notas:"Incluye 30 fotos editadas",anticipo:0,fechaAnticipo:"",pagos:[]},
+  {id:1,clienteId:2,concepto:"Diseño de menú digital",cantidad:1,precioUnit:3500,monto:3500,estatus:"Pendiente",fecha:diasAtras(15),motivoPerdida:"",vigencia:diasAtras(1),vigenciaDias:"14",notas:"Incluye versión impresa y digital",pagos:[]},
+  {id:7,clienteId:1,concepto:"Sesión fotográfica para catálogo",cantidad:1,precioUnit:4500,monto:4500,estatus:"Pendiente",fecha:diasAtras(11),motivoPerdida:"",vigencia:diasAtras(4),vigenciaDias:"7",notas:"20 fotos editadas para su catálogo de ropa",pagos:[]},
+  {id:2,clienteId:3,concepto:"Sesión fotográfica",cantidad:1,precioUnit:4500,monto:4500,estatus:"Pendiente",fecha:diasAtras(25),motivoPerdida:"",vigencia:diasAtras(11),vigenciaDias:"14",notas:"20 fotos editadas",pagos:[]},
+  {id:3,clienteId:4,concepto:"Remodelación de oficina",cantidad:1,precioUnit:8000,monto:8000,estatus:"Aceptada",fecha:diasAtras(13),motivoPerdida:"",vigencia:"",vigenciaDias:"",notas:"Incluye materiales básicos",pagos:[{id:"p_401",monto:2000,fecha:diasAtras(12),concepto:"Anticipo"}]},
+  {id:4,clienteId:5,concepto:"Consultoría redes sociales",cantidad:1,precioUnit:5500,monto:5500,estatus:"Aceptada",fecha:diasAtras(23),motivoPerdida:"",vigencia:"",vigenciaDias:"",notas:"3 meses de consultoría",pagos:[{id:"p_501",monto:5500,fecha:diasAtras(19),concepto:"Pago completo"}]},
+  {id:5,clienteId:6,concepto:"Branding completo",cantidad:1,precioUnit:12000,monto:12000,estatus:"Rechazada",fecha:diasAtras(38),motivoPerdida:"Eligió otro proveedor",vigencia:"",vigenciaDias:"",notas:"",pagos:[]},
+  {id:6,clienteId:7,concepto:"Sesión de fotos premium",cantidad:1,precioUnit:4500,monto:4500,estatus:"Rechazada",fecha:diasAtras(54),motivoPerdida:"Precio alto",vigencia:"",vigenciaDias:"",notas:"Incluye 30 fotos editadas",pagos:[]},
 ];
 var serviciosDemo=[
   {id:1,nombre:"Consultoría",precio:3500,descripcion:"Sesión de consultoría de 2 horas"},
@@ -816,10 +998,10 @@ var perfilDemo={nombre:"Mi Negocio",tuNombre:"",telefono:"",email:"",direccion:"
 var perfilDemoServicios={nombre:"Vega Estudio Creativo",tuNombre:"Andrea Vega",telefono:"9992223344",email:"andrea@vegaestudio.mx",direccion:"Mérida, Yucatán",color:C.purple,colorSecundario:"#E4E2F8",colorTexto:"#1A1635",logo:"",mensaje:"Gracias por confiar en Vega Estudio para tu proyecto.",condicionesPago:"50% anticipo para reservar la fecha, 50% al entregar.",redesTT:"",redesIG:"@vegaestudiocreativo",redesFB:"",tipoPerfil:"Servicios",banco:"",bancotitular:"Andrea Vega",bancoclabe:"",bancoaccount:"",bancoinstrucciones:""};
 var productosDemo=["Aretes plata","Collar dorado","Pulsera tejida","Anillo boda custom","Aretes dorados","Collar perlas"];
 var ventasDemo=[
-  {id:1,monto:800,fecha:diasAtras(9),concepto:"Venta directa",tipo:"dia",etiqueta:"",clienteId:null},
-  {id:2,monto:1200,fecha:diasAtras(10),concepto:"Asesoría rápida",tipo:"especifico",etiqueta:"",clienteId:5,tipoPago:"completo",anticipo:0,pagos:[]},
-  {id:3,monto:650,fecha:diasAtras(12),concepto:"Retoque de fotos",tipo:"rapida",etiqueta:"",clienteId:null},
-  {id:4,monto:2200,fecha:diasAtras(14),concepto:"Video promocional",tipo:"especifico",etiqueta:"",clienteId:2,tipoPago:"anticipo",anticipo:1000,pagos:[{id:"p_v4",monto:1000,fecha:diasAtras(14),concepto:"Anticipo"}]},
+  {id:1,monto:800,fecha:diasAtras(9),concepto:"Venta directa",tipo:"dia",etiqueta:"",clienteId:null,pagos:[{id:"p_v1",monto:800,fecha:diasAtras(9),concepto:"Pago completo"}]},
+  {id:2,monto:1200,fecha:diasAtras(10),concepto:"Asesoría rápida",tipo:"especifico",etiqueta:"",clienteId:5,tipoPago:"completo",pagos:[{id:"p_v2",monto:1200,fecha:diasAtras(10),concepto:"Pago completo"}]},
+  {id:3,monto:650,fecha:diasAtras(12),concepto:"Retoque de fotos",tipo:"rapida",etiqueta:"",clienteId:null,pagos:[{id:"p_v3",monto:650,fecha:diasAtras(12),concepto:"Pago completo"}]},
+  {id:4,monto:2200,fecha:diasAtras(14),concepto:"Video promocional",tipo:"especifico",etiqueta:"",clienteId:2,tipoPago:"anticipo",pagos:[{id:"p_v4",monto:1000,fecha:diasAtras(14),concepto:"Anticipo"}]},
 ];
 
 // ── DEMO DATA PRODUCTOS (joyería artesanal) ──────────────────────────────────
@@ -1147,17 +1329,6 @@ function _comprobanteShared(tipo,folio,concepto,monto,pagos,saldo,cliente,perfil
   return html;
 }
 
-// Respaldo temporal HTML , ya no es la ruta activa (eso ahora es
-// crearDocumentoFinancieroPDF vía manejarGenerarDocumentoFinancieroPDF).
-// Ningún botón la llama; se conserva solo para comparar visualmente.
-async function generarComprobanteAnticipoHTMLRespaldo(cot,cliente,perfil){
-  var pagos=[{concepto:"Anticipo recibido",fecha:cot.fechaAnticipo,monto:cot.anticipo}];
-  var saldo=cot.monto-cot.anticipo;
-  var folio="ANT-"+String(cot.id).slice(-4).padStart(4,"0")+"-"+String(Date.now()).slice(-4);
-  var html=_comprobanteShared("Comprobante de Anticipo",folio,cot.concepto,cot.monto,pagos,saldo,cliente,perfil,{fecha:cot.fechaAnticipo||FECHA_HOY});
-  _abrirHTML(html,nombreArchivoSeguro("Comprobante_"+(cliente?cliente.nombre.replace(/ /g,"_"):"cliente")+"_"+(cot.fechaAnticipo||FECHA_HOY),"Comprobante")+".html");
-}
-
 // Respaldo temporal HTML , ya no es la ruta activa. Ningún botón la llama.
 async function generarComprobantePagoHTMLRespaldo(pago,cot,cliente,perfil){
   var allPagos=cot.pagos||[];
@@ -1314,7 +1485,62 @@ function esMovimientoAnticipo(pago){
          concepto.indexOf("anticipo")>=0;
 }
 
-// Punto de entrada único para cualquier botón "Comprobante" sobre un
+// ── Fuente única de pagos ──────────────────────────────────────────────
+// item.pagos es la ÚNICA fuente oficial de dinero recibido , sin síntesis
+// desde anticipo/fechaAnticipo, sin fallback legacy, sin doble fuente.
+// CLEO todavía no tiene usuarios reales, así que no hace falta compatibilidad
+// hacia atrás , todo movimiento nuevo (anticipo, pago completo, pago
+// parcial) debe crearse directamente dentro de pagos desde su origen.
+function pagosDe(item){
+  return Array.isArray(item&&item.pagos)?item.pagos:[];
+}
+function totalPagadoDe(item){
+  return pagosDe(item).reduce(function(s,p){ return s+Number(p&&p.monto||0); },0);
+}
+// totalCampo es el total real del documento (cot.monto, venta.monto,
+// pedido.total) , siempre max(0,...), nunca negativo.
+function saldoPendienteDe(item,totalCampo){
+  var total=Number(totalCampo!=null?totalCampo:(item&&item.monto)||0);
+  return Math.max(0,total-totalPagadoDe(item));
+}
+// Validación centralizada antes de guardar cualquier pago/anticipo nuevo ,
+// devuelve null si es válido, o el mensaje exacto a mostrar si no lo es.
+function validarNuevoPago(monto,fecha,saldoDisponible){
+  var m=Number(monto);
+  if(!isFinite(m)) return "Ingresa un monto válido.";
+  if(!(m>0)) return "El monto debe ser mayor a cero.";
+  if(!fecha) return "Selecciona una fecha.";
+  if(m>saldoDisponible) return "El pago no puede ser mayor al saldo pendiente de $"+Math.max(0,saldoDisponible).toLocaleString()+".";
+  return null;
+}
+
+// ── Núcleo central ÚNICO de todo movimiento de dinero ──────────────────
+// Esta es la ÚNICA lógica en toda la app que decide si un pago es válido y
+// construye el movimiento real , cotizaciones, ventas directas y pedidos
+// , y TODOS los flujos (registrar pago existente, crear una venta con pago
+// inicial, crear un pedido con anticipo, el modal legacy de anticipo) pasan
+// por aquí. Ningún otro lugar debe construir un objeto de pago a mano.
+// "Pago completo" SIEMPRE registra exactamente el saldo pendiente , nunca
+// lo que venga escrito en monto, para que nunca quede saldo residual ni se
+// sobrepague por un monto capturado a mano que no coincide con el saldo
+// real en ese instante.
+function construirMovimientoPago(saldoDisponible,monto,fecha,concepto){
+  var esPagoCompleto=String(concepto||"").trim().toLowerCase()==="pago completo";
+  var montoFinal=esPagoCompleto?Number(saldoDisponible):Number(monto);
+  var errorValidacion=validarNuevoPago(montoFinal,fecha,saldoDisponible);
+  if(errorValidacion) return {ok:false,error:errorValidacion};
+  return {
+    ok:true,
+    pago:{
+      id:"pg_"+Date.now()+"_"+Math.random().toString(36).slice(2,7),
+      monto:montoFinal,
+      fecha:fecha,
+      concepto:concepto||"Pago"
+    }
+  };
+}
+
+
 // movimiento individual: decide, según el concepto real del movimiento, si
 // debe generarse un "Comprobante de Anticipo" o un "Comprobante de Pago"
 // normal , nunca depende del modal legacy inalcanzable.
@@ -1382,7 +1608,7 @@ function _abrirHTML(html,filename){
 
 function ModalVenta(props){
   var e=React.createElement;
-  var isMobile=(function(){ var w=window.innerWidth,h=window.innerHeight; return w<768||(w>=768&&w<1024&&h>w); })();
+  var isMobile=useEsMobile();
   var modalVenta=props.modalVenta; var setModalVenta=props.setModalVenta;
   var formVenta=props.formVenta; var setFormVenta=props.setFormVenta;
   var pasoVenta=props.pasoVenta; var setPasoVenta=props.setPasoVenta;
@@ -1392,8 +1618,38 @@ function ModalVenta(props){
   var esProductos=props.esProductos||false; var servicios=props.servicios||[];
   var cotAceptadaId=props.cotAceptadaId; var setCotAceptadaId=props.setCotAceptadaId||function(){};
   var etapaAnteriorGanado=props.etapaAnteriorGanado; var setEtapaAnteriorGanado=props.setEtapaAnteriorGanado||function(){};
+  var ventaDirectaOriginal=props.ventaDirectaOriginal; var setVentaDirectaOriginal=props.setVentaDirectaOriginal||function(){};
   var setClientes=props.setClientes||function(){}; var FECHA_HOY=props.FECHA_HOY||"";
   if(!modalVenta) return null;
+  // Función central usada por TODAS las rutas de cierre sin confirmar
+  // (X, Cancelar, clic en el fondo) , nunca se usa después de que la
+  // venta ya se guardó exitosamente.
+  function cancelarVentaDirectaProvisional(){
+    if(cotAceptadaId&&String(cotAceptadaId).startsWith("pipeline_revert_")){
+      var revId=Number(String(cotAceptadaId).replace("pipeline_revert_",""));
+      if(ventaDirectaOriginal&&ventaDirectaOriginal.id===revId){
+        var orig=ventaDirectaOriginal;
+        setClientes(clientes.map(function(c){
+          if(c.id!==revId) return c;
+          var restaurado=Object.assign({},c,{etapa:orig.etapa,fechaEtapa:orig.fechaEtapa});
+          // archivado se restaura EXACTO tal cual estaba , si la propiedad
+          // no existía originalmente, se quita en vez de dejarla en
+          // undefined, para no introducir un campo que nunca estuvo ahí.
+          if(Object.prototype.hasOwnProperty.call(orig,"archivado")&&orig.archivado!==undefined){
+            restaurado.archivado=orig.archivado;
+          } else {
+            delete restaurado.archivado;
+          }
+          return restaurado;
+        }));
+      } else {
+        setClientes(clientes.map(function(c){ return c.id===revId?Object.assign({},c,{etapa:etapaAnteriorGanado||"Nuevo contacto"}):c; }));
+      }
+      setCotAceptadaId(null); setEtapaAnteriorGanado(null); setVentaDirectaOriginal(null);
+    }
+    setModalVenta(false);
+    setPasoVenta("form");
+  }
   var tipoActual=formVenta.tipo;
   if(pasoVenta==="educativo"){
     return e("div",{style:st.ov,onClick:function(){ setModalVenta(false); setPasoVenta("form"); }},
@@ -1416,22 +1672,14 @@ function ModalVenta(props){
     );
   }
   var tipoOpciones=[{key:"especifico",label:"Con cliente",desc:"Tienes el contacto"},{key:"generico",label:"Sin contacto",desc:"Venta directa"},{key:"dia",label:"Total del dia",desc:"Monto global"}];
-  return e("div",{style:st.ov,onClick:function(){ setModalVenta(false); }},
+  return e("div",{style:st.ov,onClick:cancelarVentaDirectaProvisional},
     e("div",{style:Object.assign({},st.modal,{padding:0,overflow:"hidden",display:"flex",flexDirection:"column",maxHeight:isMobile?"94vh":"88vh"}),onClick:function(ev){ ev.stopPropagation(); }},
       e("div",{style:{padding:"20px 24px 16px",background:"linear-gradient(135deg,"+C.greenBg+" 0%,transparent 70%)",borderBottom:"1px solid "+C.border,display:"flex",alignItems:"center",justifyContent:"space-between",flexShrink:0}},
         e("div",null,
           e("div",{style:{fontWeight:700,fontSize:18,color:C.text}},"Venta directa"),
           e("div",{style:{fontSize:12,color:C.textMuted,marginTop:2}},"Ventas que no requirieron una cotización")
         ),
-        e("button",{style:{background:C.surfaceUp,border:"1px solid "+C.border,borderRadius:10,cursor:"pointer",color:C.textMuted,fontSize:16,lineHeight:1,padding:"6px 10px"},onClick:function(){
-          // Si vino del pipeline, revertir etapa
-          if(cotAceptadaId&&String(cotAceptadaId).startsWith("pipeline_revert_")){
-            var revId=Number(String(cotAceptadaId).replace("pipeline_revert_",""));
-            setClientes(clientes.map(function(c){ return c.id===revId?Object.assign({},c,{etapa:etapaAnteriorGanado||"Nuevo contacto",archivado:false,fechaEtapa:FECHA_HOY}):c; }));
-            setCotAceptadaId(null); setEtapaAnteriorGanado(null);
-          }
-          setModalVenta(false);
-        }},"×")
+        e("button",{style:{background:C.surfaceUp,border:"1px solid "+C.border,borderRadius:10,cursor:"pointer",color:C.textMuted,fontSize:16,lineHeight:1,padding:"6px 10px"},onClick:cancelarVentaDirectaProvisional},"×")
       ),
       e("div",{style:{padding:"20px 24px",overflowY:"auto",flex:1}},
       e("div",{style:{marginBottom:16}},
@@ -1548,8 +1796,8 @@ function ModalVenta(props){
             ),
             items.map(function(it,idx){
               return e("div",{key:it.id,style:{display:"grid",gridTemplateColumns:"1fr 52px 88px 28px",gap:6,padding:"6px 10px",borderBottom:idx<items.length-1?"1px solid "+C.border:"none",alignItems:"center",background:C.surface}},
-                e("input",{value:it.nombre,placeholder:"Nombre...",onChange:function(ev){ updItem(it.id,"nombre",ev.target.value); },style:Object.assign({},st.inp,{padding:"5px 8px",fontSize:12,marginBottom:0})}),
-                e("input",{type:"number",min:1,value:it.cantidad,onChange:function(ev){ updItem(it.id,"cantidad",ev.target.value); },style:Object.assign({},st.inp,{padding:"5px 4px",fontSize:12,textAlign:"center",marginBottom:0})}),
+                e("input",{value:it.nombre,placeholder:"Nombre...",onChange:function(ev){ updItem(it.id,"nombre",ev.target.value); },style:Object.assign({},st.inp,{padding:"5px 8px",fontSize:16,marginBottom:0})}),
+                e("input",{type:"number",min:1,value:it.cantidad,onChange:function(ev){ updItem(it.id,"cantidad",ev.target.value); },style:Object.assign({},st.inp,{padding:"5px 4px",fontSize:16,textAlign:"center",marginBottom:0})}),
                 e(MontoInput,{value:it.precio,placeholder:"0",onChange:function(ev){ updItem(it.id,"precio",ev.target.value); },style:Object.assign({},st.inp,{padding:"5px 8px",fontSize:12,textAlign:"right",marginBottom:0})}),
                 e("button",{onClick:function(){ delItem(it.id); },style:{background:"none",border:"none",cursor:"pointer",color:C.textDim,fontSize:18,lineHeight:1,padding:0,display:"flex",alignItems:"center",justifyContent:"center"}},"×")
               );
@@ -1638,14 +1886,7 @@ function ModalVenta(props){
       )
       ), // cierra body scrollable
       e("div",{style:{padding:isMobile?"12px 24px 28px":"14px 24px",borderTop:"1px solid "+C.border,background:C.surfaceUp,display:"flex",gap:8,justifyContent:"flex-end",flexShrink:0}},
-        e("button",{style:st.btn,onClick:function(){
-          if(cotAceptadaId&&String(cotAceptadaId).startsWith("pipeline_revert_")){
-            var revId=Number(String(cotAceptadaId).replace("pipeline_revert_",""));
-            setClientes(clientes.map(function(c){ return c.id===revId?Object.assign({},c,{etapa:etapaAnteriorGanado||"Nuevo contacto",archivado:false,fechaEtapa:FECHA_HOY}):c; }));
-            setCotAceptadaId(null); setEtapaAnteriorGanado(null);
-          }
-          setModalVenta(false);
-        }},"Cancelar"),
+        e("button",{style:st.btn,onClick:cancelarVentaDirectaProvisional},"Cancelar"),
         e("button",{style:Object.assign({},st.btnG,{opacity:(tipoActual==="dia"||formVenta.tipoPago)&&!(!formVenta.clienteId&&formVenta.nuevoNombre&&formVenta.nuevoNombre.trim()&&(!formVenta.nuevoCanal||!formVenta.nuevoContacto||!formVenta.nuevoContacto.trim()))?1:0.5}),onClick:function(){
           if(tipoActual!=="dia"&&!formVenta.tipoPago){ alert("Selecciona cómo te pagaron antes de guardar."); return; }
           avanzarVenta();
@@ -1679,9 +1920,10 @@ function BadgeAnticipo(props){
   var e=React.createElement;
   var cot=props.cot;
   if(!cot||cot.estatus!=="Aceptada") return null;
-  var saldo=cot.monto-(cot.anticipo||0);
-  if(cot.anticipo>0&&saldo===0) return e("span",{style:{fontSize:10,padding:"2px 7px",borderRadius:20,background:C.green+"22",color:C.green,border:"0.5px solid "+C.green+"44"}},"Pagado");
-  if(cot.anticipo>0&&saldo>0) return e("span",{style:{fontSize:10,padding:"2px 7px",borderRadius:20,background:C.amber+"22",color:C.amber,border:"0.5px solid "+C.amber+"44"}},"Saldo $"+saldo.toLocaleString());
+  var totalPagado=totalPagadoDe(cot);
+  var saldo=saldoPendienteDe(cot,cot.monto);
+  if(totalPagado>0&&saldo===0) return e("span",{style:{fontSize:10,padding:"2px 7px",borderRadius:20,background:C.green+"22",color:C.green,border:"0.5px solid "+C.green+"44"}},"Pagado");
+  if(totalPagado>0&&saldo>0) return e("span",{style:{fontSize:10,padding:"2px 7px",borderRadius:20,background:C.amber+"22",color:C.amber,border:"0.5px solid "+C.amber+"44"}},"Saldo $"+saldo.toLocaleString());
   return null;
 }
 
@@ -1778,15 +2020,6 @@ function Alertas(props){
   }));
 }
 
-function migrarCots(cots){
-  return cots.map(function(c){
-    if(c.pagos) return c; // ya migrado
-    var pagos=[];
-    if(c.anticipo>0) pagos.push({id:"p_"+c.id,monto:c.anticipo,fecha:c.fechaAnticipo||c.fecha,concepto:"Anticipo"});
-    return Object.assign({},c,{pagos:pagos});
-  });
-}
-
 export default function CLEO(props){
   var e=React.createElement;
 
@@ -1798,7 +2031,7 @@ export default function CLEO(props){
   }
   function lsGet(key,fallback){ try{ var v=localStorage.getItem(key); return v?JSON.parse(v):fallback; }catch(e){ return fallback; } }
   var s1=useState(function(){ return lsGet("cleo_clientes",[]); }); var clientes=s1[0]; var setClientesRaw=s1[1];
-  var s2=useState(function(){ return migrarCots(lsGet("cleo_cots",[])); }); var cotizaciones=s2[0]; var setCotizacionesRaw=s2[1];
+  var s2=useState(function(){ return lsGet("cleo_cots",[]); }); var cotizaciones=s2[0]; var setCotizacionesRaw=s2[1];
   var s3=useState(function(){ return lsGet("cleo_perfil",perfilDemo); }); var perfil=s3[0]; var setPerfilRaw=s3[1];
   var s4=useState(function(){ return lsGet("cleo_servicios",[]); }); var servicios=s4[0]; var setServiciosRaw=s4[1];
   var s4p=useState(function(){ return lsGet("cleo_productos_cat",[]); }); var productosCat=s4p[0]; var setProductosCatRaw=s4p[1];
@@ -1858,6 +2091,17 @@ export default function CLEO(props){
   var s19g=useState("30"); var diasPostVenta=s19g[0]; var setDiasPostVenta=s19g[1];
   var s19h=useState(""); var notaPersonalPostVenta=s19h[0]; var setNotaPersonalPostVenta=s19h[1];
   var s19h=useState(null); var contactadoClienteId=s19h[0]; var setContactadoClienteId=s19h[1];
+  // Identificador del recordatorio EXACTO (no solo el cliente) que originó
+  // la apertura de "Ya le hablé" , cuando se conoce, se usa para atender
+  // esa reactivación específica en vez de depender del fallback "más
+  // próximo". Si el modal se abrió desde un aviso genérico sin recordatorio
+  // asociado, se queda en null y se conserva el comportamiento conservador.
+  var s19i=useState(null); var contactadoRecordatorioId=s19i[0]; var setContactadoRecordatorioId=s19i[1];
+  // true cuando el modal "Sugerencia CLEO" se abrió porque un recordatorio
+  // manual/personalizado quería contactar directo pero faltan datos del
+  // canal , en ese caso el modal debe mostrar ÚNICAMENTE el formulario
+  // para completar datos, nunca el consejo/mensaje genérico de CLEO.
+  var s19j=useState(false); var sugerenciaSoloCompletarDatos=s19j[0]; var setSugerenciaSoloCompletarDatos=s19j[1];
   var sSugerencia=useState(null); var sugerenciaClienteId=sSugerencia[0]; var setSugerenciaClienteId=sSugerencia[1];
   var sPasoPregunto=useState(null); var pasoPregunto=sPasoPregunto[0]; var setPasoPregunto=sPasoPregunto[1];
   // Flujo independiente "Alguien preguntó" para PRODUCTOS , no comparte estado con el de Servicios
@@ -1890,6 +2134,10 @@ export default function CLEO(props){
     var precioFinal=fp.monto?String(fp.monto):(prodCatalogo&&prodCatalogo.precio?String(prodCatalogo.precio):"");
     var estadoAuto=(fp.yaEnvio&&fp.monto)?"En seguimiento":"Nueva";
     var seguimientoFechaFinal=(!fp.yaEnvio)?resolverFechaPregunto(fp.fechaEnvioPlaneada,fp.fechaEnvioPlaneadaCustom):"";
+    // Mismo criterio que en Servicios: este recordatorio lleva su propio
+    // mensaje desde que se crea, para que no dependa de la etapa futura del
+    // cliente.
+    var mensajeSeguimientoInicialP=seguimientoFechaFinal?"Preguntó por "+(fp.productoInteres||"tu producto")+" y quedaste en enviarle el precio.":"";
     // Si escribió un producto que todavía no está en el catálogo, se agrega
     // automáticamente , así el catálogo va creciendo solo con lo que la
     // persona ya está registrando, sin que tenga que hacerlo por separado.
@@ -1900,19 +2148,21 @@ export default function CLEO(props){
     if(fp.clienteExistenteId){
       setClientes(clientes.map(function(c){
         if(c.id!==fp.clienteExistenteId) return c;
-        return Object.assign({},c,{
+        var base=Object.assign({},c,{
           nombre:fp.nombre.trim(),negocio:fp.negocio||c.negocio,
           fechaEtapa:FECHA_HOY,etapa:"Nuevo contacto",estadoProspecto:estadoAuto,
           productoInteres:fp.productoInteres,precioInteres:precioFinal,cantidadInteres:fp.cantidadInteres||"1",
-          notasProspecto:fp.notaAdicional,seguimientoFecha:seguimientoFechaFinal,ultimoContacto:FECHA_HOY
+          notasProspecto:fp.notaAdicional,ultimoContacto:FECHA_HOY
         });
+        if(!seguimientoFechaFinal) return base;
+        return conRecordatoriosActualizados(base,recordatoriosDe(base).concat([{id:"r_"+Date.now(),fecha:seguimientoFechaFinal,nota:mensajeSeguimientoInicialP,esPersonalizada:false,origen:"cleo",categoria:"pipeline"}]));
       }));
       setFormPreguntoP(fp);
       setPasoPreguntoP(5);
       return;
     }
     var nuevoId=Date.now();
-    setClientes([Object.assign({},formVacio,{
+    var clienteNuevoP=Object.assign({},formVacio,{
       id:nuevoId,
       nombre:fp.nombre.trim(),
       negocio:fp.negocio||"",
@@ -1929,9 +2179,12 @@ export default function CLEO(props){
       precioInteres:precioFinal,
       cantidadInteres:fp.cantidadInteres||"1",
       notasProspecto:fp.notaAdicional,
-      seguimientoFecha:seguimientoFechaFinal,
       ultimoContacto:FECHA_HOY,
-    }),...clientes]);
+    });
+    if(seguimientoFechaFinal){
+      clienteNuevoP=conRecordatoriosActualizados(clienteNuevoP,[{id:"r_"+Date.now(),fecha:seguimientoFechaFinal,nota:mensajeSeguimientoInicialP,esPersonalizada:false,origen:"cleo",categoria:"pipeline"}]);
+    }
+    setClientes([clienteNuevoP,...clientes]);
     setFormPreguntoP(fp);
     setPasoPreguntoP(5);
   }
@@ -1983,28 +2236,39 @@ export default function CLEO(props){
   var sCerrePExito=useState(false); var cerrePExito=sCerrePExito[0]; var setCerrePExito=sCerrePExito[1];
   function cerrarCerreP(){ setModalCerreP(false); setFormCerreP(formCerrePVacio); setClienteCompletarId(null); setFormCompletar({canal:"",contacto:"",instagram:"",messenger:""}); setCerrePExito(false); }
   function crearPedidoDesdeVenta(clienteId,producto,cantidad,monto,tipoPago,anticipo){
-    var nuevoPed={
+    var nuevoPedBase={
       id:"ped_"+Date.now(),clienteId:clienteId,productos:producto||"Producto",
       cantidad:Number(cantidad)||1,total:Number(monto),
-      pagos:tipoPago==="completo"
-        ?[{id:"p_"+Date.now(),monto:Number(monto),fecha:FECHA_HOY,concepto:"Pago completo"}]
-        :tipoPago==="anticipo"&&anticipo
-        ?[{id:"p_"+Date.now(),monto:Number(anticipo),fecha:FECHA_HOY,concepto:"Anticipo"}]
-        :[],
       estadoPedido:"preparando",notas:"",fecha:FECHA_HOY,fechaCreado:new Date().toISOString()
     };
-    setPedidos([nuevoPed,...pedidos]);
+    var resultado;
+    if(tipoPago==="completo"){
+      resultado=registrarPago("pedido",nuevoPedBase.id,monto,FECHA_HOY,"Pago completo",nuevoPedBase);
+      if(!resultado.ok) return resultado;
+    } else if(tipoPago==="anticipo"&&anticipo){
+      resultado=registrarPago("pedido",nuevoPedBase.id,anticipo,FECHA_HOY,"Anticipo",nuevoPedBase);
+      if(!resultado.ok) return resultado;
+    } else {
+      insertarSinPago("pedido",nuevoPedBase);
+    }
     var conceptoTrim=(producto||"").trim();
     if(conceptoTrim&&!productosCat.some(function(p){ return p.nombre===conceptoTrim; })){
       setProductosCat([...productosCat,{id:Date.now()+2,nombre:conceptoTrim,precio:Number(monto)||0,descripcion:"",condiciones:""}]);
     }
+    return {ok:true};
   }
   function guardarCerreP(){
     var fc=formCerreP;
     var clienteId=fc.clienteId;
+    var esClienteNuevo=!clienteId&&fc.busqueda.trim();
+    if(esClienteNuevo) clienteId=Date.now();
+    // Primero se intenta crear el pedido/registrar el pago , solo si eso
+    // funciona se modifica al cliente como Ganado/Convertido. Si el pago no
+    // es válido, no se toca al cliente ni se muestra éxito.
+    var resultadoPedido=crearPedidoDesdeVenta(clienteId,fc.concepto,fc.cantidad,fc.monto,fc.tipoPago,fc.anticipo);
+    if(!resultadoPedido.ok){ alert(resultadoPedido.error); return; }
     var clienteFinal=null;
-    if(!clienteId&&fc.busqueda.trim()){
-      clienteId=Date.now();
+    if(esClienteNuevo){
       clienteFinal=Object.assign({},formVacio,{
         id:clienteId,nombre:fc.busqueda.trim(),negocio:"",contacto:"",origen:"",
         canalPrincipal:"WhatsApp",instagram:"",messenger:"",
@@ -2013,10 +2277,9 @@ export default function CLEO(props){
       });
       setClientes([clienteFinal,...clientes]);
     } else if(clienteId){
-      clienteFinal=Object.assign({},clientes.find(function(c){ return c.id===clienteId; }),{etapa:"Ganado",fechaEtapa:FECHA_HOY,ultimoContacto:FECHA_HOY,estadoProspecto:"Convertido",fechaPedido:new Date().toISOString()});
+      clienteFinal=cancelarRecordatoriosPipeline(Object.assign({},clientes.find(function(c){ return c.id===clienteId; }),{etapa:"Ganado",fechaEtapa:FECHA_HOY,ultimoContacto:FECHA_HOY,estadoProspecto:"Convertido",fechaPedido:new Date().toISOString()}));
       setClientes(clientes.map(function(c){ return c.id===clienteId?clienteFinal:c; }));
     }
-    crearPedidoDesdeVenta(clienteId,fc.concepto,fc.cantidad,fc.monto,fc.tipoPago,fc.anticipo);
     if(clienteFinal&&!tieneContactoCompleto(clienteFinal)){ setClienteCompletarId(clienteId); }
     else {
       // En Productos, el momento de preguntar seguimiento es al ENTREGAR el pedido
@@ -2034,6 +2297,33 @@ export default function CLEO(props){
     setTimeout(function(){ setToastTrabajo(""); },3500);
   }
   function mostrarToastTrabajo(){ mostrarToast("Ya quedó en tu pestaña Trabajos, para que no se te olvide entregarlo."); }
+  // Decide, para el botón "Contactar" de Inicio/Hoy, si la tarjeta viene
+  // de un recordatorio manual/personalizado con id EXACTO conocido , los
+  // 3 datos (recordatorioId, recordatorioNota, recordatorioEsManualOPersonalizado)
+  // vienen YA calculados desde la acción que construyó la tarjeta
+  // (obtenerAccionesHoy, NIVEL 1), nunca se recalculan aquí ni con
+  // idRecordatorioSiFueDetonante ni con recordatoriosDe(cliente)[0]. Si el
+  // id recibido ya no existe en el cliente (se atendió/quitó mientras
+  // tanto), se cae al comportamiento conservador de "Sugerencia CLEO" ,
+  // nunca se elige otro recordatorio distinto por error.
+  function manejarClickContactar(cliente,recordatorioId,recordatorioNota,recordatorioEsManualOPersonalizado){
+    if(recordatorioId&&recordatorioEsManualOPersonalizado){
+      var sigueExistiendo=recordatoriosDe(cliente).some(function(r){ return (r.id||r.fecha)===recordatorioId; });
+      if(sigueExistiendo){
+        var url=contactUrl(cliente,recordatorioNota||"");
+        if(url){
+          abrirEnlaceExternoSeguro(url);
+          return;
+        }
+        // Sin datos suficientes para el canal , mostrar ÚNICAMENTE el
+        // formulario para completar contacto, sin el consejo genérico.
+        setSugerenciaSoloCompletarDatos(true);
+        setSugerenciaClienteId(cliente.id);
+        return;
+      }
+    }
+    setSugerenciaClienteId(cliente.id);
+  }
   var sMostrarCatEnvie=useState(false); var mostrarCatEnvie=sMostrarCatEnvie[0]; var setMostrarCatEnvie=sMostrarCatEnvie[1];
   var sMostrarCatCerre=useState(false); var mostrarCatCerre=sMostrarCatCerre[0]; var setMostrarCatCerre=sMostrarCatCerre[1];
   var sMostrarCatPregunto=useState(false); var mostrarCatPregunto=sMostrarCatPregunto[0]; var setMostrarCatPregunto=sMostrarCatPregunto[1];
@@ -2073,7 +2363,7 @@ export default function CLEO(props){
     });
     var deVentas=ventas.filter(function(v){ return v.clienteId&&v.entregado!==undefined; }).map(function(v){
       var cl=clientes.find(function(x){ return x.id===v.clienteId; });
-      var pagado=v.tipoPago==="anticipo"?(v.pagos||[]).reduce(function(s,p){ return s+Number(p.monto); },0):Number(v.monto);
+      var pagado=totalPagadoDe(v);
       return {tipo:"venta",id:v.id,cliente:cl,servicio:v.concepto,total:Number(v.monto),cobrado:pagado,entregado:!!v.entregado,fechaEntrega:v.fechaEntrega||"",fecha:v.fecha};
     });
     return deCotizaciones.concat(deVentas).filter(function(t){ return t.cliente; }).sort(function(a,b){ return new Date(b.fecha)-new Date(a.fecha); });
@@ -2102,9 +2392,28 @@ export default function CLEO(props){
   function guardarCerre(){
     var fc=formCerre;
     var clienteId=fc.clienteId;
+    var esClienteNuevo=!clienteId&&fc.busqueda.trim();
+    if(esClienteNuevo) clienteId=Date.now();
+    var nuevaVentaBase={
+      id:Date.now()+1,monto:Number(fc.monto),fecha:FECHA_HOY,concepto:fc.concepto||"Venta",
+      tipo:clienteId?"especifico":"dia",clienteId:clienteId||null,
+      entregado:clienteId?false:undefined,fechaEntrega:""
+    };
+    // Primero se intenta registrar el pago , solo si eso funciona se crea
+    // o modifica al cliente como Ganado. Si el pago no es válido, no se
+    // toca al cliente ni se muestra ninguna celebración.
+    var resultadoPago;
+    if(fc.tipoPago==="completo"){
+      resultadoPago=registrarPago("venta",nuevaVentaBase.id,fc.monto,FECHA_HOY,"Pago completo",nuevaVentaBase);
+      if(!resultadoPago.ok){ alert(resultadoPago.error); return; }
+    } else if(fc.tipoPago==="anticipo"&&fc.anticipo){
+      resultadoPago=registrarPago("venta",nuevaVentaBase.id,fc.anticipo,FECHA_HOY,"Anticipo",nuevaVentaBase);
+      if(!resultadoPago.ok){ alert(resultadoPago.error); return; }
+    } else {
+      insertarSinPago("venta",nuevaVentaBase);
+    }
     var clienteFinal=null;
-    if(!clienteId&&fc.busqueda.trim()){
-      clienteId=Date.now();
+    if(esClienteNuevo){
       clienteFinal={
         id:clienteId,nombre:fc.busqueda.trim(),negocio:"",contacto:"",origen:"",
         canalPrincipal:"WhatsApp",instagram:"",messenger:"",email:"",
@@ -2113,21 +2422,9 @@ export default function CLEO(props){
       };
       setClientes([clienteFinal,...clientes]);
     } else if(clienteId){
-      clienteFinal=Object.assign({},clientes.find(function(c){ return c.id===clienteId; }),{etapa:"Ganado",fechaEtapa:FECHA_HOY,ultimoContacto:FECHA_HOY});
+      clienteFinal=cancelarRecordatoriosPipeline(Object.assign({},clientes.find(function(c){ return c.id===clienteId; }),{etapa:"Ganado",fechaEtapa:FECHA_HOY,ultimoContacto:FECHA_HOY}));
       setClientes(clientes.map(function(c){ return c.id===clienteId?clienteFinal:c; }));
     }
-    var nuevaVenta={
-      id:Date.now()+1,monto:Number(fc.monto),fecha:FECHA_HOY,concepto:fc.concepto||"Venta",
-      tipo:clienteId?"especifico":"dia",clienteId:clienteId||null,
-      tipoPago:fc.tipoPago,anticipo:fc.tipoPago==="anticipo"&&fc.anticipo?Number(fc.anticipo):0,
-      pagos:fc.tipoPago==="completo"
-        ?[{id:"p_"+Date.now(),monto:Number(fc.monto),fecha:FECHA_HOY,concepto:"Pago completo"}]
-        :fc.tipoPago==="anticipo"&&fc.anticipo
-        ?[{id:"p_"+Date.now(),monto:Number(fc.anticipo),fecha:FECHA_HOY,concepto:"Anticipo"}]
-        :[],
-      entregado:clienteId?false:undefined,fechaEntrega:""
-    };
-    setVentas([nuevaVenta,...ventas]);
     if(clienteFinal&&!tieneContactoCompleto(clienteFinal)){ setClienteCompletarId(clienteId); }
     else if(clienteId){
       // Activa la misma celebración completa que ya existe al aceptar una cotización:
@@ -2197,6 +2494,7 @@ export default function CLEO(props){
     var fe=formEnvie;
     var clienteId=fe.clienteId;
     var seguimientoAuto=resolverFechaPregunto("2dias","");
+    var mensajeEnvieInicial="Le enviaste el precio. Dijiste que le darías seguimiento.";
     var clienteFinal;
     if(!clienteId){
       clienteId=Date.now();
@@ -2204,11 +2502,13 @@ export default function CLEO(props){
         id:clienteId,nombre:fe.busqueda.trim(),negocio:"",contacto:"",origen:"",
         canalPrincipal:"WhatsApp",instagram:"",messenger:"",email:"",
         etapa:"Cotizacion enviada",fecha:FECHA_HOY,fechaEtapa:FECHA_HOY,ultimoContacto:FECHA_HOY,
-        notas:fe.concepto,seguimientoFecha:seguimientoAuto,motivoPerdida:""
+        notas:fe.concepto,motivoPerdida:""
       };
+      clienteFinal=conRecordatoriosActualizados(clienteFinal,[{id:"r_"+Date.now(),fecha:seguimientoAuto,nota:mensajeEnvieInicial,esPersonalizada:false,origen:"cleo",categoria:"pipeline"}]);
       setClientes([clienteFinal,...clientes]);
     } else {
-      clienteFinal=Object.assign({},clientes.find(function(c){ return c.id===clienteId; }),{etapa:"Cotizacion enviada",fechaEtapa:FECHA_HOY,ultimoContacto:FECHA_HOY,seguimientoFecha:seguimientoAuto});
+      var base=Object.assign({},clientes.find(function(c){ return c.id===clienteId; }),{etapa:"Cotizacion enviada",fechaEtapa:FECHA_HOY,ultimoContacto:FECHA_HOY});
+      clienteFinal=conRecordatoriosActualizados(base,recordatoriosDe(base).concat([{id:"r_"+Date.now(),fecha:seguimientoAuto,nota:mensajeEnvieInicial,esPersonalizada:false,origen:"cleo",categoria:"pipeline"}]));
       setClientes(clientes.map(function(c){ return c.id===clienteId?clienteFinal:c; }));
     }
     var nuevaCot={
@@ -2259,10 +2559,16 @@ export default function CLEO(props){
     var seguimientoFechaFinal=fp.yaEnvio
       ?resolverFechaPregunto(fp.fechaSeguimiento,fp.fechaSeguimientoCustom)
       :resolverFechaPregunto(fp.fechaEnvioPlaneada,fp.fechaEnvioPlaneadaCustom);
+    // Este recordatorio lleva su propio mensaje desde que se crea , así,
+    // aunque el cliente cambie de etapa más adelante (por ejemplo, si lo
+    // marcas Ganado), el texto sigue reflejando por qué se programó
+    // ("ya le enviaste la cotización"), en vez de inferirse de la etapa
+    // ACTUAL del cliente y quedar desactualizado.
+    var mensajeSeguimientoInicial=fp.yaEnvio?"Ya le enviaste la cotización. Dijiste que le darías seguimiento.":"Preguntó por "+(fp.servicioInteres||"tu servicio")+" y quedaste en enviarle el precio.";
     if(esExistente){
       setClientes(clientes.map(function(c){
         if(c.id!==nuevoId) return c;
-        return Object.assign({},c,{
+        var base=Object.assign({},c,{
           negocio:fp.negocio||c.negocio,
           canalPrincipal:fp.canal||c.canalPrincipal,
           contacto:fp.canal==="WhatsApp"?fp.contacto:c.contacto,
@@ -2270,9 +2576,10 @@ export default function CLEO(props){
           messenger:fp.canal==="Facebook"?fp.messenger:c.messenger,
           etapa:etapaFinal,fechaEtapa:FECHA_HOY,ultimoContacto:FECHA_HOY,
           servicioInteres:fp.servicioInteres,
-          notas:fp.notaAdicional,
-          seguimientoFecha:seguimientoFechaFinal
+          notas:fp.notaAdicional
         });
+        if(!seguimientoFechaFinal) return base;
+        return conRecordatoriosActualizados(base,recordatoriosDe(base).concat([{id:"r_"+Date.now(),fecha:seguimientoFechaFinal,nota:mensajeSeguimientoInicial,esPersonalizada:false,origen:"cleo",categoria:"pipeline"}]));
       }));
     } else {
       var nuevoCliente={
@@ -2283,9 +2590,11 @@ export default function CLEO(props){
         messenger:fp.canal==="Facebook"?fp.messenger:"",
         email:"",etapa:etapaFinal,fecha:FECHA_HOY,fechaEtapa:FECHA_HOY,ultimoContacto:FECHA_HOY,
         servicioInteres:fp.servicioInteres,
-        notas:fp.notaAdicional,
-        seguimientoFecha:seguimientoFechaFinal,motivoPerdida:""
+        notas:fp.notaAdicional,motivoPerdida:""
       };
+      if(seguimientoFechaFinal){
+        nuevoCliente=conRecordatoriosActualizados(nuevoCliente,[{id:"r_"+Date.now(),fecha:seguimientoFechaFinal,nota:mensajeSeguimientoInicial,esPersonalizada:false,origen:"cleo",categoria:"pipeline"}]);
+      }
       setClientes([nuevoCliente,...clientes]);
     }
     if(fp.yaEnvio&&fp.monto){
@@ -2323,24 +2632,21 @@ export default function CLEO(props){
   var s21=useState(null); var dragOver=s21[0]; var setDragOver=s21[1];
 
   // Estados de anticipo
-  var s22=useState(null); var anticCotId=s22[0]; var setAnticCotId=s22[1];
-  var s23=useState({monto:"",fecha:FECHA_HOY}); var anticVal=s23[0]; var setAnticVal=s23[1];
 
   // Estados de motivo perdida pipeline
   var s24=useState(null); var motivoPipelineId=s24[0]; var setMotivoPipelineId=s24[1];
   var s24b=useState(null); var etapaAnteriorPipeline=s24b[0]; var setEtapaAnteriorPipeline=s24b[1];
   var s24c=useState(null); var etapaAnteriorGanado=s24c[0]; var setEtapaAnteriorGanado=s24c[1];
   var s24d=useState(null); var modalVentaRapidaPipeline=s24d[0]; var setModalVentaRapidaPipeline=s24d[1];
+  // Copia inmutable de los campos EXACTOS que se modifican provisionalmente
+  // al abrir "Registrar venta directa" desde el pipeline (etapa, archivado,
+  // fechaEtapa) , se usa para restaurar el cliente exactamente como estaba
+  // si se cancela, en vez de reconstruir con valores por defecto que no
+  // necesariamente coinciden con los originales.
+  var s24e=useState(null); var ventaDirectaOriginal=s24e[0]; var setVentaDirectaOriginal=s24e[1];
   var s24e=useState(null); var pagoVentaData=s24e[0]; var setPagoVentaData=s24e[1];
   var s24f=useState({monto:"",fecha:FECHA_HOY,concepto:"Pago"}); var formPagoVenta=s24f[0]; var setFormPagoVenta=s24f[1];
 
-  function abrirPagoVenta(v){ setPagoVentaData(v); setFormPagoVenta({monto:"",fecha:FECHA_HOY,concepto:"Pago"}); }
-  function guardarPagoVenta(){
-    if(!formPagoVenta.monto||!pagoVentaData) return;
-    var nuevosPagos=[...(pagoVentaData.pagos||[]),{id:"pv_"+Date.now(),monto:Number(formPagoVenta.monto),fecha:formPagoVenta.fecha,concepto:formPagoVenta.concepto||"Pago"}];
-    setVentas(ventas.map(function(v){ return v.id===pagoVentaData.id?Object.assign({},v,{pagos:nuevosPagos}):v; }));
-    setPagoVentaData(null);
-  }
   function generarComprobanteVenta(v,cl){
     manejarGenerarDocumentoFinancieroPDF({tipo:"estado_cuenta",cot:{id:v.id,concepto:v.concepto||"Venta directa",monto:v.monto,pagos:v.pagos||[]},cliente:cl||{nombre:"Cliente"},perfil:perfil,fechaHoy:FECHA_HOY});
   }
@@ -2420,7 +2726,24 @@ export default function CLEO(props){
       return siguiente;
     });
   }
-  function setCotizaciones(v){ var m=migrarCots(v); setCotizacionesRaw(m); try{ localStorage.setItem("cleo_cots",JSON.stringify(m)); }catch(e){} }
+  // Migración idempotente: limpia recordatorios de pipeline que quedaron
+  // obsoletos en datos YA GUARDADOS de antes de que existiera esta
+  // corrección (clientes que ya estaban Ganado/Perdido/Convertido con un
+  // recordatorio automático de una etapa anterior). Se ejecuta una sola vez
+  // al montar , si ningún cliente tenía nada que limpiar, nunca se llama
+  // setClientes (cancelarRecordatoriosPipeline devuelve el MISMO objeto sin
+  // cambios cuando no hay nada que quitar, así que la comparación de
+  // referencia detecta con precisión si hubo un cambio real).
+  useEffect(function(){
+    var huboCambioReal=false;
+    var clientesLimpios=clientes.map(function(c){
+      var limpio=cancelarRecordatoriosPipeline(c);
+      if(limpio!==c) huboCambioReal=true;
+      return limpio;
+    });
+    if(huboCambioReal) setClientes(clientesLimpios);
+  },[]);
+  function setCotizaciones(v){ setCotizacionesRaw(v); try{ localStorage.setItem("cleo_cots",JSON.stringify(v)); }catch(e){} }
   // Actualiza SOLO el metadato ligero de archivoAdjunto de una cotización
   // (nunca contenido binario) , usada por CotizacionAdjunto tanto desde la
   // card de Cotizaciones como desde Trabajos → Ver pagos, mismo dato.
@@ -2699,27 +3022,18 @@ export default function CLEO(props){
               fecha:pago.fecha||v.fecha,
               cliente:nombreClienteExport(v.clienteId,v.etiqueta),
               origen:origenLabel.venta_rapida,
-              concepto:v.concepto||"Venta directa",
+              concepto:(pago.concepto||"Pago")+(v.concepto?" · "+v.concepto:""),
               monto:Number(pago.monto),
               moneda:"MXN",
               referencia_id:"vp_vr_"+v.id+"_"+pago.id
             });
           });
-        } else if(v.tipoPago!=="anticipo"){
-          filas.push({
-            fecha:v.fecha,
-            cliente:nombreClienteExport(v.clienteId,v.etiqueta),
-            origen:origenLabel.venta_rapida,
-            concepto:v.concepto||"Venta directa",
-            monto:Number(v.monto),
-            moneda:"MXN",
-            referencia_id:"vp_vr_"+v.id
-          });
         }
       });
     } else {
-      // 1. Pagos desde cotizaciones aceptadas
-      cotizaciones.filter(function(c){ return c.estatus==="Aceptada"; }).forEach(function(cot){
+      // 1. Pagos desde cotizaciones , igual que en Ingresos, el ingreso
+      // ya recibido no depende del estatus actual del documento.
+      cotizaciones.filter(function(c){ return (c.pagos||[]).length>0; }).forEach(function(cot){
         (cot.pagos||[]).forEach(function(pago){
           filas.push({
             fecha:pago.fecha||cot.fecha,
@@ -2740,21 +3054,11 @@ export default function CLEO(props){
               fecha:pago.fecha||v.fecha,
               cliente:nombreClienteExport(v.clienteId,v.etiqueta),
               origen:origenLabel.venta_rapida,
-              concepto:v.concepto||"Venta directa",
+              concepto:(pago.concepto||"Pago")+(v.concepto?" · "+v.concepto:""),
               monto:Number(pago.monto),
               moneda:"MXN",
               referencia_id:"vs_vr_"+v.id+"_"+pago.id
             });
-          });
-        } else if(v.tipoPago!=="anticipo"){
-          filas.push({
-            fecha:v.fecha,
-            cliente:nombreClienteExport(v.clienteId,v.etiqueta),
-            origen:origenLabel.venta_rapida,
-            concepto:v.concepto||"Venta directa",
-            monto:Number(v.monto),
-            moneda:"MXN",
-            referencia_id:"vs_vr_"+v.id
           });
         }
       });
@@ -2893,7 +3197,7 @@ export default function CLEO(props){
         setServicios([]);
       } else {
         setClientes(clientesDemo);
-        setCotizaciones(migrarCots(cotDemo));
+        setCotizaciones(cotDemo);
         setVentas(ventasDemo||[]);
         setServicios(serviciosDemo);
         setPedidos([]);
@@ -3048,7 +3352,7 @@ export default function CLEO(props){
     var updated=clientes.map(function(c){
       if(c.etapa==="Ganado"||c.etapa==="Perdido") return c;
       var cotAcep=cotizaciones.find(function(cot){ return cot.clienteId===c.id&&cot.estatus==="Aceptada"; });
-      if(cotAcep){ needsUpdate=true; return Object.assign({},c,{etapa:"Ganado",fechaEtapa:c.fechaEtapa||FECHA_HOY}); }
+      if(cotAcep){ needsUpdate=true; return cancelarRecordatoriosPipeline(Object.assign({},c,{etapa:"Ganado",fechaEtapa:c.fechaEtapa||FECHA_HOY})); }
       return c;
     });
     if(needsUpdate) setClientesRaw(updated);
@@ -3059,10 +3363,8 @@ export default function CLEO(props){
   var cotsMes=cotizaciones.filter(function(c){ return enPeriodo(c.fecha,"mes"); });
   var tasaCierre=cotsMes.length?Math.round((cotsMes.filter(function(c){ return c.estatus==="Aceptada"; }).length/cotsMes.length)*100):null;
   var sinWA=clientes.filter(function(c){ return c.canalPrincipal!=="WhatsApp"&&!c.contacto; });
-  var totalGanado=cotizaciones.filter(function(c){ return c.estatus==="Aceptada"; }).reduce(function(s,c){ return s+c.monto; },0);
 
   // Stats ventas directas
-  var totalVentasDirectas=ventas.reduce(function(s,v){ return s+Number(v.monto); },0);
   var ventasSinContacto=ventas.filter(function(v){ return v.tipo!=="especifico"; });
   var ventasConContacto=ventas.filter(function(v){ return v.tipo==="especifico"; });
 
@@ -3292,7 +3594,7 @@ export default function CLEO(props){
       setClientes(clientes.map(function(c){ return c.id===Number(formCot.clienteId)?Object.assign({},c,{precioInteres:String(monto),productoInteres:formCot.concepto||c.productoInteres}):c; }));
       setEditCotId(null);
     } else {
-      setCotizaciones([...cotizaciones,Object.assign({},formCot,{id:Date.now(),clienteId:Number(formCot.clienteId),monto:monto,fecha:FECHA_HOY,motivoPerdida:"",anticipo:0,fechaAnticipo:"",pagos:[]},descuentoData)]);
+      setCotizaciones([...cotizaciones,Object.assign({},formCot,{id:Date.now(),clienteId:Number(formCot.clienteId),monto:monto,fecha:FECHA_HOY,motivoPerdida:"",pagos:[]},descuentoData)]);
       // Sincronizar precioInteres/productoInteres del cliente para que la ficha refleje el monto real de la cotización
       setClientes(function(prev){
         return prev.map(function(c){
@@ -3319,7 +3621,7 @@ export default function CLEO(props){
   }
   function editarCot(cot){
     setEditCotId(cot.id);
-    setFormCot({clienteId:String(cot.clienteId),concepto:cot.concepto,cantidad:cot.cantidad||1,precioUnit:cot.precioUnit||cot.monto,descuento:cot.descuento||"",tipoDescuento:cot.tipoDescuento||"porcentaje",estatus:cot.estatus,vigencia:cot.vigencia||"",vigenciaDias:cot.vigenciaDias||"",notas:cot.notas||"",svCondiciones:(cot.svCondicionesHtml||cot.svCondiciones||"").replace(/<[^>]+>/g," ").replace(/\s+/g," ").trim(),svCondicionesHtml:cot.svCondicionesHtml||cot.svCondiciones||"",anticipo:cot.anticipo||0,fechaAnticipo:cot.fechaAnticipo||""});
+    setFormCot({clienteId:String(cot.clienteId),concepto:cot.concepto,cantidad:cot.cantidad||1,precioUnit:cot.precioUnit||cot.monto,descuento:cot.descuento||"",tipoDescuento:cot.tipoDescuento||"porcentaje",estatus:cot.estatus,vigencia:cot.vigencia||"",vigenciaDias:cot.vigenciaDias||"",notas:cot.notas||"",svCondiciones:(cot.svCondicionesHtml||cot.svCondiciones||"").replace(/<[^>]+>/g," ").replace(/\s+/g," ").trim(),svCondicionesHtml:cot.svCondicionesHtml||cot.svCondiciones||""});
     setModalCot(true);
   }
   function cambiarEstatus(cotId,v){
@@ -3355,7 +3657,6 @@ export default function CLEO(props){
     }
   }
   function guardarMotivo(cotId,m){ setCotizaciones(cotizaciones.map(function(c){ return c.id===cotId?Object.assign({},c,{motivoPerdida:m}):c; })); }
-  function guardarAnticipo(cotId,monto,fecha){ setCotizaciones(cotizaciones.map(function(c){ return c.id===cotId?Object.assign({},c,{anticipo:Number(monto),fechaAnticipo:fecha}):c; })); }
   function agregarServicio(){ if(!formSv.nombre.trim()||!formSv.precio) return; setCatActivo([...catActivo,Object.assign({},formSv,{id:Date.now(),precio:Number(formSv.precio),condiciones:formSv.condiciones||""})]); setFormSv(svVacio); setEditorKey(function(k){ return k+1; }); }
   function eliminarServicio(id){ setCatActivo(catActivo.filter(function(s){ return s.id!==id; })); }
   function onDragStart(ev,id){ setDragging(id); ev.dataTransfer.effectAllowed="move"; }
@@ -3364,7 +3665,7 @@ export default function CLEO(props){
   function onDragEnd(){ setDragging(null); setDragOver(null); }
   function guardarMotivoPipeline(motivo){
     // Guardar motivo en cliente
-    setClientes(clientes.map(function(c){ return c.id===motivoPipelineId?Object.assign({},c,{motivoPerdida:motivo,etapa:"Perdido",fechaEtapa:FECHA_HOY}):c; }));
+    setClientes(clientes.map(function(c){ return c.id===motivoPipelineId?cancelarRecordatoriosPipeline(Object.assign({},c,{motivoPerdida:motivo,etapa:"Perdido",fechaEtapa:FECHA_HOY})):c; }));
     // Marcar cotizacion como Rechazada
     var cotPerdida=cotizaciones.find(function(c){ return c.clienteId===motivoPipelineId&&(c.estatus==="Pendiente"||c.estatus==="Aceptada"); });
     if(cotPerdida) setCotizaciones(cotizaciones.map(function(c){ return c.id===cotPerdida.id?Object.assign({},c,{estatus:"Rechazada",motivoPerdida:motivo}):c; }));
@@ -3379,7 +3680,11 @@ export default function CLEO(props){
     if(!dias) return;
     var fecha=new Date(); fecha.setDate(fecha.getDate()+dias);
     var targetId=clientePerdidoId||motivoPipelineId;
-    setClientes(clientes.map(function(c){ return c.id===targetId?Object.assign({},c,{seguimientoFecha:fmtFechaLocal(fecha)}):c; }));
+    var notaReactivacion=(seguimientoLost.nota&&seguimientoLost.nota.trim())||"Retomar contacto con esta oportunidad perdida.";
+    setClientes(clientes.map(function(c){
+      if(c.id!==targetId) return c;
+      return conRecordatoriosActualizados(c,recordatoriosDe(c).concat([{id:"r_"+Date.now(),fecha:fmtFechaLocal(fecha),nota:notaReactivacion,esPersonalizada:!!(seguimientoLost.nota&&seguimientoLost.nota.trim()),origen:"cleo",categoria:"reactivacion"}]));
+    }));
     setShowSeguimientoLost(false); setConsejoMotivo(null); setSeguimientoLost({dias:"",custom:"",nota:""});
     setMotivoLibre(""); setShowMotivoLibre(false); setClientePerdidoId(null);
   }
@@ -3399,6 +3704,16 @@ export default function CLEO(props){
     var conceptoFinal=items.length>0
       ? items.map(function(it){ return (it.cantidad&&it.cantidad>1?it.cantidad+"x ":"")+it.nombre; }).join(", ")
       : formVenta.concepto;
+
+    // Pre-validar el pago con el mismo núcleo central ANTES de crear o
+    // tocar nada , el saldo de una venta nueva siempre es su monto total
+    // completo (todavía no ha pagado nada). Si esto falla, no se crea
+    // ningún cliente ni se toca el pipeline.
+    var montoPagoPrevio=formVenta.tipoPago==="anticipo"?formVenta.anticipo:montoFinal;
+    var conceptoPagoPrevio=formVenta.tipoPago==="anticipo"?"Anticipo":"Pago completo";
+    var validacionPrevia=construirMovimientoPago(montoFinal,montoPagoPrevio,formVenta.fecha||FECHA_HOY,conceptoPagoPrevio);
+    if(!validacionPrevia.ok){ alert(validacionPrevia.error); return; }
+
     var nuevaVenta={
       id:Date.now(),
       tipo:formVenta.tipo,
@@ -3409,15 +3724,12 @@ export default function CLEO(props){
       fecha:formVenta.fecha||FECHA_HOY,
       etiqueta:formVenta.etiqueta||"",
       notas:formVenta.notas||"",
-      tipoPago:formVenta.tipoPago||"completo",
-      anticipo:formVenta.tipoPago==="anticipo"&&formVenta.anticipo?Number(formVenta.anticipo):0,
-      pagos:formVenta.tipoPago==="anticipo"
-        ?(formVenta.anticipo?[{id:"p_"+Date.now(),monto:Number(formVenta.anticipo),fecha:formVenta.fecha||FECHA_HOY,concepto:"Anticipo"}]:[])
-        :[{id:"p_"+Date.now(),monto:montoFinal,fecha:formVenta.fecha||FECHA_HOY,concepto:"Pago completo"}],
       entregado:formVenta.tipo==="especifico"?false:undefined,fechaEntrega:"",
     };
 
-    // Si es especifico y eligieron crear cliente nuevo
+    // Si es especifico y eligieron crear cliente nuevo , ya se validó el
+    // pago arriba, así que es seguro crear el cliente ahora, con el
+    // clienteId correcto desde el inicio de nuevaVenta.
     if(crearCliente&&formVenta.nuevoNombre.trim()){
       var nuevoId=Date.now()+1;
       var canalNuevo=formVenta.nuevoCanal||"WhatsApp";
@@ -3442,12 +3754,41 @@ export default function CLEO(props){
       nuevaVenta.tipo="especifico";
     }
 
+    // Registro real del pago , se revisa resultado.ok por seguridad, ya
+    // validado arriba con los mismos datos, así que no debería fallar aquí.
+    var resultadoPago;
+    if(formVenta.tipoPago==="anticipo"){
+      resultadoPago=registrarPago("venta",nuevaVenta.id,formVenta.anticipo,formVenta.fecha||FECHA_HOY,"Anticipo",nuevaVenta);
+    } else {
+      resultadoPago=registrarPago("venta",nuevaVenta.id,montoFinal,formVenta.fecha||FECHA_HOY,"Pago completo",nuevaVenta);
+    }
+    if(!resultadoPago.ok){ alert(resultadoPago.error); return; }
+
     var tipoParaGuardar=formVenta.tipo;
-    setVentas([...ventas,nuevaVenta]);
     if(nuevaVenta.concepto) aprenderProducto(nuevaVenta.concepto);
-    // Si vino del pipeline, limpiar estado de reversión
+    // Si vino del pipeline (flujo "Sin cotización registrada" → "Registrar
+    // venta directa"), el cliente sigue provisionalmente como
+    // etapa:"Perdido", archivado:true , esta ruta nunca pasa por
+    // guardarCerre ni guardarCerreP, así que su propia transición
+    // DEFINITIVA a Ganado (y su propia limpieza de pipeline) tiene que
+    // completarse aquí mismo, no asumirse desde otro lado.
     if(cotAceptadaId&&String(cotAceptadaId).startsWith("pipeline_revert_")){
-      setCotAceptadaId(null); setEtapaAnteriorGanado(null);
+      var revId=Number(String(cotAceptadaId).replace("pipeline_revert_",""));
+      setClientes(clientes.map(function(c){
+        if(c.id!==revId) return c;
+        var clienteConfirmado=Object.assign({},c,{
+          etapa:"Ganado",
+          fechaEtapa:FECHA_HOY,
+          ultimoContacto:FECHA_HOY,
+          archivado:false
+        });
+        if(esProductos){
+          clienteConfirmado.estadoProspecto="Convertido";
+          clienteConfirmado.fechaPedido=new Date().toISOString();
+        }
+        return cancelarRecordatoriosPipeline(clienteConfirmado);
+      }));
+      setCotAceptadaId(null); setEtapaAnteriorGanado(null); setVentaDirectaOriginal(null);
     }
     setModalVenta(false);
     setFormVenta(ventaVacia);
@@ -3536,23 +3877,50 @@ export default function CLEO(props){
     });
   }
 
+  var isMobile=useEsMobile();
+  var docLegalCuenta=useDocumentoLegal(); // "Mi cuenta" → Privacidad y términos (solo consulta)
   var st={
     wrap:{fontFamily:"Arial,sans-serif",background:C.bg,minHeight:"100vh",color:C.text},
     hdr:{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"0.85rem 1.25rem",borderBottom:"0.5px solid "+C.border,background:C.dark},
     nav:{display:"flex",gap:2,padding:"0.5rem 1.25rem",borderBottom:"0.5px solid "+C.border,background:C.bg,flexWrap:"wrap"},
     nb:function(a){ return {padding:"7px 14px",borderRadius:8,border:"none",background:a?C.surfaceUp:"transparent",cursor:"pointer",fontSize:12,fontWeight:a?500:400,color:a?C.text:C.textMuted}; },
-    btn:{cursor:"pointer",padding:"8px 18px",borderRadius:12,border:"1px solid "+C.border,background:"transparent",fontSize:13,color:C.textMuted},
-    btnP:{cursor:"pointer",padding:"9px 20px",borderRadius:14,border:"none",background:"#5B5CF6",fontSize:13,color:"#fff",fontWeight:600},
+    btn:{cursor:"pointer",padding:"8px 18px",borderRadius:12,border:"1px solid "+C.border,background:"transparent",fontSize:13,color:C.textMuted,
+      minHeight:isMobile?44:undefined,boxSizing:isMobile?"border-box":undefined,
+      display:isMobile?"inline-flex":undefined,alignItems:isMobile?"center":undefined,justifyContent:isMobile?"center":undefined},
+    btnP:{cursor:"pointer",padding:"9px 20px",borderRadius:14,border:"none",background:"#5B5CF6",fontSize:13,color:"#fff",fontWeight:600,
+      minHeight:isMobile?44:undefined,boxSizing:isMobile?"border-box":undefined,
+      display:isMobile?"inline-flex":undefined,alignItems:isMobile?"center":undefined,justifyContent:isMobile?"center":undefined},
     btnG:{cursor:"pointer",padding:"7px 16px",borderRadius:8,border:"none",background:C.green,fontSize:13,color:"#fff",fontWeight:500},
     card:{background:C.surface,border:"1px solid "+C.border,borderRadius:20,padding:"20px 24px",marginBottom:0,boxShadow:"0 2px 8px rgba(0,0,0,0.05)"},
     badge:function(et){ return {display:"inline-block",padding:"3px 10px",borderRadius:20,fontSize:10,fontWeight:600,background:ETAPA_COLOR[et]+"15",color:ETAPA_COLOR[et]||C.textMuted,border:"1px solid "+(ETAPA_COLOR[et]||C.borderStrong)+"30"}; },
     badgeCot:function(et){ var m={Aceptada:C.green,Rechazada:C.red,Pendiente:C.amber}; var bg={Aceptada:C.greenBg,Rechazada:C.redBg,Pendiente:C.amberBg}; var cl=m[et]||C.textMuted; return {display:"inline-block",padding:"2px 9px",borderRadius:20,fontSize:11,background:bg[et]||C.surfaceUp,color:cl,border:"0.5px solid "+cl+"44"}; },
-    inp:{width:"100%",padding:"10px 12px",borderRadius:10,border:"1px solid "+C.borderStrong,background:C.surface,color:C.text,fontSize:14,boxSizing:"border-box",fontFamily:"-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif"},
+    inp:{width:"100%",padding:"10px 12px",borderRadius:10,border:"1px solid "+C.borderStrong,background:C.surface,color:C.text,fontSize:16,boxSizing:"border-box",fontFamily:"-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif"},
     lbl:{fontSize:11,color:C.textMuted,marginBottom:5,display:"block",textTransform:"uppercase",letterSpacing:"0.8px",fontWeight:600},
     ov:{position:"fixed",inset:0,background:"rgba(26,22,53,0.55)",display:"flex",alignItems:isMobile?"flex-end":"center",justifyContent:"center",zIndex:100,padding:0},
     modal:{background:C.surface,borderRadius:isMobile?"20px 20px 0 0":"20px",padding:"28px",width:isMobile?"100%":460,maxWidth:isMobile?"100%":"95vw",borderTop:"1px solid "+C.border,borderLeft:"1px solid "+C.border,borderRight:"1px solid "+C.border,borderBottom:isMobile?"none":"1px solid "+C.border,maxHeight:isMobile?"92vh":"88vh",overflowY:"auto",overflowX:"hidden",boxShadow:"0 8px 32px rgba(0,0,0,0.12)"},
     pb:function(a){ return {cursor:"pointer",padding:"6px 16px",borderRadius:12,border:"1px solid "+(a?C.border:"transparent"),background:a?C.surface:"transparent",color:a?C.text:C.textMuted,fontSize:13,fontWeight:a?600:400}; },
     av:function(color){ return {width:36,height:36,borderRadius:"50%",background:color+"22",display:"flex",alignItems:"center",justifyContent:"center",fontWeight:700,fontSize:12,color:color,flexShrink:0}; },
+    // Patrón central para botones de SOLO ícono (cerrar, eliminar, editar,
+    // flechas, menús) , en móvil agranda el área táctil a ~44×44px vía
+    // padding/min-size, sin tocar el tamaño visual del ícono/texto interior.
+    // Uso: Object.assign({},estiloDelBotonExistente,st.tapIcon).
+    tapIcon:isMobile?{minWidth:44,minHeight:44,display:"inline-flex",alignItems:"center",justifyContent:"center",boxSizing:"border-box"}:{},
+  };
+  // Patrón central reutilizable de modal con footer FIJO (nunca se lo lleva
+  // el scroll interno, así el botón principal sigue accesible aunque el
+  // formulario sea largo o el teclado esté abierto) , mismo esquema que ya
+  // usaba ModalVenta: contenedor flex-column con padding:0, header y footer
+  // con flexShrink:0, y solo el body central hace overflowY:auto.
+  // Uso: e("div",{style:st.modal2.outer},
+  //        e("div",{style:st.modal2.header}, ...título + botón cerrar...),
+  //        e("div",{style:st.modal2.body}, ...campos del formulario...),
+  //        e("div",{style:st.modal2.footer}, ...botones Cancelar/Guardar...)
+  //      )
+  st.modal2={
+    outer:Object.assign({},st.modal,{padding:0,overflow:"hidden",display:"flex",flexDirection:"column",maxHeight:isMobile?"92vh":"88vh"}),
+    header:{padding:"20px 24px 16px",borderBottom:"1px solid "+C.border,display:"flex",alignItems:"center",justifyContent:"space-between",flexShrink:0},
+    body:{padding:"20px 24px",overflowY:"auto",flex:1},
+    footer:{padding:isMobile?"12px 24px 28px":"14px 24px",borderTop:"1px solid "+C.border,background:C.surfaceUp,display:"flex",gap:8,justifyContent:"flex-end",flexWrap:"wrap",flexShrink:0},
   };
 
   var sidebarAbierto=useState(function(){
@@ -3631,6 +3999,73 @@ export default function CLEO(props){
   var sEliminandoCuentaUI=useState(false); var eliminandoCuentaUI=sEliminandoCuentaUI[0]; var setEliminandoCuentaUI=sEliminandoCuentaUI[1];
   var sErrorEliminarCuenta=useState(""); var errorEliminarCuenta=sErrorEliminarCuenta[0]; var setErrorEliminarCuenta=sErrorEliminarCuenta[1];
   var eliminandoCuentaCleoRef=useRef(false); // bloqueo síncrono contra doble clic, dentro de CLEO
+  // Bloqueo síncrono contra doble clic al guardar un pago/anticipo , un
+  // useState solo no basta porque React puede procesar 2 clics antes de
+  // repintar, así que se usa useRef (se evalúa de inmediato, sin esperar
+  // al siguiente render).
+  var guardandoPagoRef=useRef(false);
+  // ── Función central ÚNICA de escritura sobre pagos ──────────────────
+  // Esta es la ÚNICA función en todo el componente que puede escribir un
+  // movimiento nuevo dentro de pagos , cotizaciones, ventas directas y
+  // pedidos. Cubre AMBOS casos con la misma escritura de estado:
+  //  - item YA EXISTENTE en cotizaciones/ventas/pedidos → se le agrega el
+  //    movimiento (itemNuevo=null).
+  //  - item que se está creando en este mismo instante y todavía no está
+  //    en el estado (itemNuevo=el objeto base, SIN pagos) → se inserta ya
+  //    con su primer movimiento incluido, en una sola escritura , nunca se
+  //    arma el arreglo pagos a mano en el objeto literal de creación.
+  // Ningún otro lugar del componente debe hacer setCotizaciones/setVentas/
+  // setPedidos tocando el campo pagos , todos pasan por aquí.
+  function registrarPago(tipoItem,itemId,monto,fecha,concepto,itemNuevo){
+    if(guardandoPagoRef.current) return {ok:false,error:"Ya se está guardando un pago."};
+    var lista=tipoItem==="cotizacion"?cotizaciones:tipoItem==="venta"?ventas:tipoItem==="pedido"?pedidos:null;
+    var setLista=tipoItem==="cotizacion"?setCotizaciones:tipoItem==="venta"?setVentas:tipoItem==="pedido"?setPedidos:null;
+    var campoTotal=tipoItem==="pedido"?"total":"monto";
+    if(!lista||!setLista) return {ok:false,error:"Tipo de documento no reconocido."};
+    var item=itemNuevo||lista.find(function(x){ return x.id===itemId; });
+    if(!item) return {ok:false,error:"No se encontró el documento."};
+    var saldo=saldoPendienteDe(item,item[campoTotal]);
+    var resultado=construirMovimientoPago(saldo,monto,fecha,concepto);
+    if(!resultado.ok) return resultado;
+    guardandoPagoRef.current=true;
+    var itemConPago=Object.assign({},item,{pagos:pagosDe(item).concat([resultado.pago])});
+    if(itemNuevo){
+      setLista([itemConPago,...lista]);
+    } else {
+      setLista(lista.map(function(x){ return x.id===itemId?itemConPago:x; }));
+    }
+    resultado.item=itemConPago;
+    setTimeout(function(){ guardandoPagoRef.current=false; },300);
+    return resultado;
+  }
+  // Inserta un item NUEVO sin ningún pago (caso "no pagó nada todavía") ,
+  // sigue siendo la única función que inserta en estas 3 listas, para que
+  // crear-sin-pagar y crear-con-pago-inicial usen siempre el mismo punto
+  // de entrada, nunca un setLista([nuevo,...lista]) suelto en cada flujo.
+  function insertarSinPago(tipoItem,itemBase){
+    var setLista=tipoItem==="cotizacion"?setCotizaciones:tipoItem==="venta"?setVentas:tipoItem==="pedido"?setPedidos:null;
+    var lista=tipoItem==="cotizacion"?cotizaciones:tipoItem==="venta"?ventas:tipoItem==="pedido"?pedidos:null;
+    if(!setLista) return itemBase;
+    var itemFinal=Object.assign({},itemBase,{pagos:[]});
+    setLista([itemFinal,...lista]);
+    return itemFinal;
+  }
+  // ── Función central ÚNICA de eliminación de pagos ───────────────────
+  // Pide confirmación siempre , es la única función que puede quitar una
+  // entrada del arreglo pagos en toda la app.
+  function eliminarPago(tipoItem,itemId,pagoId,montoParaConfirmar){
+    if(!window.confirm("¿Eliminar este pago de $"+Number(montoParaConfirmar||0).toLocaleString()+"? Esto cambiará el ingreso y el saldo.")) return {ok:false};
+    var lista=tipoItem==="cotizacion"?cotizaciones:tipoItem==="venta"?ventas:tipoItem==="pedido"?pedidos:null;
+    var setLista=tipoItem==="cotizacion"?setCotizaciones:tipoItem==="venta"?setVentas:tipoItem==="pedido"?setPedidos:null;
+    if(!lista||!setLista) return {ok:false};
+    var itemActualizado=null;
+    setLista(lista.map(function(x){
+      if(x.id!==itemId) return x;
+      itemActualizado=Object.assign({},x,{pagos:pagosDe(x).filter(function(p){ return p.id!==pagoId; })});
+      return itemActualizado;
+    }));
+    return {ok:true,item:itemActualizado};
+  }
   var sHoverSalir=useState(false); var hoverSalir=sHoverSalir[0]; var setHoverSalir=sHoverSalir[1];
   var sCancPed=useState(null); var cancelarPedidoId=sCancPed[0]; var setCancelarPedidoId=sCancPed[1];
   var sCancMot=useState(""); var motivoCancelPedido=sCancMot[0]; var setMotivoCancelPedido=sCancMot[1];
@@ -3673,7 +4108,6 @@ export default function CLEO(props){
     window.addEventListener("storage",onStorage);
     return function(){ window.removeEventListener("storage",onStorage); };
   },[]);
-  var isMobile=typeof window!=="undefined"&&(function(){ var w=window.innerWidth,h=window.innerHeight; return w<768||(w>=768&&w<1024&&h>w); })();
   if(!hydrated) return e("div",{style:{minHeight:"100vh",background:C.bg}});
 
   // ── ONBOARDING ─────────────────────────────────────────────────────────────
@@ -3743,14 +4177,14 @@ export default function CLEO(props){
         ? {bg:"#1F2937",texto:"No se pudo guardar en la nube. Revisa tu internet — tus cambios siguen aquí en este dispositivo.",conBoton:false}
         : null;
       if(!avisoAtencion) return null;
-      return e("div",{style:{position:"fixed",bottom:isMobile?76:16,left:"50%",transform:"translateX(-50%)",zIndex:500,background:avisoAtencion.bg,color:"#fff",padding:"10px 16px",borderRadius:12,fontSize:12,display:"flex",alignItems:"center",gap:10,boxShadow:"0 4px 16px rgba(0,0,0,0.25)",maxWidth:"92vw",flexWrap:"wrap"}},
+      return e("div",{style:{position:"fixed",bottom:isMobile?"calc(76px + env(safe-area-inset-bottom,0px))":16,left:"50%",transform:"translateX(-50%)",zIndex:500,background:avisoAtencion.bg,color:"#fff",padding:"10px 16px",borderRadius:12,fontSize:12,display:"flex",alignItems:"center",gap:10,boxShadow:"0 4px 16px rgba(0,0,0,0.25)",maxWidth:"92vw",flexWrap:"wrap"}},
         e("span",{style:{fontSize:14}},"⚠️"),
         e("span",null,avisoAtencion.texto),
         avisoAtencion.conBoton&&e("button",{style:{cursor:"pointer",background:"rgba(255,255,255,0.2)",border:"none",borderRadius:8,padding:"3px 10px",color:"#fff",fontSize:11,fontWeight:700},onClick:function(){ window.location.reload(); }},"Recargar")
       );
     })(),
 
-    toastTrabajo&&e("div",{style:{position:"fixed",bottom:(isMobile?76:16)+((props.syncError||otraPestanaActiva)?46:0),left:"50%",transform:"translateX(-50%)",zIndex:500,background:"#1F2937",color:"#fff",padding:"10px 16px",borderRadius:12,fontSize:12,display:"flex",alignItems:"center",gap:8,boxShadow:"0 4px 16px rgba(0,0,0,0.25)",maxWidth:"90vw"}},
+    toastTrabajo&&e("div",{style:{position:"fixed",bottom:isMobile?"calc("+(76+((props.syncError||otraPestanaActiva)?46:0))+"px + env(safe-area-inset-bottom,0px))":(16+((props.syncError||otraPestanaActiva)?46:0)),left:"50%",transform:"translateX(-50%)",zIndex:500,background:"#1F2937",color:"#fff",padding:"10px 16px",borderRadius:12,fontSize:12,display:"flex",alignItems:"center",gap:8,boxShadow:"0 4px 16px rgba(0,0,0,0.25)",maxWidth:"90vw"}},
       e("span",{style:{fontSize:14}},"✓"),
       e("span",null,toastTrabajo)
     ),
@@ -4107,7 +4541,7 @@ export default function CLEO(props){
         var nombre=perfil.tuNombre||perfil.nombre||"emprendedor";
 
         // Metricas (solo servicios)
-        var cotsPend=[],totalPend=0,clientesActivos=0,sinContacto=0,ganados=[],totalGanado=0,ganadosRecientes=[];
+        var cotsPend=[],totalPend=0,clientesActivos=0,sinContacto=0,ganadosRecientes=[];
         var subtitulo="",enNegociacion=0,acciones=[],leccion=null,preguntaSemana="",reconocimiento=null,ideaDestino=null,ideaClickeable=true;
         var prioColor={"alta":"#EF4444","media":"#F59E0B","baja":"#6B7280"};
         var prioLabel={"alta":"URGENTE","media":"ESTA SEMANA","baja":"CUANDO PUEDAS"};
@@ -4117,8 +4551,6 @@ export default function CLEO(props){
         totalPend=cotsPend.reduce(function(s,c){ return s+c.monto; },0);
         var clientesActivos=clientes.filter(function(c){ return c.etapa!=="Ganado"&&c.etapa!=="Perdido"; }).length;
         var sinContacto=clientes.filter(function(c){ var ref=c.ultimoContacto||c.fecha; var d=Math.floor((HOY-new Date(ref))/86400000); return !c.seguimientoFecha&&((c.etapa==="Negociacion"&&d>2)||(c.etapa==="Cotizacion enviada"&&d>3)||(c.etapa==="Nuevo contacto"&&d>5)); }).length;
-        var ganados=cotizaciones.filter(function(c){ return c.estatus==="Aceptada"; });
-        var totalGanado=ganados.reduce(function(s,c){ return s+c.monto; },0);
         var ganadosRecientes=clientes.filter(function(c){ return c.etapa==="Ganado"&&diasDesde(c.fechaEtapa||c.fecha)<=14; });
 
         // Subtitulo educativo , basado en lo mismo que muestra "A quién contactar hoy"
@@ -4307,7 +4739,7 @@ export default function CLEO(props){
         var clientesHoy=clientes.filter(function(c){ return diasDesde(c.fecha)<=2; });
         var perdidasDocumentadas=cotizaciones.filter(function(c){ return c.estatus==="Rechazada"&&c.motivoPerdida&&diasDesde(c.fecha)<=2; });
         if(cierreHoy.length>=1){
-          var totalCierreHoy=cierreHoy.reduce(function(s,c){ return s+c.monto; },0);
+          var totalCierreHoy=cierreHoy.reduce(function(s,c){ return s+totalPagadoDe(c); },0);
           reconocimiento={
             titulo:"¡Cerraste una venta para "+empresa+"!",
             texto:"$"+totalCierreHoy.toLocaleString()+" registrados. Documentar tus cierres te ayuda a ver qué está funcionando, sigue así.",
@@ -4507,12 +4939,13 @@ export default function CLEO(props){
               });
             });
             ventas.forEach(function(v){
-              var fv=new Date(v.fecha+"T12:00:00"); fv.setHours(0,0,0,0);
-              var hoyD=new Date(HOY); hoyD.setHours(0,0,0,0);
-              var diff=Math.round((hoyD-fv)/(1000*60*60*24));
-              var monto=Number(v.monto)||0;
-              if(diff===0) ingresosHoy+=monto;
-              if(fv>=inicioSem) ingresosSemana+=monto;
+              (v.pagos||[]).forEach(function(p){
+                var fp=new Date(p.fecha+"T12:00:00"); fp.setHours(0,0,0,0);
+                var hoyD=new Date(HOY); hoyD.setHours(0,0,0,0);
+                var diff=Math.round((hoyD-fp)/(1000*60*60*24));
+                if(diff===0) ingresosHoy+=Number(p.monto);
+                if(fp>=inicioSem) ingresosSemana+=Number(p.monto);
+              });
             });
 
             // 📦 Pedidos activos (no entregados ni cancelados)
@@ -4621,7 +5054,7 @@ export default function CLEO(props){
                         var prio=(c.estadoProspecto==="Convertido"||c.estadoProspecto==="Perdido")?"alta":dias>=7?"alta":dias>=4?"media":"baja";
                         var ac=avatarColor(c.id);
                         return e("div",{key:c.id,style:{display:"flex",alignItems:"center",gap:12,padding:"14px",border:"1px solid "+C.border,borderRadius:14,flexWrap:isMobile?"wrap":"nowrap"}},
-                          e("div",{style:{padding:"4px 10px",borderRadius:20,background:prioBg[prio],color:prioColor[prio],fontSize:10,fontWeight:700,letterSpacing:"0.3px",flexShrink:0,minWidth:132,textAlign:"center",flex:isMobile?"1 1 100%":"0 0 auto"}},prioLabel[prio]),
+                          e("div",{style:{padding:"4px 10px",borderRadius:20,background:prioBg[prio],color:prioColor[prio],fontSize:10,fontWeight:700,letterSpacing:"0.3px",flexShrink:0,minWidth:isMobile?0:132,textAlign:"center",flex:isMobile?"1 1 100%":"0 0 auto"}},prioLabel[prio]),
                           e("div",{style:{display:"flex",alignItems:"flex-start",gap:12,flex:isMobile?"1 1 100%":"1 1 auto",minWidth:0}},
                           e("div",{style:{width:40,height:40,borderRadius:"50%",background:ac+"22",display:"flex",alignItems:"center",justifyContent:"center",fontSize:13,fontWeight:700,color:ac,flexShrink:0}},iniciales(c.nombre)),
                           e("div",{style:{flex:1,minWidth:isMobile?0:200}},
@@ -4631,7 +5064,7 @@ export default function CLEO(props){
                           ),
                           ) // cierra grupo avatar + texto
                           ,
-                          e("div",{style:{display:"flex",gap:8,flexShrink:0,minWidth:266,flex:isMobile?"1 1 100%":"0 0 auto"}},
+                          e("div",{style:{display:"flex",gap:8,flexShrink:0,minWidth:isMobile?0:266,flex:isMobile?"1 1 100%":"0 0 auto"}},
                             e(BtnCanal,{cliente:c,small:false}),
                             e("button",{style:{cursor:"pointer",padding:"9px 16px",borderRadius:10,border:"1px solid "+C.border,background:"transparent",fontSize:12,color:C.textMuted,fontWeight:500,whiteSpace:"nowrap",flex:1},onClick:function(){ setVista("prospectos"); setFiltroProspecto("todos"); setHighlightOpoId(c.id); }},
                               "Ver oportunidad →"
@@ -4653,7 +5086,7 @@ export default function CLEO(props){
                     var clP=item.cl;
                     var acP=clP?avatarColor(clP.id):"#94A3B8";
                     return e("div",{key:item.ped.id+"_"+item.tipo,style:{display:"flex",alignItems:"center",gap:12,padding:"14px",border:"1px solid "+C.border,borderRadius:14,flexWrap:isMobile?"wrap":"nowrap"}},
-                      e("div",{style:{padding:"4px 10px",borderRadius:20,background:item.bg,color:item.color,fontSize:10,fontWeight:700,letterSpacing:"0.3px",flexShrink:0,minWidth:132,textAlign:"center",flex:isMobile?"1 1 100%":"0 0 auto"}},item.tipo==="atrasado"?"SIN ENTREGAR":"SALDO PENDIENTE"),
+                      e("div",{style:{padding:"4px 10px",borderRadius:20,background:item.bg,color:item.color,fontSize:10,fontWeight:700,letterSpacing:"0.3px",flexShrink:0,minWidth:isMobile?0:132,textAlign:"center",flex:isMobile?"1 1 100%":"0 0 auto"}},item.tipo==="atrasado"?"SIN ENTREGAR":"SALDO PENDIENTE"),
                       e("div",{style:{display:"flex",alignItems:"flex-start",gap:12,flex:isMobile?"1 1 100%":"1 1 auto",minWidth:0}},
                       e("div",{style:{width:40,height:40,borderRadius:"50%",background:acP+"22",display:"flex",alignItems:"center",justifyContent:"center",fontSize:13,fontWeight:700,color:acP,flexShrink:0}},clP?iniciales(clP.nombre):"?"),
                       e("div",{style:{flex:1,minWidth:isMobile?0:200}},
@@ -4662,7 +5095,7 @@ export default function CLEO(props){
                       ),
                       ) // cierra grupo avatar + texto
                       ,
-                      e("div",{style:{display:"flex",gap:8,flexShrink:0,minWidth:266,flex:isMobile?"1 1 100%":"0 0 auto"}},
+                      e("div",{style:{display:"flex",gap:8,flexShrink:0,minWidth:isMobile?0:266,flex:isMobile?"1 1 100%":"0 0 auto"}},
                         clP&&e(BtnCanal,{cliente:clP,small:false}),
                         e("button",{style:{cursor:"pointer",padding:"9px 16px",borderRadius:10,border:"1px solid "+C.border,background:"transparent",fontSize:12,color:C.textMuted,fontWeight:500,whiteSpace:"nowrap",flex:1},onClick:function(){ setVista("pedidos"); setHighlightPedidoId(item.ped.id); }},
                           "Ver pedido →"
@@ -4733,7 +5166,7 @@ export default function CLEO(props){
                       var ac=avatarColor(a.cliente.id);
                       var cotCliente=cotizaciones.filter(function(cc){ return cc.clienteId===a.cliente.id; }).sort(function(x,y){ return new Date(y.fecha)-new Date(x.fecha); })[0];
                       return e("div",{key:i,style:{display:"flex",alignItems:"center",gap:12,padding:"14px",border:"1px solid "+C.border,borderRadius:14,flexWrap:isMobile?"wrap":"nowrap"}},
-                        e("div",{style:{padding:"4px 10px",borderRadius:20,background:prioBg[a.prioridad],color:prioColor[a.prioridad],fontSize:10,fontWeight:700,letterSpacing:"0.3px",flexShrink:0,minWidth:132,textAlign:"center",flex:isMobile?"1 1 100%":"0 0 auto"}},prioLabel[a.prioridad]),
+                        e("div",{style:{padding:"4px 10px",borderRadius:20,background:prioBg[a.prioridad],color:prioColor[a.prioridad],fontSize:10,fontWeight:700,letterSpacing:"0.3px",flexShrink:0,minWidth:isMobile?0:132,textAlign:"center",flex:isMobile?"1 1 100%":"0 0 auto"}},prioLabel[a.prioridad]),
                         e("div",{style:{display:"flex",alignItems:"flex-start",gap:12,flex:isMobile?"1 1 100%":"1 1 auto",minWidth:0}},
                         e("div",{style:{width:40,height:40,borderRadius:"50%",background:ac+"22",display:"flex",alignItems:"center",justifyContent:"center",fontSize:13,fontWeight:700,color:ac,flexShrink:0}},iniciales(a.cliente.nombre)),
                         e("div",{style:{flex:1,minWidth:isMobile?0:200}},
@@ -4746,11 +5179,11 @@ export default function CLEO(props){
                         e("div",{style:{textAlign:isMobile?"left":"right",flexShrink:0,minWidth:100,marginRight:isMobile?0:8,flex:isMobile?"1 1 100%":"0 0 auto"}},
                           cotCliente&&e("div",{style:{fontSize:15,fontWeight:700,color:C.text}},"$"+Number(cotCliente.monto).toLocaleString())
                         ),
-                        e("div",{style:{display:"flex",gap:8,flexShrink:0,minWidth:266,flex:isMobile?"1 1 100%":"0 0 auto",flexWrap:"wrap"}},
-                          e("button",{style:{cursor:"pointer",padding:"9px 16px",borderRadius:10,border:"none",background:C.purple,fontSize:12,color:"#fff",fontWeight:600,display:"flex",alignItems:"center",gap:6,whiteSpace:"nowrap",flex:1,justifyContent:"center"},onClick:function(){ setSugerenciaClienteId(a.cliente.id); }},
+                        e("div",{style:{display:"flex",gap:8,flexShrink:0,minWidth:isMobile?0:266,flex:isMobile?"1 1 100%":"0 0 auto",flexWrap:"wrap"}},
+                          e("button",{style:{cursor:"pointer",padding:"9px 16px",borderRadius:10,border:"none",background:C.purple,fontSize:12,color:"#fff",fontWeight:600,display:"flex",alignItems:"center",gap:6,whiteSpace:"nowrap",flex:1,justifyContent:"center"},onClick:function(){ manejarClickContactar(a.cliente,a.recordatorioId,a.recordatorioNota,a.recordatorioEsManualOPersonalizado); }},
                             "💬 Contactar"
                           ),
-                          e("button",{style:{cursor:"pointer",padding:"9px 16px",borderRadius:10,border:"1px solid "+C.border,background:"transparent",fontSize:12,color:C.textMuted,fontWeight:500,whiteSpace:"nowrap",flex:1},onClick:function(){ setContactadoClienteId(a.cliente.id); }},
+                          e("button",{style:{cursor:"pointer",padding:"9px 16px",borderRadius:10,border:"1px solid "+C.border,background:"transparent",fontSize:12,color:C.textMuted,fontWeight:500,whiteSpace:"nowrap",flex:1},onClick:function(){ setContactadoClienteId(a.cliente.id); setContactadoRecordatorioId(idRecordatorioSiFueDetonante(a.cliente)); }},
                             "✓ Ya le hablé"
                           ),
                           a.estancado&&e("button",{style:{cursor:"pointer",padding:"9px 16px",borderRadius:10,border:"1px solid "+C.amber+"55",background:C.amberBg,fontSize:12,color:C.amber,fontWeight:600,whiteSpace:"nowrap",flex:"1 1 100%",textAlign:"center"},onClick:function(){ moverEtapa(a.cliente.id,"Perdido"); }},
@@ -4780,7 +5213,7 @@ export default function CLEO(props){
                         :"Ya pagó $"+pagado.toLocaleString()+". Quedó pendiente un saldo de $"+x.saldo.toLocaleString()+".";
                       var pagosX=x.cot.pagos||[];
                       return e("div",{key:i,style:{display:"flex",alignItems:"center",gap:12,padding:"14px",border:"1px solid "+C.border,borderRadius:14,flexWrap:isMobile?"wrap":"nowrap"}},
-                        e("div",{style:{padding:"4px 10px",borderRadius:20,background:"#FFFBEB",color:C.amber,fontSize:10,fontWeight:700,letterSpacing:"0.3px",flexShrink:0,minWidth:132,textAlign:"center",flex:isMobile?"1 1 100%":"0 0 auto"}},"COBRO PENDIENTE"),
+                        e("div",{style:{padding:"4px 10px",borderRadius:20,background:"#FFFBEB",color:C.amber,fontSize:10,fontWeight:700,letterSpacing:"0.3px",flexShrink:0,minWidth:isMobile?0:132,textAlign:"center",flex:isMobile?"1 1 100%":"0 0 auto"}},"COBRO PENDIENTE"),
                         e("div",{style:{display:"flex",alignItems:"flex-start",gap:12,flex:isMobile?"1 1 100%":"1 1 auto",minWidth:0}},
                         e("div",{style:{width:40,height:40,borderRadius:"50%",background:ac+"22",display:"flex",alignItems:"center",justifyContent:"center",fontSize:13,fontWeight:700,color:ac,flexShrink:0}},iniciales(x.cliente.nombre)),
                         e("div",{style:{flex:1,minWidth:isMobile?0:200}},
@@ -4792,7 +5225,7 @@ export default function CLEO(props){
                         e("div",{style:{textAlign:isMobile?"left":"right",flexShrink:0,minWidth:100,marginRight:isMobile?0:8,flex:isMobile?"1 1 100%":"0 0 auto"}},
                           e("div",{style:{fontSize:15,fontWeight:700,color:C.amber}},"$"+x.saldo.toLocaleString())
                         ),
-                        e("div",{style:{display:"flex",gap:8,flexShrink:0,minWidth:266,flex:isMobile?"1 1 100%":"0 0 auto"}},
+                        e("div",{style:{display:"flex",gap:8,flexShrink:0,minWidth:isMobile?0:266,flex:isMobile?"1 1 100%":"0 0 auto"}},
                           e("button",{style:{cursor:"pointer",padding:"9px 16px",borderRadius:10,border:"none",background:C.purple,fontSize:12,color:"#fff",fontWeight:600,display:"flex",alignItems:"center",gap:6,whiteSpace:"nowrap",flex:1,justifyContent:"center"},onClick:function(){ var url=contactUrl(x.cliente,"Hola "+x.cliente.nombre.split(" ")[0]+", te escribo para ver cómo va el pago pendiente de "+(x.cot.concepto||"tu cotización")+"."); if(url) abrirEnlaceExternoSeguro(url); else setClienteCompletarId(x.cliente.id); }},
                             "💬 Contactar"
                           ),
@@ -5143,7 +5576,7 @@ export default function CLEO(props){
                 if(c.canalPrincipal) facts.push({ic:"💬",txt:"Prefiere contacto por "+c.canalPrincipal+"."});
 
                 // Total invertido
-                var totalCliente=cotC.reduce(function(s,cot){ return s+cot.monto; },0)+ventasC.reduce(function(s,v){ return s+Number(v.monto); },0);
+                var totalCliente=cotC.reduce(function(s,cot){ return s+totalPagadoDe(cot); },0)+ventasC.reduce(function(s,v){ return s+totalPagadoDe(v); },0);
                 if(totalCliente>0) facts.push({ic:"💰",txt:"Ha invertido $"+totalCliente.toLocaleString()+" contigo."+(cotC.length+ventasC.length>1?" ("+((cotC.length||0)+(ventasC.length||0))+" transacciones)":"")});
 
                 // Tasa de cierre personal
@@ -5204,13 +5637,11 @@ export default function CLEO(props){
                 var comprasCerradas=0;
                 cotCliente.filter(function(cot){ return cot.estatus==="Aceptada"; }).forEach(function(cot){
                   comprasCerradas++;
-                  var pagosH=cot.pagos||[];
-                  if(pagosH.length>0) totalCobradoCliente+=pagosH.reduce(function(s,p){ return s+Number(p.monto); },0);
+                  totalCobradoCliente+=totalPagadoDe(cot);
                 });
                 ventasCliente.forEach(function(v){
                   comprasCerradas++;
-                  if(v.pagos&&v.pagos.length>0) totalCobradoCliente+=v.pagos.reduce(function(s,p){ return s+Number(p.monto); },0);
-                  else if(v.tipoPago!=="anticipo") totalCobradoCliente+=Number(v.monto);
+                  totalCobradoCliente+=totalPagadoDe(v);
                 });
                 (pedidos||[]).filter(function(p){ return p.clienteId===c.id&&p.estadoPedido!=="cancelado"; }).forEach(function(ped){
                   comprasCerradas++;
@@ -5477,8 +5908,11 @@ export default function CLEO(props){
         // Construir lista de ingresos: pagos de cotizaciones aceptadas + ventas rápidas
         var ingresos=[];
 
-        // 1. Pagos desde cotizaciones aceptadas
-        cotizaciones.filter(function(c){ return c.estatus==="Aceptada"; }).forEach(function(cot){
+        // 1. Pagos desde cotizaciones , el ingreso ya recibido no depende
+        // del estatus ACTUAL del documento (si se marca Rechazada después
+        // de haber cobrado algo, ese dinero ya entró y sigue siendo un
+        // ingreso real). Se construye desde los movimientos, no del estatus.
+        cotizaciones.filter(function(c){ return (c.pagos||[]).length>0; }).forEach(function(cot){
           var cl=clientes.find(function(c){ return c.id===cot.clienteId; });
           (cot.pagos||[]).forEach(function(pago){
             ingresos.push({
@@ -5507,24 +5941,11 @@ export default function CLEO(props){
                 origen:"venta_rapida",
                 monto:Number(pago.monto),
                 fecha:pago.fecha||v.fecha,
-                concepto:v.concepto||"Venta directa",
+                concepto:(pago.concepto||"Pago")+(v.concepto?" · "+v.concepto:""),
                 productos:"",
               });
             });
             // El saldo sin cobrar de una venta con anticipo NO se cuenta aquí , todavía no ha entrado.
-          } else if(v.tipoPago!=="anticipo"){
-            // Solo se asume el monto completo si de verdad se marcó "pagó completo",
-            // no cuando fue "anticipo" con el campo vacío (eso es $0 cobrado, no el total).
-            ingresos.push({
-              id:"vs_vr_"+v.id,
-              clienteId:v.clienteId,
-              clienteNombre:cl?cl.nombre:(v.etiqueta||"Cliente general"),
-              origen:"venta_rapida",
-              monto:Number(v.monto),
-              fecha:v.fecha,
-              concepto:v.concepto||"Venta directa",
-              productos:"",
-            });
           }
         });
 
@@ -5948,7 +6369,7 @@ export default function CLEO(props){
                       onClick:function(){
                         var ahora=new Date().toISOString();
                         setClientes(clientes.map(function(x){
-                          return x.id===c.id?Object.assign({},x,{estadoProspecto:"Convertido",etapa:"Ganado",fechaPedido:ahora}):x;
+                          return x.id===c.id?cancelarRecordatoriosPipeline(Object.assign({},x,{estadoProspecto:"Convertido",etapa:"Ganado",fechaPedido:ahora})):x;
                         }));
                         var nuevoPedido={id:"ped_"+Date.now(),clienteId:c.id,productos:c.productoInteres||"",cantidad:1,total:Number(c.precioInteres)||0,pagos:[],estadoPedido:"preparando",notas:c.notasProspecto||"",fecha:FECHA_HOY,fechaCreado:ahora};
                         setPedidos([nuevoPedido,...pedidos]);
@@ -6251,16 +6672,6 @@ export default function CLEO(props){
           setPedidos(pedidos.map(function(p){ return p.id===id?Object.assign({},p,cambios):p; }));
         }
 
-        function registrarPagoPedido(pedidoId){
-          if(!formPagoPedido.monto) return;
-          var ped=pedidos.find(function(p){ return p.id===pedidoId; });
-          if(!ped) return;
-          var nuevosPagos=[...(ped.pagos||[]),{id:"pp_"+Date.now(),monto:Number(formPagoPedido.monto),fecha:formPagoPedido.fecha,concepto:formPagoPedido.concepto||"Pago"}];
-          actualizarPedido(pedidoId,{pagos:nuevosPagos});
-          setFormPagoPedido({monto:"",fecha:FECHA_HOY,concepto:"Pago"});
-          setPedidoPagosId(null);
-        }
-
         return e("div",null,
           // HEADER
           e("div",{style:{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:24,flexWrap:"wrap",gap:12}},
@@ -6523,10 +6934,10 @@ export default function CLEO(props){
             var pc=C.purple;
 
             return e("div",{style:st.ov,onClick:function(){ setPedidoPagosId(null); }},
-              e("div",{style:Object.assign({},st.modal,{padding:0,overflow:"hidden",overflowY:"auto"}),onClick:function(ev){ ev.stopPropagation(); }},
+              e("div",{style:st.modal2.outer,onClick:function(ev){ ev.stopPropagation(); }},
 
                 // HEADER
-                e("div",{style:{padding:"20px 24px 16px",borderBottom:"1px solid "+C.border,display:"flex",justifyContent:"space-between",alignItems:"flex-start"}},
+                e("div",{style:Object.assign({},st.modal2.header,{alignItems:"flex-start"})},
                   e("div",null,
                     e("div",{style:{fontWeight:700,fontSize:16,color:C.text,marginBottom:3}},"Registrar pago"),
                     e("div",{style:{fontSize:12,color:C.textMuted}},(cl?cl.nombre:"--")+" · "+(ped.productos||"")+(totalPedido>0?" · $"+totalPedido.toLocaleString():""))
@@ -6535,7 +6946,7 @@ export default function CLEO(props){
                 ),
 
                 // BODY
-                e("div",{style:{padding:"20px 24px",overflowY:"auto",maxHeight:"65vh"}},
+                e("div",{style:Object.assign({},st.modal2.body,{maxHeight:"none"})},
 
                   // Pagos existentes
                   pagosArr.length>0&&e("div",{style:{marginBottom:20}},
@@ -6552,10 +6963,7 @@ export default function CLEO(props){
                             onClick:function(){ generarDocumentoParaMovimiento(pago,{id:ped.id,concepto:ped.productos||"Pedido",monto:totalPedido,pagos:pagosArr},cl||{nombre:"Cliente"},perfil); }
                           },"Comprobante"),
                           e("button",{style:{background:"none",border:"none",cursor:"pointer",color:C.textDim,fontSize:16,padding:"2px 6px"},
-                            onClick:function(){
-                              var nuevosPagos=pagosArr.filter(function(p){ return p.id!==pago.id; });
-                              actualizarPedido(ped.id,{pagos:nuevosPagos});
-                            }
+                            onClick:function(){ eliminarPago("pedido",ped.id,pago.id,pago.monto); }
                           },"×")
                         );
                       })
@@ -6609,14 +7017,14 @@ export default function CLEO(props){
                 ),
 
                 // FOOTER
-                e("div",{style:{padding:"14px 24px",borderTop:"1px solid "+C.border,display:"flex",justifyContent:"flex-end",gap:8,background:C.surfaceUp}},
+                e("div",{style:st.modal2.footer},
                   e("button",{style:st.btn,onClick:function(){ setPedidoPagosId(null); }},"Cerrar"),
                   saldoReal>0&&e("button",{
                     style:Object.assign({},st.btnP,{opacity:!formPagoPedidoModal.monto||Number(formPagoPedidoModal.monto)<=0?0.4:1}),
                     disabled:!formPagoPedidoModal.monto||Number(formPagoPedidoModal.monto)<=0,
                     onClick:function(){
-                      var nuevoPago={id:"pp_"+Date.now(),monto:Number(formPagoPedidoModal.monto),fecha:formPagoPedidoModal.fecha,concepto:formPagoPedidoModal.concepto};
-                      actualizarPedido(ped.id,{pagos:[...pagosArr,nuevoPago]});
+                      var resultado=registrarPago("pedido",ped.id,formPagoPedidoModal.monto,formPagoPedidoModal.fecha,formPagoPedidoModal.concepto);
+                      if(!resultado.ok){ alert(resultado.error); return; }
                       setFormPagoPedidoModal({monto:"",fecha:FECHA_HOY,concepto:"Pago"});
                     }
                   },"+ Guardar pago")
@@ -6803,6 +7211,12 @@ export default function CLEO(props){
                       alert("El número de WhatsApp debe tener exactamente 10 dígitos.");
                       return;
                     }
+                    // Pre-validar el pago ANTES de crear el cliente , el
+                    // saldo de un pedido nuevo siempre es su total completo.
+                    if(fp.anticipo&&Number(fp.anticipo)>0){
+                      var validacionPreviaPed=construirMovimientoPago(Number(fp.total)||0,fp.anticipo,FECHA_HOY,"Anticipo");
+                      if(!validacionPreviaPed.ok){ alert(validacionPreviaPed.error); return; }
+                    }
                     var clienteIdFinal=fp.clienteId?Number(fp.clienteId):null;
                     // Crear cliente nuevo si no existe
                     if(!fp.clienteId&&fp.nuevoNombre){
@@ -6822,24 +7236,24 @@ export default function CLEO(props){
                       }),...clientes]);
                     }
                     // Crear pedido
-                    var pagosIniciales=[];
-                    if(fp.anticipo&&Number(fp.anticipo)>0){
-                      pagosIniciales=[{id:"pa_"+Date.now(),monto:Number(fp.anticipo),fecha:FECHA_HOY,concepto:"Anticipo"}];
-                    }
-                    var nuevoPed={
+                    var nuevoPedBase={
                       id:"ped_"+Date.now(),
                       clienteId:clienteIdFinal,
                       productos:fp.productos||"",
                       cantidad:Number(fp.cantidad)||1,
                       total:Number(fp.total)||0,
-                      pagos:pagosIniciales,
                       estadoPedido:"preparando",
                       notas:fp.notas||"",
                       fechaEntrega:fp.fechaEntrega||"",
                       fecha:FECHA_HOY,
                       fechaCreado:new Date().toISOString(),
                     };
-                    setPedidos([nuevoPed,...pedidos]);
+                    if(fp.anticipo&&Number(fp.anticipo)>0){
+                      var resultadoPed=registrarPago("pedido",nuevoPedBase.id,fp.anticipo,FECHA_HOY,"Anticipo",nuevoPedBase);
+                      if(!resultadoPed.ok){ alert(resultadoPed.error); return; }
+                    } else {
+                      insertarSinPago("pedido",nuevoPedBase);
+                    }
                     setNuevoPedidoModal(false); setBuscaCliPed("");
                     setCelebPedidoData({clienteNombre:fp.nuevoNombre||(clientes.find(function(c){ return String(c.id)===String(fp.clienteId); })||{}).nombre||"Cliente",producto:fp.productos||"",precio:fp.total||0,clienteId:clienteIdFinal});
                     setCelebPaso(1); setCelebRazon([]);
@@ -6923,10 +7337,10 @@ export default function CLEO(props){
         ),
         e("div",{style:{display:"flex",gap:8,marginBottom:16,flexWrap:"wrap",alignItems:"center"}},
           e("input",{placeholder:"Buscar...",value:filtroCot.busqueda,onChange:function(ev){ setFiltroCot(Object.assign({},filtroCot,{busqueda:ev.target.value})); },style:Object.assign({},st.inp,{flex:1,minWidth:120})}),
-          e("select",{value:filtroCot.estatus,onChange:function(ev){ setHighlightCotId(null); setFiltroCot(Object.assign({},filtroCot,{estatus:ev.target.value})); },style:{cursor:"pointer",padding:"7px 12px",borderRadius:12,border:"1px solid "+C.border,background:C.surface,fontSize:12,color:C.textMuted,outline:"none"}},
+          e("select",{value:filtroCot.estatus,onChange:function(ev){ setHighlightCotId(null); setFiltroCot(Object.assign({},filtroCot,{estatus:ev.target.value})); },style:{cursor:"pointer",padding:"7px 12px",borderRadius:12,border:"1px solid "+C.border,background:C.surface,fontSize:16,color:C.textMuted,outline:"none"}},
             [["","Todas"],["Pendiente","Esperando respuesta"],["Rechazada","Sin cerrar"]].map(function(f){ return e("option",{key:f[0]||"todas",value:f[0]},f[1]); })
           ),
-          e("select",{value:filtroCot.periodo,onChange:function(ev){ setFiltroCot(Object.assign({},filtroCot,{periodo:ev.target.value})); },style:{cursor:"pointer",padding:"7px 12px",borderRadius:12,border:"1px solid "+C.border,background:C.surface,fontSize:12,color:C.textMuted,outline:"none"}},
+          e("select",{value:filtroCot.periodo,onChange:function(ev){ setFiltroCot(Object.assign({},filtroCot,{periodo:ev.target.value})); },style:{cursor:"pointer",padding:"7px 12px",borderRadius:12,border:"1px solid "+C.border,background:C.surface,fontSize:16,color:C.textMuted,outline:"none"}},
             [["todo","Todo el tiempo"],["semana","Esta semana"],["mes","Este mes"],["trimestre","Trimestre"]].map(function(p){ return e("option",{key:p[0],value:p[0]},p[1]); })
           )
         ),
@@ -6934,7 +7348,7 @@ export default function CLEO(props){
         cotsFiltradas.map(function(cot){
           var cl=clientes.find(function(c){ return c.id===cot.clienteId; });
           var waUrl=cl&&cl.contacto?crearUrlWhatsApp(cl.contacto,"Hola "+cl.nombre+"\n\nTe comparto tu cotizacion:\n"+cot.concepto+"\nTotal: $"+Number(cot.monto).toLocaleString()+" MXN"+(cot.vigencia?"\nVigencia: "+cot.vigencia:"")+"\n\n"+perfil.mensaje):null;
-          var saldo=cot.monto-(cot.anticipo||0);
+          var saldo=saldoPendienteDe(cot,cot.monto);
           // Formatear fechas legibles
           var fmtFecha=function(f){ if(!f) return ""; var p=f.split("-"); return p[2]+"/"+p[1]+"/"+p[0].slice(2); };
           var esAceptada=cot.estatus==="Aceptada";
@@ -7085,7 +7499,7 @@ export default function CLEO(props){
                         t.fechaEntrega
                           ? e("span",{style:{color:fechaColor,fontWeight:fechaColor!==C.textMuted?600:400}},fechaTexto)
                           : e("span",{style:{color:C.textMuted}},"Sin fecha"),
-                        e("input",{type:"date",value:t.fechaEntrega||"",onChange:function(ev){ actualizarFechaEntrega(t,ev.target.value); },style:{border:"1px solid "+C.border,borderRadius:6,background:C.bg,fontSize:11,color:C.purple,fontWeight:600,cursor:"pointer",padding:"3px 5px",height:24}})
+                        e("input",{type:"date",value:t.fechaEntrega||"",onChange:function(ev){ actualizarFechaEntrega(t,ev.target.value); },style:{border:"1px solid "+C.border,borderRadius:6,background:C.bg,fontSize:16,color:C.purple,fontWeight:600,cursor:"pointer",padding:"3px 5px",height:30}})
                       )
                     ),
 
@@ -7133,7 +7547,7 @@ export default function CLEO(props){
         if(!esProductos){
         var accionesCompletas=obtenerAccionesHoy(clientes,cotizaciones,esProductos);
         urgentes=accionesCompletas.map(function(a){
-          return {cliente:a.cliente,razon:a.desc,prioridad:a.prioridad,mensajeSugerido:a.mensajeSugerido};
+          return {cliente:a.cliente,razon:a.desc,prioridad:a.prioridad,mensajeSugerido:a.mensajeSugerido,recordatorioId:a.recordatorioId,recordatorioNota:a.recordatorioNota,recordatorioEsManualOPersonalizado:a.recordatorioEsManualOPersonalizado};
         });
         } // fin !esProductos
         var idsVisto={};
@@ -7266,7 +7680,7 @@ export default function CLEO(props){
                     var prio=(c.estadoProspecto==="Convertido"||c.estadoProspecto==="Perdido")?"alta":dias>=7?"alta":dias>=4?"media":"baja";
                     var ac=avatarColor(c.id);
                     return e("div",{key:c.id,style:{display:"flex",alignItems:"center",gap:12,padding:"14px",background:C.surface,border:"1px solid "+C.border,borderRadius:14,flexWrap:isMobile?"wrap":"nowrap",boxShadow:"0 1px 3px rgba(0,0,0,0.04)"}},
-                      e("div",{style:{padding:"4px 10px",borderRadius:20,background:prioBg[prio],color:prioColor[prio],fontSize:10,fontWeight:700,letterSpacing:"0.3px",flexShrink:0,minWidth:132,textAlign:"center",flex:isMobile?"1 1 100%":"0 0 auto"}},prioLabel[prio]),
+                      e("div",{style:{padding:"4px 10px",borderRadius:20,background:prioBg[prio],color:prioColor[prio],fontSize:10,fontWeight:700,letterSpacing:"0.3px",flexShrink:0,minWidth:isMobile?0:132,textAlign:"center",flex:isMobile?"1 1 100%":"0 0 auto"}},prioLabel[prio]),
                       e("div",{style:{display:"flex",alignItems:"flex-start",gap:12,flex:isMobile?"1 1 100%":"1 1 auto",minWidth:0}},
                       e("div",{style:{width:40,height:40,borderRadius:"50%",background:ac+"22",display:"flex",alignItems:"center",justifyContent:"center",fontSize:13,fontWeight:700,color:ac,flexShrink:0}},iniciales(c.nombre)),
                       e("div",{style:{flex:1,minWidth:isMobile?0:200}},
@@ -7276,7 +7690,7 @@ export default function CLEO(props){
                       ),
                       ) // cierra grupo avatar + texto
                       ,
-                      e("div",{style:{display:"flex",gap:8,flexShrink:0,minWidth:266,flex:isMobile?"1 1 100%":"0 0 auto"}},
+                      e("div",{style:{display:"flex",gap:8,flexShrink:0,minWidth:isMobile?0:266,flex:isMobile?"1 1 100%":"0 0 auto"}},
                         e(BtnCanal,{cliente:c,small:false}),
                         e("button",{style:{cursor:"pointer",padding:"9px 16px",borderRadius:10,border:"1px solid "+C.border,background:"transparent",fontSize:12,color:C.textMuted,fontWeight:500,whiteSpace:"nowrap",flex:1},onClick:function(){ setVista("prospectos"); setFiltroProspecto("todos"); setHighlightOpoId(c.id); }},
                           "Ver oportunidad →"
@@ -7298,7 +7712,7 @@ export default function CLEO(props){
                     var cl=item.cl;
                     var ac=cl?avatarColor(cl.id):"#94A3B8";
                     return e("div",{key:item.ped.id+"_"+item.tipo,style:{display:"flex",alignItems:"center",gap:12,padding:"14px",background:C.surface,border:"1px solid "+C.border,borderRadius:14,flexWrap:isMobile?"wrap":"nowrap",boxShadow:"0 1px 3px rgba(0,0,0,0.04)"}},
-                      e("div",{style:{padding:"4px 10px",borderRadius:20,background:item.bg,color:item.color,fontSize:10,fontWeight:700,letterSpacing:"0.3px",flexShrink:0,minWidth:132,textAlign:"center",flex:isMobile?"1 1 100%":"0 0 auto"}},item.tipo==="atrasado"?"SIN ENTREGAR":"SALDO PENDIENTE"),
+                      e("div",{style:{padding:"4px 10px",borderRadius:20,background:item.bg,color:item.color,fontSize:10,fontWeight:700,letterSpacing:"0.3px",flexShrink:0,minWidth:isMobile?0:132,textAlign:"center",flex:isMobile?"1 1 100%":"0 0 auto"}},item.tipo==="atrasado"?"SIN ENTREGAR":"SALDO PENDIENTE"),
                       e("div",{style:{display:"flex",alignItems:"flex-start",gap:12,flex:isMobile?"1 1 100%":"1 1 auto",minWidth:0}},
                       e("div",{style:{width:40,height:40,borderRadius:"50%",background:ac+"22",display:"flex",alignItems:"center",justifyContent:"center",fontSize:13,fontWeight:700,color:ac,flexShrink:0}},cl?iniciales(cl.nombre):"?"),
                       e("div",{style:{flex:1,minWidth:isMobile?0:200}},
@@ -7307,7 +7721,7 @@ export default function CLEO(props){
                       ),
                       ) // cierra grupo avatar + texto
                       ,
-                      e("div",{style:{display:"flex",gap:8,flexShrink:0,minWidth:266,flex:isMobile?"1 1 100%":"0 0 auto"}},
+                      e("div",{style:{display:"flex",gap:8,flexShrink:0,minWidth:isMobile?0:266,flex:isMobile?"1 1 100%":"0 0 auto"}},
                         cl&&e(BtnCanal,{cliente:cl,small:false}),
                         e("button",{style:{cursor:"pointer",padding:"9px 16px",borderRadius:10,border:"1px solid "+C.border,background:"transparent",fontSize:12,color:C.textMuted,fontWeight:500,whiteSpace:"nowrap",flex:1},onClick:function(){ setVista("pedidos"); setHighlightPedidoId(item.ped.id); }},
                           "Ver pedido →"
@@ -7364,7 +7778,7 @@ export default function CLEO(props){
                     var cotCliente=cotizaciones.filter(function(cc){ return cc.clienteId===c.id; }).sort(function(x,y){ return new Date(y.fecha)-new Date(x.fecha); })[0];
                     var esHighlightHoy=c.id===highlightHoyClienteId;
                     return e("div",{key:c.id,style:{display:"flex",alignItems:"center",gap:12,padding:"14px",background:C.surface,border:esHighlightHoy?"2px solid "+C.purple:"1px solid "+C.border,borderRadius:14,flexWrap:isMobile?"wrap":"nowrap",boxShadow:esHighlightHoy?"0 0 0 3px "+C.purple+"22":"0 1px 3px rgba(0,0,0,0.04)"},ref:function(el){ if(el&&esHighlightHoy){ el.scrollIntoView({behavior:"smooth",block:"start"}); } }},
-                      e("div",{style:{padding:"4px 10px",borderRadius:20,background:prioBgH[u.prioridad],color:prioColorH[u.prioridad],fontSize:10,fontWeight:700,letterSpacing:"0.3px",flexShrink:0,minWidth:132,textAlign:"center",flex:isMobile?"1 1 100%":"0 0 auto"}},prioLabelH[u.prioridad]),
+                      e("div",{style:{padding:"4px 10px",borderRadius:20,background:prioBgH[u.prioridad],color:prioColorH[u.prioridad],fontSize:10,fontWeight:700,letterSpacing:"0.3px",flexShrink:0,minWidth:isMobile?0:132,textAlign:"center",flex:isMobile?"1 1 100%":"0 0 auto"}},prioLabelH[u.prioridad]),
                       e("div",{style:{display:"flex",alignItems:"flex-start",gap:12,flex:isMobile?"1 1 100%":"1 1 auto",minWidth:0}},
                       e("div",{style:{width:40,height:40,borderRadius:"50%",background:ac+"22",display:"flex",alignItems:"center",justifyContent:"center",fontSize:13,fontWeight:700,color:ac,flexShrink:0}},iniciales(c.nombre)),
                       e("div",{style:{flex:1,minWidth:isMobile?0:200}},
@@ -7377,11 +7791,11 @@ export default function CLEO(props){
                       e("div",{style:{textAlign:isMobile?"left":"right",flexShrink:0,minWidth:100,marginRight:isMobile?0:8,flex:isMobile?"1 1 100%":"0 0 auto"}},
                         cotCliente&&e("div",{style:{fontSize:15,fontWeight:700,color:C.text}},"$"+Number(cotCliente.monto).toLocaleString())
                       ),
-                      e("div",{style:{display:"flex",gap:8,flexShrink:0,minWidth:266,flex:isMobile?"1 1 100%":"0 0 auto",flexWrap:"wrap"}},
-                        e("button",{style:{cursor:"pointer",padding:"9px 16px",borderRadius:10,border:"none",background:C.purple,fontSize:12,color:"#fff",fontWeight:600,display:"flex",alignItems:"center",gap:6,whiteSpace:"nowrap",flex:1,justifyContent:"center"},onClick:function(){ setSugerenciaClienteId(c.id); }},
+                      e("div",{style:{display:"flex",gap:8,flexShrink:0,minWidth:isMobile?0:266,flex:isMobile?"1 1 100%":"0 0 auto",flexWrap:"wrap"}},
+                        e("button",{style:{cursor:"pointer",padding:"9px 16px",borderRadius:10,border:"none",background:C.purple,fontSize:12,color:"#fff",fontWeight:600,display:"flex",alignItems:"center",gap:6,whiteSpace:"nowrap",flex:1,justifyContent:"center"},onClick:function(){ manejarClickContactar(c,u.recordatorioId,u.recordatorioNota,u.recordatorioEsManualOPersonalizado); }},
                           "💬 Contactar"
                         ),
-                        e("button",{style:{cursor:"pointer",padding:"9px 16px",borderRadius:10,border:"1px solid "+C.border,background:"transparent",fontSize:12,color:C.textMuted,fontWeight:500,whiteSpace:"nowrap",flex:1},onClick:function(){ setContactadoClienteId(c.id); }},
+                        e("button",{style:{cursor:"pointer",padding:"9px 16px",borderRadius:10,border:"1px solid "+C.border,background:"transparent",fontSize:12,color:C.textMuted,fontWeight:500,whiteSpace:"nowrap",flex:1},onClick:function(){ setContactadoClienteId(c.id); setContactadoRecordatorioId(idRecordatorioSiFueDetonante(c)); }},
                           "✓ Ya le hablé"
                         ),
                         u.estancado&&e("button",{style:{cursor:"pointer",padding:"9px 16px",borderRadius:10,border:"1px solid "+C.amber+"55",background:C.amberBg,fontSize:12,color:C.amber,fontWeight:600,whiteSpace:"nowrap",flex:"1 1 100%",textAlign:"center"},onClick:function(){ moverEtapa(c.id,"Perdido"); }},
@@ -7414,7 +7828,7 @@ export default function CLEO(props){
                     :"Ya pagó $"+pagado.toLocaleString()+". Quedó pendiente un saldo de $"+x.saldo.toLocaleString()+".";
                   var pagosX=x.cot.pagos||[];
                   return e("div",{key:i,style:{display:"flex",alignItems:"center",gap:12,padding:"14px",background:C.surface,border:"1px solid "+C.border,borderRadius:14,flexWrap:isMobile?"wrap":"nowrap",boxShadow:"0 1px 3px rgba(0,0,0,0.04)"}},
-                    e("div",{style:{padding:"4px 10px",borderRadius:20,background:"#FFFBEB",color:C.amber,fontSize:10,fontWeight:700,letterSpacing:"0.3px",flexShrink:0,minWidth:132,textAlign:"center",flex:isMobile?"1 1 100%":"0 0 auto"}},"COBRO PENDIENTE"),
+                    e("div",{style:{padding:"4px 10px",borderRadius:20,background:"#FFFBEB",color:C.amber,fontSize:10,fontWeight:700,letterSpacing:"0.3px",flexShrink:0,minWidth:isMobile?0:132,textAlign:"center",flex:isMobile?"1 1 100%":"0 0 auto"}},"COBRO PENDIENTE"),
                     e("div",{style:{display:"flex",alignItems:"flex-start",gap:12,flex:isMobile?"1 1 100%":"1 1 auto",minWidth:0}},
                     e("div",{style:{width:40,height:40,borderRadius:"50%",background:ac+"22",display:"flex",alignItems:"center",justifyContent:"center",fontSize:13,fontWeight:700,color:ac,flexShrink:0}},iniciales(x.cliente.nombre)),
                     e("div",{style:{flex:1,minWidth:isMobile?0:200}},
@@ -7426,7 +7840,7 @@ export default function CLEO(props){
                     e("div",{style:{textAlign:isMobile?"left":"right",flexShrink:0,minWidth:100,marginRight:isMobile?0:8,flex:isMobile?"1 1 100%":"0 0 auto"}},
                       e("div",{style:{fontSize:15,fontWeight:700,color:C.amber}},"$"+x.saldo.toLocaleString())
                     ),
-                    e("div",{style:{display:"flex",gap:8,flexShrink:0,minWidth:266,flex:isMobile?"1 1 100%":"0 0 auto"}},
+                    e("div",{style:{display:"flex",gap:8,flexShrink:0,minWidth:isMobile?0:266,flex:isMobile?"1 1 100%":"0 0 auto"}},
                       e("button",{style:{cursor:"pointer",padding:"9px 16px",borderRadius:10,border:"none",background:C.purple,fontSize:12,color:"#fff",fontWeight:600,display:"flex",alignItems:"center",gap:6,whiteSpace:"nowrap",flex:1,justifyContent:"center"},onClick:function(){ var url=contactUrl(x.cliente,"Hola "+x.cliente.nombre.split(" ")[0]+", te escribo para ver cómo va el pago pendiente de "+(x.cot.concepto||"tu cotización")+"."); if(url) abrirEnlaceExternoSeguro(url); else setClienteCompletarId(x.cliente.id); }},
                         "💬 Contactar"
                       ),
@@ -7478,23 +7892,11 @@ export default function CLEO(props){
                 origen:"venta_rapida",
                 monto:Number(pago.monto),
                 fecha:pago.fecha||v.fecha,
-                concepto:v.concepto||"Venta directa",
+                concepto:(pago.concepto||"Pago")+(v.concepto?" · "+v.concepto:""),
                 productos:"",
               });
             });
             // El saldo sin cobrar de una venta con anticipo NO se cuenta aquí , todavía no ha entrado.
-          } else if(v.tipoPago!=="anticipo"){
-            // Solo se asume el monto completo si de verdad se marcó "pagó completo".
-            ingresos.push({
-              id:"vp_vr_"+v.id,
-              clienteId:v.clienteId,
-              clienteNombre:cl?cl.nombre:(v.etiqueta||"Cliente general"),
-              origen:"venta_rapida",
-              monto:Number(v.monto),
-              fecha:v.fecha,
-              concepto:v.concepto||"Venta directa",
-              productos:"",
-            });
           }
         });
 
@@ -7632,13 +8034,18 @@ export default function CLEO(props){
           return true;
         }
 
-        // Ingresos del período (pagos de pedidos + ventas rápidas)
+        // Ingresos del período (pagos de pedidos + ventas rápidas) , se
+        // suma cada movimiento por SU PROPIA fecha, igual que pedidos ,
+        // nunca se usa tipoPago ni el monto total de la venta como fuente.
         var ingresosPer=0;
         pedidos.forEach(function(ped){
           (ped.pagos||[]).forEach(function(p){ if(enPeriodoRes(p.fecha)) ingresosPer+=Number(p.monto); });
         });
         var ventasPer=ventas.filter(function(v){ return enPeriodoRes(v.fecha); });
-        var ingresoVentasPer=ventasPer.reduce(function(s,v){ return s+(v.tipoPago==="anticipo"?(v.pagos||[]).reduce(function(x,p){ return x+Number(p.monto); },0):Number(v.monto)); },0);
+        var ingresoVentasPer=0;
+        ventas.forEach(function(v){
+          (v.pagos||[]).forEach(function(p){ if(enPeriodoRes(p.fecha)) ingresoVentasPer+=Number(p.monto); });
+        });
         var totalCobrado=ingresosPer+ingresoVentasPer;
 
         // Pedidos del período
@@ -7722,11 +8129,7 @@ export default function CLEO(props){
           var ingMes=0;
           pedidos.forEach(function(p){ (p.pagos||[]).forEach(function(pg){ var d=new Date(pg.fecha+"T12:00:00"); if(d.getMonth()===mes&&d.getFullYear()===anio) ingMes+=Number(pg.monto); }); });
           ventas.forEach(function(v){
-            if(v.pagos&&v.pagos.length>0){
-              v.pagos.forEach(function(pg){ var d=new Date((pg.fecha||v.fecha)+"T12:00:00"); if(d.getMonth()===mes&&d.getFullYear()===anio) ingMes+=Number(pg.monto); });
-            } else if(v.tipoPago!=="anticipo"){
-              var d=new Date(v.fecha+"T12:00:00"); if(d.getMonth()===mes&&d.getFullYear()===anio) ingMes+=Number(v.monto);
-            }
+            v.pagos&&v.pagos.forEach(function(pg){ var d=new Date((pg.fecha||v.fecha)+"T12:00:00"); if(d.getMonth()===mes&&d.getFullYear()===anio) ingMes+=Number(pg.monto); });
           });
           mesesData.push({label:MESES_LABELS[mes],total:ingMes,mes:mes,anio:anio,esMesActual:mi===0});
         }
@@ -7739,11 +8142,7 @@ export default function CLEO(props){
         var mesAnteriorParcial=0;
         pedidos.forEach(function(p){ (p.pagos||[]).forEach(function(pg){ var d=new Date(pg.fecha+"T12:00:00"); if(d.getMonth()===mesAnterior.mes&&d.getFullYear()===mesAnterior.anio&&d.getDate()<=diaCorte) mesAnteriorParcial+=Number(pg.monto); }); });
         ventas.forEach(function(v){
-          if(v.pagos&&v.pagos.length>0){
-            v.pagos.forEach(function(pg){ var d=new Date((pg.fecha||v.fecha)+"T12:00:00"); if(d.getMonth()===mesAnterior.mes&&d.getFullYear()===mesAnterior.anio&&d.getDate()<=diaCorte) mesAnteriorParcial+=Number(pg.monto); });
-          } else if(v.tipoPago!=="anticipo"){
-            var d=new Date(v.fecha+"T12:00:00"); if(d.getMonth()===mesAnterior.mes&&d.getFullYear()===mesAnterior.anio&&d.getDate()<=diaCorte) mesAnteriorParcial+=Number(v.monto);
-          }
+          v.pagos&&v.pagos.forEach(function(pg){ var d=new Date((pg.fecha||v.fecha)+"T12:00:00"); if(d.getMonth()===mesAnterior.mes&&d.getFullYear()===mesAnterior.anio&&d.getDate()<=diaCorte) mesAnteriorParcial+=Number(pg.monto); });
         });
         var numTransaccionesMes=0;
         pedidos.forEach(function(p){ (p.pagos||[]).forEach(function(pg){ var d=new Date(pg.fecha+"T12:00:00"); if(d.getMonth()===mesActual.mes&&d.getFullYear()===mesActual.anio) numTransaccionesMes++; }); });
@@ -8038,8 +8437,8 @@ export default function CLEO(props){
         var totalP=cotsPeriodo.filter(function(c){ return c.estatus==="Pendiente"; }).reduce(function(s,c){ return s+c.monto; },0);
         var tasa=cotsPeriodo.length?Math.round((aceptadas.length/cotsPeriodo.length)*100):0;
         var prom=aceptadas.length?Math.round(totalG/aceptadas.length):0;
-        var totalSaldos=cotizaciones.filter(function(c){ return c.estatus==="Aceptada"&&c.anticipo>0&&(c.monto-c.anticipo)>0; }).reduce(function(s,c){ return s+(c.monto-c.anticipo); },0)
-          +ventas.filter(function(v){ return v.tipoPago==="anticipo"&&Number(v.anticipo)>0&&(Number(v.monto)-Number(v.anticipo))>0; }).reduce(function(s,v){ return s+(Number(v.monto)-Number(v.anticipo)); },0);
+        var totalSaldos=cotizaciones.filter(function(c){ return c.estatus==="Aceptada"; }).reduce(function(s,c){ return s+saldoPendienteDe(c,c.monto); },0)
+          +ventas.reduce(function(s,v){ return s+saldoPendienteDe(v,v.monto); },0);
         var motivoCount={};
         rechazadas.forEach(function(c){ if(c.motivoPerdida) motivoCount[c.motivoPerdida]=(motivoCount[c.motivoPerdida]||0)+1; });
         var motivosRank=Object.entries(motivoCount).sort(function(a,b){ return b[1]-a[1]; });
@@ -8110,9 +8509,9 @@ export default function CLEO(props){
 
         // ── DATOS PARA GRAFICAS ──────────────────────────────────────────────
 
-        // Dona: cotizaciones vs ventas directas (sobre totales historicos)
-        var totalCotHist=cotizaciones.filter(function(c){ return c.estatus==="Aceptada"; }).reduce(function(s,c){ return s+c.monto; },0);
-        var totalVDHist=ventas.reduce(function(s,v){ return s+Number(v.monto); },0);
+        // Dona: cotizaciones vs ventas directas (sobre lo REALMENTE cobrado)
+        var totalCotHist=cotizaciones.filter(function(c){ return c.estatus==="Aceptada"; }).reduce(function(s,c){ return s+totalPagadoDe(c); },0);
+        var totalVDHist=ventas.reduce(function(s,v){ return s+totalPagadoDe(v); },0);
         var totalDona=totalCotHist+totalVDHist||1;
         var pctCot=Math.round((totalCotHist/totalDona)*100);
         var pctVD=100-pctCot;
@@ -8121,22 +8520,26 @@ export default function CLEO(props){
         var dashCot=(pctCot/100)*circ;
         var dashVD=(pctVD/100)*circ;
 
-        // Barras por mes , ultimos 6 meses
+        // Barras por mes , ultimos 6 meses , se suma cada movimiento real
+        // por SU PROPIA fecha, igual que la versión de Productos, nunca el
+        // monto total del documento filtrado por su fecha de creación.
         var MESES_LABELS=["Ene","Feb","Mar","Abr","May","Jun","Jul","Ago","Sep","Oct","Nov","Dic"];
         var mesesData=[];
         for(var mi=5;mi>=0;mi--){
           var fechaMes=new Date(HOY.getFullYear(),HOY.getMonth()-mi,1);
           var mes=fechaMes.getMonth(); var anio=fechaMes.getFullYear();
-          var ingCotMes=cotizaciones.filter(function(c){ var d=parseFechaLocal(c.fecha); return c.estatus==="Aceptada"&&d.getMonth()===mes&&d.getFullYear()===anio; }).reduce(function(s,c){ return s+c.monto; },0);
-          var ingVDMes=ventas.filter(function(v){ var d=parseFechaLocal(v.fecha); return d.getMonth()===mes&&d.getFullYear()===anio; }).reduce(function(s,v){ return s+Number(v.monto); },0);
-          mesesData.push({label:MESES_LABELS[mes],total:ingCotMes+ingVDMes,mes:mes,anio:anio,esMesActual:mi===0});
+          var ingMesServ=0;
+          cotizaciones.forEach(function(c){ (c.pagos||[]).forEach(function(pg){ var d=parseFechaLocal(pg.fecha); if(d.getMonth()===mes&&d.getFullYear()===anio) ingMesServ+=Number(pg.monto); }); });
+          ventas.forEach(function(v){ (v.pagos||[]).forEach(function(pg){ var d=parseFechaLocal(pg.fecha); if(d.getMonth()===mes&&d.getFullYear()===anio) ingMesServ+=Number(pg.monto); }); });
+          mesesData.push({label:MESES_LABELS[mes],total:ingMesServ,mes:mes,anio:anio,esMesActual:mi===0});
         }
         var maxMes=Math.max.apply(null,mesesData.map(function(m){ return m.total; }).concat([1]));
         var mesActual=mesesData[5]; var mesAnterior=mesesData[4];
         var diaHoy2=HOY.getDate();
         var diaCorte2=Math.min(diaHoy2,new Date(mesAnterior.anio,mesAnterior.mes+1,0).getDate());
-        var mesAnteriorParcial2=cotizaciones.filter(function(c){ var d=parseFechaLocal(c.fecha); return c.estatus==="Aceptada"&&d.getMonth()===mesAnterior.mes&&d.getFullYear()===mesAnterior.anio&&d.getDate()<=diaCorte2; }).reduce(function(s,c){ return s+c.monto; },0)
-          +ventas.filter(function(v){ var d=parseFechaLocal(v.fecha); return d.getMonth()===mesAnterior.mes&&d.getFullYear()===mesAnterior.anio&&d.getDate()<=diaCorte2; }).reduce(function(s,v){ return s+Number(v.monto); },0);
+        var mesAnteriorParcial2=0;
+        cotizaciones.forEach(function(c){ (c.pagos||[]).forEach(function(pg){ var d=parseFechaLocal(pg.fecha); if(d.getMonth()===mesAnterior.mes&&d.getFullYear()===mesAnterior.anio&&d.getDate()<=diaCorte2) mesAnteriorParcial2+=Number(pg.monto); }); });
+        ventas.forEach(function(v){ (v.pagos||[]).forEach(function(pg){ var d=parseFechaLocal(pg.fecha); if(d.getMonth()===mesAnterior.mes&&d.getFullYear()===mesAnterior.anio&&d.getDate()<=diaCorte2) mesAnteriorParcial2+=Number(pg.monto); }); });
         var cambioMes=(diaHoy2>=3&&mesAnteriorParcial2>0)?Math.round(((mesActual.total-mesAnteriorParcial2)/mesAnteriorParcial2)*100):null;
 
         return e("div",{style:{display:"flex",flexDirection:"column",gap:0}},
@@ -8468,7 +8871,7 @@ export default function CLEO(props){
     )
   ,
 
-    e(ModalVenta,{modalVenta:modalVenta,setModalVenta:setModalVenta,formVenta:formVenta,setFormVenta:setFormVenta,pasoVenta:pasoVenta,setPasoVenta:setPasoVenta,clientes:clientes,setClientes:setClientes,guardarVentaDirecta:guardarVentaDirecta,avanzarVenta:avanzarVenta,st:st,productos:productos,sugerenciasConcepto:sugerenciasConcepto,setSugerenciasConcepto:setSugerenciasConcepto,esProductos:esProductos,servicios:servicios,productosCat:productosCat,cotAceptadaId:cotAceptadaId,setCotAceptadaId:setCotAceptadaId,etapaAnteriorGanado:etapaAnteriorGanado,setEtapaAnteriorGanado:setEtapaAnteriorGanado,FECHA_HOY:FECHA_HOY}),
+    e(ModalVenta,{modalVenta:modalVenta,setModalVenta:setModalVenta,formVenta:formVenta,setFormVenta:setFormVenta,pasoVenta:pasoVenta,setPasoVenta:setPasoVenta,clientes:clientes,setClientes:setClientes,guardarVentaDirecta:guardarVentaDirecta,avanzarVenta:avanzarVenta,st:st,productos:productos,sugerenciasConcepto:sugerenciasConcepto,setSugerenciasConcepto:setSugerenciasConcepto,esProductos:esProductos,servicios:servicios,productosCat:productosCat,cotAceptadaId:cotAceptadaId,setCotAceptadaId:setCotAceptadaId,etapaAnteriorGanado:etapaAnteriorGanado,setEtapaAnteriorGanado:setEtapaAnteriorGanado,ventaDirectaOriginal:ventaDirectaOriginal,setVentaDirectaOriginal:setVentaDirectaOriginal,FECHA_HOY:FECHA_HOY}),
 
     // PANEL MOVER , móvil pipeline
     isMobile&&moverClienteId&&(function(){
@@ -8547,17 +8950,38 @@ export default function CLEO(props){
         if(clienteSinOrigen) setOrigenPromptId(clienteSinOrigen);
       }
       function guardarPagoYSiguiente(){
-        // Guardar pago en cotizacion si existe
+        // Guardar pago en cotizacion si existe , pasa por registrarPago,
+        // la ÚNICA función que escribe sobre pagos en toda la app. Como
+        // esta pantalla también necesita fijar fechaCierre en el mismo
+        // paso (un campo que NO es parte de pagos), se hace en una segunda
+        // escritura pequeña que parte del objeto YA actualizado que
+        // devuelve registrarPago (resultado.item) , nunca de `cotizaciones`
+        // (el closure viejo, que todavía no ve el pago recién escrito), así
+        // nunca se pisan entre sí.
         if(cotCl&&pagoGanado.tipo){
-          if(pagoGanado.tipo==="completo"){
-            setCotizaciones(cotizaciones.map(function(c){ return c.id===cotCl.id?Object.assign({},c,{fechaCierre:FECHA_HOY,pagos:[...(cotCl.pagos||[]),{id:"p_"+Date.now(),monto:cotCl.monto,fecha:pagoGanado.fecha,concepto:"Pago completo"}]}):c; }));
-          } else if(pagoGanado.tipo==="anticipo"&&pagoGanado.monto){
-            setCotizaciones(cotizaciones.map(function(c){ return c.id===cotCl.id?Object.assign({},c,{fechaCierre:FECHA_HOY,pagos:[...(cotCl.pagos||[]),{id:"p_"+Date.now(),monto:Number(pagoGanado.monto),fecha:pagoGanado.fecha,concepto:"Anticipo"}]}):c; }));
+          var esCompleto=pagoGanado.tipo==="completo";
+          if(esCompleto||(pagoGanado.tipo==="anticipo"&&pagoGanado.monto)){
+            var resultadoPagoCierre=registrarPago("cotizacion",cotCl.id,esCompleto?pagoGanado.monto:pagoGanado.monto,pagoGanado.fecha,esCompleto?"Pago completo":"Anticipo");
+            if(resultadoPagoCierre.ok&&resultadoPagoCierre.item){
+              var itemConCierre=Object.assign({},resultadoPagoCierre.item,{fechaCierre:FECHA_HOY});
+              setCotizaciones(cotizaciones.map(function(c){ return c.id===cotCl.id?itemConCierre:c; }));
+            }
           }
         }
-        // Guardar razon de cierre en el cliente
-        if(razonCierre.length>0&&cl){
-          setClientes(clientes.map(function(c){ return c.id===cl.id?Object.assign({},c,{razonCierre:razonCierre}):c; }));
+        // Guardar razón de cierre y aplicar la limpieza DEFINITIVA de
+        // recordatorios de pipeline obsoletos en UNA sola actualización ,
+        // dos setClientes consecutivos basados en el mismo `clientes`
+        // capturado por closure podían pisarse entre sí (el segundo no veía
+        // lo que el primero acababa de guardar), perdiendo razonCierre.
+        // Este es el punto real de compromiso: a partir de aquí,
+        // cancelarGanado ya no revierte la etapa, así que tampoco tiene
+        // sentido conservar el recordatorio de pipeline que ya no aplica.
+        if(cl){
+          setClientes(clientes.map(function(c){
+            if(c.id!==cl.id) return c;
+            var conRazon=razonCierre.length>0?Object.assign({},c,{razonCierre:razonCierre}):c;
+            return cancelarRecordatoriosPipeline(conRazon);
+          }));
         }
         setPasoGanado(2);
       }
@@ -8725,11 +9149,16 @@ export default function CLEO(props){
           ),
           e("div",{style:{display:"flex",gap:8,justifyContent:"flex-end"}},
             e("button",{style:st.btn,onClick:function(){
-              if(cl){ var f=new Date(); f.setDate(f.getDate()+30); setClientes(clientes.map(function(x){ if(x.id!==cl.id) return x; var b=Object.assign({},x,{tipoSeguimientoPostVenta:"30"}); return conRecordatoriosActualizados(b,recordatoriosDe(b).concat([{id:"r_"+Date.now(),fecha:fmtFechaLocal(f),nota:notaPersonalPostVenta.trim()||mensajesPorDias["30"],esPersonalizada:!!notaPersonalPostVenta.trim(),origen:"cleo"}])); })); }
+              // Antes ignoraba los días personalizados y siempre forzaba 30
+              // , ahora respeta exactamente lo que ya está seleccionado
+              // arriba (preset o personalizado), para que este botón nunca
+              // sorprenda con un valor distinto al que se ve en pantalla.
+              var diasAUsar=diasPostVenta||"30";
+              if(cl){ var f=new Date(); f.setDate(f.getDate()+Number(diasAUsar)); setClientes(clientes.map(function(x){ if(x.id!==cl.id) return x; var b=Object.assign({},x,{tipoSeguimientoPostVenta:mensajesPorDias[diasAUsar]?diasAUsar:"30"}); return conRecordatoriosActualizados(b,recordatoriosDe(b).concat([{id:"r_"+Date.now(),fecha:fmtFechaLocal(f),nota:notaPersonalPostVenta.trim()||mensajesPorDias[diasAUsar]||mensajesPorDias["30"],esPersonalizada:!!notaPersonalPostVenta.trim(),origen:"cleo",categoria:"postventa"}])); })); }
               cerrarModal();
-            }},"Ahora no , recordame en 30 dias"),
+            }},"Ahora no , recordame en "+(diasPostVenta||"30")+" dias"),
             e("button",{style:st.btnP,onClick:function(){
-              if(cl){ var f=new Date(); f.setDate(f.getDate()+Number(diasPostVenta)); setClientes(clientes.map(function(x){ if(x.id!==cl.id) return x; var b=Object.assign({},x,{tipoSeguimientoPostVenta:mensajesPorDias[diasPostVenta]?diasPostVenta:"30"}); return conRecordatoriosActualizados(b,recordatoriosDe(b).concat([{id:"r_"+Date.now(),fecha:fmtFechaLocal(f),nota:notaPersonalPostVenta.trim()||mensajesPorDias[diasPostVenta]||mensajesPorDias["30"],esPersonalizada:!!notaPersonalPostVenta.trim(),origen:"cleo"}])); })); }
+              if(cl){ var f=new Date(); f.setDate(f.getDate()+Number(diasPostVenta)); setClientes(clientes.map(function(x){ if(x.id!==cl.id) return x; var b=Object.assign({},x,{tipoSeguimientoPostVenta:mensajesPorDias[diasPostVenta]?diasPostVenta:"30"}); return conRecordatoriosActualizados(b,recordatoriosDe(b).concat([{id:"r_"+Date.now(),fecha:fmtFechaLocal(f),nota:notaPersonalPostVenta.trim()||mensajesPorDias[diasPostVenta]||mensajesPorDias["30"],esPersonalizada:!!notaPersonalPostVenta.trim(),origen:"cleo",categoria:"postventa"}])); })); }
               cerrarModal();
             }},"Programar seguimiento")
           )
@@ -9525,7 +9954,7 @@ export default function CLEO(props){
             e("div",{style:{display:"flex",gap:8}},
               e("button",{style:Object.assign({},st.btn,{flex:1}),onClick:function(){ setFormCerreP(Object.assign({},fc,{mostrarForm:true,concepto:opoPendienteCliente.productoInteres,monto:String(opoPendienteCliente.precioInteres),cantidad:opoPendienteCliente.cantidadInteres||"1"})); }},"No, fue otra cosa"),
               e("button",{style:Object.assign({},st.btnP,{flex:1}),onClick:function(){
-                var clienteFinalConf=Object.assign({},opoPendienteCliente,{etapa:"Ganado",fechaEtapa:FECHA_HOY,ultimoContacto:FECHA_HOY,estadoProspecto:"Convertido",fechaPedido:new Date().toISOString()});
+                var clienteFinalConf=cancelarRecordatoriosPipeline(Object.assign({},opoPendienteCliente,{etapa:"Ganado",fechaEtapa:FECHA_HOY,ultimoContacto:FECHA_HOY,estadoProspecto:"Convertido",fechaPedido:new Date().toISOString()}));
                 setClientes(clientes.map(function(c){ return c.id===opoPendienteCliente.id?clienteFinalConf:c; }));
                 crearPedidoDesdeVenta(opoPendienteCliente.id,opoPendienteCliente.productoInteres,opoPendienteCliente.cantidadInteres||"1",opoPendienteCliente.precioInteres,"completo","");
                 if(!tieneContactoCompleto(clienteFinalConf)){ setClienteCompletarId(opoPendienteCliente.id); }
@@ -9673,21 +10102,24 @@ export default function CLEO(props){
       if(!cl) return null;
       var coach=coachingCliente(cl,0);
       var urlContactar=contactUrl(cl,msgEtapa(cl));
-      function cerrar(){ setSugerenciaClienteId(null); setFormCompletar({canal:"",contacto:"",instagram:"",messenger:""}); }
+      function cerrar(){ setSugerenciaClienteId(null); setSugerenciaSoloCompletarDatos(false); setFormCompletar({canal:"",contacto:"",instagram:"",messenger:""}); }
       return e("div",{style:st.ov,onClick:cerrar},
         e("div",{style:Object.assign({},st.modal,{maxWidth:440}),onClick:function(ev){ ev.stopPropagation(); }},
           e("div",{style:{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:16}},
             e("div",null,
-              e("div",{style:{fontSize:11,fontWeight:700,color:C.purple,textTransform:"uppercase",letterSpacing:"0.5px",marginBottom:4}},"Sugerencia CLEO"),
+              e("div",{style:{fontSize:11,fontWeight:700,color:C.purple,textTransform:"uppercase",letterSpacing:"0.5px",marginBottom:4}},sugerenciaSoloCompletarDatos?"Completa sus datos":"Sugerencia CLEO"),
               e("div",{style:{fontSize:17,fontWeight:700,color:C.text}},cl.nombre)
             ),
             e("button",{style:{background:"none",border:"none",cursor:"pointer",color:C.textDim,fontSize:20,lineHeight:1,padding:"0 4px"},onClick:cerrar},"×")
           ),
-          e("div",{style:{fontSize:13,color:C.textMuted,lineHeight:1.6,marginBottom:14}},coach.consejo),
-          e("div",{style:{fontSize:13,color:C.text,fontStyle:"italic",background:C.bg,padding:"12px 14px",borderRadius:10,lineHeight:1.6,marginBottom:20,border:"1px solid "+C.border}},
+          // Cuando el modal se abrió solo para completar datos de contacto
+          // de un recordatorio personalizado, se omite el consejo/mensaje
+          // genérico de CLEO por completo , solo se muestra el formulario.
+          !sugerenciaSoloCompletarDatos&&e("div",{style:{fontSize:13,color:C.textMuted,lineHeight:1.6,marginBottom:14}},coach.consejo),
+          !sugerenciaSoloCompletarDatos&&e("div",{style:{fontSize:13,color:C.text,fontStyle:"italic",background:C.bg,padding:"12px 14px",borderRadius:10,lineHeight:1.6,marginBottom:20,border:"1px solid "+C.border}},
             "\u201c"+coach.mensaje+"\u201d"
           ),
-          !urlContactar&&e("div",{style:{marginBottom:16,paddingTop:16,borderTop:"1px solid "+C.border}},
+          !urlContactar&&e("div",{style:{marginBottom:16,paddingTop:sugerenciaSoloCompletarDatos?0:16,borderTop:sugerenciaSoloCompletarDatos?"none":"1px solid "+C.border}},
             e("div",{style:{fontSize:13,fontWeight:600,color:C.text,marginBottom:10}},"Agrega su contacto para poder escribirle"),
             renderCompletarContacto()
           ),
@@ -9708,7 +10140,34 @@ export default function CLEO(props){
       if(!cl) return null;
       var nombre=cl.nombre.split(" ")[0];
 
-      function cerrar(){ setContactadoClienteId(null); setContactadoOpcion(null); setContactadoNota(""); setContactadoDias(null); setContactadoResult(null); setMandoPrecioForm({concepto:"",monto:""}); }
+      function cerrar(){ setContactadoClienteId(null); setContactadoRecordatorioId(null); setContactadoOpcion(null); setContactadoNota(""); setContactadoDias(null); setContactadoResult(null); setMandoPrecioForm({concepto:"",monto:""}); }
+
+      // Solo devuelve el recordatorio si hay una coincidencia EXACTA por id
+      // con el que originó esta tarjeta (nunca recordatoriosDe(cl)[0] ni
+      // ningún fallback "más próximo") Y ese recordatorio es realmente
+      // manual o personalizado , una sugerencia genérica (sin
+      // contactadoRecordatorioId) nunca llega a mostrar nada aquí.
+      function recordatorioPersonalizadoParaCompletar(){
+        if(!contactadoRecordatorioId) return null;
+        var r=recordatoriosDe(cl).find(function(rr){ return (rr.id||rr.fecha)===contactadoRecordatorioId; });
+        if(!r) return null;
+        if(r.categoria==="manual"||r.esPersonalizada===true) return r;
+        return null;
+      }
+      function atenderRecordatorioPersonalizado(){
+        var r=recordatorioPersonalizadoParaCompletar();
+        if(!r) return; // sin coincidencia exacta , no se elimina nada
+        var listaSinEsa=recordatoriosDe(cl).filter(function(rr){ return (rr.id||rr.fecha)!==contactadoRecordatorioId; });
+        var evAtendido={fecha:FECHA_HOY,resultado:"Recordatorio personalizado atendido"};
+        setClientes(clientes.map(function(x){
+          if(x.id!==cl.id) return x;
+          // No toca etapa, estadoProspecto, archivado ni motivoPerdida , solo
+          // el recordatorio puntual, ultimoContacto, y el historial.
+          var base=Object.assign({},x,{ultimoContacto:FECHA_HOY,historialContactos:[...(x.historialContactos||[]),evAtendido]});
+          return conRecordatoriosActualizados(base,listaSinEsa);
+        }));
+        setContactadoResult({titulo:"Recordatorio atendido",desc:"Marcaste como completado tu recordatorio para "+nombre+"."});
+      }
 
       // RESULTADO — siempre primero, antes de recalcular etapa
       if(contactadoResult) return e("div",{style:st.ov,onClick:cerrar},
@@ -9727,8 +10186,8 @@ export default function CLEO(props){
       if(esGanadoC){
         var opExpandG=contactadoOpcion==="expand_ganado_nuevo"?"nuevo":contactadoOpcion==="expand_ganado_contacto"?"contacto":null;
         return e("div",{style:st.ov,onClick:cerrar},
-          e("div",{style:Object.assign({},st.modal,{padding:0,overflow:"hidden",overflowY:"auto"}),onClick:function(ev){ ev.stopPropagation(); }},
-            e("div",{style:{padding:"20px 20px 12px",borderBottom:"1px solid "+C.border}},
+          e("div",{style:Object.assign({},st.modal2.outer,{overflowY:"auto"}),onClick:function(ev){ ev.stopPropagation(); }},
+            e("div",{style:{padding:"20px 20px 12px",borderBottom:"1px solid "+C.border,flexShrink:0}},
               e("div",{style:{fontSize:16,fontWeight:600,color:C.text,marginBottom:2}},"¿Qué pasó con "+nombre+"?"),
               e("div",{style:{fontSize:13,color:C.textMuted}},"Elige lo que mejor describe la conversación.")
             ),
@@ -9764,7 +10223,11 @@ export default function CLEO(props){
                       return e("div",{key:d,style:{flex:1,textAlign:"center",padding:"9px 0",fontSize:13,fontWeight:500,color:C.purple,borderRight:idx<3?"1px solid "+C.border:"none",cursor:"pointer"},
                         onClick:function(){
                           var f=new Date(HOY); f.setDate(f.getDate()+d);
-                          setClientes(clientes.map(function(x){ return x.id===cl.id?Object.assign({},x,{ultimoContacto:FECHA_HOY,seguimientoFecha:fmtFechaLocal(f)}):x; }));
+                          setClientes(clientes.map(function(x){
+                            if(x.id!==cl.id) return x;
+                            var b=Object.assign({},x,{ultimoContacto:FECHA_HOY});
+                            return conRecordatoriosActualizados(b,recordatoriosDe(b).concat([{id:"r_"+Date.now(),fecha:fmtFechaLocal(f),nota:"Retomar contacto con este cliente.",esPersonalizada:false,origen:"cleo",categoria:"postventa"}]));
+                          }));
                           cerrar();
                         }
                       },d+"d");
@@ -9776,7 +10239,7 @@ export default function CLEO(props){
                     }),
                     e("span",{style:{fontSize:12,color:C.textDim}},"días"),
                     e("button",{style:{cursor:"pointer",padding:"6px 14px",borderRadius:8,border:"none",background:C.purple,color:"#fff",fontSize:12,fontWeight:500},
-                      onClick:function(){ var inp=document.getElementById("dias-ganado"); if(inp&&inp.value){ var f=new Date(HOY); f.setDate(f.getDate()+Number(inp.value)); setClientes(clientes.map(function(x){ return x.id===cl.id?Object.assign({},x,{ultimoContacto:FECHA_HOY,seguimientoFecha:fmtFechaLocal(f)}):x; })); cerrar(); } }
+                      onClick:function(){ var inp=document.getElementById("dias-ganado"); if(inp&&inp.value){ var f=new Date(HOY); f.setDate(f.getDate()+Number(inp.value)); setClientes(clientes.map(function(x){ if(x.id!==cl.id) return x; var b=Object.assign({},x,{ultimoContacto:FECHA_HOY}); return conRecordatoriosActualizados(b,recordatoriosDe(b).concat([{id:"r_"+Date.now(),fecha:fmtFechaLocal(f),nota:"Retomar contacto con este cliente.",esPersonalizada:false,origen:"cleo",categoria:"postventa"}])); })); cerrar(); } }
                     },"OK")
                   )
                 )
@@ -9787,7 +10250,7 @@ export default function CLEO(props){
                 onClick:function(){
                   if(!window.confirm("¿Marcar a "+nombre+" como inactivo?")) return;
                   var ev={fecha:FECHA_HOY,resultado:"Marcado como inactivo tras recontacto"};
-                  setClientes(clientes.map(function(x){ return x.id===cl.id?Object.assign({},x,{etapa:"Perdido",ultimoContacto:FECHA_HOY,seguimientoFecha:"",archivado:true,historialContactos:[...(x.historialContactos||[]),ev]}):x; }));
+                  setClientes(clientes.map(function(x){ return x.id===cl.id?cancelarRecordatoriosPipeline(Object.assign({},x,{etapa:"Perdido",ultimoContacto:FECHA_HOY,seguimientoFecha:"",archivado:true,historialContactos:[...(x.historialContactos||[]),ev]})):x; }));
                   cerrar();
                 }
               },
@@ -9797,6 +10260,20 @@ export default function CLEO(props){
                     e("div",{style:{fontSize:12,color:C.textMuted,marginTop:1}},"Marcar como inactivo")
                   ),
                   
+                )
+              ),
+
+              // Ya atendí mi recordatorio , solo visible cuando la tarjeta
+              // vino realmente de un recordatorio manual/personalizado con
+              // id exacto conocido, nunca para sugerencias genéricas.
+              recordatorioPersonalizadoParaCompletar()&&e("div",{style:{borderRadius:12,border:"1px solid "+C.green+"44",overflow:"hidden",cursor:"pointer"},
+                onClick:function(){ atenderRecordatorioPersonalizado(); }
+              },
+                e("div",{style:{padding:"12px 14px",display:"flex",justifyContent:"space-between",alignItems:"center"}},
+                  e("div",null,
+                    e("div",{style:{fontSize:14,fontWeight:500,color:C.green}},"Ya atendí mi recordatorio"),
+                    e("div",{style:{fontSize:12,color:C.textMuted,marginTop:1}},"Marcarlo como completado")
+                  )
                 )
               )
             ),
@@ -9811,10 +10288,10 @@ export default function CLEO(props){
       if(!esPerdidoC){
         var opExpand=contactadoOpcion==="expand_interesado"?"interesado":contactadoOpcion==="expand_noresponde"?"noresponde":null;
         return e("div",{style:st.ov,onClick:cerrar},
-          e("div",{style:Object.assign({},st.modal,{padding:0,overflow:"hidden",overflowY:"auto"}),onClick:function(ev){ ev.stopPropagation(); }},
+          e("div",{style:Object.assign({},st.modal2.outer,{overflowY:"auto"}),onClick:function(ev){ ev.stopPropagation(); }},
 
             // Header
-            e("div",{style:{padding:"20px 20px 12px",borderBottom:"1px solid "+C.border}},
+            e("div",{style:{padding:"20px 20px 12px",borderBottom:"1px solid "+C.border,flexShrink:0}},
               e("div",{style:{fontSize:16,fontWeight:600,color:C.text,marginBottom:2}},"¿Qué pasó con "+nombre+"?"),
               e("div",{style:{fontSize:13,color:C.textMuted}},"Elige lo que mejor describe la conversación.")
             ),
@@ -9837,18 +10314,18 @@ export default function CLEO(props){
                   e("div",{style:{display:"flex",borderBottom:"1px solid "+C.border}},
                     [1,3,5,7].map(function(d,idx){
                       return e("div",{key:d,style:{flex:1,textAlign:"center",padding:"9px 0",fontSize:13,fontWeight:500,color:C.purple,borderRight:idx<3?"1px solid "+C.border:"none",cursor:"pointer"},
-                        onClick:function(){ (function(dias){ var f=new Date(HOY); f.setDate(f.getDate()+dias); setClientes(clientes.map(function(x){ return x.id===cl.id?Object.assign({},x,{ultimoContacto:FECHA_HOY,seguimientoFecha:fmtFechaLocal(f)}):x; })); cerrar(); })(d); }
+                        onClick:function(){ (function(dias){ var f=new Date(HOY); f.setDate(f.getDate()+dias); setClientes(clientes.map(function(x){ if(x.id!==cl.id) return x; var b=Object.assign({},x,{ultimoContacto:FECHA_HOY}); return conRecordatoriosActualizados(b,recordatoriosDe(b).concat([{id:"r_"+Date.now(),fecha:fmtFechaLocal(f),nota:"Seguía interesado. Le dijiste que le darías seguimiento.",esPersonalizada:false,origen:"cleo",categoria:"pipeline"}])); })); cerrar(); })(d); }
                       },d+"d");
                     })
                   ),
                   e("div",{style:{display:"flex",alignItems:"center",gap:8,padding:"8px 12px"}},
                     e("input",{id:"dias-interesado",type:"number",min:1,placeholder:"Otro...",inputMode:"numeric",
                       style:Object.assign({},st.inp,{flex:1,marginBottom:0,padding:"6px 10px",fontSize:13}),
-                      onKeyDown:function(ev){ if(ev.key==="Enter"&&ev.target.value){ (function(dias){ var f=new Date(HOY); f.setDate(f.getDate()+Number(dias)); setClientes(clientes.map(function(x){ return x.id===cl.id?Object.assign({},x,{ultimoContacto:FECHA_HOY,seguimientoFecha:fmtFechaLocal(f)}):x; })); cerrar(); })(ev.target.value); } }
+                      onKeyDown:function(ev){ if(ev.key==="Enter"&&ev.target.value){ (function(dias){ var f=new Date(HOY); f.setDate(f.getDate()+Number(dias)); setClientes(clientes.map(function(x){ if(x.id!==cl.id) return x; var b=Object.assign({},x,{ultimoContacto:FECHA_HOY}); return conRecordatoriosActualizados(b,recordatoriosDe(b).concat([{id:"r_"+Date.now(),fecha:fmtFechaLocal(f),nota:"Seguía interesado. Le dijiste que le darías seguimiento.",esPersonalizada:false,origen:"cleo",categoria:"pipeline"}])); })); cerrar(); })(ev.target.value); } }
                     }),
                     e("span",{style:{fontSize:12,color:C.textDim}},"días"),
                     e("button",{style:{cursor:"pointer",padding:"6px 14px",borderRadius:8,border:"none",background:C.purple,color:"#fff",fontSize:12,fontWeight:500},
-                      onClick:function(){ var inp=document.getElementById("dias-interesado"); if(inp&&inp.value){ var f=new Date(HOY); f.setDate(f.getDate()+Number(inp.value)); setClientes(clientes.map(function(x){ return x.id===cl.id?Object.assign({},x,{ultimoContacto:FECHA_HOY,seguimientoFecha:fmtFechaLocal(f)}):x; })); cerrar(); } }
+                      onClick:function(){ var inp=document.getElementById("dias-interesado"); if(inp&&inp.value){ var f=new Date(HOY); f.setDate(f.getDate()+Number(inp.value)); setClientes(clientes.map(function(x){ if(x.id!==cl.id) return x; var b=Object.assign({},x,{ultimoContacto:FECHA_HOY}); return conRecordatoriosActualizados(b,recordatoriosDe(b).concat([{id:"r_"+Date.now(),fecha:fmtFechaLocal(f),nota:"Seguía interesado. Le dijiste que le darías seguimiento.",esPersonalizada:false,origen:"cleo",categoria:"pipeline"}])); })); cerrar(); } }
                     },"OK")
                   )
                 )
@@ -9926,18 +10403,18 @@ export default function CLEO(props){
                   e("div",{style:{display:"flex",borderBottom:"1px solid "+C.border}},
                     [2,3,5,7].map(function(d,idx){
                       return e("div",{key:d,style:{flex:1,textAlign:"center",padding:"9px 0",fontSize:13,fontWeight:500,color:C.amber,borderRight:idx<3?"1px solid "+C.border:"none",cursor:"pointer"},
-                        onClick:function(){ (function(dias){ var f=new Date(HOY); f.setDate(f.getDate()+dias); setClientes(clientes.map(function(x){ return x.id===cl.id?Object.assign({},x,{ultimoContacto:FECHA_HOY,seguimientoFecha:fmtFechaLocal(f)}):x; })); cerrar(); })(d); }
+                        onClick:function(){ (function(dias){ var f=new Date(HOY); f.setDate(f.getDate()+dias); setClientes(clientes.map(function(x){ if(x.id!==cl.id) return x; var b=Object.assign({},x,{ultimoContacto:FECHA_HOY}); return conRecordatoriosActualizados(b,recordatoriosDe(b).concat([{id:"r_"+Date.now(),fecha:fmtFechaLocal(f),nota:"No respondió la vez pasada. Vale la pena intentar de nuevo.",esPersonalizada:false,origen:"cleo",categoria:"pipeline"}])); })); cerrar(); })(d); }
                       },d+"d");
                     })
                   ),
                   e("div",{style:{display:"flex",alignItems:"center",gap:8,padding:"8px 12px"}},
                     e("input",{id:"dias-noresponde",type:"number",min:1,placeholder:"Otro...",inputMode:"numeric",
                       style:Object.assign({},st.inp,{flex:1,marginBottom:0,padding:"6px 10px",fontSize:13}),
-                      onKeyDown:function(ev){ if(ev.key==="Enter"&&ev.target.value){ (function(dias){ var f=new Date(HOY); f.setDate(f.getDate()+Number(dias)); setClientes(clientes.map(function(x){ return x.id===cl.id?Object.assign({},x,{ultimoContacto:FECHA_HOY,seguimientoFecha:fmtFechaLocal(f)}):x; })); cerrar(); })(ev.target.value); } }
+                      onKeyDown:function(ev){ if(ev.key==="Enter"&&ev.target.value){ (function(dias){ var f=new Date(HOY); f.setDate(f.getDate()+Number(dias)); setClientes(clientes.map(function(x){ if(x.id!==cl.id) return x; var b=Object.assign({},x,{ultimoContacto:FECHA_HOY}); return conRecordatoriosActualizados(b,recordatoriosDe(b).concat([{id:"r_"+Date.now(),fecha:fmtFechaLocal(f),nota:"No respondió la vez pasada. Vale la pena intentar de nuevo.",esPersonalizada:false,origen:"cleo",categoria:"pipeline"}])); })); cerrar(); })(ev.target.value); } }
                     }),
                     e("span",{style:{fontSize:12,color:C.textDim}},"días"),
                     e("button",{style:{cursor:"pointer",padding:"6px 14px",borderRadius:8,border:"none",background:C.amber,color:"#fff",fontSize:12,fontWeight:500},
-                      onClick:function(){ var inp=document.getElementById("dias-noresponde"); if(inp&&inp.value){ var f=new Date(HOY); f.setDate(f.getDate()+Number(inp.value)); setClientes(clientes.map(function(x){ return x.id===cl.id?Object.assign({},x,{ultimoContacto:FECHA_HOY,seguimientoFecha:fmtFechaLocal(f)}):x; })); cerrar(); } }
+                      onClick:function(){ var inp=document.getElementById("dias-noresponde"); if(inp&&inp.value){ var f=new Date(HOY); f.setDate(f.getDate()+Number(inp.value)); setClientes(clientes.map(function(x){ if(x.id!==cl.id) return x; var b=Object.assign({},x,{ultimoContacto:FECHA_HOY}); return conRecordatoriosActualizados(b,recordatoriosDe(b).concat([{id:"r_"+Date.now(),fecha:fmtFechaLocal(f),nota:"No respondió la vez pasada. Vale la pena intentar de nuevo.",esPersonalizada:false,origen:"cleo",categoria:"pipeline"}])); })); cerrar(); } }
                     },"OK")
                   )
                 )
@@ -9976,6 +10453,19 @@ export default function CLEO(props){
                   e("div",{style:{fontSize:14,fontWeight:500,color:C.red}},"Ya no está interesado"),
                   e("div",{style:{fontSize:12,color:C.textMuted,marginTop:1}},"Marcar como perdido")
                 )
+              ),
+
+              // Ya atendí mi recordatorio , solo visible cuando la tarjeta
+              // vino realmente de un recordatorio manual/personalizado.
+              recordatorioPersonalizadoParaCompletar()&&e("div",{style:{borderRadius:12,border:"1px solid "+C.green+"44",overflow:"hidden",cursor:"pointer"},
+                onClick:function(){ atenderRecordatorioPersonalizado(); }
+              },
+                e("div",{style:{padding:"12px 14px",display:"flex",justifyContent:"space-between",alignItems:"center"}},
+                  e("div",null,
+                    e("div",{style:{fontSize:14,fontWeight:500,color:C.green}},"Ya atendí mi recordatorio"),
+                    e("div",{style:{fontSize:12,color:C.textMuted,marginTop:1}},"Marcarlo como completado")
+                  )
+                )
               )
             ),
 
@@ -10004,7 +10494,11 @@ export default function CLEO(props){
               e("button",{style:st.btnP,onClick:function(){
                 setCotizaciones(cotizaciones.map(function(c){ return c.id===cot.id?Object.assign({},c,{estatus:"Pendiente"}):c; }));
                 var evRecup={fecha:FECHA_HOY,resultado:"Oportunidad recuperada — se restauró: "+(cot.concepto||"Cotización")+" $"+(cot.monto?Number(cot.monto).toLocaleString():"--")};
-                setClientes(clientes.map(function(x){ return x.id===cl.id?Object.assign({},x,{etapa:"Cotizacion enviada",ultimoContacto:FECHA_HOY,fechaEtapa:FECHA_HOY,seguimientoFecha:"",motivoPerdida:"",historialContactos:[...(x.historialContactos||[]),evRecup]}):x; }));
+                setClientes(clientes.map(function(x){
+                  if(x.id!==cl.id) return x;
+                  var base=Object.assign({},x,{etapa:"Cotizacion enviada",ultimoContacto:FECHA_HOY,fechaEtapa:FECHA_HOY,motivoPerdida:"",historialContactos:[...(x.historialContactos||[]),evRecup]});
+                  return atenderRecordatorioReactivacion(base,contactadoRecordatorioId);
+                }));
                 setContactadoResult({titulo:"Oportunidad recuperada 🎉",desc:"Se restauró: "+(cot.concepto||"Cotización")+" — $"+(cot.monto?Number(cot.monto).toLocaleString():"--")+". Ya aparece en Cotización enviada."});
                 window._cotPreviaTemp=null;
               }},"Confirmar"),
@@ -10033,7 +10527,12 @@ export default function CLEO(props){
                 if(!contactadoDias) return;
                 var fecha=new Date(HOY); fecha.setDate(fecha.getDate()+contactadoDias);
                 var fechaStr=fmtFechaLocal(fecha);
-                setClientes(clientes.map(function(x){ return x.id===cl.id?Object.assign({},x,{seguimientoFecha:fechaStr,ultimoContacto:FECHA_HOY,notas:contactadoNota?x.notas+(x.notas?"\n":"")+contactadoNota:x.notas}):x; }));
+                var notaRecordatorioReact=contactadoNota.trim()||"Retomar contacto con esta oportunidad perdida.";
+                setClientes(clientes.map(function(x){
+                  if(x.id!==cl.id) return x;
+                  var b=Object.assign({},x,{ultimoContacto:FECHA_HOY,notas:contactadoNota?x.notas+(x.notas?"\n":"")+contactadoNota:x.notas});
+                  return conRecordatoriosActualizados(b,recordatoriosDe(b).concat([{id:"r_"+Date.now(),fecha:fechaStr,nota:notaRecordatorioReact,esPersonalizada:!!contactadoNota.trim(),origen:"cleo",categoria:"reactivacion"}]));
+                }));
                 setContactadoResult({titulo:"Recordatorio programado",desc:"Te avisaré en "+contactadoDias+" días para retomar con "+nombre+"."});
               }
             },"Guardar")
@@ -10071,27 +10570,46 @@ export default function CLEO(props){
           } else {
             var evReactiv={fecha:FECHA_HOY,resultado:"Cliente reactivado — regresó como nuevo contacto"};
             setContactadoResult({titulo:"Oportunidad reactivada",desc:nombre+" regresó al inicio del proceso, como nuevo contacto."});
-            setClientes(clientes.map(function(x){ return x.id===cl.id?Object.assign({},x,{etapa:"Nuevo contacto",ultimoContacto:FECHA_HOY,fechaEtapa:FECHA_HOY,seguimientoFecha:"",motivoPerdida:"",historialContactos:[...(x.historialContactos||[]),evReactiv]}):x; }));
+            setClientes(clientes.map(function(x){
+              if(x.id!==cl.id) return x;
+              var base=Object.assign({},x,{etapa:"Nuevo contacto",ultimoContacto:FECHA_HOY,fechaEtapa:FECHA_HOY,motivoPerdida:"",historialContactos:[...(x.historialContactos||[]),evReactiv]});
+              return atenderRecordatorioReactivacion(base,contactadoRecordatorioId);
+            }));
           }
           return;
         }
 
         if(key==="perdido"){
           var contactoEvento={fecha:FECHA_HOY,resultado:"Sin interés — confirmado tras recontacto"};
-          setClientes(clientes.map(function(x){ return x.id===cl.id?Object.assign({},x,{etapa:"Perdido",ultimoContacto:FECHA_HOY,seguimientoFecha:"",archivado:true,historialContactos:[...(x.historialContactos||[]),contactoEvento]}):x; }));
+          setClientes(clientes.map(function(x){
+            if(x.id!==cl.id) return x;
+            var base=cancelarRecordatoriosPipeline(Object.assign({},x,{etapa:"Perdido",ultimoContacto:FECHA_HOY,archivado:true,historialContactos:[...(x.historialContactos||[]),contactoEvento]}));
+            // Se elimina EXACTAMENTE la reactivación que se acaba de atender
+            // (usando el id conocido si venimos de un aviso concreto) , las
+            // demás reactivaciones futuras, manuales y posventa quedan
+            // intactas , cancelarRecordatoriosPipeline nunca las toca.
+            return atenderRecordatorioReactivacion(base,contactadoRecordatorioId);
+          }));
           setCotizaciones(cotizaciones.map(function(c){ return c.clienteId===cl.id&&c.estatus==="Pendiente"?Object.assign({},c,{estatus:"Rechazada"}):c; }));
           setContactadoResult({titulo:"Marcado como perdido",desc:nombre+" fue archivada. El historial se conserva."});
         }
       }
 
       function diasExpandido(key,dias,color){
+        function agregarRecordatorioReactivacion(f){
+          setClientes(clientes.map(function(x){
+            if(x.id!==cl.id) return x;
+            var b=Object.assign({},x,{ultimoContacto:FECHA_HOY});
+            return conRecordatoriosActualizados(b,recordatoriosDe(b).concat([{id:"r_"+Date.now(),fecha:fmtFechaLocal(f),nota:"Retomar contacto con esta oportunidad perdida.",esPersonalizada:false,origen:"cleo",categoria:"reactivacion"}]));
+          }));
+        }
         return e("div",{style:{borderTop:"1px solid "+C.border}},
           e("div",{style:{display:"flex",borderBottom:"1px solid "+C.border}},
             dias.map(function(d,idx){
               return e("div",{key:d,style:{flex:1,textAlign:"center",padding:"9px 0",fontSize:13,fontWeight:500,color:color,borderRight:idx<dias.length-1?"1px solid "+C.border:"none",cursor:"pointer"},
                 onClick:function(){
                   var fecha=new Date(HOY); fecha.setDate(fecha.getDate()+d);
-                  setClientes(clientes.map(function(x){ return x.id===cl.id?Object.assign({},x,{seguimientoFecha:fmtFechaLocal(fecha),ultimoContacto:FECHA_HOY}):x; }));
+                  agregarRecordatorioReactivacion(fecha);
                   setContactadoResult({titulo:"Recordatorio programado",desc:"Te avisaré en "+d+" días para retomar con "+nombre+"."});
                 }
               },d+"d");
@@ -10104,7 +10622,7 @@ export default function CLEO(props){
                 if(ev.key==="Enter"&&ev.target.value){
                   var d=Number(ev.target.value);
                   var fecha=new Date(HOY); fecha.setDate(fecha.getDate()+d);
-                  setClientes(clientes.map(function(x){ return x.id===cl.id?Object.assign({},x,{seguimientoFecha:fmtFechaLocal(fecha),ultimoContacto:FECHA_HOY}):x; }));
+                  agregarRecordatorioReactivacion(fecha);
                   setContactadoResult({titulo:"Recordatorio programado",desc:"Te avisaré en "+d+" días para retomar con "+nombre+"."});
                 }
               }
@@ -10116,7 +10634,7 @@ export default function CLEO(props){
                 if(inp&&inp.value){
                   var d=Number(inp.value);
                   var fecha=new Date(HOY); fecha.setDate(fecha.getDate()+d);
-                  setClientes(clientes.map(function(x){ return x.id===cl.id?Object.assign({},x,{seguimientoFecha:fmtFechaLocal(fecha),ultimoContacto:FECHA_HOY}):x; }));
+                  agregarRecordatorioReactivacion(fecha);
                   setContactadoResult({titulo:"Recordatorio programado",desc:"Te avisaré en "+d+" días para retomar con "+nombre+"."});
                 }
               }
@@ -10126,10 +10644,10 @@ export default function CLEO(props){
       }
 
       return e("div",{style:st.ov,onClick:cerrar},
-        e("div",{style:Object.assign({},st.modal,{padding:0,overflow:"hidden",overflowY:"auto"}),onClick:function(ev){ ev.stopPropagation(); }},
+        e("div",{style:Object.assign({},st.modal2.outer,{overflowY:"auto"}),onClick:function(ev){ ev.stopPropagation(); }},
 
           // Header
-          e("div",{style:{padding:"20px 20px 12px",borderBottom:"1px solid "+C.border,display:"flex",justifyContent:"space-between",alignItems:"flex-start"}},
+          e("div",{style:{padding:"20px 20px 12px",borderBottom:"1px solid "+C.border,display:"flex",justifyContent:"space-between",alignItems:"flex-start",flexShrink:0}},
             e("div",null,
               e("div",{style:{fontSize:16,fontWeight:600,color:C.text,marginBottom:2}},"¿Qué pasó con "+nombre+"?"),
               e("div",{style:{fontSize:13,color:C.textMuted}},"Elige lo que mejor describe la conversación.")
@@ -10197,6 +10715,21 @@ export default function CLEO(props){
                   e("div",{style:{fontSize:12,color:C.textMuted,marginTop:1}},"Marcar como perdido")
                 ),
                 
+              )
+            ),
+
+            // Ya atendí mi recordatorio , solo visible cuando la tarjeta
+            // vino realmente de un recordatorio manual/personalizado.
+            // Completarlo aquí NO reactiva la oportunidad ni cambia etapa ,
+            // el cliente sigue Perdido exactamente igual que antes.
+            recordatorioPersonalizadoParaCompletar()&&e("div",{style:{borderRadius:12,border:"1px solid "+C.green+"44",overflow:"hidden",cursor:"pointer"},
+              onClick:function(){ atenderRecordatorioPersonalizado(); }
+            },
+              e("div",{style:{padding:"12px 14px",display:"flex",justifyContent:"space-between",alignItems:"center"}},
+                e("div",null,
+                  e("div",{style:{fontSize:14,fontWeight:500,color:C.green}},"Ya atendí mi recordatorio"),
+                  e("div",{style:{fontSize:12,color:C.textMuted,marginTop:1}},"Marcarlo como completado")
+                )
               )
             )
           ),
@@ -10324,13 +10857,17 @@ export default function CLEO(props){
                 if(seguimientoModo==="reprogramar"){
                   // Se reemplaza EXACTAMENTE el recordatorio que se abrió
                   // para reprogramar (por id), sin importar su posición ,
-                  // y conserva su origen "cleo" original, nunca lo
-                  // convierte en manual.
+                  // conserva su origen y categoria originales, nunca los
+                  // convierte silenciosamente en otra cosa. Si es un
+                  // registro antiguo sin categoria, se infiere de forma
+                  // conservadora en este momento y queda fijada de ahí en
+                  // adelante.
                   var original=actuales.find(function(rr){ return (rr.id||rr.fecha)===seguimientoEditandoId; });
-                  var entradaR={id:original?original.id:("r_"+Date.now()),fecha:fmtFechaLocal(fecha),nota:notaReprogramar.trim(),esPersonalizada:!!notaReprogramar.trim(),origen:(original&&original.origen)||"cleo"};
+                  var categoriaOriginal=original?inferirCategoriaConservadora(original,x):null;
+                  var entradaR={id:original?original.id:("r_"+Date.now()),fecha:fmtFechaLocal(fecha),nota:notaReprogramar.trim(),esPersonalizada:!!notaReprogramar.trim(),origen:(original&&original.origen)||"cleo",categoria:categoriaOriginal};
                   listaFinal=actuales.map(function(rr){ return (rr.id||rr.fecha)===seguimientoEditandoId?entradaR:rr; });
                 } else {
-                  var entradaN={id:"r_"+Date.now(),fecha:fmtFechaLocal(fecha),nota:notaReprogramar.trim(),esPersonalizada:!!notaReprogramar.trim(),origen:"manual"};
+                  var entradaN={id:"r_"+Date.now(),fecha:fmtFechaLocal(fecha),nota:notaReprogramar.trim(),esPersonalizada:!!notaReprogramar.trim(),origen:"manual",categoria:"manual"};
                   listaFinal=actuales.concat([entradaN]);
                 }
                 return conRecordatoriosActualizados(b,listaFinal);
@@ -10444,15 +10981,16 @@ export default function CLEO(props){
                 if(esOpoProductos){
                   setClientes(clientes.map(function(c){
                     if(c.id!==targetId) return c;
-                    var base=Object.assign({},c,{estadoProspecto:"Perdido",motivoPerdida:consejoMotivo==="Otro"?motivoLibre:consejoMotivo});
-                    return conRecordatoriosActualizados(base,recordatoriosDe(base).concat([{id:"r_"+Date.now(),fecha:fmtFechaLocal(fecha),nota:mensajeSugeridoPerdida,esPersonalizada:!!(seguimientoLost.nota&&seguimientoLost.nota.trim()),origen:"cleo"}]));
+                    var base=cancelarRecordatoriosPipeline(Object.assign({},c,{estadoProspecto:"Perdido",motivoPerdida:consejoMotivo==="Otro"?motivoLibre:consejoMotivo}));
+                    return conRecordatoriosActualizados(base,recordatoriosDe(base).concat([{id:"r_"+Date.now(),fecha:fmtFechaLocal(fecha),nota:mensajeSugeridoPerdida,esPersonalizada:!!(seguimientoLost.nota&&seguimientoLost.nota.trim()),origen:"cleo",categoria:"reactivacion"}]));
                   }));
                 } else {
                   var cotP=cotizaciones.find(function(c){ return c.clienteId===targetId&&(c.estatus==="Pendiente"||c.estatus==="Aceptada"); });
                   if(cotP) setCotizaciones(cotizaciones.map(function(c){ return c.id===cotP.id?Object.assign({},c,{estatus:"Rechazada",motivoPerdida:consejoMotivo}):c; }));
                   setClientes(clientes.map(function(c){
                     if(c.id!==targetId) return c;
-                    return conRecordatoriosActualizados(c,recordatoriosDe(c).concat([{id:"r_"+Date.now(),fecha:fmtFechaLocal(fecha),nota:mensajeSugeridoPerdida,esPersonalizada:!!(seguimientoLost.nota&&seguimientoLost.nota.trim()),origen:"cleo"}]));
+                    var limpio=cancelarRecordatoriosPipeline(c);
+                    return conRecordatoriosActualizados(limpio,recordatoriosDe(limpio).concat([{id:"r_"+Date.now(),fecha:fmtFechaLocal(fecha),nota:mensajeSugeridoPerdida,esPersonalizada:!!(seguimientoLost.nota&&seguimientoLost.nota.trim()),origen:"cleo",categoria:"reactivacion"}]));
                   }));
                 }
                 setMotivoPipelineId(null); setConsejoMotivo(null); setMotivoLibre("");
@@ -10469,15 +11007,16 @@ export default function CLEO(props){
                 if(esOpoProductos){
                   setClientes(clientes.map(function(c){
                     if(c.id!==targetId) return c;
-                    var base2=Object.assign({},c,{estadoProspecto:"Perdido",motivoPerdida:consejoMotivo==="Otro"?motivoLibre:consejoMotivo});
-                    return conRecordatoriosActualizados(base2,recordatoriosDe(base2).concat([{id:"r_"+Date.now(),fecha:fmtFechaLocal(fecha),nota:mensajeSugeridoPerdida2,esPersonalizada:!!(seguimientoLost.nota&&seguimientoLost.nota.trim()),origen:"cleo"}]));
+                    var base2=cancelarRecordatoriosPipeline(Object.assign({},c,{estadoProspecto:"Perdido",motivoPerdida:consejoMotivo==="Otro"?motivoLibre:consejoMotivo}));
+                    return conRecordatoriosActualizados(base2,recordatoriosDe(base2).concat([{id:"r_"+Date.now(),fecha:fmtFechaLocal(fecha),nota:mensajeSugeridoPerdida2,esPersonalizada:!!(seguimientoLost.nota&&seguimientoLost.nota.trim()),origen:"cleo",categoria:"reactivacion"}]));
                   }));
                 } else {
                   var cotP2=cotizaciones.find(function(c){ return c.clienteId===targetId&&(c.estatus==="Pendiente"||c.estatus==="Aceptada"); });
                   if(cotP2) setCotizaciones(cotizaciones.map(function(c){ return c.id===cotP2.id?Object.assign({},c,{estatus:"Rechazada",motivoPerdida:consejoMotivo}):c; }));
                   setClientes(clientes.map(function(c){
                     if(c.id!==targetId) return c;
-                    return conRecordatoriosActualizados(c,recordatoriosDe(c).concat([{id:"r_"+Date.now(),fecha:fmtFechaLocal(fecha),nota:mensajeSugeridoPerdida2,esPersonalizada:!!(seguimientoLost.nota&&seguimientoLost.nota.trim()),origen:"cleo"}]));
+                    var limpio2=cancelarRecordatoriosPipeline(c);
+                    return conRecordatoriosActualizados(limpio2,recordatoriosDe(limpio2).concat([{id:"r_"+Date.now(),fecha:fmtFechaLocal(fecha),nota:mensajeSugeridoPerdida2,esPersonalizada:!!(seguimientoLost.nota&&seguimientoLost.nota.trim()),origen:"cleo",categoria:"reactivacion"}]));
                   }));
                 }
                 setMotivoPipelineId(null); setConsejoMotivo(null); setMotivoLibre("");
@@ -10513,7 +11052,10 @@ export default function CLEO(props){
 
       function programarRapido(){
         var fecha=new Date(); fecha.setDate(fecha.getDate()+30);
-        setClientes(clientes.map(function(c){ return c.id===clientePerdidoId?Object.assign({},c,{seguimientoFecha:fmtFechaLocal(fecha)}):c; }));
+        setClientes(clientes.map(function(c){
+          if(c.id!==clientePerdidoId) return c;
+          return conRecordatoriosActualizados(c,recordatoriosDe(c).concat([{id:"r_"+Date.now(),fecha:fmtFechaLocal(fecha),nota:msgMotivo,esPersonalizada:false,origen:"cleo",categoria:"reactivacion"}]));
+        }));
         cerrarPaso2();
       }
 
@@ -10782,17 +11324,17 @@ export default function CLEO(props){
       function actualizarListaPagos(nuevaLista){ if(pagosModalTipo==="pedido") setPedidos(nuevaLista); else if(pagosModalTipo==="venta") setVentas(nuevaLista); else setCotizaciones(nuevaLista); }
       var cl=cot?clientes.find(function(c){ return c.id===cot.clienteId; }):null;
       var pagos=cot?cot.pagos||[]:[];
-      var totalPagado=pagos.reduce(function(s,p){ return s+Number(p.monto); },0);
       var montoTotalCot=cot?Number(pagosModalTipo==="pedido"?cot.total:cot.monto):0;
+      var totalPagado=cot?totalPagadoDe(cot):0;
       var conceptoCot=cot?(pagosModalTipo==="pedido"?cot.productos:cot.concepto):"";
       var cotParaComprobante=cot&&pagosModalTipo==="pedido"?Object.assign({},cot,{monto:cot.total,concepto:cot.productos}):cot;
-      var saldoReal=cot?montoTotalCot-totalPagado:0;
+      var saldoReal=cot?saldoPendienteDe(cot,montoTotalCot):0;
       var pc=perfil.color||C.purple;
       return e("div",{style:st.ov,onClick:function(){ setPagosModalId(null); setPagosModalTipo("cotizacion"); }},
-        e("div",{style:Object.assign({},st.modal,{padding:0,overflow:"hidden",overflowY:"auto"}),onClick:function(ev){ ev.stopPropagation(); }},
+        e("div",{style:st.modal2.outer,onClick:function(ev){ ev.stopPropagation(); }},
 
           // HEADER
-          e("div",{style:{padding:"20px 24px 16px",borderBottom:"1px solid "+C.border,display:"flex",justifyContent:"space-between",alignItems:"flex-start"}},
+          e("div",{style:Object.assign({},st.modal2.header,{alignItems:"flex-start"})},
             e("div",null,
               e("div",{style:{fontWeight:700,fontSize:16,color:C.text,marginBottom:3}},"Registrar pago"),
               e("div",{style:{fontSize:12,color:C.textMuted}},(cl?cl.nombre:"--")+" · "+conceptoCot+" · $"+(cot?montoTotalCot.toLocaleString():""))
@@ -10800,29 +11342,16 @@ export default function CLEO(props){
             e("button",{style:{background:"transparent",border:"1px solid "+C.border,cursor:"pointer",color:C.textDim,fontSize:16,width:28,height:28,borderRadius:8,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0},onClick:function(){ setPagosModalId(null); setPagosModalTipo("cotizacion"); }},"×")
           ),
 
-          pagosModalTipo==="cotizacion"&&cot&&e("div",{style:{padding:"12px 24px",borderBottom:"1px solid "+C.border,display:"flex",gap:8,flexWrap:"wrap",alignItems:"center"}},
+          pagosModalTipo==="cotizacion"&&cot&&e("div",{style:{padding:"12px 24px",borderBottom:"1px solid "+C.border,display:"flex",gap:8,flexWrap:"wrap",alignItems:"center",flexShrink:0}},
             e("button",{style:{cursor:"pointer",padding:"7px 14px",borderRadius:8,border:"1px solid "+C.border,background:"transparent",fontSize:12,color:C.text,fontWeight:500,display:"flex",alignItems:"center",gap:6},title:"Descargar o compartir cotización en PDF",onClick:function(){ manejarGenerarCotizacionPDF(cot,cl,perfil); }},"📄 Descargar / compartir cotización"),
             !esProductos&&e(CotizacionAdjunto,{cot:cot,esDemo:!!(perfil.modoDemo||props.demoActivo),onActualizarCotizacion:actualizarArchivoAdjuntoCotizacion})
           ),
 
-          // BODY
-          e("div",{style:{padding:"20px 24px",overflowY:"auto",maxHeight:"65vh"}},
-
-            // Anticipo legacy: existe cot.anticipo/fechaAnticipo pero ese
-            // movimiento nunca quedó reflejado dentro de cot.pagos , se
-            // ofrece un botón activo separado para no dejarlo sin ruta.
-            Number(cotParaComprobante&&cotParaComprobante.anticipo)>0
-              &&cotParaComprobante.fechaAnticipo
-              &&!pagos.some(esMovimientoAnticipo)
-              &&e("div",{style:{display:"flex",alignItems:"center",justifyContent:"space-between",gap:10,padding:"10px 14px",background:C.amberBg,borderRadius:10,border:"1px solid "+C.amberBorder,marginBottom:16}},
-                e("div",null,
-                  e("div",{style:{fontSize:12,fontWeight:600,color:C.text}},"Anticipo registrado anteriormente"),
-                  e("div",{style:{fontSize:11,color:C.textDim,marginTop:1}},"$"+Number(cotParaComprobante.anticipo).toLocaleString()+" · "+cotParaComprobante.fechaAnticipo)
-                ),
-                e("button",{style:{cursor:"pointer",padding:"6px 12px",borderRadius:8,border:"1px solid "+C.amberBorder,background:"transparent",fontSize:11,color:C.amber,fontWeight:600,whiteSpace:"nowrap"},onClick:function(){
-                  manejarGenerarDocumentoFinancieroPDF({tipo:"anticipo",cot:cotParaComprobante,cliente:cl||{nombre:"Cliente"},perfil:perfil,fechaHoy:FECHA_HOY});
-                }},"Comprobante de anticipo")
-              ),
+          // BODY , flex:1 en vez de un maxHeight fijo en vh, así se adapta
+          // al espacio real disponible (header/acciones/footer ya fijos
+          // alrededor), en vez de un porcentaje arbitrario de la pantalla
+          // que no considera cuánto ocupan esas otras secciones.
+          e("div",{style:Object.assign({},st.modal2.body,{maxHeight:"none"})},
 
             // Pagos existentes
             pagos.length>0&&e("div",{style:{marginBottom:20}},
@@ -10839,7 +11368,9 @@ export default function CLEO(props){
                       onClick:function(){ generarDocumentoParaMovimiento(p,cotParaComprobante,cl,perfil); }
                     },"Comprobante"),
                     e("button",{style:{background:"none",border:"none",cursor:"pointer",color:C.red,fontSize:16,padding:"2px 4px",marginLeft:2},
-                      onClick:(function(pid){ return function(){ var updated=listaOrigenPago.map(function(c){ return c.id===pagosModalId?Object.assign({},c,{pagos:(c.pagos||[]).filter(function(x){ return x.id!==pid; })}):c; }); actualizarListaPagos(updated); }; })(p.id)
+                      onClick:(function(pid,pmonto){ return function(){
+                        eliminarPago(pagosModalTipo,pagosModalId,pid,pmonto);
+                      }; })(p.id,p.monto)
                     },"×")
                   );
                 })
@@ -10884,62 +11415,16 @@ export default function CLEO(props){
           ),
 
           // FOOTER
-          e("div",{style:{padding:"14px 24px",borderTop:"1px solid "+C.border,display:"flex",justifyContent:"flex-end",gap:8,background:C.surfaceUp}},
+          e("div",{style:st.modal2.footer},
             e("button",{style:st.btn,onClick:function(){ setPagosModalId(null); setPagosModalTipo("cotizacion"); }},"Cerrar"),
             saldoReal>0&&e("button",{style:Object.assign({},st.btnP,{opacity:!formPago.monto||Number(formPago.monto)<=0?0.4:1}),
               disabled:!formPago.monto||Number(formPago.monto)<=0,
               onClick:function(){
-                var nuevoPago={id:"p_"+Date.now(),monto:Number(formPago.monto),fecha:formPago.fecha,concepto:formPago.concepto};
-                actualizarListaPagos(listaOrigenPago.map(function(c){ return c.id===pagosModalId?Object.assign({},c,{pagos:[...(c.pagos||[]),nuevoPago]}):c; }));
+                var resultado=registrarPago(pagosModalTipo,pagosModalId,formPago.monto,formPago.fecha,formPago.concepto);
+                if(!resultado.ok){ alert(resultado.error); return; }
                 setFormPago({monto:"",fecha:FECHA_HOY,concepto:"Pago"});
               }
             },"+ Guardar pago")
-          )
-        )
-      );
-    })(),
-
-    // MODAL ANTICIPO (legacy , mantener por compatibilidad)
-    anticCotId&&(function(){
-      var cot=cotizaciones.find(function(c){ return c.id===anticCotId; });
-      var cl=cot?clientes.find(function(c){ return c.id===cot.clienteId; }):null;
-      var saldo=cot?cot.monto-Number(anticVal.monto||0):0;
-      return e("div",{style:st.ov,onClick:function(){ setAnticCotId(null); }},
-        e("div",{style:st.modal,onClick:function(ev){ ev.stopPropagation(); }},
-          e("div",{style:{fontWeight:600,fontSize:15,marginBottom:4,color:C.text}},"Registrar anticipo"),
-          e("div",{style:{fontSize:12,color:C.textMuted,marginBottom:16}},(cl?cl.nombre:"--")+" · "+(cot?cot.concepto:"")+" · $"+(cot?Number(cot.monto).toLocaleString():"")),
-          e("div",{style:{marginBottom:12}},e("label",{style:st.lbl},"Monto del anticipo"),e(MontoInput,{value:anticVal.monto,onChange:function(ev){ setAnticVal(Object.assign({},anticVal,{monto:ev.target.value})); },placeholder:"0",style:st.inp})),
-          e("div",{style:{marginBottom:16}},e("label",{style:st.lbl},"Fecha de pago"),e("input",{type:"date",value:anticVal.fecha,onChange:function(ev){ setAnticVal(Object.assign({},anticVal,{fecha:ev.target.value})); },style:Object.assign({},st.inp,{width:"100%",maxWidth:"100%",boxSizing:"border-box",display:"block",minWidth:0,WebkitAppearance:"none"})})),
-          Number(anticVal.monto)>0&&e("div",{style:{background:C.surfaceUp,borderRadius:8,padding:"10px 12px",marginBottom:16}},
-            e("div",{style:{display:"flex",justifyContent:"space-between",marginBottom:6}},e("span",{style:{fontSize:13,color:C.textMuted}},"Total"),e("span",{style:{fontSize:13,color:C.text}},"$"+(cot?Number(cot.monto).toLocaleString():""))),
-            e("div",{style:{display:"flex",justifyContent:"space-between",marginBottom:6}},e("span",{style:{fontSize:13,color:C.textMuted}},"Anticipo"),e("span",{style:{fontSize:13,color:C.green}},"$"+Number(anticVal.monto).toLocaleString())),
-            e("div",{style:{display:"flex",justifyContent:"space-between"}},e("span",{style:{fontSize:13,color:C.textMuted}},"Saldo pendiente"),e("span",{style:{fontSize:13,fontWeight:600,color:saldo===0?C.green:C.amber}},"$"+Number(saldo).toLocaleString()))
-          ),
-          e("div",{style:{display:"flex",gap:8,justifyContent:"flex-end",flexWrap:"wrap"}},
-            e("button",{style:st.btn,onClick:function(){ setAnticCotId(null); }},"Cancelar"),
-            e("button",{style:st.btnP,onClick:function(){ guardarAnticipo(anticCotId,anticVal.monto,anticVal.fecha); setAnticCotId(null); }},"Guardar"),
-            e("button",{style:st.btn,onClick:function(){
-              // Validaciones: cotización existente, monto>0, fecha presente.
-              if(!cot) return;
-              if(!(Number(anticVal.monto)>0)) return;
-              if(!anticVal.fecha) return;
-              // El estado de React todavía no habrá terminado de actualizarse
-              // cuando arranque la generación del PDF , se construye el
-              // snapshot ya actualizado a mano para el documento.
-              var cotActualizada=Object.assign({},cot,{
-                anticipo:Number(anticVal.monto),
-                fechaAnticipo:anticVal.fecha
-              });
-              guardarAnticipo(anticCotId,anticVal.monto,anticVal.fecha);
-              setAnticCotId(null);
-              manejarGenerarDocumentoFinancieroPDF({
-                tipo:"anticipo",
-                cot:cotActualizada,
-                cliente:cl||{nombre:"Cliente"},
-                perfil:perfil,
-                fechaHoy:FECHA_HOY
-              });
-            }},"Guardar y descargar comprobante")
           )
         )
       );
@@ -10974,7 +11459,7 @@ export default function CLEO(props){
             var c=confirmPedidoData;
             var ahora=new Date().toISOString();
             setClientes(clientes.map(function(x){
-              return x.id===c.id?Object.assign({},x,{estadoProspecto:"Convertido",etapa:"Ganado",fechaPedido:ahora}):x;
+              return x.id===c.id?cancelarRecordatoriosPipeline(Object.assign({},x,{estadoProspecto:"Convertido",etapa:"Ganado",fechaPedido:ahora})):x;
             }));
             var nuevoPedido={id:"ped_"+Date.now(),clienteId:c.id,productos:c.productoInteres||"",cantidad:1,total:Number(c.precioInteres)||0,pagos:[],estadoPedido:"preparando",notas:c.notasProspecto||"",fecha:FECHA_HOY,fechaCreado:ahora};
             setPedidos([nuevoPedido,...pedidos]);
@@ -11051,7 +11536,7 @@ export default function CLEO(props){
           setClientes(clientes.map(function(c){
             if(c.id!==cl.id) return c;
             var b=Object.assign({},c,{tipoSeguimientoPostVenta:msgsRecontacto[diasGuardar]?diasGuardar:"30"});
-            return conRecordatoriosActualizados(b,recordatoriosDe(b).concat([{id:"r_"+Date.now(),fecha:fmtFechaLocal(fechaR),nota:mensajeGuardar,esPersonalizada:!!notaPersonalPostVenta.trim(),origen:"cleo"}]));
+            return conRecordatoriosActualizados(b,recordatoriosDe(b).concat([{id:"r_"+Date.now(),fecha:fmtFechaLocal(fechaR),nota:mensajeGuardar,esPersonalizada:!!notaPersonalPostVenta.trim(),origen:"cleo",categoria:"postventa"}]));
           }));
         }
         setCelebEntregadoData(null); setCelebPaso(1); setCelebRazon([]); setNotaPersonalPostVenta("");
@@ -11280,6 +11765,19 @@ export default function CLEO(props){
 
           ),
 
+          // Privacidad y términos , solo consulta: abre el mismo modal
+          // reutilizable de LegalDocuments.jsx, nunca vuelve a pedir
+          // aceptación ni modifica la fila de legal_acceptances.
+          e("div",{style:{marginBottom:20}},
+            e("div",{style:{fontSize:11,fontWeight:700,color:C.textDim,textTransform:"uppercase",letterSpacing:"1px",marginBottom:10}},"Privacidad y términos"),
+            e("div",{style:{display:"flex",flexDirection:"column",gap:8,marginBottom:10}},
+              e("button",{style:{cursor:"pointer",width:"100%",textAlign:"left",padding:"13px 14px",borderRadius:12,border:"1px solid "+C.border,background:"transparent",fontSize:13,fontWeight:600,color:C.text,minHeight:isMobile?44:undefined},onClick:docLegalCuenta.abrirPrivacidad},"Aviso de Privacidad"),
+              e("button",{style:{cursor:"pointer",width:"100%",textAlign:"left",padding:"13px 14px",borderRadius:12,border:"1px solid "+C.border,background:"transparent",fontSize:13,fontWeight:600,color:C.text,minHeight:isMobile?44:undefined},onClick:docLegalCuenta.abrirTerminos},"Términos de la Beta")
+            ),
+            e("div",{style:{fontSize:11,color:C.textDim,paddingLeft:2}},"Versiones vigentes: Privacidad "+PRIVACY_VERSION+" · Términos "+TERMS_VERSION),
+            docLegalCuenta.documentoAbierto&&e(LegalModal,{tipo:docLegalCuenta.documentoAbierto,onClose:docLegalCuenta.cerrarDocumento})
+          ),
+
           // Eliminar mi cuenta , separado visualmente de "Empezar desde cero"
           // (esa conserva la cuenta) y de "Cerrar sesión" (esa no borra nada).
           e("div",{style:{marginBottom:20}},
@@ -11310,8 +11808,8 @@ export default function CLEO(props){
           e("div",{style:{background:C.purplePale,borderRadius:14,padding:"14px 16px",display:"flex",gap:12,alignItems:"flex-start"}},
             e("svg",{width:18,height:18,viewBox:"0 0 24 24",fill:"none",stroke:C.purple,strokeWidth:1.7,strokeLinecap:"round",strokeLinejoin:"round",style:{flexShrink:0,marginTop:1}},e("path",{d:"M12 2l7 3v6c0 5-3.5 8.5-7 10-3.5-1.5-7-5-7-10V5l7-3z"})),
             e("div",null,
-              e("div",{style:{fontWeight:700,fontSize:13,color:C.purple}},"Tu información está segura"),
-              e("div",{style:{fontSize:12,color:C.purple,opacity:0.85,marginTop:2,lineHeight:1.4}},"En CLEO protegemos tus datos y nunca los compartimos con terceros.")
+              e("div",{style:{fontWeight:700,fontSize:13,color:C.purple}},"Tu información está protegida"),
+              e("div",{style:{fontSize:12,color:C.purple,opacity:0.85,marginTop:2,lineHeight:1.4}},"CLEO utiliza únicamente los proveedores tecnológicos necesarios para operar el servicio, conforme al Aviso de Privacidad.")
             )
           )
 
@@ -11663,10 +12161,10 @@ export default function CLEO(props){
                         )
                       )
                     : e("div",null,
-                        sv.descripcion&&e("div",{style:{fontSize:12,color:C.text,lineHeight:1.7,marginBottom:sv.condiciones?8:0,padding:"8px 10px",background:"rgba(255,255,255,0.6)",borderRadius:8,marginTop:4},dangerouslySetInnerHTML:{__html:sv.descripcion}}),
+                        sv.descripcion&&e("div",{style:{fontSize:12,color:C.text,lineHeight:1.7,marginBottom:sv.condiciones?8:0,padding:"8px 10px",background:"rgba(255,255,255,0.6)",borderRadius:8,marginTop:4},dangerouslySetInnerHTML:{__html:sanitizarHTMLRico(sv.descripcion||"")}}),
                         sv.condiciones&&e("div",null,
                           e("div",{style:{fontSize:10,fontWeight:700,color:C.purple,textTransform:"uppercase",letterSpacing:"0.6px",marginBottom:4,marginTop:sv.descripcion?4:8}},"Condiciones"),
-                          e("div",{style:{fontSize:12,color:C.textMuted,lineHeight:1.7,padding:"8px 10px",background:"rgba(255,255,255,0.6)",borderRadius:8},dangerouslySetInnerHTML:{__html:sv.condiciones}})
+                          e("div",{style:{fontSize:12,color:C.textMuted,lineHeight:1.7,padding:"8px 10px",background:"rgba(255,255,255,0.6)",borderRadius:8},dangerouslySetInnerHTML:{__html:sanitizarHTMLRico(sv.condiciones||"")}})
                         ),
                         e("div",{style:{display:"flex",gap:8,justifyContent:"flex-end",marginTop:8}},
                           e("button",{style:{cursor:"pointer",padding:"5px 12px",borderRadius:8,border:"1px solid "+C.border,background:"transparent",fontSize:12,color:C.purple,fontWeight:500},onClick:function(){ setEditSv({id:sv.id,nombre:sv.nombre,precio:sv.precio,descripcion:sv.descripcion||"",condiciones:sv.condiciones||""}); }},"Editar"),
@@ -11746,14 +12244,14 @@ export default function CLEO(props){
       var v=pagoVentaData;
       var cl=v.clienteId?clientes.find(function(c){ return c.id===v.clienteId; }):null;
       var pagos=v.pagos||[];
-      var totalPagado=pagos.reduce(function(s,p){ return s+Number(p.monto); },0);
-      var saldoReal=v.monto-totalPagado;
+      var totalPagado=totalPagadoDe(v);
+      var saldoReal=saldoPendienteDe(v,v.monto);
       var pc=perfil.color||C.purple;
       return e("div",{style:st.ov,onClick:function(){ setPagoVentaData(null); }},
-        e("div",{style:Object.assign({},st.modal,{padding:0,overflow:"hidden",overflowY:"auto"}),onClick:function(ev){ ev.stopPropagation(); }},
+        e("div",{style:st.modal2.outer,onClick:function(ev){ ev.stopPropagation(); }},
 
           // HEADER
-          e("div",{style:{padding:"20px 24px 16px",borderBottom:"1px solid "+C.border,display:"flex",justifyContent:"space-between",alignItems:"flex-start"}},
+          e("div",{style:Object.assign({},st.modal2.header,{alignItems:"flex-start"})},
             e("div",null,
               e("div",{style:{fontWeight:700,fontSize:16,color:C.text,marginBottom:3}},"Registrar pago"),
               e("div",{style:{fontSize:12,color:C.textMuted}},(cl?cl.nombre:"--")+" · "+(v.concepto||"Venta directa")+" · $"+Number(v.monto).toLocaleString())
@@ -11762,7 +12260,7 @@ export default function CLEO(props){
           ),
 
           // BODY
-          e("div",{style:{padding:"20px 24px",overflowY:"auto",maxHeight:"65vh"}},
+          e("div",{style:Object.assign({},st.modal2.body,{maxHeight:"none"})},
 
             // Pagos existentes
             pagos.length>0&&e("div",{style:{marginBottom:20}},
@@ -11779,11 +12277,10 @@ export default function CLEO(props){
                       onClick:function(){ generarDocumentoParaMovimiento(p,{id:v.id,concepto:v.concepto,monto:v.monto,pagos:Array.isArray(v.pagos)?v.pagos:[]},cl||{nombre:"Cliente"},perfil); }
                     },"Comprobante"),
                     e("button",{style:{background:"none",border:"none",cursor:"pointer",color:C.red,fontSize:16,padding:"2px 4px",marginLeft:2},
-                      onClick:(function(pid){ return function(){
-                        var updated=ventas.map(function(vv){ return vv.id===v.id?Object.assign({},vv,{pagos:(vv.pagos||[]).filter(function(x){ return x.id!==pid; })}):vv; });
-                        setVentas(updated);
-                        setPagoVentaData(Object.assign({},v,{pagos:(v.pagos||[]).filter(function(x){ return x.id!==pid; })}));
-                      }; })(p.id)
+                      onClick:(function(pid,pmonto){ return function(){
+                        var resultado=eliminarPago("venta",v.id,pid,pmonto);
+                        if(resultado.ok&&resultado.item) setPagoVentaData(resultado.item);
+                      }; })(p.id,p.monto)
                     },"×")
                   );
                 })
@@ -11828,16 +12325,14 @@ export default function CLEO(props){
           ),
 
           // FOOTER
-          e("div",{style:{padding:"14px 24px",borderTop:"1px solid "+C.border,display:"flex",justifyContent:"flex-end",gap:8,background:C.surfaceUp}},
+          e("div",{style:st.modal2.footer},
             e("button",{style:st.btn,onClick:function(){ setPagoVentaData(null); }},"Cerrar"),
             saldoReal>0&&e("button",{style:Object.assign({},st.btnP,{opacity:!formPagoVenta.monto||Number(formPagoVenta.monto)<=0?0.4:1}),
               disabled:!formPagoVenta.monto||Number(formPagoVenta.monto)<=0,
               onClick:function(){
-                var nuevoPago={id:"pv_"+Date.now(),monto:Number(formPagoVenta.monto),fecha:formPagoVenta.fecha,concepto:formPagoVenta.concepto||"Pago"};
-                var nuevosPagos=[...(v.pagos||[]),nuevoPago];
-                var updatedV=Object.assign({},v,{pagos:nuevosPagos});
-                setVentas(ventas.map(function(vv){ return vv.id===v.id?updatedV:vv; }));
-                setPagoVentaData(updatedV);
+                var resultado=registrarPago("venta",v.id,formPagoVenta.monto,formPagoVenta.fecha,formPagoVenta.concepto);
+                if(!resultado.ok){ alert(resultado.error); return; }
+                setPagoVentaData(Object.assign({},v,{pagos:pagosDe(v).concat([resultado.pago])}));
                 setFormPagoVenta({monto:"",fecha:FECHA_HOY,concepto:"Pago"});
               }
             },"+ Guardar pago")
@@ -11851,12 +12346,12 @@ export default function CLEO(props){
       var cl=clientes.find(function(c){ return c.id===modalVentaRapidaPipeline; });
       var nombre1=cl?cl.nombre.split(" ")[0]:"este cliente";
       return e("div",{style:st.ov},
-        e("div",{style:Object.assign({},st.modal,{padding:0,overflow:"hidden",overflowY:"auto"}),onClick:function(ev){ ev.stopPropagation(); }},
-          e("div",{style:{padding:"20px 24px 16px",background:"linear-gradient(135deg,"+C.purplePale+" 0%,transparent 70%)",borderBottom:"1px solid "+C.border}},
+        e("div",{style:st.modal2.outer,onClick:function(ev){ ev.stopPropagation(); }},
+          e("div",{style:{padding:"20px 24px 16px",background:"linear-gradient(135deg,"+C.purplePale+" 0%,transparent 70%)",borderBottom:"1px solid "+C.border,flexShrink:0}},
             e("div",{style:{fontWeight:700,fontSize:17,color:C.text}},"Sin cotización registrada"),
             e("div",{style:{fontSize:13,color:C.textMuted,marginTop:4,lineHeight:1.5}},(cl?cl.nombre:"Este cliente")+" no tiene cotización. Aquí haces seguimientos para ventas con propuesta.")
           ),
-          e("div",{style:{padding:"20px 24px",display:"flex",flexDirection:"column",gap:12}},
+          e("div",{style:{padding:"20px 24px",display:"flex",flexDirection:"column",gap:12,overflowY:"auto"}},
             e("div",{style:{fontSize:13,color:C.text,lineHeight:1.6,padding:"12px 16px",background:C.purplePale,borderRadius:12,border:"1px solid "+C.purple+"22"}},"Si cerraste esta venta sin cotización, puedes registrarla como una venta directa."),
             e("button",{
               style:{cursor:"pointer",padding:"16px",borderRadius:14,border:"1px solid "+C.green+"44",background:C.green+"08",textAlign:"left",width:"100%"},
@@ -11866,8 +12361,21 @@ export default function CLEO(props){
                 setModalVentaRapidaPipeline(null);
                 // Guardar etapa original para revertir si cancela
                 setEtapaAnteriorGanado(etapaOriginal?etapaOriginal.etapa:"Nuevo contacto");
+                // Copia inmutable EXACTA de los campos que se van a tocar ,
+                // así al cancelar se restaura tal cual, sin adivinar valores
+                // por defecto que podrían no coincidir con los originales.
+                setVentaDirectaOriginal({
+                  id:clienteId,
+                  etapa:etapaOriginal?etapaOriginal.etapa:"Nuevo contacto",
+                  archivado:etapaOriginal?etapaOriginal.archivado:undefined,
+                  fechaEtapa:etapaOriginal?etapaOriginal.fechaEtapa:FECHA_HOY
+                });
                 setCotAceptadaId("pipeline_revert_"+clienteId);
-                // Archivar temporalmente
+                // Archivar temporalmente , SIN limpiar recordatorios todavía,
+                // porque esto es provisional (si se cancela el formulario de
+                // venta, debe quedar exactamente igual que antes). La
+                // limpieza definitiva ocurre solo cuando guardarCerre()
+                // confirma la venta y el cliente queda realmente Ganado.
                 setClientes(clientes.map(function(c){ return c.id===clienteId?Object.assign({},c,{etapa:"Perdido",archivado:true,fechaEtapa:FECHA_HOY}):c; }));
                 setFormVenta({tipo:"especifico",clienteId:clienteId,concepto:"",monto:"",fecha:FECHA_HOY,etiqueta:"",notas:"",nuevoNombre:"",nuevoContacto:"",nuevoNegocio:"",items:[]});
                 setPasoVenta("form");
