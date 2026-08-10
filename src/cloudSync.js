@@ -28,6 +28,7 @@ export var CLEO_TEMP_KEYS = [
   "cleo_demo_productos_loaded_v2", // bandera de datos demo ya cargados
   "cleo_conflict_backup", // respaldo del snapshot local que provocó un conflicto sin resolver
   "cleo_demo_session", // marca de que hay una sesión de modo demo aislada activa
+  "cleo_ui_vista", // última sección de navegación principal — solo continuidad de UI, nunca se sincroniza, nunca debe heredarse entre cuentas
 ];
 
 // Marca la existencia de una sesión de modo demo activa, aislada de los

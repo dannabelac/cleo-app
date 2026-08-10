@@ -744,6 +744,38 @@ function nombreArchivoSeguro(valor,fallback){
   return texto||fallback;
 }
 
+// ── Continuidad de navegación (solo la sección principal) ──────────────
+// Recuerda EXCLUSIVAMENTE en qué sección principal estaba la persona
+// (Inicio, Cotizaciones, Pedidos, etc.), para restaurarla tras un
+// refresh/remontaje/regreso de pestaña. Nunca guarda modales, formularios,
+// clientes abiertos, filtros ni búsquedas , solo el nombre de la sección.
+// Vive fuera del componente porque no depende de ningún estado de React.
+var CLEO_UI_VISTA_KEY="cleo_ui_vista";
+var SECCIONES_SERVICIOS=["inicio","hoy","pipeline","clientes","cotizaciones","trabajos","ventas","resumen"];
+var SECCIONES_PRODUCTOS=["inicio","hoy","prospectos","pedidos","clientes","ventas_productos","resumen"];
+function esVistaValidaParaPerfil(vista,tipoPerfil){
+  if(typeof vista!=="string") return false;
+  var lista=tipoPerfil==="productos"?SECCIONES_PRODUCTOS:SECCIONES_SERVICIOS;
+  return lista.indexOf(vista)!==-1;
+}
+// Lee una sola vez, al inicializar el estado , cualquier fallo (valor
+// dañado, no-string, no perteneciente al perfil actual, o localStorage
+// inaccesible) siempre termina en "inicio", nunca lanza un error que
+// impida montar CLEO.
+function leerVistaInicialSegura(tipoPerfil){
+  var guardado;
+  try{ guardado=localStorage.getItem(CLEO_UI_VISTA_KEY); }catch(e){ return "inicio"; }
+  if(!esVistaValidaParaPerfil(guardado,tipoPerfil)) return "inicio";
+  return guardado;
+}
+// Único punto que escribe la clave , guarda solo el nombre de la sección
+// (nunca datos de clientes/negocio), y siempre un valor válido para el
+// perfil actual (nunca el crudo sin validar).
+function guardarVistaSegura(vista,tipoPerfil){
+  var valida=esVistaValidaParaPerfil(vista,tipoPerfil)?vista:"inicio";
+  try{ localStorage.setItem(CLEO_UI_VISTA_KEY,valida); }catch(e){}
+}
+
 // ── Helpers centrales de enlaces externos ─────────────────────────────────
 function telefonoSeguro(valor){
   if(!valor) return "";
@@ -2040,12 +2072,34 @@ export default function CLEO(props){
   var s4c=useState(function(){ return lsGet("cleo_productos",[]); }); var productos=s4c[0]; var setProductosRaw=s4c[1];
 
   // Estados de navegacion
-  var s5=useState("inicio"); var vista=s5[0]; var setVistaRaw=s5[1];
+  var s5=useState(function(){ return leerVistaInicialSegura(perfil.tipoPerfil); }); var vista=s5[0]; var setVistaRaw=s5[1];
   var sHighlightOpo=useState(null); var highlightOpoId=sHighlightOpo[0]; var setHighlightOpoId=sHighlightOpo[1];
   var sHighlightPed=useState(null); var highlightPedidoId=sHighlightPed[0]; var setHighlightPedidoId=sHighlightPed[1];
   var sHighlightHoy=useState(null); var highlightHoyClienteId=sHighlightHoy[0]; var setHighlightHoyClienteId=sHighlightHoy[1];
   var sHighlightCot=useState(null); var highlightCotId=sHighlightCot[0]; var setHighlightCotId=sHighlightCot[1];
-  function setVista(v){ setVistaRaw(v); if(v!=="prospectos") setHighlightOpoId(null); if(v!=="pedidos") setHighlightPedidoId(null); if(v!=="hoy") setHighlightHoyClienteId(null); if(v!=="cotizaciones") setHighlightCotId(null); }
+  // Único punto normal para cambiar de sección , valida contra el perfil
+  // actual, actualiza el estado, guarda inmediatamente la continuidad de
+  // navegación, y conserva exactamente la misma limpieza de highlights
+  // que ya existía. Nunca toca filtros, formularios ni datos.
+  function setVista(v){
+    var vistaFinal=esVistaValidaParaPerfil(v,perfil.tipoPerfil)?v:"inicio";
+    setVistaRaw(vistaFinal);
+    guardarVistaSegura(vistaFinal,perfil.tipoPerfil);
+    if(vistaFinal!=="prospectos") setHighlightOpoId(null);
+    if(vistaFinal!=="pedidos") setHighlightPedidoId(null);
+    if(vistaFinal!=="hoy") setHighlightHoyClienteId(null);
+    if(vistaFinal!=="cotizaciones") setHighlightCotId(null);
+  }
+  // Si el perfil cambia (Servicios ↔ Productos) y la sección actual ya no
+  // existe en el nuevo perfil, se corrige a "inicio" , la condición evita
+  // llamar setVista en cada render (nunca se dispara si la vista ya es
+  // válida), así que no hay riesgo de ciclo. En el montaje inicial nunca
+  // se activa, porque la vista ya se inicializó válida para ese perfil.
+  useEffect(function(){
+    if(!esVistaValidaParaPerfil(vista,perfil.tipoPerfil)){
+      setVista("inicio");
+    }
+  },[perfil.tipoPerfil]);
   var s6=useState("todo"); var periodo=s6[0]; var setPeriodo=s6[1];
   var s7=useState(""); var busqueda=s7[0]; var setBusqueda=s7[1];
   var s8=useState({estatus:"",busqueda:"",periodo:"todo",conSaldo:false}); var filtroCot=s8[0]; var setFiltroCot=s8[1];
@@ -7373,19 +7427,26 @@ export default function CLEO(props){
               )
             ),
             // ACCIONES
-            e("div",{style:{display:"flex",gap:4,flexWrap:"wrap",alignItems:"center",marginBottom:esAceptada||esRechazada?10:0}},
+            e("div",{style:{display:"flex",gap:6,flexWrap:"wrap",alignItems:"center",marginBottom:esAceptada||esRechazada?10:0}},
               e("div",{style:{display:"flex",gap:2,background:C.surfaceUp,borderRadius:6,padding:3,border:"0.5px solid "+C.border}},
                 ["Pendiente","Aceptada","Rechazada"].map(function(est){
                   var activo=cot.estatus===est;
                   return e("button",{key:est,style:{cursor:"pointer",padding:"3px 8px",borderRadius:4,border:"none",background:activo?C.surface:"transparent",fontSize:11,color:activo?C.text:C.textMuted,fontWeight:activo?500:400},onClick:function(){ var eraAceptada=cot.estatus==="Aceptada"; cambiarEstatus(cot.id,est); if(est==="Aceptada"&&!eraAceptada) mostrarToastTrabajo(); }},est);
                 })
               ),
-              e("button",{style:Object.assign({},st.btn,{fontSize:11,padding:"4px 10px"}),onClick:function(){ editarCot(cot); }},"Editar"),
-              e("button",{style:Object.assign({},st.btn,{fontSize:11,padding:"4px 10px"}),title:"Descargar o compartir cotización en PDF",onClick:function(){ manejarGenerarCotizacionPDF(cot,cl,perfil); }},"PDF"),
+              e("div",{style:{width:1,alignSelf:"stretch",background:C.border,margin:"2px 2px"}}),
+              e("button",{style:{cursor:"pointer",padding:"6px 12px",borderRadius:8,border:"1px solid "+C.border,background:"transparent",color:C.textMuted,fontSize:12,fontWeight:500,display:"inline-flex",alignItems:"center",gap:5,minHeight:isMobile?36:undefined},onClick:function(){ editarCot(cot); }},
+                e("svg",{width:12,height:12,viewBox:"0 0 24 24",fill:"none",stroke:"currentColor",strokeWidth:2,strokeLinecap:"round",strokeLinejoin:"round"},e("path",{d:"M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"}),e("path",{d:"M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"})),
+                "Editar"
+              ),
+              e("button",{style:{cursor:"pointer",padding:"6px 12px",borderRadius:8,border:"1px solid "+C.border,background:"transparent",color:C.textMuted,fontSize:12,fontWeight:500,display:"inline-flex",alignItems:"center",gap:5,minHeight:isMobile?36:undefined},title:"Descargar o compartir cotización en PDF",onClick:function(){ manejarGenerarCotizacionPDF(cot,cl,perfil); }},
+                e("svg",{width:12,height:12,viewBox:"0 0 24 24",fill:"none",stroke:"currentColor",strokeWidth:2,strokeLinecap:"round",strokeLinejoin:"round"},e("path",{d:"M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"}),e("path",{d:"M14 2v6h6"})),
+                "PDF"
+              ),
               !esProductos&&e(CotizacionAdjunto,{cot:cot,esDemo:!!(perfil.modoDemo||props.demoActivo),onActualizarCotizacion:actualizarArchivoAdjuntoCotizacion}),
               waUrl
-                ? e("a",{href:waUrl,target:"_blank",rel:"noopener noreferrer",style:{padding:"4px 10px",borderRadius:8,background:C.greenBg,color:C.green,border:"0.5px solid "+C.greenBorder,fontSize:11,textDecoration:"none",display:"inline-flex",alignItems:"center",gap:4}},e(SvgWA,{size:12}),"WA")
-                : cl&&cl.canalPrincipal&&cl.canalPrincipal!=="WhatsApp"&&contactUrl(cl,"Hola")&&e("a",{href:contactUrl(cl,"Hola"),target:"_blank",rel:"noopener noreferrer",style:{padding:"4px 10px",borderRadius:8,background:C.purplePale,color:C.purple,border:"0.5px solid "+C.purple+"33",fontSize:11,textDecoration:"none",display:"inline-flex",alignItems:"center",gap:4}},e(SvgIcon,{canal:cl.canalPrincipal,size:11}),cl.canalPrincipal.slice(0,2))
+                ? e("a",{href:waUrl,target:"_blank",rel:"noopener noreferrer",style:{padding:"6px 12px",borderRadius:8,background:C.greenBg,color:C.green,border:"0.5px solid "+C.greenBorder,fontSize:12,fontWeight:500,textDecoration:"none",display:"inline-flex",alignItems:"center",gap:5,minHeight:isMobile?36:undefined}},e(SvgWA,{size:12}),"WA")
+                : cl&&cl.canalPrincipal&&cl.canalPrincipal!=="WhatsApp"&&contactUrl(cl,"Hola")&&e("a",{href:contactUrl(cl,"Hola"),target:"_blank",rel:"noopener noreferrer",style:{padding:"6px 12px",borderRadius:8,background:C.purplePale,color:C.purple,border:"0.5px solid "+C.purple+"33",fontSize:12,fontWeight:500,textDecoration:"none",display:"inline-flex",alignItems:"center",gap:5,minHeight:isMobile?36:undefined}},e(SvgIcon,{canal:cl.canalPrincipal,size:12}),cl.canalPrincipal.slice(0,2))
             ),
             esAceptada&&e("div",{style:{paddingTop:10,borderTop:"0.5px solid "+C.border}},
               (function(){
