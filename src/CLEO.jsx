@@ -266,20 +266,6 @@ function inferirCategoriaConservadora(recordatorio,cliente){
   return null; // ambiguo , no se le asigna nada
 }
 
-// Solo devuelve un id de recordatorio cuando la tarjeta que se está viendo
-// REALMENTE fue causada por un seguimientoFecha persistido y ya vencido ,
-// replica exactamente la condición que usa NIVEL 1 de obtenerAccionesHoy.
-// Si la alerta vino de una regla genérica (días sin contacto, etapa,
-// estancamiento), nunca hay un recordatorio real que atender, así que se
-// devuelve null a propósito , esto nunca cambia el motor de Hoy en sí,
-// solo decide si hay o no un id válido para pasar después.
-function idRecordatorioSiFueDetonante(cliente){
-  if(!cliente||!cliente.seguimientoFecha) return null;
-  if(new Date(cliente.seguimientoFecha)>new Date()) return null;
-  var lista=recordatoriosDe(cliente);
-  return lista.length>0?(lista[0].id||lista[0].fecha):null;
-}
-
 function motivoSeguimientoDe(c){
   if(c.mensajeSeguimientoPostVenta) return c.mensajeSeguimientoPostVenta;
   if(c.notaRecontacto) return c.notaRecontacto;
@@ -312,15 +298,13 @@ function nombreServicioCorto(c){
 // del contenido real de la pestaña.
 function contarPendientesHoy(clientes,cotizaciones,pedidos,esProductos){
   if(esProductos){
-    var opsRetomarN=clientes.filter(function(c){
-      if(!c.estadoProspecto) return false;
-      if(c.estadoProspecto==="Convertido"||c.estadoProspecto==="Perdido") return !!(c.seguimientoFecha&&c.seguimientoFecha<=FECHA_HOY);
-      if(c.seguimientoFecha&&c.seguimientoFecha<=FECHA_HOY) return true;
-      var dias=diasDesde(c.fechaEtapa||c.fecha);
-      if(c.estadoProspecto==="Nueva") return dias>=3;
-      if(c.estadoProspecto==="En seguimiento") return dias>=4;
-      return false;
-    }).length;
+    // El badge cuenta las mismas acciones exactas que se muestran en Hoy/
+    // Inicio , un prospecto con varias tarjetas (sugerencia automática +
+    // uno o más recordatorios personalizados) cuenta cada una, nunca se
+    // deduplica por prospecto único. Reutilizar obtenerAccionesHoy en vez
+    // de reimplementar el conteo aparte garantiza que el número del badge
+    // nunca pueda desincronizarse de las tarjetas realmente visibles.
+    var opsRetomarN=obtenerAccionesHoy(clientes,cotizaciones,true).length;
     var pedidosAccionN=0;
     (pedidos||[]).forEach(function(ped){
       var estadoNorm=ped.estadoPedido==="pendiente"?"preparando":ped.estadoPedido;
@@ -332,58 +316,61 @@ function contarPendientesHoy(clientes,cotizaciones,pedidos,esProductos){
     });
     return opsRetomarN+pedidosAccionN;
   }
-  var hoyN=new Date();
-  var idsVistoN={};
-  var countN=0;
-  function marcar(c){
-    if(idsVistoN[c.id]) return;
-    idsVistoN[c.id]=true;
-    if((diasSinContacto(c)>=1||c.seguimientoFecha)&&!c.archivado) countN++;
-  }
-  clientes.filter(function(c){ return c.seguimientoFecha&&new Date(c.seguimientoFecha)<=hoyN; }).forEach(marcar);
-  clientes.filter(function(c){ return c.etapa==="Negociacion"&&!c.seguimientoFecha&&diasSinContacto(c)>=2; }).forEach(marcar);
-  clientes.filter(function(c){
-    if(c.etapa!=="Cotizacion enviada"||c.seguimientoFecha) return false;
-    var cotPend=cotizaciones.filter(function(cot){ return cot.clienteId===c.id&&cot.estatus==="Pendiente"; }).sort(function(a,b){ return new Date(b.fecha)-new Date(a.fecha); })[0];
-    var diasCot=cotPend?diasDesde(cotPend.fecha):0;
-    var d=diasSinContacto(c);
-    return d>=3||diasCot>=3;
-  }).forEach(marcar);
-  clientes.filter(function(c){ return c.etapa==="Nuevo contacto"&&!c.seguimientoFecha&&diasSinContacto(c)>=2; }).forEach(marcar);
-  clientes.filter(function(c){
-    if(c.etapa!=="Ganado") return false;
-    if(c.seguimientoFecha) return false;
-    var diasGanado=Math.floor((HOY-parseFechaLocal(c.fechaEtapa||c.fecha))/86400000);
-    return diasGanado>=45;
-  }).forEach(marcar);
-  clientes.filter(function(c){
-    if(c.etapa!=="Perdido") return false;
-    if(c.seguimientoFecha) return false;
-    var diasPerdido=Math.floor((HOY-parseFechaLocal(c.fechaEtapa||c.fecha))/86400000);
-    return diasPerdido>=60;
-  }).forEach(marcar);
-  return countN;
+  // Para Servicios, el badge cuenta las mismas acciones exactas que se
+  // muestran en Hoy/Inicio , un cliente con varias tarjetas (sugerencia
+  // automática + uno o más recordatorios personalizados) cuenta cada una,
+  // nunca se deduplica por cliente. Reutilizar obtenerAccionesHoy en vez de
+  // reimplementar el conteo aparte garantiza que el número del badge nunca
+  // pueda desincronizarse de las tarjetas realmente visibles.
+  return obtenerAccionesHoy(clientes,cotizaciones,esProductos).length;
 }
 
 // Devuelve la lista real de clientes a contactar hoy (mismo criterio que la pestaña Hoy),
 // para usarse tanto en el widget de Inicio como en Hoy y que nunca se desincronicen.
 function obtenerAccionesHoy(clientes,cotizaciones,esProductos,limite){
   if(esProductos){
-    var listaP=clientes.filter(function(c){
-      if(!c.estadoProspecto) return false;
-      if(c.estadoProspecto==="Convertido"||c.estadoProspecto==="Perdido") return !!(c.seguimientoFecha&&c.seguimientoFecha<=FECHA_HOY);
-      if(c.seguimientoFecha&&c.seguimientoFecha<=FECHA_HOY) return true;
+    var listaP=[];
+    clientes.forEach(function(c){
+      if(!c.estadoProspecto||c.archivado) return;
       var dias=diasDesde(c.fechaEtapa||c.fecha);
-      if(c.estadoProspecto==="Nueva") return dias>=3;
-      if(c.estadoProspecto==="En seguimiento") return dias>=4;
-      return false;
-    }).map(function(c){
-      var dias=diasDesde(c.fechaEtapa||c.fecha);
-      var descP,mensajeSugeridoP=c.mensajeSeguimientoPostVenta||"";
-      if(c.seguimientoEsPersonalizada&&c.seguimientoFecha&&c.seguimientoFecha<=FECHA_HOY){
-        descP="Tenías un recordatorio para hoy.";
+      var vencidosDeHoyP=recordatoriosDe(c).filter(function(r){ return esFechaHoyOVencida(r.fecha); });
+
+      // 1. Recordatorios manuales/personalizados vencidos o de hoy , cada
+      // uno genera su propia tarjeta independiente, con monto:0 siempre.
+      // Nunca bloquea ni es bloqueado por la sugerencia automática.
+      vencidosDeHoyP.forEach(function(r){
+        var esManualR=!!(r.categoria==="manual"||r.esPersonalizada===true);
+        if(!esManualR) return; // los automáticos se resuelven más abajo
+        var recordatorioId=r.id||r.fecha;
+        listaP.push({
+          cliente:c,dias:dias,tipo:c.estadoProspecto,prioridad:"alta",
+          desc:textoRecordatorioPersistido(r.fecha),mensajeSugerido:"",monto:0,
+          recordatorioId:recordatorioId,recordatorioNota:r.nota||null,recordatorioEsManualOPersonalizado:true,
+          accionId:"recordatorio:"+c.id+":"+recordatorioId
+        });
+      });
+
+      // 2. Sugerencia automática , máximo UNA por prospecto. Nunca se
+      // decide solo con c.seguimientoFecha (representa el PRÓXIMO
+      // recordatorio sin importar su categoría) , se distingue
+      // explícitamente si hay un recordatorio AUTOMÁTICO (pipeline/
+      // postventa/reactivación) vencido/de hoy, y si no lo hay, se aplica
+      // el criterio genérico de días sin contacto SOLO cuando tampoco
+      // existe uno automático programado a futuro (para no duplicar).
+      var recordatorioAutomaticoP=vencidosDeHoyP.find(function(r){ return !(r.categoria==="manual"||r.esPersonalizada===true); })||null;
+      var debeSugerir=false;
+      if(c.estadoProspecto==="Convertido"||c.estadoProspecto==="Perdido"){
+        debeSugerir=!!recordatorioAutomaticoP;
+      } else if(recordatorioAutomaticoP){
+        debeSugerir=true;
+      } else if(!tieneRecordatorioAutomaticoVigente(c)){
+        if(c.estadoProspecto==="Nueva") debeSugerir=dias>=3;
+        else if(c.estadoProspecto==="En seguimiento") debeSugerir=dias>=4;
       }
-      else if(c.estadoProspecto==="Convertido"){
+      if(!debeSugerir) return;
+
+      var descP,mensajeSugeridoP=c.mensajeSeguimientoPostVenta||"";
+      if(c.estadoProspecto==="Convertido"){
         var frasesSegunTipoP={"15":"buen momento para pedirle una recomendación.","30":"buen momento para ver si necesita algo más.","60":"buen momento para platicarle de un proyecto nuevo.","90":"buen momento para mantenerte presente."};
         var fraseGanadoP=frasesSegunTipoP[c.tipoSeguimientoPostVenta]||"buen momento para ver si hay una posible recompra.";
         descP=(c.productoInteres?"Ya le vendiste "+c.productoInteres+". ":"Ya te compró. ")+"Hoy habías programado retomar contacto — "+fraseGanadoP;
@@ -395,21 +382,19 @@ function obtenerAccionesHoy(clientes,cotizaciones,esProductos,limite){
       }
       else if(c.estadoProspecto==="Nueva") descP="Sin retomar hace "+dias+" días";
       else descP="En seguimiento hace "+dias+" días";
-      // Entrada EXACTA que originó esta tarjeta , solo cuando realmente
-      // viene de un seguimientoFecha persistido y vencido (nunca para los
-      // casos de "días sin contacto" genéricos de este mismo listado).
-      var vieneDeRecordatorioP=!!(c.seguimientoFecha&&c.seguimientoFecha<=FECHA_HOY);
-      var recordatorioNivelP=vieneDeRecordatorioP?(recordatoriosDe(c)[0]||null):null;
-      return {cliente:c,dias:dias,tipo:c.estadoProspecto,prioridad:(c.estadoProspecto==="Convertido"||c.estadoProspecto==="Perdido")?"alta":dias>=10?"alta":dias>=5?"media":"baja",desc:descP,mensajeSugerido:mensajeSugeridoP,
-        recordatorioId:recordatorioNivelP?(recordatorioNivelP.id||recordatorioNivelP.fecha):null,
-        recordatorioNota:recordatorioNivelP?recordatorioNivelP.nota:null,
-        recordatorioEsManualOPersonalizado:recordatorioNivelP?(recordatorioNivelP.categoria==="manual"||recordatorioNivelP.esPersonalizada===true):false
-      };
+      listaP.push({
+        cliente:c,dias:dias,tipo:c.estadoProspecto,
+        prioridad:(c.estadoProspecto==="Convertido"||c.estadoProspecto==="Perdido")?"alta":dias>=10?"alta":dias>=5?"media":"baja",
+        desc:descP,mensajeSugerido:mensajeSugeridoP,monto:0,
+        recordatorioId:recordatorioAutomaticoP?(recordatorioAutomaticoP.id||recordatorioAutomaticoP.fecha):null,
+        recordatorioNota:recordatorioAutomaticoP?recordatorioAutomaticoP.nota:null,
+        recordatorioEsManualOPersonalizado:false,
+        accionId:recordatorioAutomaticoP?("automatico:"+c.id+":"+(recordatorioAutomaticoP.id||recordatorioAutomaticoP.fecha)):("sugerencia:"+c.id+":"+c.estadoProspecto)
+      });
     });
     listaP.sort(function(a,b){ return b.dias-a.dias; });
     return limite?listaP.slice(0,limite):listaP;
   }
-  var hoyN=new Date();
   var idsVistoA={};
   var lista=[];
   function cotPendienteDe(clienteId){
@@ -418,53 +403,86 @@ function obtenerAccionesHoy(clientes,cotizaciones,esProductos,limite){
   function cotAceptadaDe(clienteId){
     return cotizaciones.filter(function(cot){ return cot.clienteId===clienteId&&cot.estatus==="Aceptada"; }).sort(function(a,b){ return new Date(b.fecha)-new Date(a.fecha); })[0];
   }
+  // Filtro básico compartido: mismo criterio que ya usaba agregar(), para
+  // que las tarjetas de recordatorio manual (que bypasean agregar) sigan
+  // respetando exactamente la misma condición de visibilidad.
+  function pasaFiltroBasico(c){
+    var dias=diasSinContacto(c);
+    return (dias>=1||c.seguimientoFecha)&&!c.archivado;
+  }
   function agregar(c,tipo,desc,prioridad,ordenReal,monto,mensajeSugerido,estancado,recordatorioId,recordatorioNota,recordatorioEsManualOPersonalizado){
     if(idsVistoA[c.id]) return;
     var dias=diasSinContacto(c);
-    if(!((dias>=1||c.seguimientoFecha)&&!c.archivado)) return;
+    if(!pasaFiltroBasico(c)) return;
     idsVistoA[c.id]=true;
-    lista.push({cliente:c,tipo:tipo,desc:desc,prioridad:prioridad,dias:dias,ordenReal:ordenReal,monto:monto||0,mensajeSugerido:mensajeSugerido||"",estancado:!!estancado,recordatorioId:recordatorioId||null,recordatorioNota:recordatorioNota||null,recordatorioEsManualOPersonalizado:!!recordatorioEsManualOPersonalizado});
+    // Automática persistida (ligada a un recordatorio real de pipeline/
+    // postventa/reactivación) vs. genérica calculada (días sin contacto,
+    // etapa, estancamiento, sin ningún recordatorio detrás).
+    var accionId=recordatorioId?("automatico:"+c.id+":"+recordatorioId):("sugerencia:"+c.id+":"+tipo);
+    lista.push({cliente:c,tipo:tipo,desc:desc,prioridad:prioridad,dias:dias,ordenReal:ordenReal,monto:monto||0,mensajeSugerido:mensajeSugerido||"",estancado:!!estancado,recordatorioId:recordatorioId||null,recordatorioNota:recordatorioNota||null,recordatorioEsManualOPersonalizado:!!recordatorioEsManualOPersonalizado,accionId:accionId});
+  }
+  // Agrega la tarjeta de UN recordatorio manual/personalizado , nunca
+  // consulta ni marca idsVistoA, así que jamás bloquea ni es bloqueada por
+  // el sistema de sugerencias automáticas (agregar()). Cada recordatorio
+  // due es una acción propia e independiente , un cliente con varios
+  // recordatorios pendientes para hoy obtiene una tarjeta por cada uno.
+  function agregarRecordatorioManual(c,r){
+    if(!pasaFiltroBasico(c)) return;
+    var dias=diasSinContacto(c);
+    var recordatorioId=r.id||r.fecha;
+    lista.push({cliente:c,tipo:"Recordatorio personalizado",desc:textoRecordatorioPersistido(r.fecha),prioridad:"alta",dias:dias,ordenReal:1,monto:0,mensajeSugerido:"",estancado:false,recordatorioId:recordatorioId,recordatorioNota:r.nota||null,recordatorioEsManualOPersonalizado:true,accionId:"recordatorio:"+c.id+":"+recordatorioId});
   }
 
-  // NIVEL 1 , seguimiento agendado vencido (cualquier etapa)
-  clientes.filter(function(c){ return c.seguimientoFecha&&new Date(c.seguimientoFecha)<=hoyN; }).forEach(function(c){
+  // NIVEL 1 , recordatorios persistidos vencidos o de hoy (cualquier
+  // etapa). Cada recordatorio due genera su PROPIA tarjeta independiente:
+  // un cliente puede tener a la vez una sugerencia automática (cotización
+  // pendiente, seguimiento post-venta, etc.) Y uno o varios recordatorios
+  // personalizados , todos coexisten, ninguno reemplaza ni oculta a otro.
+  clientes.forEach(function(c){
+    if(c.archivado) return;
+    var vencidosDeHoy=recordatoriosDe(c).filter(function(r){ return esFechaHoyOVencida(r.fecha); });
+    if(vencidosDeHoy.length===0) return;
     var cotP=cotPendienteDe(c.id);
     var servicio=cotP?cotP.concepto:nombreServicioCorto(c);
-    var desc1;
-    if(c.seguimientoEsPersonalizada){
-      // Tú pusiste esta nota , no tiene por qué relacionarse con el
-      // pipeline (cotización, etapa, etc.), así que el texto principal es
-      // genérico y tu nota es lo único protagonista, una sola tarjeta.
-      desc1="Tenías un recordatorio para hoy.";
-    }
-    else if(c.etapa==="Ganado"){
-      var cotGanada=cotAceptadaDe(c.id);
-      var servicioGanado=cotGanada?cotGanada.concepto:nombreServicioCorto(c);
-      var frasesSegunTipo1={"15":"buen momento para pedirle una recomendación.","30":"buen momento para ver si necesita algo más.","60":"buen momento para platicarle de un proyecto nuevo.","90":"buen momento para mantenerte presente."};
-      var fraseGanado1=frasesSegunTipo1[c.tipoSeguimientoPostVenta]||"buen momento para ver si hay una posible recompra.";
-      desc1=(servicioGanado?"Ya le vendiste "+servicioGanado+". ":"Ya te compró. ")+"Hoy habías programado retomar contacto — "+fraseGanado1;
-    }
-    else if(c.etapa==="Perdido"){
-      var etiquetasMotivo1={"Precio alto":"le pareció caro","Eligio a otro":"eligió a otro","Sin presupuesto":"no tenía presupuesto","No respondio":"dejó de responder","Otro":"no siguió adelante"};
-      var etiquetaMotivo1=etiquetasMotivo1[c.motivoPerdida]||"no siguió adelante";
-      desc1="En su momento "+etiquetaMotivo1+". Hoy habías programado retomar contacto — vale la pena ver si su situación cambió.";
-    }
-    else if(cotP) desc1="Le enviaste el precio de "+servicio+". Hoy habías programado preguntarle si pudo revisarlo.";
-    else if(servicio) desc1="Preguntó por "+servicio+" y todavía no ha recibido el precio. Hoy habías quedado en enviárselo.";
-    else if(!cotP&&c.notas) desc1='Anotaste: "'+c.notas+'" — hoy habías programado retomar esta conversación.';
-    else desc1="Hoy habías programado retomar esta conversación.";
-    // Entrada EXACTA que originó esta acción , se calcula AQUÍ, en el
-    // momento de construir la tarjeta, y viaja pegada a la acción misma ,
-    // nunca se vuelve a deducir después con [0] ni con ningún fallback.
-    var recordatorioNivel1=recordatoriosDe(c)[0]||null;
-    agregar(c,"Seguimiento programado",desc1,"alta",1,cotP?Number(cotP.monto):0,c.mensajeSeguimientoPostVenta||"",false,
-      recordatorioNivel1?(recordatorioNivel1.id||recordatorioNivel1.fecha):null,
-      recordatorioNivel1?recordatorioNivel1.nota:null,
-      recordatorioNivel1?(recordatorioNivel1.categoria==="manual"||recordatorioNivel1.esPersonalizada===true):false);
+    var yaAgregoAutomatica=false; // como antes, máximo UNA tarjeta automática por cliente en NIVEL 1
+    vencidosDeHoy.forEach(function(r){
+      var esManual=!!(r.categoria==="manual"||r.esPersonalizada===true);
+      if(esManual){
+        // Recordatorio personalizado , tarjeta propia, nunca muestra monto
+        // de cotización/venta/saldo ni texto automático de seguimiento.
+        agregarRecordatorioManual(c,r);
+        return;
+      }
+      if(yaAgregoAutomatica) return;
+      yaAgregoAutomatica=true;
+      var desc1;
+      if(c.etapa==="Ganado"){
+        var cotGanada=cotAceptadaDe(c.id);
+        var servicioGanado=cotGanada?cotGanada.concepto:nombreServicioCorto(c);
+        var frasesSegunTipo1={"15":"buen momento para pedirle una recomendación.","30":"buen momento para ver si necesita algo más.","60":"buen momento para platicarle de un proyecto nuevo.","90":"buen momento para mantenerte presente."};
+        var fraseGanado1=frasesSegunTipo1[c.tipoSeguimientoPostVenta]||"buen momento para ver si hay una posible recompra.";
+        desc1=(servicioGanado?"Ya le vendiste "+servicioGanado+". ":"Ya te compró. ")+"Hoy habías programado retomar contacto — "+fraseGanado1;
+      }
+      else if(c.etapa==="Perdido"){
+        var etiquetasMotivo1={"Precio alto":"le pareció caro","Eligio a otro":"eligió a otro","Sin presupuesto":"no tenía presupuesto","No respondio":"dejó de responder","Otro":"no siguió adelante"};
+        var etiquetaMotivo1=etiquetasMotivo1[c.motivoPerdida]||"no siguió adelante";
+        desc1="En su momento "+etiquetaMotivo1+". Hoy habías programado retomar contacto — vale la pena ver si su situación cambió.";
+      }
+      else if(cotP) desc1="Le enviaste el precio de "+servicio+". Hoy habías programado preguntarle si pudo revisarlo.";
+      else if(servicio) desc1="Preguntó por "+servicio+" y todavía no ha recibido el precio. Hoy habías quedado en enviárselo.";
+      else if(!cotP&&c.notas) desc1='Anotaste: "'+c.notas+'" — hoy habías programado retomar esta conversación.';
+      else desc1="Hoy habías programado retomar esta conversación.";
+      // Una tarjeta automática conserva el monto de la cotización pendiente
+      // realmente vinculada , nunca 0 solo porque exista además un
+      // recordatorio manual para el mismo cliente.
+      var montoNivel1=cotP?Number(cotP.monto):0;
+      agregar(c,"Seguimiento programado",desc1,"alta",1,montoNivel1,c.mensajeSeguimientoPostVenta||"",false,
+        r.id||r.fecha,r.nota||null,false);
+    });
   });
 
   // NIVEL 2 , en negociación (absorbe lo que antes era "en seguimiento")
-  clientes.filter(function(c){ return c.etapa==="Negociacion"&&!c.seguimientoFecha&&diasSinContacto(c)>=2; }).forEach(function(c){
+  clientes.filter(function(c){ return c.etapa==="Negociacion"&&!tieneRecordatorioAutomaticoVigente(c)&&diasSinContacto(c)>=2; }).forEach(function(c){
     var cotP=cotPendienteDe(c.id);
     var servicio=cotP?cotP.concepto:(c.servicioInteres||c.notas||"tu servicio");
     var dNeg=diasSinContacto(c);
@@ -479,7 +497,7 @@ function obtenerAccionesHoy(clientes,cotizaciones,esProductos,limite){
 
   // NIVEL 3 , propuesta próxima a vencer (solo si existe el dato de vigencia)
   clientes.forEach(function(c){
-    if(c.seguimientoFecha) return;
+    if(tieneRecordatorioAutomaticoVigente(c)) return;
     var cotP=cotPendienteDe(c.id);
     if(!cotP||!cotP.vigencia) return;
     var vig=new Date(cotP.vigencia+"T00:00:00");
@@ -492,7 +510,7 @@ function obtenerAccionesHoy(clientes,cotizaciones,esProductos,limite){
 
   // NIVEL 4 , cotización enviada sin respuesta
   clientes.filter(function(c){
-    if(c.etapa!=="Cotizacion enviada"||c.seguimientoFecha) return false;
+    if(c.etapa!=="Cotizacion enviada"||tieneRecordatorioAutomaticoVigente(c)) return false;
     var cotPend=cotPendienteDe(c.id);
     var diasCot=cotPend?diasDesde(cotPend.fecha):0;
     var d=diasSinContacto(c);
@@ -511,7 +529,7 @@ function obtenerAccionesHoy(clientes,cotizaciones,esProductos,limite){
   });
 
   // NIVEL 5 , nuevo contacto esperando precio o respuesta
-  clientes.filter(function(c){ return c.etapa==="Nuevo contacto"&&!c.seguimientoFecha&&diasSinContacto(c)>=2; }).forEach(function(c){
+  clientes.filter(function(c){ return c.etapa==="Nuevo contacto"&&!tieneRecordatorioAutomaticoVigente(c)&&diasSinContacto(c)>=2; }).forEach(function(c){
     var d=diasSinContacto(c);
     var servicio=nombreServicioCorto(c);
     var notaLarga5=!servicio&&c.notas?c.notas:"";
@@ -529,7 +547,7 @@ function obtenerAccionesHoy(clientes,cotizaciones,esProductos,limite){
   // NIVEL 6 , cliente ganado (satisfacción o referido)
   clientes.filter(function(c){
     if(c.etapa!=="Ganado") return false;
-    if(c.seguimientoFecha) return false;
+    if(tieneRecordatorioAutomaticoVigente(c)) return false;
     var diasGanado=Math.floor((HOY-parseFechaLocal(c.fechaEtapa||c.fecha))/86400000);
     return diasGanado>=45;
   }).forEach(function(c){
@@ -545,7 +563,7 @@ function obtenerAccionesHoy(clientes,cotizaciones,esProductos,limite){
   // NIVEL 7 , cliente perdido (recuperación)
   clientes.filter(function(c){
     if(c.etapa!=="Perdido") return false;
-    if(c.seguimientoFecha) return false;
+    if(tieneRecordatorioAutomaticoVigente(c)) return false;
     var diasPerdido=Math.floor((HOY-parseFechaLocal(c.fechaEtapa||c.fecha))/86400000);
     return diasPerdido>=60;
   }).forEach(function(c){
@@ -612,6 +630,55 @@ function fmtFechaLocal(d){
   // correr la fecha en zonas horarias negativas (ej. México).
   var y=d.getFullYear(),m=String(d.getMonth()+1).padStart(2,"0"),dd=String(d.getDate()).padStart(2,"0");
   return y+"-"+m+"-"+dd;
+}
+// ── Comparación central de fechas de calendario (recordatorios/seguimiento) ──
+// new Date("AAAA-MM-DD") interpreta el string en UTC medianoche, lo cual en
+// zonas horarias negativas (México, UTC-6) puede adelantar la fecha varias
+// horas , un recordatorio para "mañana" puede aparecer como vencido desde
+// la tarde de "hoy". Estas 3 funciones son la ÚNICA fuente de verdad para
+// comparar una fecha de calendario AAAA-MM-DD contra hoy en TODA la app ,
+// nunca usar new Date(fechaString) directamente para esta comparación.
+// FECHA_HOY ya es un string AAAA-MM-DD calculado en hora LOCAL, así que
+// comparar strings ISO con padding es exactamente equivalente a comparar
+// por fecha local, sin ninguna conversión a UTC de por medio.
+function esFechaHoyOVencida(fechaAAAAMMDD){
+  return !!(fechaAAAAMMDD&&fechaAAAAMMDD<=FECHA_HOY);
+}
+// Decide si un cliente YA tiene un recordatorio AUTOMÁTICO vigente (de
+// pipeline, postventa o reactivación , nunca manual/personalizado). Se usa
+// para que las sugerencias automáticas de "días sin contacto" (Negociación,
+// Cotización enviada, Nuevo contacto, Ganado, Perdido) no dupliquen una
+// sugerencia cuando YA existe un seguimiento automático programado, pero
+// NUNCA se bloqueen solo porque exista un recordatorio manual sin relación
+// , examina cada entrada real de recordatoriosDe(c), nunca solo
+// c.seguimientoFecha (que representa el próximo recordatorio sin importar
+// su categoría).
+function tieneRecordatorioAutomaticoVigente(c){
+  return recordatoriosDe(c).some(function(r){
+    return !(r.categoria==="manual"||r.esPersonalizada===true);
+  });
+}
+function esFechaExactamenteHoy(fechaAAAAMMDD){
+  return fechaAAAAMMDD===FECHA_HOY;
+}
+// Diferencia en días completos entre una fecha de calendario y hoy, en hora
+// LOCAL , positivo si es futura, 0 si es hoy, negativo si ya pasó. Usa
+// parseFechaLocal (medianoche local) en ambos lados para que el resultado
+// sea estable durante todo el día, sin importar a qué hora se consulte.
+function diasHastaFechaCalendario(fechaAAAAMMDD){
+  if(!fechaAAAAMMDD) return null;
+  var hoyMedianoche=parseFechaLocal(FECHA_HOY);
+  var fechaMedianoche=parseFechaLocal(fechaAAAAMMDD);
+  return Math.round((fechaMedianoche-hoyMedianoche)/86400000);
+}
+// Texto estándar para una tarjeta originada por un recordatorio persistido
+// (manual o personalizado): distingue "es hoy" de "ya venció", nunca afirma
+// que era para hoy si en realidad ya pasó.
+function textoRecordatorioPersistido(fechaAAAAMMDD){
+  if(esFechaExactamenteHoy(fechaAAAAMMDD)) return "Tienes un recordatorio para hoy.";
+  var p=String(fechaAAAAMMDD||"").split("-");
+  var fechaCorta=p.length===3?(p[2]+"/"+p[1]+"/"+p[0]):fechaAAAAMMDD;
+  return "Tienes un recordatorio pendiente desde el "+fechaCorta+".";
 }
 function enPeriodo(f,p){
   var d=parseFechaLocal(f);
@@ -999,9 +1066,9 @@ function SvgGear(){ return React.createElement("svg",{width:16,height:16,viewBox
 function diasAtras(n){ var d=new Date(); d.setDate(d.getDate()-n); return fmtFechaLocal(d); }
 var clientesDemo=[
   {id:1,nombre:"Ana Garcia",negocio:"Tienda Ropa",contacto:"",origen:"Instagram",etapa:"Cotizacion enviada",notas:"Me contactó por DM, interesada en sesión de fotos para su catálogo",fecha:diasAtras(11),instagram:"@anagarcia",canalPrincipal:"Instagram",messenger:"",email:"",fechaEtapa:diasAtras(11),ultimoContacto:diasAtras(11)},
-  {id:2,nombre:"Carlos Lopez",negocio:"Restaurante El Fogón",contacto:"9991234567",origen:"Referido",etapa:"Cotizacion enviada",notas:"Necesita el menú digital antes de fin de mes",fecha:diasAtras(15),instagram:"",canalPrincipal:"WhatsApp",messenger:"",email:"",fechaEtapa:diasAtras(15),ultimoContacto:diasAtras(15)},
+  {id:2,nombre:"Carlos Lopez",negocio:"Restaurante El Fogón",contacto:"9991234567",origen:"Referido",etapa:"Cotizacion enviada",notas:"Ya le hiciste un video promocional (le falta pagar $1,200). Ahora pregunta por el menú digital para el restaurante.",fecha:diasAtras(15),instagram:"",canalPrincipal:"WhatsApp",messenger:"",email:"",fechaEtapa:diasAtras(15),ultimoContacto:diasAtras(14)},
   {id:3,nombre:"Maria Rodriguez",negocio:"Clínica Dental",contacto:"9998765432",origen:"Instagram",etapa:"Negociacion",notas:"Le mandé cotización hace más de una semana, sin respuesta",fecha:diasAtras(25),instagram:"@drarodriguez",canalPrincipal:"WhatsApp",messenger:"",email:"",fechaEtapa:diasAtras(25),ultimoContacto:diasAtras(25)},
-  {id:4,nombre:"Roberto Mendez",negocio:"Constructora RM",contacto:"9994567890",origen:"Referido",etapa:"Negociacion",notas:"Interesado, pidió ajustar el precio de la remodelación",fecha:diasAtras(13),instagram:"",canalPrincipal:"WhatsApp",messenger:"",email:"",fechaEtapa:diasAtras(13),ultimoContacto:diasAtras(12)},
+  {id:4,nombre:"Roberto Mendez",negocio:"Constructora RM",contacto:"9994567890",origen:"Referido",etapa:"Ganado",notas:"Aceptó el precio de la remodelación, dejó anticipo",fecha:diasAtras(13),instagram:"",canalPrincipal:"WhatsApp",messenger:"",email:"",fechaEtapa:diasAtras(12),ultimoContacto:diasAtras(12),razonCierre:["Confianza"]},
   {id:5,nombre:"Sofia Herrera",negocio:"Boutique Sofia",contacto:"9993334455",origen:"Instagram",etapa:"Ganado",notas:"Cerró sin problema, muy contenta con el servicio",fecha:diasAtras(23),instagram:"@sofiaherrera",canalPrincipal:"WhatsApp",messenger:"",email:"",fechaEtapa:diasAtras(19),ultimoContacto:diasAtras(19),razonCierre:["Confianza","Seguimiento"]},
   {id:6,nombre:"Diego Torres",negocio:"Bar La Noche",contacto:"9996543210",origen:"Facebook",etapa:"Perdido",notas:"Decidió con otro proveedor",fecha:diasAtras(38),instagram:"",canalPrincipal:"WhatsApp",messenger:"",email:"",fechaEtapa:diasAtras(31),ultimoContacto:diasAtras(31),motivoPerdida:"Eligió otro proveedor"},
   {id:7,nombre:"Valentina Cruz",negocio:"Studio Pilates",contacto:"9997891234",origen:"Instagram",etapa:"Perdido",notas:"Le pareció caro pero le interesó mucho el servicio",fecha:diasAtras(54),instagram:"@valcruz",canalPrincipal:"WhatsApp",messenger:"",email:"",fechaEtapa:diasAtras(49),ultimoContacto:diasAtras(49),motivoPerdida:"Precio alto",seguimientoFecha:diasAtras(-2),notaRecontacto:"Le encantó la propuesta pero dijo que en ese momento no podía. Mencionó que a mediados de mes tendría más presupuesto."},
@@ -1031,17 +1098,17 @@ var perfilDemoServicios={nombre:"Vega Estudio Creativo",tuNombre:"Andrea Vega",t
 var productosDemo=["Aretes plata","Collar dorado","Pulsera tejida","Anillo boda custom","Aretes dorados","Collar perlas"];
 var ventasDemo=[
   {id:1,monto:800,fecha:diasAtras(9),concepto:"Venta directa",tipo:"dia",etiqueta:"",clienteId:null,pagos:[{id:"p_v1",monto:800,fecha:diasAtras(9),concepto:"Pago completo"}]},
-  {id:2,monto:1200,fecha:diasAtras(10),concepto:"Asesoría rápida",tipo:"especifico",etiqueta:"",clienteId:5,tipoPago:"completo",pagos:[{id:"p_v2",monto:1200,fecha:diasAtras(10),concepto:"Pago completo"}]},
+  {id:2,monto:1200,fecha:diasAtras(10),concepto:"Sesión extra de fotos para redes",tipo:"especifico",etiqueta:"",clienteId:5,tipoPago:"completo",pagos:[{id:"p_v2",monto:1200,fecha:diasAtras(10),concepto:"Pago completo"}],entregado:true,fechaEntrega:diasAtras(10)},
   {id:3,monto:650,fecha:diasAtras(12),concepto:"Retoque de fotos",tipo:"rapida",etiqueta:"",clienteId:null,pagos:[{id:"p_v3",monto:650,fecha:diasAtras(12),concepto:"Pago completo"}]},
-  {id:4,monto:2200,fecha:diasAtras(14),concepto:"Video promocional",tipo:"especifico",etiqueta:"",clienteId:2,tipoPago:"anticipo",pagos:[{id:"p_v4",monto:1000,fecha:diasAtras(14),concepto:"Anticipo"}]},
+  {id:4,monto:2200,fecha:diasAtras(14),concepto:"Video promocional",tipo:"especifico",etiqueta:"",clienteId:2,tipoPago:"anticipo",pagos:[{id:"p_v4",monto:1000,fecha:diasAtras(14),concepto:"Anticipo"}],entregado:false,fechaEntrega:""},
 ];
 
 // ── DEMO DATA PRODUCTOS (joyería artesanal) ──────────────────────────────────
 var clientesDemoProductos=[
   {id:101,nombre:"María Gómez",negocio:"",contacto:"9991112233",origen:"Instagram",notas:"Le encantaron los aretes de plata",fecha:diasAtras(15),instagram:"@mariagomez",canalPrincipal:"WhatsApp",messenger:"",email:"",fechaEtapa:diasAtras(12),estadoProspecto:"Convertido",productoInteres:"Kit jabones x2",cantidadInteres:"2",precioInteres:"500",ultimoContacto:diasAtras(12)},
   {id:102,nombre:"Carlos Ruiz",negocio:"",contacto:"9992223344",origen:"Referido",notas:"Lo refirió María, quiere un collar para regalo",fecha:diasAtras(9),instagram:"",canalPrincipal:"WhatsApp",messenger:"",email:"",fechaEtapa:diasAtras(9),estadoProspecto:"Nueva",productoInteres:"Collar dorado",cantidadInteres:"1",precioInteres:"480",ultimoContacto:diasAtras(9)},
-  {id:103,nombre:"Sofía Herrera",negocio:"",contacto:"9993334455",origen:"Instagram",notas:"Preguntó por pulseras de boda para damas de honor x6",fecha:diasAtras(12),instagram:"@sofiaherrera",canalPrincipal:"Instagram",messenger:"",email:"",fechaEtapa:diasAtras(12),estadoProspecto:"En seguimiento",productoInteres:"Pulseras boda x6",cantidadInteres:"6",precioInteres:"1800",ultimoContacto:diasAtras(12)},
-  {id:104,nombre:"Luisa Martínez",negocio:"",contacto:"9994445566",origen:"Facebook",notas:"Sin respuesta desde que le mandé el precio",fecha:diasAtras(18),instagram:"",canalPrincipal:"WhatsApp",messenger:"",email:"",fechaEtapa:diasAtras(18),estadoProspecto:"Sin respuesta",productoInteres:"Aretes plata",cantidadInteres:"1",precioInteres:"350",ultimoContacto:diasAtras(18)},
+  {id:103,nombre:"Sofía Herrera",negocio:"",contacto:"9993334455",origen:"Instagram",notas:"Confirmó las pulseras de boda para sus damas de honor, dejó anticipo",fecha:diasAtras(12),instagram:"@sofiaherrera",canalPrincipal:"Instagram",messenger:"",email:"",fechaEtapa:diasAtras(12),estadoProspecto:"Convertido",productoInteres:"Pulseras boda x6",cantidadInteres:"6",precioInteres:"1800",ultimoContacto:diasAtras(12)},
+  {id:104,nombre:"Luisa Martínez",negocio:"",contacto:"9994445566",origen:"Facebook",notas:"Se le canceló su pedido por falta de material y no ha respondido desde entonces",fecha:diasAtras(18),instagram:"",canalPrincipal:"WhatsApp",messenger:"",email:"",fechaEtapa:diasAtras(18),estadoProspecto:"Sin respuesta",productoInteres:"Aretes plata x2",cantidadInteres:"2",precioInteres:"700",ultimoContacto:diasAtras(17)},
   {id:105,nombre:"Diana López",negocio:"",contacto:"9995556677",origen:"Instagram",notas:"Le pareció caro, fue con otra vendedora",fecha:diasAtras(23),instagram:"@dianalopez",canalPrincipal:"Instagram",messenger:"",email:"",fechaEtapa:diasAtras(20),estadoProspecto:"Perdido",productoInteres:"Anillo boda custom",cantidadInteres:"1",precioInteres:"1200",ultimoContacto:diasAtras(20),motivoPerdida:"Precio alto"},
   {id:106,nombre:"Andrea Vega",negocio:"",contacto:"9996667788",origen:"Referido",notas:"Pagó completo, encantada con el resultado",fecha:diasAtras(16),instagram:"",canalPrincipal:"WhatsApp",messenger:"",email:"",fechaEtapa:diasAtras(11),estadoProspecto:"Convertido",productoInteres:"Collar perlas",cantidadInteres:"1",precioInteres:"850",ultimoContacto:diasAtras(11)},
   {id:107,nombre:"Renata Flores",negocio:"",contacto:"9997778899",origen:"Instagram",notas:"Preguntó disponibilidad para quincena",fecha:diasAtras(8),instagram:"@renataflores",canalPrincipal:"WhatsApp",messenger:"",email:"",fechaEtapa:diasAtras(8),estadoProspecto:"Nueva",productoInteres:"Aretes dorados",cantidadInteres:"1",precioInteres:"290",ultimoContacto:diasAtras(8)},
@@ -1058,9 +1125,9 @@ var pedidosDemoProductos=[
   {id:"ped_demo_6",clienteId:105,productos:"Anillo boda custom",cantidad:1,total:1200,pagos:[{id:"pp_d6",monto:300,fecha:diasAtras(22),concepto:"Anticipo"}],estadoPedido:"cancelado",motivoCancelacion:"Cliente se arrepintió",motivoCancelacionLado:"cliente",notas:"Encontró un anillo más barato en otro lado",fecha:diasAtras(22),fechaCreado:new Date(Date.now()-22*86400000).toISOString()},
 ];
 var ventasDemoProductos=[
-  {id:201,monto:320,fecha:diasAtras(8),concepto:"Aretes dorados pequeños",tipo:"especifico",etiqueta:"",clienteId:null,pagos:[]},
-  {id:202,monto:180,fecha:diasAtras(10),concepto:"Pulsera tejida sencilla",tipo:"especifico",etiqueta:"",clienteId:null,pagos:[]},
-  {id:203,monto:350,fecha:diasAtras(13),concepto:"Aretes plata",tipo:"especifico",etiqueta:"",clienteId:null,pagos:[]},
+  {id:201,monto:320,fecha:diasAtras(8),concepto:"Aretes dorados pequeños",tipo:"especifico",etiqueta:"",clienteId:null,pagos:[{id:"p_vp1",monto:320,fecha:diasAtras(8),concepto:"Pago completo"}]},
+  {id:202,monto:180,fecha:diasAtras(10),concepto:"Pulsera tejida sencilla",tipo:"especifico",etiqueta:"",clienteId:null,pagos:[{id:"p_vp2",monto:180,fecha:diasAtras(10),concepto:"Pago completo"}]},
+  {id:203,monto:350,fecha:diasAtras(13),concepto:"Aretes plata",tipo:"especifico",etiqueta:"",clienteId:null,pagos:[{id:"p_vp3",monto:350,fecha:diasAtras(13),concepto:"Pago completo"}]},
 ];
 var perfilDemoProductos={nombre:"Joyería Artesanal Mía",tuNombre:"Mía",telefono:"9990001111",email:"mia@ejemplo.com",direccion:"Mérida, Yucatán",color:C.purple,colorSecundario:"#E4E2F8",colorTexto:"#1A1635",logo:"",mensaje:"Gracias por elegir mis piezas. Cada una está hecha con amor.",condicionesPago:"50% anticipo para comenzar, 50% al entregar.",redesTT:"",redesIG:"@joyeriamia",redesFB:"",tipoPerfil:"productos",banco:"",bancotitular:"Mía López",bancoclabe:"",bancoaccount:"",bancoinstrucciones:""};
 var productosCatDemo=[
@@ -2351,6 +2418,27 @@ export default function CLEO(props){
     setTimeout(function(){ setToastTrabajo(""); },3500);
   }
   function mostrarToastTrabajo(){ mostrarToast("Ya quedó en tu pestaña Trabajos, para que no se te olvide entregarlo."); }
+  // Función central ÚNICA para completar un recordatorio manual/
+  // personalizado por su id EXACTO , usada tanto por el botón directo de
+  // la tarjeta en Inicio/Hoy como por el modal "¿Qué pasó?". Nunca toca
+  // etapa, estadoProspecto, archivado, cotizaciones, ventas, pagos ni otros
+  // recordatorios , solo el recordatorio puntual, ultimoContacto, y el
+  // historial. Completar uno deja intactos todos los demás.
+  function completarRecordatorioManual(clienteId,recordatorioId){
+    var cliente=clientes.find(function(c){ return c.id===clienteId; });
+    if(!cliente||!recordatorioId) return {ok:false};
+    var r=recordatoriosDe(cliente).find(function(rr){ return (rr.id||rr.fecha)===recordatorioId; });
+    if(!r) return {ok:false}; // sin coincidencia exacta , no se elimina nada
+    if(!(r.categoria==="manual"||r.esPersonalizada===true)) return {ok:false}; // protección: solo recordatorios realmente manuales/personalizados
+    var listaSinEsa=recordatoriosDe(cliente).filter(function(rr){ return (rr.id||rr.fecha)!==recordatorioId; });
+    var evAtendido={fecha:FECHA_HOY,resultado:r.nota?'Recordatorio atendido: "'+r.nota+'"':"Recordatorio personalizado atendido"};
+    setClientes(clientes.map(function(x){
+      if(x.id!==clienteId) return x;
+      var base=Object.assign({},x,{ultimoContacto:FECHA_HOY,historialContactos:[...(x.historialContactos||[]),evAtendido]});
+      return conRecordatoriosActualizados(base,listaSinEsa);
+    }));
+    return {ok:true,nombreCliente:cliente.nombre.split(" ")[0]};
+  }
   // Decide, para el botón "Contactar" de Inicio/Hoy, si la tarjeta viene
   // de un recordatorio manual/personalizado con id EXACTO conocido , los
   // 3 datos (recordatorioId, recordatorioNota, recordatorioEsManualOPersonalizado)
@@ -5013,16 +5101,8 @@ export default function CLEO(props){
             var prospectoNuevos=clientes.filter(function(c){ return c.estadoProspecto==="Nuevo"; });
             var prospectosSeguimiento=clientes.filter(function(c){ return c.estadoProspecto==="En seguimiento"||c.estadoProspecto==="Sin respuesta"; });
 
-            // 🔴 Urgentes: prospectos sin contacto hace +3 días
-            var urgentesTodas=clientes.filter(function(c){
-              if(!c.estadoProspecto) return false;
-              if(c.estadoProspecto==="Convertido"||c.estadoProspecto==="Perdido") return !!(c.seguimientoFecha&&c.seguimientoFecha<=FECHA_HOY);
-              if(c.seguimientoFecha&&c.seguimientoFecha<=FECHA_HOY) return true;
-              var dias=diasDesde(c.fechaEtapa||c.fecha);
-              if(c.estadoProspecto==="Nueva") return dias>=3;
-              if(c.estadoProspecto==="En seguimiento") return dias>=4;
-              return false;
-            }).sort(function(a,b){ return diasDesde(b.fechaEtapa||b.fecha)-diasDesde(a.fechaEtapa||a.fecha); });
+            // 🔴 Urgentes: mismas acciones reales que la pestaña Hoy (recordatorios + sugerencias automáticas)
+            var urgentesTodas=obtenerAccionesHoy(clientes,cotizaciones,true);
 
             var calientes=clientes.filter(function(c){ return c.estadoProspecto==="En seguimiento"; });
             var totalCalientes=calientes.reduce(function(s,c){ return s+(Number(c.precioInteres)||0); },0);
@@ -5079,50 +5159,33 @@ export default function CLEO(props){
                 urgentes.length===0
                   ? (pedidosAccionIni.length===0&&e("div",{style:{fontSize:13,color:C.textMuted,padding:"12px 0",textAlign:"center"}},"✓ Todo al día, sin pendientes urgentes."))
                   : e("div",{style:{display:"flex",flexDirection:"column",gap:10}},
-                      urgentes.map(function(c){
-                        var dias=diasDesde(c.fechaEtapa||c.fecha);
-                        var nombre=c.nombre.split(" ")[0];
-                        var producto=c.productoInteres;
-                        var mensajeSugeridoTarjeta=c.mensajeSeguimientoPostVenta||"";
-                        var msg;
-                        if(c.seguimientoEsPersonalizada&&c.seguimientoFecha&&c.seguimientoFecha<=FECHA_HOY){
-                          msg="Tenías un recordatorio para hoy.";
-                        }
-                        else if(c.estadoProspecto==="Convertido"){
-                          var frasesSegunTipoIni={"15":"buen momento para pedirle una recomendación.","30":"buen momento para ver si necesita algo más.","60":"buen momento para platicarle de un proyecto nuevo.","90":"buen momento para mantenerte presente."};
-                          var fraseGanadoIni=frasesSegunTipoIni[c.tipoSeguimientoPostVenta]||"buen momento para ver si hay una posible recompra.";
-                          msg=(producto?"Ya le vendiste "+producto+". ":"Ya te compró. ")+"Hoy habías programado retomar contacto — "+fraseGanadoIni;
-                        }
-                        else if(c.estadoProspecto==="Perdido"){
-                          var etiquetasMotivoIni={"Precio alto":"le pareció caro","Eligio a otro":"eligió a otro","Sin presupuesto":"no tenía presupuesto","No respondio":"dejó de responder","Otro":"no siguió adelante"};
-                          var etiquetaMotivoIni=etiquetasMotivoIni[c.motivoPerdida]||"no siguió adelante";
-                          msg="En su momento "+etiquetaMotivoIni+". Hoy habías programado retomar contacto — vale la pena ver si su situación cambió.";
-                        }
-                        else if(c.estadoProspecto==="En seguimiento"&&producto){
-                          msg=dias<=3?""+nombre+" lleva "+dias+" días con tu precio de "+producto+". ¿Ya le escribiste?":""+nombre+" lleva "+dias+" días con tu precio de "+producto+" sin responder. ¿Ya le escribiste para ver si tiene dudas?";
-                        }
-                        else if(c.estadoProspecto==="Nueva"&&producto){
-                          msg=c.seguimientoFecha&&c.seguimientoFecha<=FECHA_HOY?"Hoy es el día que programaste para enviarle el precio de "+producto+" a "+nombre+".":"Registraste a "+nombre+" hace "+dias+" días con interés en "+producto+". Aún no le has enviado precio.";
-                        }
-                        else msg="Registraste a "+nombre+" hace "+dias+" días y aún no la has contactado.";
-                        var prio=(c.estadoProspecto==="Convertido"||c.estadoProspecto==="Perdido")?"alta":dias>=7?"alta":dias>=4?"media":"baja";
+                      urgentes.map(function(u){
+                        var c=u.cliente;
                         var ac=avatarColor(c.id);
-                        return e("div",{key:c.id,style:{display:"flex",alignItems:"center",gap:12,padding:"14px",border:"1px solid "+C.border,borderRadius:14,flexWrap:isMobile?"wrap":"nowrap"}},
-                          e("div",{style:{padding:"4px 10px",borderRadius:20,background:prioBg[prio],color:prioColor[prio],fontSize:10,fontWeight:700,letterSpacing:"0.3px",flexShrink:0,minWidth:isMobile?0:132,textAlign:"center",flex:isMobile?"1 1 100%":"0 0 auto"}},prioLabel[prio]),
+                        return e("div",{key:u.accionId,style:{display:"flex",alignItems:"center",gap:12,padding:"14px",border:"1px solid "+C.border,borderRadius:14,flexWrap:isMobile?"wrap":"nowrap"}},
+                          e("div",{style:{padding:"4px 10px",borderRadius:20,background:prioBg[u.prioridad],color:prioColor[u.prioridad],fontSize:10,fontWeight:700,letterSpacing:"0.3px",flexShrink:0,minWidth:isMobile?0:132,textAlign:"center",flex:isMobile?"1 1 100%":"0 0 auto"}},prioLabel[u.prioridad]),
                           e("div",{style:{display:"flex",alignItems:"flex-start",gap:12,flex:isMobile?"1 1 100%":"1 1 auto",minWidth:0}},
                           e("div",{style:{width:40,height:40,borderRadius:"50%",background:ac+"22",display:"flex",alignItems:"center",justifyContent:"center",fontSize:13,fontWeight:700,color:ac,flexShrink:0}},iniciales(c.nombre)),
                           e("div",{style:{flex:1,minWidth:isMobile?0:200}},
                             e("div",{style:{fontSize:15,fontWeight:700,color:C.text,marginBottom:2}},c.nombre),
-                            e("div",{style:{fontSize:12,color:C.textMuted,lineHeight:1.4}},msg),
-                            mensajeSugeridoTarjeta&&e("div",{style:{fontSize:11,color:C.purple,fontStyle:"italic",lineHeight:1.4,marginTop:4}},'💬 "'+mensajeSugeridoTarjeta+'"')
+                            e("div",{style:{fontSize:12,color:C.textMuted,lineHeight:1.4}},u.desc),
+                            u.mensajeSugerido&&e("div",{style:{fontSize:11,color:C.purple,fontStyle:"italic",lineHeight:1.4,marginTop:4}},'💬 "'+u.mensajeSugerido+'"'),
+                            u.recordatorioEsManualOPersonalizado&&u.recordatorioNota&&e("div",{style:{fontSize:11,color:C.purple,fontStyle:"italic",lineHeight:1.4,marginTop:4}},'💬 "'+u.recordatorioNota+'"')
                           ),
                           ) // cierra grupo avatar + texto
                           ,
-                          e("div",{style:{display:"flex",gap:8,flexShrink:0,minWidth:isMobile?0:266,flex:isMobile?"1 1 100%":"0 0 auto"}},
-                            e(BtnCanal,{cliente:c,small:false}),
-                            e("button",{style:{cursor:"pointer",padding:"9px 16px",borderRadius:10,border:"1px solid "+C.border,background:"transparent",fontSize:12,color:C.textMuted,fontWeight:500,whiteSpace:"nowrap",flex:1},onClick:function(){ setVista("prospectos"); setFiltroProspecto("todos"); setHighlightOpoId(c.id); }},
-                              "Ver oportunidad →"
-                            )
+                          e("div",{style:{display:"flex",gap:8,flexShrink:0,minWidth:isMobile?0:266,flex:isMobile?"1 1 100%":"0 0 auto",flexWrap:"wrap"}},
+                            e("button",{style:{cursor:"pointer",padding:"9px 16px",borderRadius:10,border:"none",background:C.purple,fontSize:12,color:"#fff",fontWeight:600,display:"flex",alignItems:"center",gap:6,whiteSpace:"nowrap",flex:1,justifyContent:"center"},onClick:function(){ manejarClickContactar(c,u.recordatorioId,u.recordatorioNota,u.recordatorioEsManualOPersonalizado); }},
+                              "💬 Contactar"
+                            ),
+                            u.recordatorioEsManualOPersonalizado
+                              ? e("button",{style:{cursor:"pointer",padding:"9px 16px",borderRadius:10,border:"1px solid "+C.border,background:"transparent",fontSize:12,color:C.textMuted,fontWeight:500,whiteSpace:"nowrap",flex:1},onClick:function(){
+                                  var resultado=completarRecordatorioManual(c.id,u.recordatorioId);
+                                  if(resultado.ok) mostrarToast("✓ Marcaste tu recordatorio como atendido para "+resultado.nombreCliente+".");
+                                }},"✓ Ya lo atendí")
+                              : e("button",{style:{cursor:"pointer",padding:"9px 16px",borderRadius:10,border:"1px solid "+C.border,background:"transparent",fontSize:12,color:C.textMuted,fontWeight:500,whiteSpace:"nowrap",flex:1},onClick:function(){ setContactadoClienteId(c.id); setContactadoRecordatorioId(u.recordatorioId); }},
+                                  "✓ Ya le hablé"
+                                )
                           )
                         );
                       })
@@ -5218,28 +5281,33 @@ export default function CLEO(props){
                 : e("div",{style:{display:"flex",flexDirection:"column",gap:10,marginBottom:24}},
                     acciones.map(function(a,i){
                       var ac=avatarColor(a.cliente.id);
-                      var cotCliente=cotizaciones.filter(function(cc){ return cc.clienteId===a.cliente.id; }).sort(function(x,y){ return new Date(y.fecha)-new Date(x.fecha); })[0];
-                      return e("div",{key:i,style:{display:"flex",alignItems:"center",gap:12,padding:"14px",border:"1px solid "+C.border,borderRadius:14,flexWrap:isMobile?"wrap":"nowrap"}},
+                      return e("div",{key:a.accionId||i,style:{display:"flex",alignItems:"center",gap:12,padding:"14px",border:"1px solid "+C.border,borderRadius:14,flexWrap:isMobile?"wrap":"nowrap"}},
                         e("div",{style:{padding:"4px 10px",borderRadius:20,background:prioBg[a.prioridad],color:prioColor[a.prioridad],fontSize:10,fontWeight:700,letterSpacing:"0.3px",flexShrink:0,minWidth:isMobile?0:132,textAlign:"center",flex:isMobile?"1 1 100%":"0 0 auto"}},prioLabel[a.prioridad]),
                         e("div",{style:{display:"flex",alignItems:"flex-start",gap:12,flex:isMobile?"1 1 100%":"1 1 auto",minWidth:0}},
                         e("div",{style:{width:40,height:40,borderRadius:"50%",background:ac+"22",display:"flex",alignItems:"center",justifyContent:"center",fontSize:13,fontWeight:700,color:ac,flexShrink:0}},iniciales(a.cliente.nombre)),
                         e("div",{style:{flex:1,minWidth:isMobile?0:200}},
                           e("div",{style:{fontSize:15,fontWeight:700,color:C.text,marginBottom:2}},a.cliente.nombre),
                           e("div",{style:{fontSize:12,color:C.textMuted,lineHeight:1.4}},a.desc),
-                          a.mensajeSugerido&&e("div",{style:{fontSize:11,color:C.purple,fontStyle:"italic",lineHeight:1.4,marginTop:4}},'💬 "'+a.mensajeSugerido+'"')
+                          a.mensajeSugerido&&e("div",{style:{fontSize:11,color:C.purple,fontStyle:"italic",lineHeight:1.4,marginTop:4}},'💬 "'+a.mensajeSugerido+'"'),
+                          a.recordatorioEsManualOPersonalizado&&a.recordatorioNota&&e("div",{style:{fontSize:11,color:C.purple,fontStyle:"italic",lineHeight:1.4,marginTop:4}},'💬 "'+a.recordatorioNota+'"')
                         ),
                         ) // cierra grupo avatar + texto
                         ,
                         e("div",{style:{textAlign:isMobile?"left":"right",flexShrink:0,minWidth:100,marginRight:isMobile?0:8,flex:isMobile?"1 1 100%":"0 0 auto"}},
-                          cotCliente&&e("div",{style:{fontSize:15,fontWeight:700,color:C.text}},"$"+Number(cotCliente.monto).toLocaleString())
+                          a.monto>0&&e("div",{style:{fontSize:15,fontWeight:700,color:C.text}},"$"+Number(a.monto).toLocaleString())
                         ),
                         e("div",{style:{display:"flex",gap:8,flexShrink:0,minWidth:isMobile?0:266,flex:isMobile?"1 1 100%":"0 0 auto",flexWrap:"wrap"}},
                           e("button",{style:{cursor:"pointer",padding:"9px 16px",borderRadius:10,border:"none",background:C.purple,fontSize:12,color:"#fff",fontWeight:600,display:"flex",alignItems:"center",gap:6,whiteSpace:"nowrap",flex:1,justifyContent:"center"},onClick:function(){ manejarClickContactar(a.cliente,a.recordatorioId,a.recordatorioNota,a.recordatorioEsManualOPersonalizado); }},
                             "💬 Contactar"
                           ),
-                          e("button",{style:{cursor:"pointer",padding:"9px 16px",borderRadius:10,border:"1px solid "+C.border,background:"transparent",fontSize:12,color:C.textMuted,fontWeight:500,whiteSpace:"nowrap",flex:1},onClick:function(){ setContactadoClienteId(a.cliente.id); setContactadoRecordatorioId(idRecordatorioSiFueDetonante(a.cliente)); }},
-                            "✓ Ya le hablé"
-                          ),
+                          a.recordatorioEsManualOPersonalizado
+                            ? e("button",{style:{cursor:"pointer",padding:"9px 16px",borderRadius:10,border:"1px solid "+C.border,background:"transparent",fontSize:12,color:C.textMuted,fontWeight:500,whiteSpace:"nowrap",flex:1},onClick:function(){
+                                var resultado=completarRecordatorioManual(a.cliente.id,a.recordatorioId);
+                                if(resultado.ok) mostrarToast("✓ Marcaste tu recordatorio como atendido para "+resultado.nombreCliente+".");
+                              }},"✓ Ya lo atendí")
+                            : e("button",{style:{cursor:"pointer",padding:"9px 16px",borderRadius:10,border:"1px solid "+C.border,background:"transparent",fontSize:12,color:C.textMuted,fontWeight:500,whiteSpace:"nowrap",flex:1},onClick:function(){ setContactadoClienteId(a.cliente.id); setContactadoRecordatorioId(a.recordatorioId); }},
+                                "✓ Ya le hablé"
+                              ),
                           a.estancado&&e("button",{style:{cursor:"pointer",padding:"9px 16px",borderRadius:10,border:"1px solid "+C.amber+"55",background:C.amberBg,fontSize:12,color:C.amber,fontWeight:600,whiteSpace:"nowrap",flex:"1 1 100%",textAlign:"center"},onClick:function(){ moverEtapa(a.cliente.id,"Perdido"); }},
                             "Marcar como perdido"
                           )
@@ -5510,7 +5578,7 @@ export default function CLEO(props){
                         // Fila 4 , seguimiento si perdido/ganado con seguimiento programado, contactar en los demás casos
                         e("div",{style:{height:28,flexShrink:0,display:"flex",gap:6,alignItems:"center"},onClick:function(ev){ ev.stopPropagation(); }},
                           (c.etapa==="Perdido"||c.etapa==="Ganado")&&c.seguimientoFecha?(function(){
-                            var dSeg=Math.round((new Date(c.seguimientoFecha).getTime()-HOY.getTime())/86400000);
+                            var dSeg=diasHastaFechaCalendario(c.seguimientoFecha);
                             return e("div",{title:motivoSeguimientoDe(c),style:{fontSize:10,color:"#5B5CF6",fontWeight:500,cursor:"help"}},"Seg: "+(dSeg<=0?"hoy":dSeg===1?"mañana":"en "+dSeg+" días"));
                           })()
                           : urlContactar
@@ -5581,8 +5649,7 @@ export default function CLEO(props){
           var tabLabels={perfil:"Perfil",historial:"Historial",seguimiento:"Seguimiento"};
           var segBadge=null;
           if(c.seguimientoFecha){
-            var segMs=new Date(c.seguimientoFecha).getTime()-HOY.getTime();
-            var diasSegH=Math.round(segMs/86400000);
+            var diasSegH=diasHastaFechaCalendario(c.seguimientoFecha);
             segBadge=diasSegH<=0?"Seguimiento hoy":diasSegH===1?"Seguimiento mañana":"Seguimiento en "+diasSegH+" días";
           }
           var ec2=ETAPA_COLOR[c.etapa]||C.purple;
@@ -5935,8 +6002,7 @@ export default function CLEO(props){
               var ec=ETAPA_COLOR[c.etapa]||C.purple;
               var segBL=null;
               if(c.seguimientoFecha){
-                var segMsBL=new Date(c.seguimientoFecha).getTime()-HOY.getTime();
-                var dBL=Math.round(segMsBL/86400000);
+                var dBL=diasHastaFechaCalendario(c.seguimientoFecha);
                 segBL=dBL<=0?"Hoy":dBL===1?"Mañana":"En "+dBL+" días";
               }
               return e("div",{key:c.id,style:{background:C.surface,border:"1px solid "+C.border,borderRadius:16,padding:"14px 18px",marginBottom:8,display:"flex",alignItems:"center",gap:14,cursor:"pointer",boxShadow:"0 1px 4px rgba(0,0,0,0.04)"},onClick:function(){ setClienteAbierto(c.id); setTabCliente("perfil"); }},
@@ -7608,12 +7674,10 @@ export default function CLEO(props){
         if(!esProductos){
         var accionesCompletas=obtenerAccionesHoy(clientes,cotizaciones,esProductos);
         urgentes=accionesCompletas.map(function(a){
-          return {cliente:a.cliente,razon:a.desc,prioridad:a.prioridad,mensajeSugerido:a.mensajeSugerido,recordatorioId:a.recordatorioId,recordatorioNota:a.recordatorioNota,recordatorioEsManualOPersonalizado:a.recordatorioEsManualOPersonalizado};
+          return {cliente:a.cliente,razon:a.desc,prioridad:a.prioridad,mensajeSugerido:a.mensajeSugerido,monto:a.monto,recordatorioId:a.recordatorioId,recordatorioNota:a.recordatorioNota,recordatorioEsManualOPersonalizado:a.recordatorioEsManualOPersonalizado,accionId:a.accionId};
         });
         } // fin !esProductos
-        var idsVisto={};
         urgentes=urgentes.filter(function(u){ return diasSinContacto(u.cliente)>=1||u.cliente.seguimientoFecha; });
-        urgentes=urgentes.filter(function(u){ if(idsVisto[u.cliente.id]) return false; idsVisto[u.cliente.id]=true; return true; });
         urgentes=urgentes.filter(function(u){ return !u.cliente.archivado; });
         if(highlightHoyClienteId){
           urgentes=urgentes.slice().sort(function(a,b){
@@ -7663,15 +7727,7 @@ export default function CLEO(props){
           // HOY EN MODO PRODUCTOS
           esProductos?(function(){
             // 1. Oportunidades por retomar (sin contacto >=2 días, no Convertido salvo seguimiento vencido, no Perdido)
-            var opsRetomar=clientes.filter(function(c){
-              if(!c.estadoProspecto) return false;
-              if(c.estadoProspecto==="Convertido"||c.estadoProspecto==="Perdido") return !!(c.seguimientoFecha&&c.seguimientoFecha<=FECHA_HOY);
-              if(c.seguimientoFecha&&c.seguimientoFecha<=FECHA_HOY) return true;
-              var dias=diasDesde(c.fechaEtapa||c.fecha);
-              if(c.estadoProspecto==="Nueva") return dias>=3;
-              if(c.estadoProspecto==="En seguimiento") return dias>=4;
-              return false;
-            }).sort(function(a,b){ return diasDesde(b.fechaEtapa||b.fecha)-diasDesde(a.fechaEtapa||a.fecha); });
+            var opsRetomar=obtenerAccionesHoy(clientes,cotizaciones,true);
 
             // 2. Pedidos que requieren acción
             var pedidosAccion=[];
@@ -7712,50 +7768,33 @@ export default function CLEO(props){
                   e("span",{style:{fontSize:11,padding:"2px 8px",borderRadius:10,background:C.purple+"18",color:C.purple,fontWeight:700}},opsRetomar.length)
                 ),
                 e("div",{style:{display:"flex",flexDirection:"column",gap:10}},
-                  opsRetomar.map(function(c){
-                    var dias=diasDesde(c.fechaEtapa||c.fecha);
-                    var nombre=c.nombre.split(" ")[0];
-                    var producto=c.productoInteres;
-                    var mensajeSugeridoTarjetaH=c.mensajeSeguimientoPostVenta||"";
-                    var msg;
-                    if(c.seguimientoEsPersonalizada&&c.seguimientoFecha&&c.seguimientoFecha<=FECHA_HOY){
-                      msg="Tenías un recordatorio para hoy.";
-                    }
-                    else if(c.estadoProspecto==="Convertido"){
-                      var frasesSegunTipoH={"15":"buen momento para pedirle una recomendación.","30":"buen momento para ver si necesita algo más.","60":"buen momento para platicarle de un proyecto nuevo.","90":"buen momento para mantenerte presente."};
-                      var fraseGanadoH=frasesSegunTipoH[c.tipoSeguimientoPostVenta]||"buen momento para ver si hay una posible recompra.";
-                      msg=(producto?"Ya le vendiste "+producto+". ":"Ya te compró. ")+"Hoy habías programado retomar contacto — "+fraseGanadoH;
-                    }
-                    else if(c.estadoProspecto==="Perdido"){
-                      var etiquetasMotivoH={"Precio alto":"le pareció caro","Eligio a otro":"eligió a otro","Sin presupuesto":"no tenía presupuesto","No respondio":"dejó de responder","Otro":"no siguió adelante"};
-                      var etiquetaMotivoH=etiquetasMotivoH[c.motivoPerdida]||"no siguió adelante";
-                      msg="En su momento "+etiquetaMotivoH+". Hoy habías programado retomar contacto — vale la pena ver si su situación cambió.";
-                    }
-                    else if(c.estadoProspecto==="En seguimiento"&&producto){
-                      msg=dias<=3?""+nombre+" lleva "+dias+" días con tu precio de "+producto+". ¿Ya le escribiste?":""+nombre+" lleva "+dias+" días con tu precio de "+producto+" sin responder. ¿Ya le escribiste para ver si tiene dudas?";
-                    }
-                    else if(c.estadoProspecto==="Nueva"&&producto){
-                      msg=c.seguimientoFecha&&c.seguimientoFecha<=FECHA_HOY?"Hoy es el día que programaste para enviarle el precio de "+producto+" a "+nombre+".":"Registraste a "+nombre+" hace "+dias+" días con interés en "+producto+". Aún no le has enviado precio.";
-                    }
-                    else msg="Registraste a "+nombre+" hace "+dias+" días y aún no la has contactado.";
-                    var prio=(c.estadoProspecto==="Convertido"||c.estadoProspecto==="Perdido")?"alta":dias>=7?"alta":dias>=4?"media":"baja";
+                  opsRetomar.map(function(u){
+                    var c=u.cliente;
                     var ac=avatarColor(c.id);
-                    return e("div",{key:c.id,style:{display:"flex",alignItems:"center",gap:12,padding:"14px",background:C.surface,border:"1px solid "+C.border,borderRadius:14,flexWrap:isMobile?"wrap":"nowrap",boxShadow:"0 1px 3px rgba(0,0,0,0.04)"}},
-                      e("div",{style:{padding:"4px 10px",borderRadius:20,background:prioBg[prio],color:prioColor[prio],fontSize:10,fontWeight:700,letterSpacing:"0.3px",flexShrink:0,minWidth:isMobile?0:132,textAlign:"center",flex:isMobile?"1 1 100%":"0 0 auto"}},prioLabel[prio]),
+                    return e("div",{key:u.accionId,style:{display:"flex",alignItems:"center",gap:12,padding:"14px",background:C.surface,border:"1px solid "+C.border,borderRadius:14,flexWrap:isMobile?"wrap":"nowrap",boxShadow:"0 1px 3px rgba(0,0,0,0.04)"}},
+                      e("div",{style:{padding:"4px 10px",borderRadius:20,background:prioBg[u.prioridad],color:prioColor[u.prioridad],fontSize:10,fontWeight:700,letterSpacing:"0.3px",flexShrink:0,minWidth:isMobile?0:132,textAlign:"center",flex:isMobile?"1 1 100%":"0 0 auto"}},prioLabel[u.prioridad]),
                       e("div",{style:{display:"flex",alignItems:"flex-start",gap:12,flex:isMobile?"1 1 100%":"1 1 auto",minWidth:0}},
                       e("div",{style:{width:40,height:40,borderRadius:"50%",background:ac+"22",display:"flex",alignItems:"center",justifyContent:"center",fontSize:13,fontWeight:700,color:ac,flexShrink:0}},iniciales(c.nombre)),
                       e("div",{style:{flex:1,minWidth:isMobile?0:200}},
                         e("div",{style:{fontSize:15,fontWeight:700,color:C.text,marginBottom:2}},c.nombre),
-                        e("div",{style:{fontSize:12,color:C.textMuted,lineHeight:1.4}},msg),
-                        mensajeSugeridoTarjetaH&&e("div",{style:{fontSize:11,color:C.purple,fontStyle:"italic",lineHeight:1.4,marginTop:4}},'💬 "'+mensajeSugeridoTarjetaH+'"')
+                        e("div",{style:{fontSize:12,color:C.textMuted,lineHeight:1.4}},u.desc),
+                        u.mensajeSugerido&&e("div",{style:{fontSize:11,color:C.purple,fontStyle:"italic",lineHeight:1.4,marginTop:4}},'💬 "'+u.mensajeSugerido+'"'),
+                        u.recordatorioEsManualOPersonalizado&&u.recordatorioNota&&e("div",{style:{fontSize:11,color:C.purple,fontStyle:"italic",lineHeight:1.4,marginTop:4}},'💬 "'+u.recordatorioNota+'"')
                       ),
                       ) // cierra grupo avatar + texto
                       ,
-                      e("div",{style:{display:"flex",gap:8,flexShrink:0,minWidth:isMobile?0:266,flex:isMobile?"1 1 100%":"0 0 auto"}},
-                        e(BtnCanal,{cliente:c,small:false}),
-                        e("button",{style:{cursor:"pointer",padding:"9px 16px",borderRadius:10,border:"1px solid "+C.border,background:"transparent",fontSize:12,color:C.textMuted,fontWeight:500,whiteSpace:"nowrap",flex:1},onClick:function(){ setVista("prospectos"); setFiltroProspecto("todos"); setHighlightOpoId(c.id); }},
-                          "Ver oportunidad →"
-                        )
+                      e("div",{style:{display:"flex",gap:8,flexShrink:0,minWidth:isMobile?0:266,flex:isMobile?"1 1 100%":"0 0 auto",flexWrap:"wrap"}},
+                        e("button",{style:{cursor:"pointer",padding:"9px 16px",borderRadius:10,border:"none",background:C.purple,fontSize:12,color:"#fff",fontWeight:600,display:"flex",alignItems:"center",gap:6,whiteSpace:"nowrap",flex:1,justifyContent:"center"},onClick:function(){ manejarClickContactar(c,u.recordatorioId,u.recordatorioNota,u.recordatorioEsManualOPersonalizado); }},
+                          "💬 Contactar"
+                        ),
+                        u.recordatorioEsManualOPersonalizado
+                          ? e("button",{style:{cursor:"pointer",padding:"9px 16px",borderRadius:10,border:"1px solid "+C.border,background:"transparent",fontSize:12,color:C.textMuted,fontWeight:500,whiteSpace:"nowrap",flex:1},onClick:function(){
+                              var resultado=completarRecordatorioManual(c.id,u.recordatorioId);
+                              if(resultado.ok) mostrarToast("✓ Marcaste tu recordatorio como atendido para "+resultado.nombreCliente+".");
+                            }},"✓ Ya lo atendí")
+                          : e("button",{style:{cursor:"pointer",padding:"9px 16px",borderRadius:10,border:"1px solid "+C.border,background:"transparent",fontSize:12,color:C.textMuted,fontWeight:500,whiteSpace:"nowrap",flex:1},onClick:function(){ setContactadoClienteId(c.id); setContactadoRecordatorioId(u.recordatorioId); }},
+                              "✓ Ya le hablé"
+                            )
                       )
                     );
                   })
@@ -7836,29 +7875,34 @@ export default function CLEO(props){
                     var c=u.cliente;
                     var urlContactar=contactUrl(c,msgEtapa(c));
                     var ac=avatarColor(c.id);
-                    var cotCliente=cotizaciones.filter(function(cc){ return cc.clienteId===c.id; }).sort(function(x,y){ return new Date(y.fecha)-new Date(x.fecha); })[0];
                     var esHighlightHoy=c.id===highlightHoyClienteId;
-                    return e("div",{key:c.id,style:{display:"flex",alignItems:"center",gap:12,padding:"14px",background:C.surface,border:esHighlightHoy?"2px solid "+C.purple:"1px solid "+C.border,borderRadius:14,flexWrap:isMobile?"wrap":"nowrap",boxShadow:esHighlightHoy?"0 0 0 3px "+C.purple+"22":"0 1px 3px rgba(0,0,0,0.04)"},ref:function(el){ if(el&&esHighlightHoy){ el.scrollIntoView({behavior:"smooth",block:"start"}); } }},
+                    return e("div",{key:u.accionId||c.id,style:{display:"flex",alignItems:"center",gap:12,padding:"14px",background:C.surface,border:esHighlightHoy?"2px solid "+C.purple:"1px solid "+C.border,borderRadius:14,flexWrap:isMobile?"wrap":"nowrap",boxShadow:esHighlightHoy?"0 0 0 3px "+C.purple+"22":"0 1px 3px rgba(0,0,0,0.04)"},ref:function(el){ if(el&&esHighlightHoy){ el.scrollIntoView({behavior:"smooth",block:"start"}); } }},
                       e("div",{style:{padding:"4px 10px",borderRadius:20,background:prioBgH[u.prioridad],color:prioColorH[u.prioridad],fontSize:10,fontWeight:700,letterSpacing:"0.3px",flexShrink:0,minWidth:isMobile?0:132,textAlign:"center",flex:isMobile?"1 1 100%":"0 0 auto"}},prioLabelH[u.prioridad]),
                       e("div",{style:{display:"flex",alignItems:"flex-start",gap:12,flex:isMobile?"1 1 100%":"1 1 auto",minWidth:0}},
                       e("div",{style:{width:40,height:40,borderRadius:"50%",background:ac+"22",display:"flex",alignItems:"center",justifyContent:"center",fontSize:13,fontWeight:700,color:ac,flexShrink:0}},iniciales(c.nombre)),
                       e("div",{style:{flex:1,minWidth:isMobile?0:200}},
                         e("div",{style:{fontSize:15,fontWeight:700,color:C.text,marginBottom:2}},c.nombre),
                         e("div",{style:{fontSize:12,color:C.textMuted,lineHeight:1.4}},u.razon),
-                        u.mensajeSugerido&&e("div",{style:{fontSize:11,color:C.purple,fontStyle:"italic",lineHeight:1.4,marginTop:4}},'💬 "'+u.mensajeSugerido+'"')
+                        u.mensajeSugerido&&e("div",{style:{fontSize:11,color:C.purple,fontStyle:"italic",lineHeight:1.4,marginTop:4}},'💬 "'+u.mensajeSugerido+'"'),
+                        u.recordatorioEsManualOPersonalizado&&u.recordatorioNota&&e("div",{style:{fontSize:11,color:C.purple,fontStyle:"italic",lineHeight:1.4,marginTop:4}},'💬 "'+u.recordatorioNota+'"')
                       ),
                       ) // cierra grupo avatar + texto
                       ,
                       e("div",{style:{textAlign:isMobile?"left":"right",flexShrink:0,minWidth:100,marginRight:isMobile?0:8,flex:isMobile?"1 1 100%":"0 0 auto"}},
-                        cotCliente&&e("div",{style:{fontSize:15,fontWeight:700,color:C.text}},"$"+Number(cotCliente.monto).toLocaleString())
+                        u.monto>0&&e("div",{style:{fontSize:15,fontWeight:700,color:C.text}},"$"+Number(u.monto).toLocaleString())
                       ),
                       e("div",{style:{display:"flex",gap:8,flexShrink:0,minWidth:isMobile?0:266,flex:isMobile?"1 1 100%":"0 0 auto",flexWrap:"wrap"}},
                         e("button",{style:{cursor:"pointer",padding:"9px 16px",borderRadius:10,border:"none",background:C.purple,fontSize:12,color:"#fff",fontWeight:600,display:"flex",alignItems:"center",gap:6,whiteSpace:"nowrap",flex:1,justifyContent:"center"},onClick:function(){ manejarClickContactar(c,u.recordatorioId,u.recordatorioNota,u.recordatorioEsManualOPersonalizado); }},
                           "💬 Contactar"
                         ),
-                        e("button",{style:{cursor:"pointer",padding:"9px 16px",borderRadius:10,border:"1px solid "+C.border,background:"transparent",fontSize:12,color:C.textMuted,fontWeight:500,whiteSpace:"nowrap",flex:1},onClick:function(){ setContactadoClienteId(c.id); setContactadoRecordatorioId(idRecordatorioSiFueDetonante(c)); }},
-                          "✓ Ya le hablé"
-                        ),
+                        u.recordatorioEsManualOPersonalizado
+                          ? e("button",{style:{cursor:"pointer",padding:"9px 16px",borderRadius:10,border:"1px solid "+C.border,background:"transparent",fontSize:12,color:C.textMuted,fontWeight:500,whiteSpace:"nowrap",flex:1},onClick:function(){
+                              var resultado=completarRecordatorioManual(c.id,u.recordatorioId);
+                              if(resultado.ok) mostrarToast("✓ Marcaste tu recordatorio como atendido para "+resultado.nombreCliente+".");
+                            }},"✓ Ya lo atendí")
+                          : e("button",{style:{cursor:"pointer",padding:"9px 16px",borderRadius:10,border:"1px solid "+C.border,background:"transparent",fontSize:12,color:C.textMuted,fontWeight:500,whiteSpace:"nowrap",flex:1},onClick:function(){ setContactadoClienteId(c.id); setContactadoRecordatorioId(u.recordatorioId); }},
+                              "✓ Ya le hablé"
+                            ),
                         u.estancado&&e("button",{style:{cursor:"pointer",padding:"9px 16px",borderRadius:10,border:"1px solid "+C.amber+"55",background:C.amberBg,fontSize:12,color:C.amber,fontWeight:600,whiteSpace:"nowrap",flex:"1 1 100%",textAlign:"center"},onClick:function(){ moverEtapa(c.id,"Perdido"); }},
                           "Marcar como perdido"
                         )
@@ -8585,6 +8629,7 @@ export default function CLEO(props){
         // por SU PROPIA fecha, igual que la versión de Productos, nunca el
         // monto total del documento filtrado por su fecha de creación.
         var MESES_LABELS=["Ene","Feb","Mar","Abr","May","Jun","Jul","Ago","Sep","Oct","Nov","Dic"];
+        var MESES_LARGO=["enero","febrero","marzo","abril","mayo","junio","julio","agosto","septiembre","octubre","noviembre","diciembre"];
         var mesesData=[];
         for(var mi=5;mi>=0;mi--){
           var fechaMes=new Date(HOY.getFullYear(),HOY.getMonth()-mi,1);
@@ -8602,6 +8647,7 @@ export default function CLEO(props){
         cotizaciones.forEach(function(c){ (c.pagos||[]).forEach(function(pg){ var d=parseFechaLocal(pg.fecha); if(d.getMonth()===mesAnterior.mes&&d.getFullYear()===mesAnterior.anio&&d.getDate()<=diaCorte2) mesAnteriorParcial2+=Number(pg.monto); }); });
         ventas.forEach(function(v){ (v.pagos||[]).forEach(function(pg){ var d=parseFechaLocal(pg.fecha); if(d.getMonth()===mesAnterior.mes&&d.getFullYear()===mesAnterior.anio&&d.getDate()<=diaCorte2) mesAnteriorParcial2+=Number(pg.monto); }); });
         var cambioMes=(diaHoy2>=3&&mesAnteriorParcial2>0)?Math.round(((mesActual.total-mesAnteriorParcial2)/mesAnteriorParcial2)*100):null;
+        var faltaParaSuperar=Math.max(0,mesAnterior.total-mesActual.total);
 
         return e("div",{style:{display:"flex",flexDirection:"column",gap:0}},
 
@@ -8714,6 +8760,33 @@ export default function CLEO(props){
                       !isLast&&!isMobile?e("div",{key:"d"+i,style:{width:1,background:"rgba(255,255,255,0.08)",alignSelf:"stretch"}}):null
                     ];
                   }).flat().filter(Boolean)
+                )
+              ),
+
+
+              // GRÁFICA BARRAS , idéntica a la de Productos
+              e("div",{style:{background:C.surface,borderRadius:20,padding:isMobile?"16px":"24px",border:"1px solid "+C.border}},
+                e("div",{style:{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:4}},
+                  e("div",{style:{fontSize:14,fontWeight:700,color:C.text}},"Ingresos por mes"),
+                  cambioMes!==null&&e("div",{style:{textAlign:"right"}},
+                    e("div",{style:{fontSize:12,color:cambioMes>=0?C.green:"#EF4444",fontWeight:600}},(cambioMes>=0?"+":"")+cambioMes+"%"),
+                    e("div",{style:{fontSize:9,color:C.textDim}},"vs mismo punto de "+MESES_LARGO[mesAnterior.mes])
+                  )
+                ),
+                mesActual.total>0&&faltaParaSuperar>0&&e("div",{style:{fontSize:isMobile?13:14,color:C.textMuted,marginBottom:16,lineHeight:1.4}},
+                  "Te faltan ",e("span",{style:{fontWeight:700,color:C.purple}},"$"+faltaParaSuperar.toLocaleString())," para superar "+MESES_LARGO[mesAnterior.mes]
+                ),
+                mesActual.total>0&&faltaParaSuperar===0&&e("div",{style:{fontSize:isMobile?13:14,color:C.green,fontWeight:600,marginBottom:16,lineHeight:1.4}},"🎉 Vas $"+(mesActual.total-mesAnterior.total).toLocaleString()+" arriba de "+MESES_LARGO[mesAnterior.mes]),
+                mesActual.total===0&&e("div",{style:{fontSize:12,color:C.textDim,marginBottom:16,lineHeight:1.4}},"Aún no registras ingresos en "+MESES_LARGO[mesActual.mes]+". En cuanto llegue el primero, verás tu avance aquí."),
+                e("div",{style:{display:"flex",gap:isMobile?4:8,alignItems:"flex-end",height:80}},
+                  mesesData.map(function(m,i){
+                    var h=Math.max(4,Math.round((m.total/maxMes)*80));
+                    return e("div",{key:i,style:{flex:1,display:"flex",flexDirection:"column",alignItems:"center",gap:4}},
+                      e("div",{style:{width:"100%",height:h,borderRadius:"4px 4px 0 0",background:m.esMesActual?C.purple:C.purple+"44",transition:"height 0.3s"}}),
+                      e("div",{style:{fontSize:isMobile?8:9,color:C.textDim,textAlign:"center"}},m.label),
+                      m.total>0&&e("div",{style:{fontSize:8,color:C.textDim,textAlign:"center"}},"$"+(m.total>=1000?Math.round(m.total/1000)+"k":m.total))
+                    );
+                  })
                 )
               ),
 
@@ -10216,17 +10289,8 @@ export default function CLEO(props){
         return null;
       }
       function atenderRecordatorioPersonalizado(){
-        var r=recordatorioPersonalizadoParaCompletar();
-        if(!r) return; // sin coincidencia exacta , no se elimina nada
-        var listaSinEsa=recordatoriosDe(cl).filter(function(rr){ return (rr.id||rr.fecha)!==contactadoRecordatorioId; });
-        var evAtendido={fecha:FECHA_HOY,resultado:"Recordatorio personalizado atendido"};
-        setClientes(clientes.map(function(x){
-          if(x.id!==cl.id) return x;
-          // No toca etapa, estadoProspecto, archivado ni motivoPerdida , solo
-          // el recordatorio puntual, ultimoContacto, y el historial.
-          var base=Object.assign({},x,{ultimoContacto:FECHA_HOY,historialContactos:[...(x.historialContactos||[]),evAtendido]});
-          return conRecordatoriosActualizados(base,listaSinEsa);
-        }));
+        var resultado=completarRecordatorioManual(cl.id,contactadoRecordatorioId);
+        if(!resultado.ok) return; // sin coincidencia exacta o no es manual/personalizado , no se elimina nada
         setContactadoResult({titulo:"Recordatorio atendido",desc:"Marcaste como completado tu recordatorio para "+nombre+"."});
       }
 
