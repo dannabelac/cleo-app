@@ -26,6 +26,44 @@ function numeroSeguro(valor) {
   return Number.isFinite(n) ? n : 0;
 }
 
+// Equivalente local de obtenerItemsCotizacion (definida en el archivo
+// principal) , este módulo es independiente (evita imports circulares, ver
+// comentario arriba), así que mantiene su propia copia mínima con la MISMA
+// lógica no destructiva: si `cot.items` existe y tiene contenido, se usa tal
+// cual (normalizado) , si no, se sintetiza UN item a partir de los campos
+// legacy (concepto/cantidad/precioUnit/monto), sin tocar `cot`.
+function obtenerItemsCotizacionPDF(cot) {
+  if (!cot) return [];
+  if (Array.isArray(cot.items) && cot.items.length > 0) {
+    return cot.items.map(function (it) {
+      var cantidad = numeroSeguro(it.cantidad) || 1;
+      var precioUnitario = numeroSeguro(it.precioUnitario);
+      return {
+        nombre: textoPlanoSeguro(it.nombre, 300),
+        cantidad: cantidad,
+        precioUnitario: precioUnitario,
+        total: it.total != null ? numeroSeguro(it.total) : cantidad * precioUnitario,
+        // descripcion/condiciones PROPIAS de este renglón (ver
+        // detallesPorItem en ItemsEditor, archivo principal) , llegan como
+        // HTML ya saneado, se convierten a texto plano aquí mismo (nunca se
+        // manda HTML crudo a react-pdf, ver htmlANotaPlanaPDF más abajo).
+        descripcion: htmlANotaPlanaPDF(it.descripcion),
+        condiciones: htmlANotaPlanaPDF(it.condiciones),
+      };
+    });
+  }
+  var cantidadLegacy = numeroSeguro(cot.cantidad) || 1;
+  var precioLegacy = numeroSeguro(cot.precioUnit != null ? cot.precioUnit : cot.monto);
+  return [
+    {
+      nombre: textoPlanoSeguro(cot.concepto, 300),
+      cantidad: cantidadLegacy,
+      precioUnitario: precioLegacy,
+      total: cantidadLegacy * precioLegacy,
+    },
+  ];
+}
+
 function colorHexSeguroPDF(valor, fallback) {
   if (typeof valor === "string" && /^#[0-9a-fA-F]{6}$/.test(valor)) return valor;
   return fallback;
@@ -202,14 +240,44 @@ function DocumentoCotizacion({ datos }) {
             <Text style={[s.thCelda, s.colPrecio]}>Precio unit.</Text>
             <Text style={[s.thCelda, s.colTotal]}>Total</Text>
           </View>
-          <View style={s.tablaFila}>
-            <Text style={[s.tdCelda, s.colConcepto]}>{datos.concepto}</Text>
-            <Text style={[s.tdCelda, s.colCant]}>{datos.cantidad}</Text>
-            <Text style={[s.tdCelda, s.colPrecio]}>{formatearMonto(datos.precioUnit)}</Text>
-            <Text style={[s.tdCelda, s.colTotal]}>{formatearMonto(datos.total)}</Text>
-          </View>
         </View>
+        {/* Una fila por item , cada una en su propio wrap={false} (mismo
+            patrón que las filas de pagos más abajo) para que, si una
+            cotización con muchos conceptos ocupa más de una página, nunca se
+            corte una fila a la mitad , el encabezado de arriba queda fuera
+            de este bloque para no repetirse pegado a cada fila. */}
+        {datos.items.map(function (it, i) {
+          return (
+            <View key={i}>
+              <View style={s.tablaFila} wrap={false}>
+                <Text style={[s.tdCelda, s.colConcepto]}>{it.nombre}</Text>
+                <Text style={[s.tdCelda, s.colCant]}>{it.cantidad}</Text>
+                <Text style={[s.tdCelda, s.colPrecio]}>{formatearMonto(it.precioUnitario)}</Text>
+                <Text style={[s.tdCelda, s.colTotal]}>{formatearMonto(it.total)}</Text>
+              </View>
+              {/* Descripción/condiciones DE ESTE renglón (si existen) , se
+                  imprimen debajo de su propio producto/servicio, no
+                  mezcladas con las de los demás items del documento. */}
+              {it.descripcion ? (
+                <View style={s.notasBlock} wrap={false}>
+                  <Text style={s.notasTexto}>{it.descripcion}</Text>
+                </View>
+              ) : null}
+              {it.condiciones ? (
+                <View style={s.notasBlock} wrap={false}>
+                  <Text style={s.notasLabel}>Condiciones</Text>
+                  <Text style={s.notasTexto}>{it.condiciones}</Text>
+                </View>
+              ) : null}
+            </View>
+          );
+        })}
 
+        {/* Descripción/condiciones GENERALES del documento , ya no tienen
+            campo de edición en la app (ver CLEO_55.jsx, modalCot , ahora
+            viven por producto/servicio arriba), pero cotizaciones guardadas
+            ANTES de ese cambio pueden traer texto aquí, y se sigue
+            imprimiendo tal cual para no perder ese dato. */}
         {datos.notas ? (
           <View style={s.notasBlock}>
             <Text style={s.notasTexto}>{datos.notas}</Text>
@@ -304,10 +372,11 @@ export async function crearCotizacionPDF(cot, cliente, perfil) {
   var total = numeroSeguro(cot.monto);
   var saldo = total - totalPagado;
 
+  var itemsPDF = obtenerItemsCotizacionPDF(cot);
   var subtotalItems =
     numeroSeguro(cot.subtotal) > 0
       ? numeroSeguro(cot.subtotal)
-      : numeroSeguro(cot.cantidad || 1) * numeroSeguro(cot.precioUnit);
+      : itemsPDF.reduce(function (s, it) { return s + it.total; }, 0);
   var descuentoMonto = 0;
   var descuentoTexto = "";
   if (numeroSeguro(cot.descuento) > 0) {
@@ -350,9 +419,7 @@ export async function crearCotizacionPDF(cot, cliente, perfil) {
     clienteNegocio: textoPlanoSeguro(cliente.negocio, 120),
     clienteContacto: textoPlanoSeguro(cliente.contacto, 60),
     iniciales: iniciales,
-    concepto: textoPlanoSeguro(cot.concepto, 300),
-    cantidad: numeroSeguro(cot.cantidad || 1),
-    precioUnit: numeroSeguro(cot.precioUnit || cot.monto),
+    items: itemsPDF,
     total: total,
     subtotal: subtotalItems,
     descuentoMonto: descuentoMonto,
@@ -374,7 +441,11 @@ export async function crearCotizacionPDF(cot, cliente, perfil) {
     bancoclabe: textoPlanoSeguro(perfil.bancoclabe, 40),
     bancoaccount: textoPlanoSeguro(perfil.bancoaccount, 40),
     bancoinstrucciones: textoPlanoSeguro(perfil.bancoinstrucciones, 500),
-    condicionesPago: textoPlanoSeguro(perfil.condicionesPago, 500),
+    // Usa la copia propia de ESTA cotización si existe (puede diferir de las
+    // condiciones generales sin que estas se hayan tocado) , solo cae a las
+    // condiciones generales del perfil para cotizaciones de antes de que
+    // existiera este campo (cot.condicionesPago === undefined).
+    condicionesPago: textoPlanoSeguro(cot.condicionesPago != null ? cot.condicionesPago : perfil.condicionesPago, 500),
     mensaje: textoPlanoSeguro(perfil.mensaje, 300),
   };
 

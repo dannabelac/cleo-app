@@ -2,6 +2,11 @@ import React from "react";
 import { supabase } from "./supabaseClient";
 
 // ── Constantes ──────────────────────────────────────────────────────────
+// Mismo bucket privado compartido por cotizaciones y pedidos , no se crea
+// un bucket nuevo ni una tabla nueva en Supabase. La diferenciación entre
+// ambos tipos de documento vive en la ruta (ver construirRutaStorage) y en
+// el objeto que cada quien guarda (cotizacion.archivoAdjunto /
+// pedido.archivoAdjunto), nunca en infraestructura distinta.
 var BUCKET = "cleo-cotizacion-archivos";
 var TAMANO_MAX = 5 * 1024 * 1024; // 5 MB exactos
 var MIME_A_EXTENSION = {
@@ -15,6 +20,13 @@ var EXTENSIONES_VISIBLES_POR_MIME = {
   "application/pdf": [".pdf"],
   "image/png": [".png"],
   "image/jpeg": [".jpg", ".jpeg"],
+};
+
+// Carpeta de primer nivel (dentro del userId) según el tipo de documento ,
+// única fuente de verdad para esa diferenciación de ruta.
+var CARPETA_POR_TIPO_DOCUMENTO = {
+  cotizacion: "cotizaciones",
+  pedido: "pedidos",
 };
 
 // ── Helpers de seguridad ────────────────────────────────────────────────
@@ -44,6 +56,8 @@ async function leerPrimerosBytes(file, cantidad) {
 // cualquiera de estas señales no coincide con las demás, se rechaza. La
 // extensión final usada en la ruta de Storage SIEMPRE sale de la firma
 // validada, nunca ciegamente de lo que escribió la persona en el nombre.
+// Genérica para cualquier tipo de documento , no depende de cotización ni
+// de pedido.
 async function validarArchivo(file) {
   if (!file) return { ok: false, error: "Selecciona un archivo." };
   if (!(file.size > 0)) return { ok: false, error: "El archivo está vacío." };
@@ -82,7 +96,8 @@ async function validarArchivo(file) {
 
 // Solo letras ASCII, números, guion y guion bajo , cualquier otro carácter
 // se reemplaza por guion, tope de 100 caracteres. Si queda vacío, la subida
-// se rechaza (nunca se usa una ruta con segmento vacío).
+// se rechaza (nunca se usa una ruta con segmento vacío). Genérica: sirve
+// igual para un id de cotización que para un id de pedido.
 function normalizarIdParaRuta(id) {
   var texto = String(id == null ? "" : id);
   texto = texto.replace(/[^A-Za-z0-9_-]/g, "-");
@@ -109,14 +124,26 @@ function generarUUIDSeguro() {
   return null;
 }
 
-// {auth.uid()}/{idCotizacionSeguro}/{uuidSeguro}.{extensionValidada} , nunca
-// se usa el nombre original dentro de la ruta.
-function construirRutaStorage(userId, cotizacionId, extension) {
-  var idSeguro = normalizarIdParaRuta(cotizacionId);
+// {auth.uid()}/{cotizaciones|pedidos}/{idDocumentoSeguro}/{uuidSeguro}.{extensionValidada}
+// , nunca se usa el nombre original dentro de la ruta. `tipoDocumento` debe
+// ser "cotizacion" o "pedido" , cualquier otro valor cancela la subida en
+// vez de adivinar una carpeta.
+//
+// Nota de compatibilidad: las cotizaciones ya tenían archivos guardados
+// ANTES de este cambio bajo el formato antiguo
+// {userId}/{idCotizacion}/{uuid}.{ext} (sin el segmento "cotizaciones/").
+// Esta función solo se usa para construir la ruta de una SUBIDA NUEVA , el
+// storagePath de un archivo ya existente se sigue leyendo tal cual está
+// guardado en el metadato (nunca se reconstruye), así que los archivos
+// viejos siguen abriéndose y descargándose exactamente igual que antes.
+function construirRutaStorage(userId, tipoDocumento, documentoId, extension) {
+  var carpeta = CARPETA_POR_TIPO_DOCUMENTO[tipoDocumento];
+  if (!carpeta) return null;
+  var idSeguro = normalizarIdParaRuta(documentoId);
   if (!idSeguro) return null;
   var uuid = generarUUIDSeguro();
   if (!uuid) return null;
-  return userId + "/" + idSeguro + "/" + uuid + "." + extension;
+  return userId + "/" + carpeta + "/" + idSeguro + "/" + uuid + "." + extension;
 }
 
 async function obtenerUserIdReal() {
@@ -184,14 +211,16 @@ async function entregarBlob(blob, nombreArchivo, mimeType) {
 }
 
 // ── Operaciones centrales ───────────────────────────────────────────────
-async function subirNuevo(cotizacionId, file) {
+// Genéricas para cualquier tipo de documento , reciben tipoDocumento +
+// documentoId en vez de asumir "cotización".
+async function subirNuevo(tipoDocumento, documentoId, file) {
   var validado = await validarArchivo(file);
   if (!validado.ok) throw new Error(validado.error);
 
   var userId = await obtenerUserIdReal();
   if (!userId) throw new Error("No pudimos subir el archivo. Inténtalo nuevamente.");
 
-  var storagePath = construirRutaStorage(userId, cotizacionId, validado.extension);
+  var storagePath = construirRutaStorage(userId, tipoDocumento, documentoId, validado.extension);
   if (!storagePath) throw new Error("No pudimos subir el archivo. Inténtalo nuevamente.");
   var subida = await supabase.storage.from(BUCKET).upload(storagePath, file, {
     contentType: validado.mimeType,
@@ -221,12 +250,17 @@ async function eliminarObjeto(storagePath) {
 }
 
 // ── Componente ──────────────────────────────────────────────────────────
-// Único componente reutilizado tanto en la card de Cotizaciones como en
-// Trabajos → Ver pagos , mismo dato, mismas acciones, sin duplicar lógica.
-export function CotizacionAdjunto(props) {
-  var cot = props.cot;
-  var esDemo = !!props.esDemo;
-  var onActualizarCotizacion = props.onActualizarCotizacion; // (cotId, nuevoMetaOrNull) => void
+// Único componente reutilizado por cotizaciones y pedidos (card de
+// Cotizaciones, Trabajos → Ver pagos, y ahora también la tarjeta de
+// Pedidos) , mismo dato, mismas acciones, sin duplicar lógica. El
+// componente nunca conoce setCotizaciones/setPedidos directamente: solo
+// recibe `documento` (el objeto ya cargado) y `onActualizarDocumento`
+// (callback que decide, afuera, en qué lista y cómo persistir el cambio).
+export function ArchivoAdjunto(props) {
+  var tipoDocumento = props.tipoDocumento; // "cotizacion" | "pedido"
+  var doc = props.documento;
+  var esDemo = !!props.demoActivo;
+  var onActualizarDocumento = props.onActualizarDocumento; // (docId, nuevoMetaOrNull) => Promise
 
   var sAbierto = React.useState(false);
   var abierto = sAbierto[0];
@@ -249,8 +283,13 @@ export function CotizacionAdjunto(props) {
   // de repintar.
   var procesandoRef = React.useRef(false);
 
-  var meta = cot && cot.archivoAdjunto ? cot.archivoAdjunto : null;
+  var meta = doc && doc.archivoAdjunto ? doc.archivoAdjunto : null;
   var inputRef = React.useRef(null);
+
+  // Único texto de la UI que antes mencionaba "cotización" explícitamente
+  // , se vuelve genérico según tipoDocumento, sin tocar ningún otro
+  // mensaje (los de error/demo ya eran genéricos y se reutilizan igual).
+  var etiquetaDocumento = tipoDocumento === "pedido" ? "este pedido" : "esta cotización";
 
   function limpiarMensajes() {
     setError("");
@@ -283,18 +322,18 @@ export function CotizacionAdjunto(props) {
     limpiarMensajes();
     var metaAnterior = meta;
     try {
-      var nuevoMeta = await subirNuevo(cot.id, file);
+      var nuevoMeta = await subirNuevo(tipoDocumento, doc.id, file);
 
       if (!metaAnterior) {
         // ── SUBIDA NUEVA (no había archivo previo) ──────────────────────
         try {
-          await onActualizarCotizacion(cot.id, nuevoMeta); // espera confirmación real de sync
+          await onActualizarDocumento(doc.id, nuevoMeta); // espera confirmación real de sync
         } catch (errSync) {
           // La subida sí ocurrió pero la sincronización del metadato
-          // falló , se restaura la cotización SIN archivoAdjunto y se
+          // falló , se restaura el documento SIN archivoAdjunto y se
           // intenta limpiar el objeto recién subido para no dejar basura.
           try {
-            await onActualizarCotizacion(cot.id, null);
+            await onActualizarDocumento(doc.id, null);
           } catch (e2) {}
           try {
             await eliminarObjeto(nuevoMeta.storagePath);
@@ -307,13 +346,13 @@ export function CotizacionAdjunto(props) {
       } else {
         // ── REEMPLAZO (ya había un archivo) ─────────────────────────────
         try {
-          await onActualizarCotizacion(cot.id, nuevoMeta); // espera confirmación real de sync
+          await onActualizarDocumento(doc.id, nuevoMeta); // espera confirmación real de sync
         } catch (errSync) {
           // La sincronización falló , se restaura el metadato ANTERIOR
           // localmente, nunca se borra el archivo anterior. El archivo
           // nuevo se limpia como mejor esfuerzo, sin alterar el mensaje.
           try {
-            await onActualizarCotizacion(cot.id, metaAnterior);
+            await onActualizarDocumento(doc.id, metaAnterior);
           } catch (e2) {}
           try {
             await eliminarObjeto(nuevoMeta.storagePath);
@@ -367,20 +406,20 @@ export function CotizacionAdjunto(props) {
     limpiarMensajes();
     var metaOriginal = meta;
     try {
-      // 1) Se quita archivoAdjunto de la cotización PRIMERO , esta llamada
-      // ya escribe en localStorage de inmediato y espera la confirmación
-      // real de sincronización antes de devolver.
+      // 1) Se quita archivoAdjunto del documento PRIMERO , esta llamada ya
+      // escribe en localStorage de inmediato y espera la confirmación real
+      // de sincronización antes de devolver.
       try {
-        await onActualizarCotizacion(cot.id, null);
+        await onActualizarDocumento(doc.id, null);
       } catch (errSync) {
         // 2) La sincronización falló , el objeto en Storage sigue
         // existiendo intacto y NO se toca. Se restaura metaOriginal
         // localmente como mejor esfuerzo (si esto también falla por red,
         // el valor local ya quedó escrito de inmediato por
-        // onActualizarCotizacion, así que el sincronizador podrá
+        // onActualizarDocumento, así que el sincronizador podrá
         // reintentarlo después , no se pierde nada, solo queda pendiente).
         try {
-          await onActualizarCotizacion(cot.id, metaOriginal);
+          await onActualizarDocumento(doc.id, metaOriginal);
         } catch (errRestaurar) {
           console.error("CLEO: fallo al restaurar el metadato tras un intento de eliminación.");
         }
@@ -393,10 +432,10 @@ export function CotizacionAdjunto(props) {
         await eliminarObjeto(metaOriginal.storagePath);
       } catch (errStorage) {
         // 4) El archivo todavía existe en Storage , se restaura el
-        // metadato (y se espera también su sincronización) para que la
-        // cotización vuelva a apuntar al archivo real que sigue ahí.
+        // metadato (y se espera también su sincronización) para que el
+        // documento vuelva a apuntar al archivo real que sigue ahí.
         try {
-          await onActualizarCotizacion(cot.id, metaOriginal);
+          await onActualizarDocumento(doc.id, metaOriginal);
         } catch (errRestaurar2) {
           console.error("CLEO: fallo al restaurar el metadato tras un error de Storage al eliminar.");
         }
@@ -513,7 +552,7 @@ export function CotizacionAdjunto(props) {
                 formatearFechaLocal(meta.uploadedAt) &&
                   React.createElement("div", { style: { fontSize: 11, color: "#9CA3AF", marginTop: 2 } }, "Subido: " + formatearFechaLocal(meta.uploadedAt))
               )
-            : React.createElement("div", { style: { fontSize: 13, color: "#6B7280", marginBottom: 12 } }, "Todavía no has adjuntado ningún archivo a esta cotización."),
+            : React.createElement("div", { style: { fontSize: 13, color: "#6B7280", marginBottom: 12 } }, "Todavía no has adjuntado ningún archivo a " + etiquetaDocumento + "."),
 
           error && React.createElement("div", { style: { fontSize: 12, color: "#B91C1C", background: "#FEF2F2", padding: "8px 10px", borderRadius: 8, marginBottom: 10 } }, error),
           ok && React.createElement("div", { style: { fontSize: 12, color: "#166534", background: "#F0FDF4", padding: "8px 10px", borderRadius: 8, marginBottom: 10 } }, ok),
@@ -590,5 +629,24 @@ export function CotizacionAdjunto(props) {
           )
         )
       )
+  );
+}
+
+// ── Compatibilidad hacia atrás ──────────────────────────────────────────
+// Mismo componente, mismo mecanismo, sin lógica duplicada , es solo un
+// adaptador de props para no romper ningún import existente que todavía
+// use el nombre/forma anterior (cot/esDemo/onActualizarCotizacion). CLEO.jsx
+// ya fue actualizado para usar ArchivoAdjunto directamente con las props
+// nuevas; este export queda como red de seguridad, no como sistema
+// paralelo.
+export function CotizacionAdjunto(props) {
+  return React.createElement(
+    ArchivoAdjunto,
+    Object.assign({}, props, {
+      tipoDocumento: "cotizacion",
+      documento: props.cot,
+      onActualizarDocumento: props.onActualizarCotizacion,
+      demoActivo: props.esDemo,
+    })
   );
 }

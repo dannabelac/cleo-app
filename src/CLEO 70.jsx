@@ -393,10 +393,7 @@ function obtenerAccionesHoy(clientes,cotizaciones,esProductos,limite){
       listaP.push({
         cliente:c,dias:dias,tipo:c.estadoProspecto,
         prioridad:(c.estadoProspecto==="Convertido"||c.estadoProspecto==="Perdido")?"alta":dias>=10?"alta":dias>=5?"media":"baja",
-        // El monto de la tarjeta también cuenta el precio de interés ya
-        // capturado (aunque todavía no exista pedido/cotización) , antes
-        // se quedaba fijo en 0 y la columna de precio nunca aparecía.
-        desc:descP,mensajeSugerido:mensajeSugeridoP,monto:Number(c.precioInteres)||0,
+        desc:descP,mensajeSugerido:mensajeSugeridoP,monto:0,
         recordatorioId:recordatorioAutomaticoP?(recordatorioAutomaticoP.id||recordatorioAutomaticoP.fecha):null,
         recordatorioNota:recordatorioAutomaticoP?recordatorioAutomaticoP.nota:null,
         recordatorioEsManualOPersonalizado:false,
@@ -485,10 +482,8 @@ function obtenerAccionesHoy(clientes,cotizaciones,esProductos,limite){
       else desc1="Hoy habías programado retomar esta conversación.";
       // Una tarjeta automática conserva el monto de la cotización pendiente
       // realmente vinculada , nunca 0 solo porque exista además un
-      // recordatorio manual para el mismo cliente. Si todavía no hay
-      // cotización pero sí un precio de interés capturado, se usa ese en
-      // vez de dejar la tarjeta sin monto.
-      var montoNivel1=cotP?Number(cotP.monto):(Number(c.precioInteres)||0);
+      // recordatorio manual para el mismo cliente.
+      var montoNivel1=cotP?Number(cotP.monto):0;
       agregar(c,"Seguimiento programado",desc1,"alta",1,montoNivel1,c.mensajeSeguimientoPostVenta||"",false,
         r.id||r.fecha,r.nota||null,false);
     });
@@ -554,9 +549,7 @@ function obtenerAccionesHoy(clientes,cotizaciones,esProductos,limite){
         :notaLarga5
         ?'Anotaste: "'+notaLarga5+'" — lleva '+d+" días sin un siguiente paso."
         :"Esta conversación lleva "+d+" días sin un siguiente paso.");
-    // Mismo criterio que montoNivel1: sin cotización todavía, se usa el
-    // precio de interés ya capturado en vez de dejar la tarjeta en $0.
-    agregar(c,"Nuevo contacto",desc5,d>=15?"alta":d>=7?"media":"baja",5,Number(c.precioInteres)||0,"",estancado5);
+    agregar(c,"Nuevo contacto",desc5,d>=15?"alta":d>=7?"media":"baja",5,0,"",estancado5);
   });
 
   // NIVEL 6 , cliente ganado (satisfacción o referido)
@@ -3305,13 +3298,7 @@ export default function CLEO(props){
     });
     var esExistente=!!fp.clienteExistenteId;
     var nuevoId=esExistente?fp.clienteExistenteId:Date.now();
-    // etapaFinal YA NO salta directo a "Cotizacion enviada" cuando
-    // yaEnvio es true , ese salto de etapa lo hace guardarCot() al
-    // guardarse la cotización real (ver el cierre de esta función, que
-    // abre modalCot en vez de terminar el wizard). Así el pipeline nunca
-    // muestra "Cotización enviada" sin que exista una cotización de
-    // verdad detrás.
-    var etapaFinal="Nuevo contacto";
+    var etapaFinal=fp.yaEnvio?"Cotizacion enviada":"Nuevo contacto";
     var seguimientoFechaFinal=fp.yaEnvio
       ?resolverFechaPregunto(fp.fechaSeguimiento,fp.fechaSeguimientoCustom)
       :resolverFechaPregunto(fp.fechaEnvioPlaneada,fp.fechaEnvioPlaneadaCustom);
@@ -3356,19 +3343,7 @@ export default function CLEO(props){
     var clienteParaOrigen=esExistente?clientes.find(function(c){ return c.id===nuevoId; }):null;
     var yaTieneOrigen=esExistente?!!(clienteParaOrigen&&clienteParaOrigen.origen):false;
     if(!yaTieneOrigen){ setOrigenPromptId(nuevoId); }
-    if(fp.yaEnvio){
-      // "Ya le enviaste el precio" ahora abre la cotización real en vez
-      // de solo anotar la etapa , se cierra el wizard y se pasa a
-      // modalCot ya prellenado con el cliente y los items capturados
-      // aquí mismo (mismo patrón que el resto de los botones que abren
-      // modalCot con clienteId ya resuelto). Al guardar esa cotización,
-      // guardarCot() es quien mueve la etapa a "Cotizacion enviada".
-      cerrarPregunto();
-      setFormCot(Object.assign({},cotVacio,{clienteId:String(nuevoId),items:itemsFinalPg}));
-      setModalCot(true);
-    } else {
-      setPasoPregunto(5);
-    }
+    setPasoPregunto(5);
   }
   var s19i=useState(null); var contactadoOpcion=s19i[0]; var setContactadoOpcion=s19i[1];
   var s19j=useState(""); var contactadoNota=s19j[0]; var setContactadoNota=s19j[1];
@@ -11211,16 +11186,13 @@ export default function CLEO(props){
           var listaSinDisparador=recordatoriosDe(cliente).filter(function(r){ return (r.id||r.fecha)!==contactadoRecordatorioId; });
           return listaSinDisparador.length===recordatoriosDe(cliente).length?cliente:conRecordatoriosActualizados(cliente,listaSinDisparador);
         }
-        // "Ya se lo envié" abre la cotización real (con soporte para varios
-        // productos/servicios) en vez de solo anotar la etapa , cl ya es un
-        // cliente existente con sus items de interés ya capturados antes
-        // (vía "Alguien preguntó" o edición manual), así que se prellenan
-        // en modalCot. Es guardarCot() quien mueve la etapa a "Cotizacion
-        // enviada" al guardar , así nunca queda esa etapa (que la propia
-        // app marca como requiereCot:true, ver ~línea 4307) sin una
-        // cotización real detrás. Si por alguna razón cl nunca tuvo ningún
-        // item, se sintetiza uno con el interés legacy disponible , nunca
-        // se pierde el dato de origen.
+        // "Ya se lo envié" no crea aquí una cotización de un solo concepto
+        // ni abre modalCot , cl ya es un cliente existente con sus items de
+        // interés ya capturados antes (vía "Alguien preguntó" o edición
+        // manual), así que solo confirma que ya se envió: pasa esos mismos
+        // items a la etapa "Cotizacion enviada" y programa el seguimiento.
+        // Si por alguna razón nunca tuvo ningún item, se sintetiza uno con
+        // el interés legacy disponible , nunca se pierde el dato de origen.
         function abrirCotDesdeNC(dias){
           if(!dias) return;
           var f=new Date(HOY); f.setDate(f.getDate()+dias);
@@ -11228,14 +11200,16 @@ export default function CLEO(props){
           if(itemsNC.length===0&&interesDefaultNC){
             itemsNC=[{id:"it_"+Date.now(),catalogoId:null,nombre:interesDefaultNC,cantidad:1,precioUnitario:cl.precioInteres||"",total:Number(cl.precioInteres)||0}];
           }
+          var compatNC=buildItemsCompat(itemsNC);
           setClientes(clientes.map(function(x){
             if(x.id!==cl.id) return x;
-            var b=Object.assign({},sinRecordatorioDisparadorNC(x),{ultimoContacto:FECHA_HOY});
+            var camposInteresNC=esProductos
+              ?{items:itemsNC,productoInteres:compatNC.resumen||x.productoInteres,precioInteres:itemsNC.length>0?String(compatNC.total):x.precioInteres,cantidadInteres:itemsNC.length>0?String(compatNC.cantidad):x.cantidadInteres}
+              :{items:itemsNC,servicioInteres:compatNC.resumen||x.servicioInteres,precioInteres:itemsNC.length>0?String(compatNC.total):x.precioInteres,cantidadInteres:itemsNC.length>0?String(compatNC.cantidad):x.cantidadInteres};
+            var b=Object.assign({},sinRecordatorioDisparadorNC(x),camposInteresNC,{etapa:"Cotizacion enviada",fechaEtapa:FECHA_HOY,ultimoContacto:FECHA_HOY});
             return conRecordatoriosActualizados(b,recordatoriosDe(b).concat([{id:"r_"+Date.now(),fecha:fmtFechaLocal(f),nota:"Ya le enviaste la cotización. Dijiste que le darías seguimiento.",esPersonalizada:false,origen:"cleo",categoria:"pipeline"}]));
           }));
           cerrar();
-          setFormCot(Object.assign({},cotVacio,{clienteId:String(cl.id),items:itemsNC}));
-          setModalCot(true);
         }
         function reprogramarEnvioNC(dias){
           if(!dias) return;
@@ -12273,22 +12247,7 @@ export default function CLEO(props){
                 e("svg",{width:18,height:18,viewBox:"0 0 24 24",fill:"none"},e("path",{d:"M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z",stroke:C.purple,strokeWidth:1.5,strokeLinecap:"round",strokeLinejoin:"round"}))
               ),
               e("div",{style:{fontSize:13,color:C.textMuted,textAlign:"center"}},"Sin cotización registrada"),
-              e("button",{style:Object.assign({},st.btnP,{fontSize:12,padding:"8px 20px"}),onClick:function(){
-                // obtenerItemsInteres trae TODOS los renglones de interés ya
-                // capturados (p.ej. desde "Alguien preguntó"), cada uno con su
-                // propia cantidad y precio unitario , mismo criterio que el
-                // botón "Cotización" de la tarjeta de oportunidad en pipeline
-                // (~línea 7311). Antes se armaba un solo item con el TEXTO-
-                // RESUMEN completo como nombre ("Retoque de fotos + 1 concepto
-                // más") y precio en $0 , solo se cae a ese resumen si de
-                // verdad no hay ningún item capturado.
-                var itemsCR=obtenerItemsInteres(c);
-                if(itemsCR.length===0){
-                  itemsCR=[{id:"it_"+Date.now(),catalogoId:null,nombre:c.servicioInteres||c.notas||"",cantidad:1,precioUnitario:"",total:0}];
-                }
-                setFormCot(Object.assign({},cotVacio,{clienteId:String(c.id),items:itemsCR}));
-                setModalCot(true); setCotRapidaId(null);
-              }},"+ Crear cotización")
+              e("button",{style:Object.assign({},st.btnP,{fontSize:12,padding:"8px 20px"}),onClick:function(){ setFormCot(Object.assign({},cotVacio,{clienteId:String(c.id),items:[{id:"it_"+Date.now(),catalogoId:null,nombre:c.servicioInteres||c.notas||"",cantidad:1,precioUnitario:"",total:0}]})); setModalCot(true); setCotRapidaId(null); }},"+ Crear cotización")
             )
           ),
 
@@ -13554,7 +13513,7 @@ export default function CLEO(props){
     ),
 
     // MODAL COTIZACION
-    modalCot&&e("div",{style:Object.assign({},st.ov,{overflow:"hidden"}),onClick:function(){ setModalCot(false); setEditCotId(null); setFormCot(cotVacio); setEtapaPendiente(null); }},
+    modalCot&&e("div",{style:Object.assign({},st.ov,{overflow:"hidden"}),onClick:function(){ setModalCot(false); }},
       e("div",{style:{background:C.surface,borderRadius:isMobile?"20px 20px 0 0":"20px",width:isMobile?"100%":560,maxWidth:"100%",maxHeight:isMobile?"94vh":"88vh",border:isMobile?"none":"1px solid "+C.border,boxShadow:"0 8px 32px rgba(0,0,0,0.14)",display:"flex",flexDirection:"column",overflow:"hidden",margin:isMobile?0:"auto"},onClick:function(ev){ ev.stopPropagation(); }},
 
         // HEADER
@@ -13563,7 +13522,7 @@ export default function CLEO(props){
             e("div",{style:{fontWeight:700,fontSize:18,color:C.text}},editCotId?"Editar "+TXT.cotizacion:"Nueva cotización"),
             e("div",{style:{fontSize:12,color:C.textMuted,marginTop:2}},"Prepara una propuesta para tu cliente")
           ),
-          e("button",{style:{background:C.surfaceUp,border:"1px solid "+C.border,borderRadius:10,cursor:"pointer",color:C.textMuted,fontSize:16,lineHeight:1,padding:"6px 10px"},onClick:function(){ setModalCot(false); setEditCotId(null); setFormCot(cotVacio); setEtapaPendiente(null); }},"×")
+          e("button",{style:{background:C.surfaceUp,border:"1px solid "+C.border,borderRadius:10,cursor:"pointer",color:C.textMuted,fontSize:16,lineHeight:1,padding:"6px 10px"},onClick:function(){ setModalCot(false); setEtapaPendiente(null); }},"×")
         ),
 
         // BODY SCROLLABLE
@@ -13758,7 +13717,7 @@ export default function CLEO(props){
         (function(){
           var hayItemValido=(formCot.items||[]).some(function(it){ return it.nombre&&it.nombre.trim(); });
           return e("div",{style:{padding:isMobile?"12px 20px 28px":"14px 24px",borderTop:"1px solid "+C.border,display:"flex",gap:8,justifyContent:"flex-end",background:C.surfaceUp,flexShrink:0,flexWrap:"wrap"}},
-          e("button",{style:st.btn,onClick:function(){ setModalCot(false); setEditCotId(null); setFormCot(cotVacio); setEtapaPendiente(null); }},"Cancelar"),
+          e("button",{style:st.btn,onClick:function(){ setModalCot(false); setEtapaPendiente(null); }},"Cancelar"),
           e("button",{
             style:Object.assign({},st.btnP,{opacity:hayItemValido?1:0.5,background:"transparent",border:"1.5px solid "+C.purple,color:C.purple}),
             disabled:!hayItemValido,
