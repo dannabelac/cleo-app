@@ -457,18 +457,48 @@ export function ArchivoAdjunto(props) {
     return n.length > 22 ? n.slice(0, 19) + "…" : n;
   }
 
-  var btnStyle = {
-    cursor: "pointer",
-    padding: "4px 10px",
-    borderRadius: 8,
-    border: "1px solid " + (props.borderColor || "#E5E7EB"),
-    background: "transparent",
-    fontSize: 11,
-    color: props.textColor || "#374151",
-    display: "inline-flex",
-    alignItems: "center",
-    gap: 4,
-  };
+  // Modo compacto (props.compacto) , mismo botón/acción/modal, solo cambia
+  // la presentación a ícono-únicamente (sin nombre de archivo como texto),
+  // pensado para filas de acciones angostas (ej. tarjeta de Pedidos en
+  // móvil) donde el texto largo forzaba salto de línea o cuadrícula. El
+  // nombre del archivo sigue disponible vía title (tooltip) y dentro del
+  // modal, nunca se pierde información , solo deja de ocupar espacio en
+  // la fila.
+  var esCompacto = !!props.compacto;
+
+  var btnStyle = esCompacto
+    ? {
+        cursor: "pointer",
+        width: 32,
+        height: 32,
+        padding: 0,
+        borderRadius: 8,
+        border: "1px solid " + (props.borderColor || "#E5E7EB"),
+        background: "transparent",
+        fontSize: 13,
+        color: props.textColor || "#374151",
+        display: "inline-flex",
+        alignItems: "center",
+        justifyContent: "center",
+        position: "relative",
+        flexShrink: 0,
+      }
+    : {
+        cursor: "pointer",
+        padding: "4px 10px",
+        borderRadius: 8,
+        border: "1px solid " + (props.borderColor || "#E5E7EB"),
+        background: "transparent",
+        fontSize: 11,
+        color: props.textColor || "#374151",
+        display: "inline-flex",
+        alignItems: "center",
+        gap: 4,
+      };
+
+  var tituloBoton = meta
+    ? "Ver archivo adjunto: " + normalizarNombre(meta.nombreOriginal)
+    : "Adjuntar archivo";
 
   return React.createElement(
     React.Fragment,
@@ -477,11 +507,33 @@ export function ArchivoAdjunto(props) {
       "button",
       {
         style: btnStyle,
-        title: meta ? "Ver archivo adjunto" : "Adjuntar archivo",
+        title: tituloBoton,
         onClick: abrirModal,
       },
-      "📎 ",
-      meta ? nombreCorto(meta.nombreOriginal) || "1 archivo" : "Adjuntar archivo"
+      esCompacto
+        ? [
+            "📎",
+            // Puntito indicador cuando ya hay un archivo , mismo lenguaje
+            // visual que el badge de "Pagos" compacto en Pedidos.
+            meta &&
+              React.createElement("span", {
+                key: "dot",
+                style: {
+                  position: "absolute",
+                  top: 3,
+                  right: 3,
+                  width: 6,
+                  height: 6,
+                  borderRadius: "50%",
+                  background: "#10B981",
+                  border: "1px solid #fff",
+                },
+              }),
+          ]
+        : [
+            "📎 ",
+            meta ? nombreCorto(meta.nombreOriginal) || "1 archivo" : "Adjuntar archivo",
+          ]
     ),
     abierto &&
       React.createElement(

@@ -2541,10 +2541,17 @@ var ventaVacia={tipo:"especifico",clienteId:"",concepto:"",monto:"",fecha:FECHA_
 function BtnCanal(props){
   var e=React.createElement;
   var cliente=props.cliente; var small=props.small; var concepto=props.concepto;
+  var iconOnly=props.iconOnly;
   var msg=msgEtapa(cliente,concepto);
   var url=contactUrl(cliente,msg);
   if(!url) return null;
   var canal=cliente.canalPrincipal||"WhatsApp"; var cc=canalColor(canal);
+  // Variante ícono-únicamente (props.iconOnly) , mismo enlace/acción, solo
+  // se oculta el texto del canal para caber en filas angostas (ej. tarjeta
+  // de Pedidos en móvil). El nombre del canal sigue disponible vía title.
+  if(iconOnly){
+    return e("a",{href:url,target:"_blank",rel:"noopener noreferrer",title:"Escribir por "+canal,style:{cursor:"pointer",width:32,height:32,borderRadius:8,border:"0.5px solid "+cc+"44",textDecoration:"none",display:"inline-flex",alignItems:"center",justifyContent:"center",background:cc+"18",flexShrink:0}},e(SvgIcon,{canal:canal,size:14}));
+  }
   return e("a",{href:url,target:"_blank",rel:"noopener noreferrer",style:{cursor:"pointer",padding:small?"3px 8px":"5px 10px",borderRadius:8,border:"0.5px solid "+cc+"44",fontSize:small?11:12,color:cc,fontWeight:500,textDecoration:"none",display:"inline-flex",alignItems:"center",gap:4,background:cc+"18"}},e(SvgIcon,{canal:canal,size:small?11:13}),canal);
 }
 
@@ -7317,6 +7324,32 @@ export default function CLEO(props){
                 var editando=editandoId===c.id;
 
                 var esHighlight=c.id===highlightOpoId;
+                // Única fuente de verdad para el botón "Cotización" de esta
+                // tarjeta , la usan tanto la variante de texto (desktop)
+                // como la variante ícono-únicamente (móvil), para no
+                // duplicar la lógica de "reusar cotización existente vs.
+                // sintetizar items desde el interés" en dos lados.
+                function abrirCotizacionDesdeOpo(){
+                  var cotExistente=cotizaciones.find(function(cot){ return String(cot.clienteId)===String(c.id); });
+                  if(cotExistente){
+                    editarCot(cotExistente);
+                  } else {
+                    // obtenerItemsInteres trae TODOS los items de interés del
+                    // cliente (no solo uno) , si no hay ninguno, sintetiza uno
+                    // vacío con el nombre del producto/catálogo si aplica.
+                    var itemsOpo=obtenerItemsInteres(c);
+                    if(itemsOpo.length===0){
+                      var precioOpo=c.precioInteres||"";
+                      if(!precioOpo&&c.productoInteres){
+                        var match=catActivo.find(function(p){ return p.nombre===c.productoInteres; });
+                        if(match&&match.precio) precioOpo=String(match.precio);
+                      }
+                      itemsOpo=[{id:"it_"+Date.now(),catalogoId:null,nombre:c.productoInteres||"",cantidad:1,precioUnitario:precioOpo,total:Number(precioOpo)||0}];
+                    }
+                    setFormCot(Object.assign({},cotVacio,{clienteId:String(c.id),clienteNombre:c.nombre,items:itemsOpo}));
+                    setModalCot(true);
+                  }
+                }
                 return e("div",{key:c.id,style:{background:C.surface,borderRadius:16,border:"2px solid "+(esHighlight?C.purple:esPerdido?C.border+"55":C.border),padding:"16px 18px",boxShadow:esHighlight?"0 0 0 3px "+C.purple+"22":"0 1px 4px rgba(0,0,0,0.04)",opacity:esPerdido?0.65:1,transition:"box-shadow 0.3s"},ref:function(el){ if(el&&esHighlight){ el.scrollIntoView({behavior:"smooth",block:"start"}); } }},
 
                   // FILA 1: avatar + nombre + estado (discreto)
@@ -7373,32 +7406,26 @@ export default function CLEO(props){
                   })(),
 
                   // FILA 3: acciones
-                  !esPerdido&&!editando&&e("div",{style:{display:"flex",gap:6,borderTop:"1px solid "+C.border+"44",paddingTop:10,alignItems:"center"}},
-                    e(BtnCanal,{cliente:c,small:true}),
-                    c.productoInteres&&c.precioInteres&&e("button",{
-                      style:{cursor:"pointer",padding:"5px 10px",borderRadius:8,border:"1px solid "+C.border+"88",background:"transparent",fontSize:11,color:C.textDim},
-                      onClick:function(){
-                        var cotExistente=cotizaciones.find(function(cot){ return String(cot.clienteId)===String(c.id); });
-                        if(cotExistente){
-                          editarCot(cotExistente);
-                        } else {
-                          // obtenerItemsInteres trae TODOS los items de interés del
-                          // cliente (no solo uno) , si no hay ninguno, sintetiza uno
-                          // vacío con el nombre del producto/catálogo si aplica.
-                          var itemsOpo=obtenerItemsInteres(c);
-                          if(itemsOpo.length===0){
-                            var precioOpo=c.precioInteres||"";
-                            if(!precioOpo&&c.productoInteres){
-                              var match=catActivo.find(function(p){ return p.nombre===c.productoInteres; });
-                              if(match&&match.precio) precioOpo=String(match.precio);
-                            }
-                            itemsOpo=[{id:"it_"+Date.now(),catalogoId:null,nombre:c.productoInteres||"",cantidad:1,precioUnitario:precioOpo,total:Number(precioOpo)||0}];
-                          }
-                          setFormCot(Object.assign({},cotVacio,{clienteId:String(c.id),clienteNombre:c.nombre,items:itemsOpo}));
-                          setModalCot(true);
-                        }
-                      }
-                    },"Cotización"),
+                  // Secundarias: en móvil, mismo tratamiento ícono-únicamente
+                  // (32×32, nombre disponible como tooltip) que se usó en la
+                  // tarjeta de Pedidos, para mantener el mismo lenguaje visual
+                  // en toda la app. En desktop se deja el botón con texto,
+                  // igual que antes.
+                  !esPerdido&&!editando&&e("div",{style:{display:"flex",gap:isMobile?8:6,borderTop:"1px solid "+C.border+"44",paddingTop:10,alignItems:"center"}},
+                    isMobile
+                      ? e(BtnCanal,{cliente:c,iconOnly:true})
+                      : e(BtnCanal,{cliente:c,small:true}),
+                    c.productoInteres&&c.precioInteres&&(isMobile
+                      ? e("button",{
+                          title:"Cotización",
+                          style:{cursor:"pointer",width:32,height:32,padding:0,borderRadius:8,border:"1px solid "+C.border+"88",background:"transparent",fontSize:13,color:C.textDim,display:"inline-flex",alignItems:"center",justifyContent:"center",flexShrink:0},
+                          onClick:abrirCotizacionDesdeOpo
+                        },"📄")
+                      : e("button",{
+                          style:{cursor:"pointer",padding:"5px 10px",borderRadius:8,border:"1px solid "+C.border+"88",background:"transparent",fontSize:11,color:C.textDim},
+                          onClick:abrirCotizacionDesdeOpo
+                        },"Cotización")
+                    ),
 
                     e("div",{style:{flex:1}}),
 
@@ -7820,29 +7847,73 @@ export default function CLEO(props){
                     )
                   ),
 
-                  // HINT CLEO
-                  !esCancelado&&!esEntregado&&(function(){
-                    var txt=restante>0&&totalPedido>0?"💡 Cobra el saldo antes de entregar":
-                             ep.k==="sin_pago"&&totalPedido>0?"💡 Aún no hay pago registrado":null;
-                    if(!txt) return null;
-                    return e("div",{style:{fontSize:11,color:C.textDim,marginBottom:6}},txt);
-                  })(),
-
                   // FILA 3: acciones
+                  // Nota UX: se quitó el hint 💡 que iba aquí ("Cobra el
+                  // saldo antes de entregar") porque repetía exactamente el
+                  // mismo dato que ya muestran la columna "Restante" (FILA 2)
+                  // y el botón "Registrar pago · $X pendiente" de abajo , el
+                  // mismo número aparecía 3 veces en la tarjeta sin agregar
+                  // nada nuevo.
                   !esCancelado&&e("div",{style:{borderTop:"1px solid "+C.border+"44",paddingTop:8,display:"flex",flexDirection:isMobile?"column":"row",gap:8,alignItems:isMobile?"stretch":"center"}},
-                    // Secundarias — en móvil, grid de 2 columnas para que
-                    // SIEMPRE queden en pares (antes era flexWrap sobre una
-                    // fila angosta, y el botón que no cabía , casi siempre
-                    // "Pagos" , se quedaba solo colgado en su propia línea).
-                    // Cada botón/componente va envuelto en su propio div ,
-                    // necesario porque ArchivoAdjunto devuelve un Fragment
-                    // (puede renderizar su modal como hermano del botón), así
-                    // ese div sigue siendo la celda estable del grid aunque
-                    // el modal interno se abra.
-                    e("div",{style:isMobile?{display:"grid",gridTemplateColumns:"1fr 1fr",gap:6}:{display:"flex",gap:6,flexWrap:"wrap",alignItems:"center"}},
-                      cl&&e("div",{style:isMobile?{display:"flex",justifyContent:"center"}:undefined},e(BtnCanal,{cliente:cl,small:true})),
-                      e("div",{style:isMobile?{display:"flex",justifyContent:"center"}:undefined},e(ArchivoAdjunto,{tipoDocumento:"pedido",documento:ped,demoActivo:!!(perfil.modoDemo||props.demoActivo),onActualizarDocumento:actualizarArchivoAdjuntoPedido,borderColor:C.border+"88",textColor:C.textDim})),
-                      e("div",{style:isMobile?{display:"flex",justifyContent:"center"}:undefined},e("button",{
+                    // Secundarias.
+                    // Desktop: fila con texto, como antes (ahí sí hay espacio).
+                    // Móvil: fila ÚNICA de botones ícono-únicamente de 32×32 ,
+                    // antes era una cuadrícula 2×2 que se sentía forzada y
+                    // ocupaba demasiada altura para acciones secundarias. El
+                    // nombre de cada acción sigue disponible como tooltip
+                    // (title) y dentro de su propio modal , no se pierde
+                    // información, solo deja de competir en tamaño con la
+                    // acción principal. Cada botón/componente va envuelto en
+                    // su propio div porque ArchivoAdjunto devuelve un
+                    // Fragment (puede renderizar su modal como hermano del
+                    // botón).
+                    isMobile
+                      ? e("div",{style:{display:"flex",gap:8,alignItems:"center"}},
+                          cl&&e(BtnCanal,{cliente:cl,iconOnly:true}),
+                          e(ArchivoAdjunto,{tipoDocumento:"pedido",documento:ped,demoActivo:!!(perfil.modoDemo||props.demoActivo),onActualizarDocumento:actualizarArchivoAdjuntoPedido,borderColor:C.border+"88",textColor:C.textDim,compacto:true}),
+                          e("button",{
+                            title:"Cotización",
+                            style:{cursor:"pointer",width:32,height:32,padding:0,borderRadius:8,border:"1px solid "+C.border+"88",background:"transparent",fontSize:13,color:C.textDim,display:"inline-flex",alignItems:"center",justifyContent:"center",flexShrink:0},
+                            onClick:function(){
+                              // Vínculo por cotizacionId explícito primero , nunca
+                              // se adivina por clienteId si ya sabemos exactamente
+                              // cuál es (un cliente puede tener varias cotizaciones).
+                              // Solo se cae al clienteId de hoy para pedidos viejos
+                              // que todavía no tienen cotizacionId , y en ese caso
+                              // se estampa el vínculo de una vez, para que la
+                              // próxima vez ya sea directo.
+                              var cotVinculada=ped.cotizacionId?cotizaciones.find(function(cot){ return cot.id===ped.cotizacionId; }):null;
+                              if(!cotVinculada&&!ped.cotizacionId){
+                                var cotHeuristica=cotizaciones.find(function(cot){ return String(cot.clienteId)===String(ped.clienteId); });
+                                if(cotHeuristica){
+                                  cotVinculada=cotHeuristica;
+                                  setPedidos(function(prevP){ return prevP.map(function(p){ return p.id===ped.id?Object.assign({},p,{cotizacionId:cotHeuristica.id}):p; }); });
+                                }
+                              }
+                              if(cotVinculada){ editarCot(cotVinculada); }
+                              else {
+                                setFormCot(Object.assign({},cotVacio,{
+                                  clienteId:String(ped.clienteId),clienteNombre:cl?cl.nombre:"",
+                                  items:[{id:"it_"+Date.now(),catalogoId:null,nombre:ped.productos||"",cantidad:Number(ped.cantidad)||1,precioUnitario:ped.total||"",total:Number(ped.total)||0}],
+                                  _origenPedidoId:ped.id
+                                }));
+                                setModalCot(true);
+                              }
+                            }
+                          },"📄"),
+                          e("button",{
+                            title:pagosArr.length>0?"Pagos ("+pagosArr.length+")":"Ver pagos",
+                            style:{cursor:"pointer",width:32,height:32,padding:0,borderRadius:8,border:"1px solid "+C.border+"88",background:"transparent",fontSize:13,color:C.textDim,display:"inline-flex",alignItems:"center",justifyContent:"center",position:"relative",flexShrink:0},
+                            onClick:function(){
+                              setFormPagoPedidoModal({monto:"",fecha:FECHA_HOY,concepto:pagosArr.length===0?"Anticipo":"Pago"});
+                              setPedidoPagosId(ped.id);
+                            }
+                          },"💳",restante>0&&e("span",{style:{position:"absolute",top:-4,right:-4,minWidth:14,height:14,padding:"0 3px",borderRadius:7,background:C.purple,color:"#fff",fontSize:9,fontWeight:700,display:"flex",alignItems:"center",justifyContent:"center",border:"1px solid #fff"}},pagosArr.length))
+                        )
+                      : e("div",{style:{display:"flex",gap:6,flexWrap:"wrap",alignItems:"center"}},
+                      cl&&e(BtnCanal,{cliente:cl,small:true}),
+                      e(ArchivoAdjunto,{tipoDocumento:"pedido",documento:ped,demoActivo:!!(perfil.modoDemo||props.demoActivo),onActualizarDocumento:actualizarArchivoAdjuntoPedido,borderColor:C.border+"88",textColor:C.textDim}),
+                      e("button",{
                         style:{cursor:"pointer",padding:"6px 10px",borderRadius:8,border:"1px solid "+C.border+"88",background:"transparent",fontSize:11,color:C.textDim,whiteSpace:"nowrap"},
                         onClick:function(){
                           // Vínculo por cotizacionId explícito primero , nunca
@@ -7870,14 +7941,14 @@ export default function CLEO(props){
                             setModalCot(true);
                           }
                         }
-                      },"Cotización")),
-                      e("div",{style:isMobile?{display:"flex",justifyContent:"center"}:undefined},e("button",{
+                      },"Cotización"),
+                      e("button",{
                         style:{cursor:"pointer",padding:"6px 10px",borderRadius:8,border:"1px solid "+C.border+"88",background:"transparent",fontSize:11,color:C.textDim,whiteSpace:"nowrap"},
                         onClick:function(){
                           setFormPagoPedidoModal({monto:"",fecha:FECHA_HOY,concepto:pagosArr.length===0?"Anticipo":"Pago"});
                           setPedidoPagosId(ped.id);
                         }
-                      },pagosArr.length>0?"Pagos ("+pagosArr.length+")":"Ver pagos"))
+                      },pagosArr.length>0?"Pagos ("+pagosArr.length+")":"Ver pagos")
                     ),
                     !isMobile&&e("div",{style:{flex:1}}),
                     // Acción principal — full width en móvil, a la derecha en desktop
