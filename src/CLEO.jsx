@@ -510,7 +510,15 @@ function obtenerAccionesHoy(clientes,cotizaciones,esProductos,limite){
       // cotización pero sí un precio de interés capturado, se usa ese en
       // vez de dejar la tarjeta sin monto.
       var montoNivel1=cotP?Number(cotP.monto):(Number(c.precioInteres)||0);
-      agregar(c,"Seguimiento programado",desc1,"alta",1,montoNivel1,c.mensajeSeguimientoPostVenta||"",false,
+      // mensajeSugerido1: mismo criterio que en la rama Productos de esta
+      // misma función (ver comentario ahí) , c.mensajeSeguimientoPostVenta
+      // solo agrega algo nuevo cuando la tarjeta es de un cliente Ganado o
+      // Perdido (es el mensaje de seguimiento post-venta/reactivación). En
+      // cualquier otra etapa, desc1 ya cuenta exactamente lo mismo que ese
+      // campo suele repetir ("Preguntó por X y quedaste en enviarle el
+      // precio."), así que mostrarlo aparte solo duplicaba la tarjeta.
+      var mensajeSugerido1=(c.etapa==="Ganado"||c.etapa==="Perdido")?(c.mensajeSeguimientoPostVenta||""):"";
+      agregar(c,"Seguimiento programado",desc1,"alta",1,montoNivel1,mensajeSugerido1,false,
         r.id||r.fecha,r.nota||null,false);
     });
   });
@@ -8744,12 +8752,15 @@ export default function CLEO(props){
             e("div",{style:{fontSize:14,color:C.textMuted,marginTop:2}},"Lo que tus clientes ya contrataron y tienes por completar.")
           ),
           e("div",{style:{display:"flex",gap:8,marginBottom:20,alignItems:"center",flexWrap:"wrap"}},
-            e("div",{style:{display:"flex",gap:8,flexWrap:"wrap",flex:isMobile?"1 1 100%":"0 1 auto"}},
+            // En móvil los 3 filtros se acomodan en cuadrícula de 3 columnas
+            // iguales, siempre parejos , antes, si envolvían, el último
+            // quedaba flotando solo y angosto en su propia fila.
+            e("div",{style:isMobile?{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:8,width:"100%"}:{display:"flex",gap:8,flexWrap:"wrap",flex:"0 1 auto"}},
               [{k:"porCompletar",l:"Por completar",n:nPorCompletar,color:C.purple},{k:"completado",l:"Completados",n:nCompletados,color:C.green},{k:"conSaldo",l:"Con saldo",n:nConSaldo,color:C.amber}].map(function(f){
                 var activo=filtroTrabajo===f.k;
-                return e("button",{key:f.k,style:{cursor:"pointer",padding:"7px 14px",borderRadius:20,border:"1.5px solid "+(activo?f.color:C.border),background:activo?f.color+"18":"transparent",fontSize:13,color:activo?f.color:C.textMuted,fontWeight:activo?700:500,display:"flex",alignItems:"center",gap:6,whiteSpace:"nowrap"},onClick:function(){ setFiltroTrabajo(f.k); }},
+                return e("button",{key:f.k,style:{cursor:"pointer",padding:isMobile?"9px 6px":"7px 14px",borderRadius:isMobile?14:20,border:"1.5px solid "+(activo?f.color:C.border),background:activo?f.color+"18":"transparent",fontSize:isMobile?12:13,color:activo?f.color:C.textMuted,fontWeight:activo?700:500,display:"flex",flexDirection:isMobile?"column":"row",alignItems:"center",justifyContent:"center",gap:isMobile?4:6,whiteSpace:isMobile?"normal":"nowrap",textAlign:"center",lineHeight:1.15,minWidth:0},onClick:function(){ setFiltroTrabajo(f.k); }},
                   f.l,
-                  e("span",{style:{fontSize:11,padding:"1px 7px",borderRadius:20,background:activo?f.color:C.border,color:activo?"#fff":C.textMuted,fontWeight:700}},f.n)
+                  e("span",{style:{fontSize:11,padding:"1px 7px",borderRadius:20,background:activo?f.color:C.border,color:activo?"#fff":C.textMuted,fontWeight:700,flexShrink:0}},f.n)
                 );
               })
             ),
