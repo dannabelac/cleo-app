@@ -108,6 +108,15 @@ function fraseDia(fechaStr){
   return "El "+n;
 }
 function diasSinContacto(c){ var ref=c.ultimoContacto&&c.ultimoContacto!==""?c.ultimoContacto:c.fecha; return Math.max(0,Math.floor((HOY-new Date(ref))/86400000)); }
+// Texto para insertar donde antes iba literal "hace N días" , 0 días es
+// HOY (nunca "hace 0 días"), 1 día es AYER, de ahí en adelante sí cuenta
+// en días. Centralizado para no repetir el mismo criterio en cada tarjeta
+// que muestra "hace N días".
+function textoHaceDias(dias){
+  if(dias<=0) return "hoy";
+  if(dias===1) return "ayer";
+  return "hace "+dias+" días";
+}
 // Da SIEMPRE un motivo comprensible para el próximo seguimiento de un
 // cliente, incluso si nunca se dejó una nota , se usa tanto en la ficha
 // completa como en los badges compactos de la lista, para no duplicar
@@ -369,26 +378,38 @@ function obtenerAccionesHoy(clientes,cotizaciones,esProductos,limite){
       }
       if(!debeSugerir) return;
 
-      var descP,mensajeSugeridoP=c.mensajeSeguimientoPostVenta||"";
+      // mensajeSugeridoP: solo se muestra (💬 cita en cursiva debajo de la
+      // descripción) cuando de verdad agrega algo que descP no dice ya , es
+      // decir, cuando esta tarjeta viene de un recordatorio programado real
+      // (Convertido/Perdido, que solo se sugieren vía recordatorioAutomaticoP,
+      // ver debeSugerir arriba). En Nueva/En seguimiento, c.mensajeSeguimientoPostVenta
+      // es casi siempre el eco automático del mismo texto que ya arma descP
+      // ("Preguntó por X y quedaste en enviarle el precio."), así que
+      // mostrarlo aparte solo repetía la tarjeta , mismo criterio que ya usa
+      // esta función para Servicios (NIVEL 4/5 pasan "" a agregar() por la
+      // misma razón).
+      var descP,mensajeSugeridoP="";
       if(c.estadoProspecto==="Convertido"){
         var frasesSegunTipoP={"15":"buen momento para pedirle una recomendación.","30":"buen momento para ver si necesita algo más.","60":"buen momento para platicarle de un proyecto nuevo.","90":"buen momento para mantenerte presente."};
         var fraseGanadoP=frasesSegunTipoP[c.tipoSeguimientoPostVenta]||"buen momento para ver si hay una posible recompra.";
         descP=(c.productoInteres?"Ya le vendiste "+c.productoInteres+". ":"Ya te compró. ")+"Hoy habías programado retomar contacto — "+fraseGanadoP;
+        mensajeSugeridoP=c.mensajeSeguimientoPostVenta||"";
       }
       else if(c.estadoProspecto==="Perdido"){
         var etiquetasMotivoP={"Precio alto":"le pareció caro","Eligio a otro":"eligió a otro","Sin presupuesto":"no tenía presupuesto","No respondio":"dejó de responder","Otro":"no siguió adelante"};
         var etiquetaMotivoP=etiquetasMotivoP[c.motivoPerdida]||"no siguió adelante";
         descP="En su momento "+etiquetaMotivoP+". Hoy habías programado retomar contacto — vale la pena ver si su situación cambió.";
+        mensajeSugeridoP=c.mensajeSeguimientoPostVenta||"";
       }
       else if(c.estadoProspecto==="Nueva"){
         descP=c.productoInteres
-          ?"Preguntó por "+c.productoInteres+(c.precioInteres?" ($"+Number(c.precioInteres).toLocaleString()+")":"")+" hace "+dias+" días y todavía no le has dado seguimiento."
-          :"Sin retomar hace "+dias+" días";
+          ?"Preguntó por "+c.productoInteres+(c.precioInteres?" ($"+Number(c.precioInteres).toLocaleString()+")":"")+" "+textoHaceDias(dias)+" y todavía no le has dado seguimiento."
+          :"Sin retomar "+textoHaceDias(dias);
       }
       else{
         descP=c.productoInteres
-          ?"Tiene tu precio de "+c.productoInteres+(c.precioInteres?" ($"+Number(c.precioInteres).toLocaleString()+")":"")+" desde hace "+dias+" días, sin que se haya convertido en pedido."
-          :"En seguimiento hace "+dias+" días";
+          ?"Tiene tu precio de "+c.productoInteres+(c.precioInteres?" ($"+Number(c.precioInteres).toLocaleString()+")":"")+" desde "+textoHaceDias(dias)+", sin que se haya convertido en pedido."
+          :"En seguimiento "+textoHaceDias(dias);
       }
       listaP.push({
         cliente:c,dias:dias,tipo:c.estadoProspecto,
@@ -489,7 +510,15 @@ function obtenerAccionesHoy(clientes,cotizaciones,esProductos,limite){
       // cotización pero sí un precio de interés capturado, se usa ese en
       // vez de dejar la tarjeta sin monto.
       var montoNivel1=cotP?Number(cotP.monto):(Number(c.precioInteres)||0);
-      agregar(c,"Seguimiento programado",desc1,"alta",1,montoNivel1,c.mensajeSeguimientoPostVenta||"",false,
+      // mensajeSugerido1: mismo criterio que en la rama Productos de esta
+      // misma función (ver comentario ahí) , c.mensajeSeguimientoPostVenta
+      // solo agrega algo nuevo cuando la tarjeta es de un cliente Ganado o
+      // Perdido (es el mensaje de seguimiento post-venta/reactivación). En
+      // cualquier otra etapa, desc1 ya cuenta exactamente lo mismo que ese
+      // campo suele repetir ("Preguntó por X y quedaste en enviarle el
+      // precio."), así que mostrarlo aparte solo duplicaba la tarjeta.
+      var mensajeSugerido1=(c.etapa==="Ganado"||c.etapa==="Perdido")?(c.mensajeSeguimientoPostVenta||""):"";
+      agregar(c,"Seguimiento programado",desc1,"alta",1,montoNivel1,mensajeSugerido1,false,
         r.id||r.fecha,r.nota||null,false);
     });
   });
@@ -1116,8 +1145,11 @@ var cotDemo=[
       descripcion:"<p>3 piezas para redes con <b>3 rondas de revisión</b> incluidas.</p>",
       condiciones:"<p>Entrega en 5 días hábiles tras aprobar el concepto.</p>"}
   ],descuento:"",tipoDescuento:"porcentaje",subtotal:8300,monto:8300,estatus:"Aceptada",fecha:diasAtras(23),motivoPerdida:"",vigencia:"",vigenciaDias:"",notas:"3 meses de consultoría + diseño de contenido inicial",pagos:[{id:"p_501",monto:8300,fecha:diasAtras(19),concepto:"Pago completo"}]},
-  {id:5,clienteId:6,concepto:"Branding completo",cantidad:1,precioUnit:12000,monto:12000,estatus:"Rechazada",fecha:diasAtras(38),motivoPerdida:"Eligió otro proveedor",vigencia:"",vigenciaDias:"",notas:"",pagos:[]},
-  {id:6,clienteId:7,concepto:"Sesión de fotos premium",cantidad:1,precioUnit:4500,monto:4500,estatus:"Rechazada",fecha:diasAtras(54),motivoPerdida:"Precio alto",vigencia:"",vigenciaDias:"",notas:"Incluye 30 fotos editadas",pagos:[]},
+  // fechaRechazo distinta de fecha en ambas , mismo criterio que ya se usa
+  // con fechaCierre/fechaCancelacion: el rechazo real casi nunca cae el
+  // mismo día en que se envió la cotización.
+  {id:5,clienteId:6,concepto:"Branding completo",cantidad:1,precioUnit:12000,monto:12000,estatus:"Rechazada",fecha:diasAtras(38),fechaRechazo:diasAtras(30),motivoPerdida:"Eligió otro proveedor",vigencia:"",vigenciaDias:"",notas:"",pagos:[]},
+  {id:6,clienteId:7,concepto:"Sesión de fotos premium",cantidad:1,precioUnit:4500,monto:4500,estatus:"Rechazada",fecha:diasAtras(54),fechaRechazo:diasAtras(47),motivoPerdida:"Precio alto",vigencia:"",vigenciaDias:"",notas:"Incluye 30 fotos editadas",pagos:[]},
 ];
 var serviciosDemo=[
   {id:1,nombre:"Consultoría",precio:3500,descripcion:"Sesión de consultoría de 2 horas"},
@@ -1157,7 +1189,12 @@ var clientesDemoProductos=[
   {id:104,nombre:"Luisa Martínez",negocio:"",contacto:"9994445566",origen:"Facebook",notas:"Se le canceló su pedido por falta de material y no ha respondido desde entonces",fecha:diasAtras(18),instagram:"",canalPrincipal:"WhatsApp",messenger:"",email:"",fechaEtapa:diasAtras(18),estadoProspecto:"Sin respuesta",productoInteres:"Aretes plata x2",cantidadInteres:"2",precioInteres:"700",ultimoContacto:diasAtras(17)},
   {id:105,nombre:"Diana López",negocio:"",contacto:"9995556677",origen:"Instagram",notas:"Le pareció caro, fue con otra vendedora",fecha:diasAtras(23),instagram:"@dianalopez",canalPrincipal:"Instagram",messenger:"",email:"",fechaEtapa:diasAtras(20),estadoProspecto:"Perdido",productoInteres:"Anillo boda custom",cantidadInteres:"1",precioInteres:"1200",ultimoContacto:diasAtras(20),motivoPerdida:"Precio alto"},
   {id:106,nombre:"Andrea Vega",negocio:"",contacto:"9996667788",origen:"Referido",notas:"Pagó completo, encantada con el resultado",fecha:diasAtras(16),instagram:"",canalPrincipal:"WhatsApp",messenger:"",email:"",fechaEtapa:diasAtras(11),estadoProspecto:"Convertido",productoInteres:"Collar perlas",cantidadInteres:"1",precioInteres:"850",ultimoContacto:diasAtras(11)},
-  {id:107,nombre:"Renata Flores",negocio:"",contacto:"9997778899",origen:"Instagram",notas:"Preguntó disponibilidad para quincena",fecha:diasAtras(8),instagram:"@renataflores",canalPrincipal:"WhatsApp",messenger:"",email:"",fechaEtapa:diasAtras(8),estadoProspecto:"Nueva",productoInteres:"Aretes dorados",cantidadInteres:"1",precioInteres:"290",ultimoContacto:diasAtras(8)},
+  // Ya tiene una cotización aceptada + pedido pagado (cotDemoProductos
+  // cot_demo_p1 / pedidosDemoProductos ped_demo_10) , estadoProspecto debe
+  // reflejar eso, igual que hacen guardarCot/cerrarCotizacion en la app real
+  // (~líneas 3009,4349), o si no se sigue mostrando como "oportunidad nueva
+  // sin retomar" en Hoy aunque ya se le vendió.
+  {id:107,nombre:"Renata Flores",negocio:"",contacto:"9997778899",origen:"Instagram",notas:"Preguntó disponibilidad para quincena",fecha:diasAtras(8),instagram:"@renataflores",canalPrincipal:"WhatsApp",messenger:"",email:"",fechaEtapa:diasAtras(6),estadoProspecto:"Convertido",productoInteres:"Aretes dorados + 1 concepto más",cantidadInteres:"3",precioInteres:"1060",ultimoContacto:diasAtras(4)},
   {id:108,nombre:"Paola Jiménez",negocio:"",contacto:"9998889900",origen:"Instagram",notas:"Le encantó el anillo pero el presupuesto no le alcanzaba",fecha:diasAtras(35),instagram:"@paolaj",canalPrincipal:"WhatsApp",messenger:"",email:"",fechaEtapa:diasAtras(33),estadoProspecto:"Perdido",productoInteres:"Anillo boda custom",cantidadInteres:"1",precioInteres:"1200",ultimoContacto:diasAtras(33),motivoPerdida:"Precio alto",seguimientoFecha:diasAtras(-7),notaRecontacto:"Dijo que después de cobrar su quincena doble, le gustaría retomarlo."},
   {id:109,nombre:"Gaby Torres",negocio:"",contacto:"9990001122",origen:"Referido",notas:"Pidió aretes para su hija, pagó completo al recibir",fecha:diasAtras(5),instagram:"",canalPrincipal:"WhatsApp",messenger:"",email:"",fechaEtapa:diasAtras(3),estadoProspecto:"Convertido",productoInteres:"Aretes plata",cantidadInteres:"1",precioInteres:"350",ultimoContacto:diasAtras(3)},
   {id:110,nombre:"Ximena Cab",negocio:"",contacto:"9991234000",origen:"Facebook",notas:"Preguntó por un collar personalizado con inicial",fecha:diasAtras(4),instagram:"",canalPrincipal:"Facebook",messenger:"ximenacab",email:"",fechaEtapa:diasAtras(4),estadoProspecto:"En seguimiento",productoInteres:"Collar dorado",cantidadInteres:"1",precioInteres:"480",ultimoContacto:diasAtras(4)},
@@ -1171,8 +1208,12 @@ var pedidosDemoProductos=[
   // en negativo (obtenerReversionIngresoPedido): el anticipo cuenta como
   // ingreso el día que entró, y se descuenta aparte el día de la
   // cancelación (fechaCancelacion), unos días después.
-  {id:"ped_demo_5",clienteId:104,productos:"Aretes plata",cantidad:2,total:700,pagos:[{id:"pp_d5b",monto:350,fecha:diasAtras(17),concepto:"Anticipo 50%"}],estadoPedido:"cancelado",motivoCancelacion:"No conseguí insumo",motivoCancelacionLado:"negocio",notas:"No llegó el material a tiempo con el proveedor, se le devolvió el anticipo",fecha:diasAtras(17),fechaCreado:new Date(Date.now()-17*86400000).toISOString(),fechaCancelacion:diasAtras(13)},
-  {id:"ped_demo_6",clienteId:105,productos:"Anillo boda custom",cantidad:1,total:1200,pagos:[{id:"pp_d6",monto:300,fecha:diasAtras(22),concepto:"Anticipo"}],estadoPedido:"cancelado",motivoCancelacion:"Cliente se arrepintió",motivoCancelacionLado:"cliente",notas:"Encontró un anillo más barato en otro lado",fecha:diasAtras(22),fechaCreado:new Date(Date.now()-22*86400000).toISOString(),fechaCancelacion:diasAtras(18)},
+  // anticipoConservado en estos dos: muestra los dos casos posibles al
+  // cancelar con anticipo ya cobrado (ver obtenerReversionIngresoPedido) ,
+  // demo_5 sí se devolvió (resta de Ingresos), demo_6 el negocio decidió
+  // quedárselo como política de cancelación (sigue contando como ingreso).
+  {id:"ped_demo_5",clienteId:104,productos:"Aretes plata",cantidad:2,total:700,pagos:[{id:"pp_d5b",monto:350,fecha:diasAtras(17),concepto:"Anticipo 50%"}],estadoPedido:"cancelado",motivoCancelacion:"No conseguí insumo",motivoCancelacionLado:"negocio",anticipoConservado:false,notas:"No llegó el material a tiempo con el proveedor, se le devolvió el anticipo",fecha:diasAtras(17),fechaCreado:new Date(Date.now()-17*86400000).toISOString(),fechaCancelacion:diasAtras(13)},
+  {id:"ped_demo_6",clienteId:105,productos:"Anillo boda custom",cantidad:1,total:1200,pagos:[{id:"pp_d6",monto:300,fecha:diasAtras(22),concepto:"Anticipo"}],estadoPedido:"cancelado",motivoCancelacion:"Cliente se arrepintió",motivoCancelacionLado:"cliente",anticipoConservado:true,notas:"Encontró un anillo más barato en otro lado, se quedó con el anticipo por política de cancelación",fecha:diasAtras(22),fechaCreado:new Date(Date.now()-22*86400000).toISOString(),fechaCancelacion:diasAtras(18)},
   // Ventas rápidas de ejemplo , ya entregadas y cobradas al momento, sin
   // cliente específico, igual que como las registraría el botón real
   // "+ Venta rápida" (crean pedido, nunca la colección antigua "ventas").
@@ -1843,8 +1884,18 @@ function obtenerItemsPedido(ped){
 // día en que se canceló el pedido, por el total ya cobrado a esa fecha.
 // Nunca modifica ni borra ningún pago existente , es una entrada derivada
 // que se calcula al vuelo, nunca se guarda en el pedido.
+//
+// anticipoConservado: si al cancelar el negocio dijo explícitamente que se
+// QUEDA con el anticipo (política de cancelación, etc.), el dinero nunca
+// se devolvió , sigue siendo ingreso real y NO se genera ninguna reversión.
+// Nunca se asume una devolución que quizás no ocurrió: el modal de
+// cancelación siempre pregunta cuando hay algo cobrado (ver "MODAL
+// CANCELAR PEDIDO"). Pedidos cancelados ANTES de que existiera esta
+// pregunta no tienen el campo (undefined) , se mantiene el comportamiento
+// previo (se asume devuelto) para no alterar datos ya guardados.
 function obtenerReversionIngresoPedido(ped){
   if(!ped||ped.estadoPedido!=="cancelado") return null;
+  if(ped.anticipoConservado) return null;
   var totalPagado=(ped.pagos||[]).reduce(function(s,p){ return s+Number(p.monto); },0);
   if(totalPagado<=0) return null;
   // Fallback para pedidos cancelados ANTES de que existiera fechaCancelacion
@@ -2267,15 +2318,23 @@ function ModalVenta(props){
   }
   var tipoActual=formVenta.tipo;
   if(pasoVenta==="educativo"){
-    return e("div",{style:st.ov,onClick:function(){ setModalVenta(false); setPasoVenta("form"); }},
+    // "Total del día" ya no llega aquí (ver avanzarVenta) , esta pantalla
+    // ahora es exclusiva de "generico" (venta sin contacto), así que el
+    // mensaje ya no necesita ramificarse por tipo.
+    // Esta pantalla YA dice "Venta registrada" , pero antes la venta solo
+    // se guardaba de verdad si dabas clic en uno de los 2 botones , cerrar
+    // de cualquier otra forma (clic fuera, ×) la descartaba en silencio,
+    // contradiciendo lo que la propia pantalla ya te dijo. Ahora cerrarla
+    // de cualquier forma cuenta como "No por ahora" y sí la guarda , nunca
+    // se pierde una venta que la pantalla ya te confirmó como registrada.
+    return e("div",{style:st.ov,onClick:function(){ guardarVentaDirecta(false); }},
       e("div",{style:st.modal,onClick:function(ev){ ev.stopPropagation(); }},
-        e("div",{style:{fontSize:16,fontWeight:600,color:"#fff",marginBottom:12}},tipoActual==="dia"?"Venta del dia registrada":"Venta registrada"),
+        e("div",{style:{display:"flex",justifyContent:"flex-end",marginBottom:-4}},
+          e("button",{style:{background:"none",border:"none",cursor:"pointer",color:C.textDim,fontSize:20,lineHeight:1,padding:"0 4px"},onClick:function(){ guardarVentaDirecta(false); }},"×")
+        ),
+        e("div",{style:{fontSize:16,fontWeight:600,color:C.text,marginBottom:12}},"Venta registrada"),
         e("div",{style:{padding:"14px 16px",background:C.surfaceUp,borderRadius:10,marginBottom:16,borderLeft:"2px solid "+C.amber}},
-          e("div",{style:{fontSize:13,color:C.text,lineHeight:1.7}},
-            tipoActual==="dia"
-              ?"Registraste $"+Number(formVenta.monto).toLocaleString()+" en ventas del dia"+(formVenta.etiqueta?" en "+formVenta.etiqueta:"")+". Aunque sea un contacto de hoy puede convertirse en cliente recurrente."
-              :"Sin el WhatsApp de este cliente, no puedes volver a venderle. La proxima vez intenta pedirlo."
-          )
+          e("div",{style:{fontSize:13,color:C.text,lineHeight:1.7}},"Sin el WhatsApp de este cliente, no puedes volver a venderle. La proxima vez intenta pedirlo.")
         ),
         tipoActual==="especifico"&&!esProductos&&e("div",{style:{fontSize:12,color:C.green,fontWeight:600,marginBottom:16,padding:"9px 12px",background:C.green+"12",borderRadius:8}},"Ya quedó en tu pestaña Trabajos, para que no se te olvide entregarlo."),
         e("div",{style:{fontSize:13,color:C.textMuted,marginBottom:12}},"Tienes el contacto de alguien de hoy?"),
@@ -2528,10 +2587,17 @@ var ventaVacia={tipo:"especifico",clienteId:"",concepto:"",monto:"",fecha:FECHA_
 function BtnCanal(props){
   var e=React.createElement;
   var cliente=props.cliente; var small=props.small; var concepto=props.concepto;
+  var iconOnly=props.iconOnly;
   var msg=msgEtapa(cliente,concepto);
   var url=contactUrl(cliente,msg);
   if(!url) return null;
   var canal=cliente.canalPrincipal||"WhatsApp"; var cc=canalColor(canal);
+  // Variante ícono-únicamente (props.iconOnly) , mismo enlace/acción, solo
+  // se oculta el texto del canal para caber en filas angostas (ej. tarjeta
+  // de Pedidos en móvil). El nombre del canal sigue disponible vía title.
+  if(iconOnly){
+    return e("a",{href:url,target:"_blank",rel:"noopener noreferrer",title:"Escribir por "+canal,style:{cursor:"pointer",width:32,height:32,borderRadius:8,border:"0.5px solid "+cc+"44",textDecoration:"none",display:"inline-flex",alignItems:"center",justifyContent:"center",background:cc+"18",flexShrink:0}},e(SvgIcon,{canal:canal,size:14}));
+  }
   return e("a",{href:url,target:"_blank",rel:"noopener noreferrer",style:{cursor:"pointer",padding:small?"3px 8px":"5px 10px",borderRadius:8,border:"0.5px solid "+cc+"44",fontSize:small?11:12,color:cc,fontWeight:500,textDecoration:"none",display:"inline-flex",alignItems:"center",gap:4,background:cc+"18"}},e(SvgIcon,{canal:canal,size:small?11:13}),canal);
 }
 
@@ -2761,7 +2827,7 @@ export default function CLEO(props){
   var sResizeTick=useState(0); var setResizeTick=sResizeTick[1];
   var sOtraPestanaActiva=useState(false); var otraPestanaActiva=sOtraPestanaActiva[0]; var setOtraPestanaActiva=sOtraPestanaActiva[1];
   var sOnbFlujoCompletado=useState(null); var onbFlujoCompletado=sOnbFlujoCompletado[0]; var setOnbFlujoCompletado=sOnbFlujoCompletado[1];
-  var formPreguntoPVacio={nombre:"",negocio:"",canal:"",contacto:"",instagram:"",messenger:"",items:[{id:"it_"+Date.now(),catalogoId:null,nombre:"",cantidad:1,precioUnitario:"",total:0}],notaAdicional:"",yaEnvio:null,fechaEnvioPlaneada:"",fechaEnvioPlaneadaCustom:"",clienteExistenteId:""};
+  var formPreguntoPVacio={nombre:"",negocio:"",canal:"",contacto:"",instagram:"",messenger:"",items:[{id:"it_"+Date.now(),catalogoId:null,nombre:"",cantidad:1,precioUnitario:"",total:0}],notaAdicional:"",yaEnvio:null,fechaEnvio:"hoy",fechaEnvioCustom:"",fechaSeguimiento:"",fechaSeguimientoCustom:"",fechaEnvioPlaneada:"",fechaEnvioPlaneadaCustom:"",clienteExistenteId:""};
   var sFormPreguntoP=useState(formPreguntoPVacio); var formPreguntoP=sFormPreguntoP[0]; var setFormPreguntoP=sFormPreguntoP[1];
   function cerrarPreguntoP(){ setPasoPreguntoP(null); setFormPreguntoP(formPreguntoPVacio); }
   var sMostrarCatPreguntoP=useState(false); var mostrarCatPreguntoP=sMostrarCatPreguntoP[0]; var setMostrarCatPreguntoP=sMostrarCatPreguntoP[1];
@@ -2781,11 +2847,18 @@ export default function CLEO(props){
     });
     var compatP=buildItemsCompat(itemsFinalP);
     var estadoAuto=(fp.yaEnvio&&compatP.total)?"En seguimiento":"Nueva";
-    var seguimientoFechaFinal=(!fp.yaEnvio)?resolverFechaPregunto(fp.fechaEnvioPlaneada,fp.fechaEnvioPlaneadaCustom):"";
+    // seguimientoFechaFinal: antes solo se programaba cuando TODAVÍA no
+    // habías enviado el precio (fp.yaEnvio false) , si ya lo enviaste
+    // (true) no se agendaba ningún recordatorio para preguntarle si lo
+    // revisó, a diferencia de Servicios que sí lo hace. Mismo criterio que
+    // guardarPregunto (Servicios) ahora en los dos casos.
+    var seguimientoFechaFinal=fp.yaEnvio
+      ?resolverFechaPregunto(fp.fechaSeguimiento,fp.fechaSeguimientoCustom)
+      :resolverFechaPregunto(fp.fechaEnvioPlaneada,fp.fechaEnvioPlaneadaCustom);
     // Mismo criterio que en Servicios: este recordatorio lleva su propio
     // mensaje desde que se crea, para que no dependa de la etapa futura del
     // cliente.
-    var mensajeSeguimientoInicialP=seguimientoFechaFinal?"Preguntó por "+(compatP.resumen||"tu producto")+" y quedaste en enviarle el precio.":"";
+    var mensajeSeguimientoInicialP=fp.yaEnvio?"Ya le enviaste el precio. Dijiste que le darías seguimiento.":"Preguntó por "+(compatP.resumen||"tu producto")+" y quedaste en enviarle el precio.";
     // Los items manuales que todavía no están en el catálogo se agregan
     // automáticamente , así el catálogo va creciendo solo con lo que la
     // persona ya está registrando, sin que tenga que hacerlo por separado.
@@ -3017,6 +3090,7 @@ export default function CLEO(props){
   }
   var sModalRecibi=useState(false); var modalRecibi=sModalRecibi[0]; var setModalRecibi=sModalRecibi[1];
   var sFiltroTrabajo=useState("porCompletar"); var filtroTrabajo=sFiltroTrabajo[0]; var setFiltroTrabajo=sFiltroTrabajo[1];
+  var sFiltroTrabajoPeriodo=useState("todo"); var filtroTrabajoPeriodo=sFiltroTrabajoPeriodo[0]; var setFiltroTrabajoPeriodo=sFiltroTrabajoPeriodo[1];
   var sCerreExito=useState(false); var cerreExito=sCerreExito[0]; var setCerreExito=sCerreExito[1];
   var sToastTrabajo=useState(""); var toastTrabajo=sToastTrabajo[0]; var setToastTrabajo=sToastTrabajo[1];
   function mostrarToast(mensaje){
@@ -3305,13 +3379,19 @@ export default function CLEO(props){
     });
     var esExistente=!!fp.clienteExistenteId;
     var nuevoId=esExistente?fp.clienteExistenteId:Date.now();
-    // etapaFinal YA NO salta directo a "Cotizacion enviada" cuando
-    // yaEnvio es true , ese salto de etapa lo hace guardarCot() al
-    // guardarse la cotización real (ver el cierre de esta función, que
-    // abre modalCot en vez de terminar el wizard). Así el pipeline nunca
-    // muestra "Cotización enviada" sin que exista una cotización de
-    // verdad detrás.
-    var etapaFinal="Nuevo contacto";
+    var clienteExistenteActual=esExistente?clientes.find(function(c){ return c.id===nuevoId; }):null;
+    // Si el cliente existente ya estaba en una etapa "cerrada" (Ganado/
+    // Perdido) o en Negociación, este wizard nunca debe pisar ese avance ,
+    // mismo criterio de guardarCot().
+    var noPisarEtapaPg=!!(clienteExistenteActual&&(clienteExistenteActual.etapa==="Ganado"||clienteExistenteActual.etapa==="Perdido"||clienteExistenteActual.etapa==="Negociacion"));
+    // etapaFinal: si ya se envió el precio, pasa directo a "Cotizacion
+    // enviada" , la cotización real que respalda esa etapa se crea aquí
+    // mismo más abajo (ver bloque "crea la cotización"), así el pipeline
+    // nunca muestra esa etapa sin una cotización de verdad detrás.
+    // Si el cliente ya estaba en una etapa "cerrada"/Negociación, su etapa
+    // no se toca en absoluto (ni se sube a "Cotizacion enviada" ni se baja
+    // a "Nuevo contacto") , este wizard nunca debe pisar ese avance.
+    var etapaFinal=noPisarEtapaPg?clienteExistenteActual.etapa:(fp.yaEnvio?"Cotizacion enviada":"Nuevo contacto");
     var seguimientoFechaFinal=fp.yaEnvio
       ?resolverFechaPregunto(fp.fechaSeguimiento,fp.fechaSeguimientoCustom)
       :resolverFechaPregunto(fp.fechaEnvioPlaneada,fp.fechaEnvioPlaneadaCustom);
@@ -3356,19 +3436,27 @@ export default function CLEO(props){
     var clienteParaOrigen=esExistente?clientes.find(function(c){ return c.id===nuevoId; }):null;
     var yaTieneOrigen=esExistente?!!(clienteParaOrigen&&clienteParaOrigen.origen):false;
     if(!yaTieneOrigen){ setOrigenPromptId(nuevoId); }
-    if(fp.yaEnvio){
-      // "Ya le enviaste el precio" ahora abre la cotización real en vez
-      // de solo anotar la etapa , se cierra el wizard y se pasa a
-      // modalCot ya prellenado con el cliente y los items capturados
-      // aquí mismo (mismo patrón que el resto de los botones que abren
-      // modalCot con clienteId ya resuelto). Al guardar esa cotización,
-      // guardarCot() es quien mueve la etapa a "Cotizacion enviada".
-      cerrarPregunto();
-      setFormCot(Object.assign({},cotVacio,{clienteId:String(nuevoId),items:itemsFinalPg}));
-      setModalCot(true);
-    } else {
-      setPasoPregunto(5);
+    // "Ya le enviaste el precio" crea aquí mismo la cotización real (antes
+    // abría modalCot para confirmarla ahí) , es un botón rápido y ya se
+    // capturaron cliente + items CON precio en este mismo wizard (el precio
+    // es obligatorio desde el paso "¿qué servicio le interesó?"), así que no
+    // hace falta un segundo modal de confirmación. Si después quieres
+    // agregar vigencia/condiciones/notas, se edita como cualquier otra
+    // cotización desde Cotizaciones o la ficha del cliente , mismos campos
+    // que la rama de creación de guardarCot().
+    if(fp.yaEnvio&&!noPisarEtapaPg){
+      var cotIdPg=Date.now();
+      setCotizaciones(function(prev){ return [...prev,{
+        id:cotIdPg,clienteId:nuevoId,
+        descuento:0,tipoDescuento:"porcentaje",estatus:"Pendiente",
+        vigencia:"",vigenciaDias:"",notas:"",svCondiciones:"",svCondicionesHtml:"",
+        fecha:FECHA_HOY,motivoPerdida:"",pagos:[],condicionesPago:perfil.condicionesPago||"",
+        subtotal:compatPg.total,monto:compatPg.total,items:itemsFinalPg,
+        concepto:compatPg.resumen,cantidad:compatPg.cantidad,
+        precioUnit:compatPg.cantidad>0?compatPg.total/compatPg.cantidad:(itemsFinalPg[0]?itemsFinalPg[0].precioUnitario:0)
+      }]; });
     }
+    setPasoPregunto(5);
   }
   var s19i=useState(null); var contactadoOpcion=s19i[0]; var setContactadoOpcion=s19i[1];
   var s19j=useState(""); var contactadoNota=s19j[0]; var setContactadoNota=s19j[1];
@@ -3732,6 +3820,7 @@ export default function CLEO(props){
       "Total pagado":totalPagadoCot,
       "Saldo pendiente":saldoPendienteCot,
       "Fecha de cierre":cot.fechaCierre||"",
+      "Fecha de rechazo":cot.fechaRechazo||"",
       "Entregado":cot.entregado?"Sí":"No",
       "Fecha de entrega":cot.fechaEntrega||"",
       "Vigencia":cot.vigencia||"",
@@ -3797,10 +3886,13 @@ export default function CLEO(props){
       // (mismo criterio que la pantalla de Ingresos , el pago original NO
       // se quita del CSV, se agrega su reversión aparte).
       pedidos.forEach(function(ped){
+        // ped.etiqueta guarda el lugar de la venta cuando no hay cliente
+        // vinculado (Total del día/Venta rápida) , mismo criterio que
+        // v.etiqueta para Servicios más abajo.
         (ped.pagos||[]).forEach(function(pago){
           filas.push({
             fecha:pago.fecha||ped.fecha,
-            cliente:nombreClienteExport(ped.clienteId,null),
+            cliente:nombreClienteExport(ped.clienteId,ped.etiqueta),
             origen:ped.origenVenta==="venta_rapida"?"Venta rápida":"Pedido",
             concepto:pago.concepto||"Pago",
             monto:Number(pago.monto),
@@ -3812,7 +3904,7 @@ export default function CLEO(props){
         if(reversionPed){
           filas.push({
             fecha:reversionPed.fecha,
-            cliente:nombreClienteExport(ped.clienteId,null),
+            cliente:nombreClienteExport(ped.clienteId,ped.etiqueta),
             origen:"Pedido cancelado",
             concepto:"Anticipo descontado",
             monto:reversionPed.monto,
@@ -4320,7 +4412,7 @@ export default function CLEO(props){
       // Marcar cotizaciones pendientes como Rechazadas
       var cotsPendP=cotizaciones.filter(function(c){ return c.clienteId===id&&c.estatus==="Pendiente"; });
       if(cotsPendP.length>0){
-        setCotizaciones(cotizaciones.map(function(c){ return c.clienteId===id&&c.estatus==="Pendiente"?Object.assign({},c,{estatus:"Rechazada"}):c; }));
+        setCotizaciones(cotizaciones.map(function(c){ return c.clienteId===id&&c.estatus==="Pendiente"?Object.assign({},c,{estatus:"Rechazada",fechaRechazo:FECHA_HOY}):c; }));
       }
       return;
     }
@@ -4487,6 +4579,14 @@ export default function CLEO(props){
           if(c.id!==Number(formCot.clienteId)) return c;
           var upd=Object.assign({},c,{items:itemsFinal,precioInteres:String(monto),productoInteres:resumenFinal||c.productoInteres});
           if(c.etapa!=="Ganado"&&c.etapa!=="Perdido"&&c.etapa!=="Negociacion") upd=Object.assign(upd,{etapa:"Cotizacion enviada",fechaEtapa:FECHA_HOY});
+          // Espejo para Productos: el tablero de Oportunidades y las
+          // tarjetas de Hoy leen estadoProspecto, no etapa , sin esto, una
+          // oportunidad se quedaba marcada "Nueva" (mostrando "Enviar
+          // precio") aunque ya se le hubiera mandado una cotización real
+          // desde aquí (ej. "Ya se lo envié" → guardar cotización). Mismo
+          // criterio que ya usa el botón "Enviar precio" de la tarjeta de
+          // Oportunidades, que también pasa a "En seguimiento".
+          if(esProductos&&c.estadoProspecto!=="Convertido"&&c.estadoProspecto!=="Perdido") upd=Object.assign(upd,{estadoProspecto:"En seguimiento"});
           return upd;
         });
       });
@@ -4592,7 +4692,7 @@ export default function CLEO(props){
     setClientes(clientes.map(function(c){ return c.id===motivoPipelineId?cancelarRecordatoriosPipeline(Object.assign({},c,{motivoPerdida:motivo,etapa:"Perdido",fechaEtapa:FECHA_HOY})):c; }));
     // Marcar cotizacion como Rechazada
     var cotPerdida=cotizaciones.find(function(c){ return c.clienteId===motivoPipelineId&&(c.estatus==="Pendiente"||c.estatus==="Aceptada"); });
-    if(cotPerdida) setCotizaciones(cotizaciones.map(function(c){ return c.id===cotPerdida.id?Object.assign({},c,{estatus:"Rechazada",motivoPerdida:motivo}):c; }));
+    if(cotPerdida) setCotizaciones(cotizaciones.map(function(c){ return c.id===cotPerdida.id?Object.assign({},c,{estatus:"Rechazada",motivoPerdida:motivo,fechaRechazo:FECHA_HOY}):c; }));
     // Limpiar etapaAnterior , ya confirmó
     setEtapaAnteriorPipeline(null);
     setEstatusAnteriorCot(null);
@@ -4777,9 +4877,15 @@ export default function CLEO(props){
       alert("El número de WhatsApp debe tener exactamente 10 dígitos.");
       return;
     }
-    // Si es generico o dia, mostrar momento educativo antes de guardar
-    if(formVenta.tipo==="generico"||formVenta.tipo==="dia"){
+    // Si es generico, mostrar momento educativo (sin el WhatsApp de este
+    // cliente no puedes volver a venderle) antes de guardar. "Total del
+    // día" ya NO pasa por ahí , es un monto global sin ningún contacto
+    // detrás, así que no tiene sentido preguntar "¿tienes el contacto de
+    // alguien de hoy?" , se guarda directo.
+    if(formVenta.tipo==="generico"){
       setPasoVenta("educativo");
+    } else if(formVenta.tipo==="dia"){
+      guardarVentaDirecta(false);
     } else {
       // especifico: guardar directo, creando cliente si hay nombre nuevo
       guardarVentaDirecta(!!formVenta.nuevoNombre&&!!formVenta.nuevoNombre.trim());
@@ -5029,6 +5135,11 @@ export default function CLEO(props){
   var sCancPed=useState(null); var cancelarPedidoId=sCancPed[0]; var setCancelarPedidoId=sCancPed[1];
   var sCancMot=useState(""); var motivoCancelPedido=sCancMot[0]; var setMotivoCancelPedido=sCancMot[1];
   var sCancLibre=useState(""); var motivoCancelLibre=sCancLibre[0]; var setMotivoCancelLibre=sCancLibre[1];
+  // Decisión sobre el anticipo ya cobrado al cancelar un pedido , nunca se
+  // asume sola (ver obtenerReversionIngresoPedido). null = todavía sin
+  // elegir, "devuelto" = se descuenta de Ingresos, "conservado" = sigue
+  // contando como ingreso normal (ej. política de cancelación del negocio).
+  var sCancAnt=useState(null); var anticipoDecisionCancelPedido=sCancAnt[0]; var setAnticipoDecisionCancelPedido=sCancAnt[1];
   useEffect(function(){
     setHydrated(true);
   },[]);
@@ -6466,7 +6577,7 @@ export default function CLEO(props){
           if(c.etapa==="Perdido"){
             var cotsPendFicha=cotizaciones.filter(function(cot){ return Number(cot.clienteId)===Number(c.id)&&cot.estatus==="Pendiente"; });
             if(cotsPendFicha.length>0){
-              setCotizaciones(cotizaciones.map(function(cot){ return Number(cot.clienteId)===Number(c.id)&&cot.estatus==="Pendiente"?Object.assign({},cot,{estatus:"Rechazada"}):cot; }));
+              setCotizaciones(cotizaciones.map(function(cot){ return Number(cot.clienteId)===Number(c.id)&&cot.estatus==="Pendiente"?Object.assign({},cot,{estatus:"Rechazada",fechaRechazo:FECHA_HOY}):cot; }));
             }
           }
           var cotCliente=cotizaciones.filter(function(cot){ return Number(cot.clienteId)===Number(c.id); }).sort(function(a,b){ return new Date(b.fecha)-new Date(a.fecha); });
@@ -6572,9 +6683,25 @@ export default function CLEO(props){
               )
             ),
             tabCliente==="historial"&&e("div",null,
+              // Botones de acción rápida: en Productos, "+ Precio" (abría el
+              // editor de cotización, un concepto que aquí casi nadie usa)
+              // se reemplaza por "+ Pedido" (abre el pedido real, prellenado
+              // con este cliente y los items de interés ya capturados si
+              // los hay). Los colores ahora coinciden con los mismos dos
+              // botones del menú "+ Nuevo" (Pedido=verde, Venta rápida
+              // =ámbar) , antes "Venta rápida" estaba en verde aquí mismo,
+              // inconsistente con el resto de la app. Servicios no cambia:
+              // sigue con "+ Cotización" tal cual.
               e("div",{style:{display:"flex",gap:8,marginBottom:16,flexWrap:"wrap"}},
-                e("button",{style:Object.assign({},st.btn,{fontSize:12,padding:"5px 12px"}),onClick:function(){ setFormCot(Object.assign({},cotVacio,{clienteId:String(c.id)})); setModalCot(true); }},"+ "+TXT.cotizacion),
-                e("button",{style:Object.assign({},st.btn,{fontSize:12,padding:"5px 12px",color:C.green,borderColor:C.greenBorder}),onClick:function(){ setFormVenta(Object.assign({},ventaVacia,{tipo:"especifico",clienteId:String(c.id)})); setPasoVenta("form"); setModalVenta(true); }},esProductos?"+ Venta rápida":"+ Venta directa")
+                esProductos
+                  ? e("button",{style:Object.assign({},st.btn,{fontSize:12,padding:"6px 14px",fontWeight:600,color:"#10B981",borderColor:"#6EE7B7",background:"#ECFDF5"}),onClick:function(){
+                      var itemsInteresHist=obtenerItemsInteres(c);
+                      setNuevoPedidoForm(Object.assign({},pedidoVacio,{clienteId:String(c.id),items:itemsInteresHist.length>0?itemsInteresHist:pedidoVacio.items}));
+                      setBuscaCliPed("");
+                      setNuevoPedidoModal(true);
+                    }},"+ Pedido")
+                  : e("button",{style:Object.assign({},st.btn,{fontSize:12,padding:"5px 12px"}),onClick:function(){ setFormCot(Object.assign({},cotVacio,{clienteId:String(c.id)})); setModalCot(true); }},"+ "+TXT.cotizacion),
+                e("button",{style:Object.assign({},st.btn,{fontSize:12,padding:"6px 14px",fontWeight:600,color:esProductos?"#F59E0B":C.green,borderColor:esProductos?"#FCD34D":C.greenBorder,background:esProductos?"#FFFBEB":undefined}),onClick:function(){ setFormVenta(Object.assign({},ventaVacia,{tipo:"especifico",clienteId:String(c.id)})); setPasoVenta("form"); setModalVenta(true); }},esProductos?"+ Venta rápida":"+ Venta directa")
               ),
               (function(){
                 // Mismo criterio de "dinero realmente cobrado" que ya usa
@@ -6656,9 +6783,22 @@ export default function CLEO(props){
               })(),
               e("div",{style:{background:C.surface,borderRadius:20,border:"1px solid "+C.border,padding:"24px",boxShadow:"0 2px 12px rgba(0,0,0,0.06)"}},
               (function(){
-                var fmtF=function(f){ if(!f) return ""; var p=f.split("-"); return p[2]+"/"+p[1]+"/"+p[0].slice(2); };
+                // Algunos campos de fecha son ISO completo con hora (ej.
+                // c.fechaPedido, siempre new Date().toISOString()) en vez de
+                // "YYYY-MM-DD" , se toma solo la parte antes de la "T" antes
+                // de partir por "-", así nunca se cuela la hora en el texto
+                // mostrado (antes de este fix, un evento fechado con
+                // fechaPedido se veía como "14T10:29:00.000Z/08/26").
+                var fmtF=function(f){ if(!f) return ""; var soloFecha=String(f).split("T")[0]; var p=soloFecha.split("-"); if(p.length!==3) return ""; return p[2]+"/"+p[1]+"/"+p[0].slice(2); };
 
-                // SVG paths para iconos del timeline
+                // SVG paths para iconos del timeline , cada tipo de evento
+                // que en verdad se usa abajo (ver eventos.push) necesita su
+                // propia entrada aquí. Antes "pedido"/"entregado"/
+                // "cancelado"/"contacto" no tenían icono propio y caían
+                // todos en el fallback ICONOS_SVG.registro (el muñequito de
+                // "Cliente registrado"), por eso "Pedido confirmado" y
+                // "Pedido cancelado" se veían con el mismo ícono de persona
+                // en vez de uno que tuviera sentido para cada uno.
                 var ICONOS_SVG={
                   registro:"M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z",
                   cotizacion:"M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z",
@@ -6669,13 +6809,27 @@ export default function CLEO(props){
                   seguimiento:"M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z",
                   perdido:"M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636",
                   ganado:"M5 3l14 9-14 9V3z",
+                  pedido:"M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z",
+                  entregado:"M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z",
+                  cancelado:"M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z",
+                  contacto:"M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z",
                 };
 
                 // Construir eventos
                 var eventos=[];
                 eventos.push({fecha:c.fecha,tipo:"registro",titulo:"Cliente registrado",desc:"Origen: "+c.origen,color:C.purple,orden:0});
-                if(c.etapa==="Perdido") eventos.push({fecha:c.fecha,tipo:"perdido",titulo:"Marcado como perdido",desc:c.motivoPerdida?"Motivo: "+c.motivoPerdida:"Sin motivo registrado",color:C.red,orden:6});
-                if(c.etapa==="Ganado") eventos.push({fecha:c.fecha,tipo:"ganado",titulo:"Venta cerrada",desc:"Cliente ganado",color:C.green,orden:6});
+                // fechaEtapa (no c.fecha) , c.fecha es SIEMPRE la fecha de
+                // registro del cliente, nunca cuándo pasó a Perdido/Ganado.
+                // Usar c.fecha aquí hacía que estos dos eventos cayeran
+                // siempre en el mismo día que "Cliente registrado", sin
+                // importar cuánto tiempo real hubiera pasado.
+                if(c.etapa==="Perdido") eventos.push({fecha:c.fechaEtapa||c.fecha,tipo:"perdido",titulo:"Marcado como perdido",desc:c.motivoPerdida?"Motivo: "+c.motivoPerdida:"Sin motivo registrado",color:C.red,orden:6});
+                // fechaPedido como segundo fallback , el botón "Crear
+                // pedido" directo de la tarjeta de Oportunidades (Productos)
+                // marca etapa:"Ganado" pero solo guarda fechaPedido, nunca
+                // fechaEtapa , sin este fallback, ese caso seguía cayendo en
+                // c.fecha (registro) igual que antes.
+                if(c.etapa==="Ganado") eventos.push({fecha:c.fechaEtapa||c.fechaPedido||c.fecha,tipo:"ganado",titulo:"Venta cerrada",desc:"Cliente ganado",color:C.green,orden:6});
                 // Historial de contactos
                 (c.historialContactos||[]).forEach(function(h){
                   var isRecup=h.resultado&&(h.resultado.includes("recuperad")||h.resultado.includes("Recuperad")||h.resultado.includes("reactivad"));
@@ -6684,8 +6838,17 @@ export default function CLEO(props){
 
                 cotCliente.forEach(function(cot){
                   eventos.push({fecha:cot.fecha,tipo:"cotizacion",titulo:"Cotizacion enviada",desc:cot.concepto+" · $"+Number(cot.monto).toLocaleString(),color:C.amber,orden:2});
-                  if(cot.estatus==="Aceptada") eventos.push({fecha:cot.fecha,tipo:"aceptada",titulo:"Cotizacion aceptada",desc:"$"+Number(cot.monto).toLocaleString(),color:C.green,orden:3});
-                  if(cot.estatus==="Rechazada") eventos.push({fecha:cot.fecha,tipo:"rechazada",titulo:"Cotizacion rechazada",desc:cot.motivoPerdida?"Motivo: "+cot.motivoPerdida:"Sin motivo registrado",color:C.red,orden:3});
+                  // fechaCierre (no cot.fecha) , se guarda en TODOS los
+                  // puntos donde una cotización pasa a Aceptada (ver
+                  // cambiarEstatus, "Ya cerró", pasoGanado) y ya se usa para
+                  // esto mismo en Ingresos/CSV , cot.fecha es cuándo se
+                  // ENVIÓ, casi nunca el mismo día en que se aceptó.
+                  if(cot.estatus==="Aceptada") eventos.push({fecha:cot.fechaCierre||cot.fecha,tipo:"aceptada",titulo:"Cotizacion aceptada",desc:"$"+Number(cot.monto).toLocaleString(),color:C.green,orden:3});
+                  // fechaRechazo (no cot.fecha) , mismo criterio que
+                  // fechaCierre arriba. Cotizaciones rechazadas ANTES de que
+                  // existiera este campo no lo tienen (undefined) , se cae a
+                  // cot.fecha como antes, sin alterar datos ya guardados.
+                  if(cot.estatus==="Rechazada") eventos.push({fecha:cot.fechaRechazo||cot.fecha,tipo:"rechazada",titulo:"Cotizacion rechazada",desc:cot.motivoPerdida?"Motivo: "+cot.motivoPerdida:"Sin motivo registrado",color:C.red,orden:3});
                   // Pagos del nuevo sistema
                   var pagosH=cot.pagos||[];
                   pagosH.forEach(function(p){
@@ -6709,7 +6872,14 @@ export default function CLEO(props){
                     eventos.push({fecha:p.fecha,tipo:"pago",titulo:(p.concepto||"Pago")+" recibido",desc:"$"+Number(p.monto).toLocaleString()+(saldoPedH>0?" · Saldo: $"+saldoPedH.toLocaleString():" · Pagado completamente"),color:C.green,orden:4});
                   });
                   if(ped.estadoPedido==="entregado") eventos.push({fecha:ped.fechaEntrega||ped.fecha,tipo:"entregado",titulo:"Pedido entregado",desc:ped.productos||"",color:C.green,orden:5});
-                  if(ped.estadoPedido==="cancelado") eventos.push({fecha:ped.fecha,tipo:"cancelado",titulo:"Pedido cancelado",desc:ped.motivoCancelacion?"Motivo: "+ped.motivoCancelacion:"Sin motivo registrado",color:C.red,orden:3});
+                  // fechaCancelacion (no ped.fecha) , mismo criterio que la
+                  // línea de arriba para "entregado" (fechaEntrega||fecha).
+                  // ped.fecha es cuándo se CREÓ el pedido, casi siempre
+                  // antes de que se cancelara, así que usarla aquí hacía
+                  // que "Pedido cancelado" pareciera haber pasado el mismo
+                  // día que el pedido, aunque la cancelación real fuera
+                  // días después.
+                  if(ped.estadoPedido==="cancelado") eventos.push({fecha:ped.fechaCancelacion||ped.fecha,tipo:"cancelado",titulo:"Pedido cancelado",desc:ped.motivoCancelacion?"Motivo: "+ped.motivoCancelacion:"Sin motivo registrado",color:C.red,orden:3});
                 });
 
                 // Ordenar , reciente primero, futuros al fondo, registro siempre último
@@ -6763,8 +6933,26 @@ export default function CLEO(props){
               )// cierra card
             ),
             tabCliente==="seguimiento"&&e("div",null,
+              // Los clientes de Productos usan estadoProspecto, no etapa
+              // (ese campo casi nunca se les llena) , antes esta insignia
+              // siempre leía c.etapa sin importar el perfil, así que en
+              // Productos mostraba literalmente el texto "undefined".
+              // Mismos colores/etiquetas que ya usa el tablero de
+              // Oportunidades, para no inventar una paleta nueva.
               e("div",{style:{marginBottom:14}},
-                e("span",{style:st.badge(c.etapa)},c.etapa+(c.etapa==="Perdido"&&c.motivoPerdida?" · "+c.motivoPerdida:""))
+                esProductos
+                  ? (function(){
+                      var estadosOpoBadge={
+                        "Nueva":{label:"Nueva",color:"#F59E0B"},
+                        "En seguimiento":{label:"En seguimiento",color:"#4B5EFC"},
+                        "Sin respuesta":{label:"Sin respuesta",color:"#6B7280"},
+                        "Convertido":{label:"Convertido",color:"#1A7A5E"},
+                        "Perdido":{label:"Perdida",color:"#EF4444"}
+                      };
+                      var eb=estadosOpoBadge[c.estadoProspecto]||{label:c.estadoProspecto||"Sin estado",color:C.textMuted};
+                      return e("span",{style:{display:"inline-block",padding:"3px 10px",borderRadius:20,fontSize:10,fontWeight:600,background:eb.color+"15",color:eb.color,border:"1px solid "+eb.color+"30"}},eb.label+(c.estadoProspecto==="Perdido"&&c.motivoPerdida?" · "+c.motivoPerdida:""));
+                    })()
+                  : e("span",{style:st.badge(c.etapa)},c.etapa+(c.etapa==="Perdido"&&c.motivoPerdida?" · "+c.motivoPerdida:""))
               ),
               e("div",{style:st.card},
                 (function(){
@@ -7240,6 +7428,32 @@ export default function CLEO(props){
                 var editando=editandoId===c.id;
 
                 var esHighlight=c.id===highlightOpoId;
+                // Única fuente de verdad para el botón "Cotización" de esta
+                // tarjeta , la usan tanto la variante de texto (desktop)
+                // como la variante ícono-únicamente (móvil), para no
+                // duplicar la lógica de "reusar cotización existente vs.
+                // sintetizar items desde el interés" en dos lados.
+                function abrirCotizacionDesdeOpo(){
+                  var cotExistente=cotizaciones.find(function(cot){ return String(cot.clienteId)===String(c.id); });
+                  if(cotExistente){
+                    editarCot(cotExistente);
+                  } else {
+                    // obtenerItemsInteres trae TODOS los items de interés del
+                    // cliente (no solo uno) , si no hay ninguno, sintetiza uno
+                    // vacío con el nombre del producto/catálogo si aplica.
+                    var itemsOpo=obtenerItemsInteres(c);
+                    if(itemsOpo.length===0){
+                      var precioOpo=c.precioInteres||"";
+                      if(!precioOpo&&c.productoInteres){
+                        var match=catActivo.find(function(p){ return p.nombre===c.productoInteres; });
+                        if(match&&match.precio) precioOpo=String(match.precio);
+                      }
+                      itemsOpo=[{id:"it_"+Date.now(),catalogoId:null,nombre:c.productoInteres||"",cantidad:1,precioUnitario:precioOpo,total:Number(precioOpo)||0}];
+                    }
+                    setFormCot(Object.assign({},cotVacio,{clienteId:String(c.id),clienteNombre:c.nombre,items:itemsOpo}));
+                    setModalCot(true);
+                  }
+                }
                 return e("div",{key:c.id,style:{background:C.surface,borderRadius:16,border:"2px solid "+(esHighlight?C.purple:esPerdido?C.border+"55":C.border),padding:"16px 18px",boxShadow:esHighlight?"0 0 0 3px "+C.purple+"22":"0 1px 4px rgba(0,0,0,0.04)",opacity:esPerdido?0.65:1,transition:"box-shadow 0.3s"},ref:function(el){ if(el&&esHighlight){ el.scrollIntoView({behavior:"smooth",block:"start"}); } }},
 
                   // FILA 1: avatar + nombre + estado (discreto)
@@ -7296,32 +7510,26 @@ export default function CLEO(props){
                   })(),
 
                   // FILA 3: acciones
-                  !esPerdido&&!editando&&e("div",{style:{display:"flex",gap:6,borderTop:"1px solid "+C.border+"44",paddingTop:10,alignItems:"center"}},
-                    e(BtnCanal,{cliente:c,small:true}),
-                    c.productoInteres&&c.precioInteres&&e("button",{
-                      style:{cursor:"pointer",padding:"5px 10px",borderRadius:8,border:"1px solid "+C.border+"88",background:"transparent",fontSize:11,color:C.textDim},
-                      onClick:function(){
-                        var cotExistente=cotizaciones.find(function(cot){ return String(cot.clienteId)===String(c.id); });
-                        if(cotExistente){
-                          editarCot(cotExistente);
-                        } else {
-                          // obtenerItemsInteres trae TODOS los items de interés del
-                          // cliente (no solo uno) , si no hay ninguno, sintetiza uno
-                          // vacío con el nombre del producto/catálogo si aplica.
-                          var itemsOpo=obtenerItemsInteres(c);
-                          if(itemsOpo.length===0){
-                            var precioOpo=c.precioInteres||"";
-                            if(!precioOpo&&c.productoInteres){
-                              var match=catActivo.find(function(p){ return p.nombre===c.productoInteres; });
-                              if(match&&match.precio) precioOpo=String(match.precio);
-                            }
-                            itemsOpo=[{id:"it_"+Date.now(),catalogoId:null,nombre:c.productoInteres||"",cantidad:1,precioUnitario:precioOpo,total:Number(precioOpo)||0}];
-                          }
-                          setFormCot(Object.assign({},cotVacio,{clienteId:String(c.id),clienteNombre:c.nombre,items:itemsOpo}));
-                          setModalCot(true);
-                        }
-                      }
-                    },"Cotización"),
+                  // Secundarias: en móvil, mismo tratamiento ícono-únicamente
+                  // (32×32, nombre disponible como tooltip) que se usó en la
+                  // tarjeta de Pedidos, para mantener el mismo lenguaje visual
+                  // en toda la app. En desktop se deja el botón con texto,
+                  // igual que antes.
+                  !esPerdido&&!editando&&e("div",{style:{display:"flex",gap:isMobile?8:6,borderTop:"1px solid "+C.border+"44",paddingTop:10,alignItems:"center"}},
+                    isMobile
+                      ? e(BtnCanal,{cliente:c,iconOnly:true})
+                      : e(BtnCanal,{cliente:c,small:true}),
+                    c.productoInteres&&c.precioInteres&&(isMobile
+                      ? e("button",{
+                          title:"Cotización",
+                          style:{cursor:"pointer",width:32,height:32,padding:0,borderRadius:8,border:"1px solid "+C.border+"88",background:"transparent",fontSize:13,color:C.textDim,display:"inline-flex",alignItems:"center",justifyContent:"center",flexShrink:0},
+                          onClick:abrirCotizacionDesdeOpo
+                        },"📄")
+                      : e("button",{
+                          style:{cursor:"pointer",padding:"5px 10px",borderRadius:8,border:"1px solid "+C.border+"88",background:"transparent",fontSize:11,color:C.textDim},
+                          onClick:abrirCotizacionDesdeOpo
+                        },"Cotización")
+                    ),
 
                     e("div",{style:{flex:1}}),
 
@@ -7574,8 +7782,14 @@ export default function CLEO(props){
 
       // PEDIDOS (solo modo productos)
       vista==="pedidos"&&(function(){
+        // "Preparando" ya NO usa el morado de marca (#4B5EFC) , ese color
+        // se reserva para botones/acciones (ej. "Registrar pago"), así un
+        // pedido en trámite normal no compite visualmente con la tarjeta
+        // que sí pide una acción tuya. Se usa un azul-gris neutro en su
+        // lugar , mismo peso visual que "Entregado"/"Cancelado", pero sin
+        // pedir atención.
         var ESTADOS_PEDIDO=[
-          {k:"preparando", label:"Preparando", color:"#4B5EFC", bg:"rgba(75,94,252,0.06)", border:"#A5B4FC"},
+          {k:"preparando", label:"Preparando", color:"#64748B", bg:"rgba(100,116,139,0.08)", border:"#CBD5E1"},
           {k:"entregado",  label:"Entregado",  color:"#10B981", bg:"#ECFDF5", border:"#6EE7B7"},
           {k:"cancelado",  label:"Cancelado",  color:"#EF4444", bg:"#FEF2F2", border:"#FCA5A5"},
         ];
@@ -7737,20 +7951,70 @@ export default function CLEO(props){
                     )
                   ),
 
-                  // HINT CLEO
-                  !esCancelado&&!esEntregado&&(function(){
-                    var txt=restante>0&&totalPedido>0?"💡 Cobra el saldo antes de entregar":
-                             ep.k==="sin_pago"&&totalPedido>0?"💡 Aún no hay pago registrado":null;
-                    if(!txt) return null;
-                    return e("div",{style:{fontSize:11,color:C.textDim,marginBottom:6}},txt);
-                  })(),
-
                   // FILA 3: acciones
+                  // Nota UX: se quitó el hint 💡 que iba aquí ("Cobra el
+                  // saldo antes de entregar") porque repetía exactamente el
+                  // mismo dato que ya muestran la columna "Restante" (FILA 2)
+                  // y el botón "Registrar pago · $X pendiente" de abajo , el
+                  // mismo número aparecía 3 veces en la tarjeta sin agregar
+                  // nada nuevo.
                   !esCancelado&&e("div",{style:{borderTop:"1px solid "+C.border+"44",paddingTop:8,display:"flex",flexDirection:isMobile?"column":"row",gap:8,alignItems:isMobile?"stretch":"center"}},
-                    // Secundarias — fila (flexWrap para que el nuevo botón
-                    // de adjunto no desplace ni oculte los existentes en
-                    // pantallas angostas)
-                    e("div",{style:{display:"flex",gap:6,flexWrap:"wrap",alignItems:"center"}},
+                    // Secundarias.
+                    // Desktop: fila con texto, como antes (ahí sí hay espacio).
+                    // Móvil: fila ÚNICA de botones ícono-únicamente de 32×32 ,
+                    // antes era una cuadrícula 2×2 que se sentía forzada y
+                    // ocupaba demasiada altura para acciones secundarias. El
+                    // nombre de cada acción sigue disponible como tooltip
+                    // (title) y dentro de su propio modal , no se pierde
+                    // información, solo deja de competir en tamaño con la
+                    // acción principal. Cada botón/componente va envuelto en
+                    // su propio div porque ArchivoAdjunto devuelve un
+                    // Fragment (puede renderizar su modal como hermano del
+                    // botón).
+                    isMobile
+                      ? e("div",{style:{display:"flex",gap:8,alignItems:"center"}},
+                          cl&&e(BtnCanal,{cliente:cl,iconOnly:true}),
+                          e(ArchivoAdjunto,{tipoDocumento:"pedido",documento:ped,demoActivo:!!(perfil.modoDemo||props.demoActivo),onActualizarDocumento:actualizarArchivoAdjuntoPedido,borderColor:C.border+"88",textColor:C.textDim,compacto:true}),
+                          e("button",{
+                            title:"Cotización",
+                            style:{cursor:"pointer",width:32,height:32,padding:0,borderRadius:8,border:"1px solid "+C.border+"88",background:"transparent",fontSize:13,color:C.textDim,display:"inline-flex",alignItems:"center",justifyContent:"center",flexShrink:0},
+                            onClick:function(){
+                              // Vínculo por cotizacionId explícito primero , nunca
+                              // se adivina por clienteId si ya sabemos exactamente
+                              // cuál es (un cliente puede tener varias cotizaciones).
+                              // Solo se cae al clienteId de hoy para pedidos viejos
+                              // que todavía no tienen cotizacionId , y en ese caso
+                              // se estampa el vínculo de una vez, para que la
+                              // próxima vez ya sea directo.
+                              var cotVinculada=ped.cotizacionId?cotizaciones.find(function(cot){ return cot.id===ped.cotizacionId; }):null;
+                              if(!cotVinculada&&!ped.cotizacionId){
+                                var cotHeuristica=cotizaciones.find(function(cot){ return String(cot.clienteId)===String(ped.clienteId); });
+                                if(cotHeuristica){
+                                  cotVinculada=cotHeuristica;
+                                  setPedidos(function(prevP){ return prevP.map(function(p){ return p.id===ped.id?Object.assign({},p,{cotizacionId:cotHeuristica.id}):p; }); });
+                                }
+                              }
+                              if(cotVinculada){ editarCot(cotVinculada); }
+                              else {
+                                setFormCot(Object.assign({},cotVacio,{
+                                  clienteId:String(ped.clienteId),clienteNombre:cl?cl.nombre:"",
+                                  items:[{id:"it_"+Date.now(),catalogoId:null,nombre:ped.productos||"",cantidad:Number(ped.cantidad)||1,precioUnitario:ped.total||"",total:Number(ped.total)||0}],
+                                  _origenPedidoId:ped.id
+                                }));
+                                setModalCot(true);
+                              }
+                            }
+                          },"📄"),
+                          e("button",{
+                            title:pagosArr.length>0?"Pagos ("+pagosArr.length+")":"Ver pagos",
+                            style:{cursor:"pointer",width:32,height:32,padding:0,borderRadius:8,border:"1px solid "+C.border+"88",background:"transparent",fontSize:13,color:C.textDim,display:"inline-flex",alignItems:"center",justifyContent:"center",position:"relative",flexShrink:0},
+                            onClick:function(){
+                              setFormPagoPedidoModal({monto:"",fecha:FECHA_HOY,concepto:pagosArr.length===0?"Anticipo":"Pago"});
+                              setPedidoPagosId(ped.id);
+                            }
+                          },"💳",restante>0&&e("span",{style:{position:"absolute",top:-4,right:-4,minWidth:14,height:14,padding:"0 3px",borderRadius:7,background:C.purple,color:"#fff",fontSize:9,fontWeight:700,display:"flex",alignItems:"center",justifyContent:"center",border:"1px solid #fff"}},pagosArr.length))
+                        )
+                      : e("div",{style:{display:"flex",gap:6,flexWrap:"wrap",alignItems:"center"}},
                       cl&&e(BtnCanal,{cliente:cl,small:true}),
                       e(ArchivoAdjunto,{tipoDocumento:"pedido",documento:ped,demoActivo:!!(perfil.modoDemo||props.demoActivo),onActualizarDocumento:actualizarArchivoAdjuntoPedido,borderColor:C.border+"88",textColor:C.textDim}),
                       e("button",{
@@ -7828,7 +8092,10 @@ export default function CLEO(props){
               {key:"Otro",                lado:"otro",    icono:"📝", label:"Otro motivo"},
             ];
             var motivoSel=motivoCancelPedido;
-            function cerrarCancelModal(){ setCancelarPedidoId(null); setMotivoCancelPedido(""); setMotivoCancelLibre(""); }
+            // Solo se pregunta si de verdad hay algo cobrado que decidir , un
+            // pedido sin ningún pago no tiene nada que devolver o conservar.
+            var totalPagadoCancel=(ped.pagos||[]).reduce(function(s,p){ return s+Number(p.monto); },0);
+            function cerrarCancelModal(){ setCancelarPedidoId(null); setMotivoCancelPedido(""); setMotivoCancelLibre(""); setAnticipoDecisionCancelPedido(null); }
             return e("div",{style:st.ov,onClick:cerrarCancelModal},
               e("div",{style:Object.assign({},st.modal,{maxWidth:isMobile?"100%":420}),onClick:function(ev){ ev.stopPropagation(); }},
                 e("div",{style:{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:16}},
@@ -7870,18 +8137,45 @@ export default function CLEO(props){
                   );
                 }),
                 motivoSel==="Otro"&&e("input",{value:motivoCancelLibre,onChange:function(ev){ setMotivoCancelLibre(ev.target.value); },placeholder:"¿Qué pasó exactamente?",style:Object.assign({},st.inp,{marginBottom:14}),autoFocus:true}),
+
+                // Qué pasa con el anticipo ya cobrado , nunca se asume (antes
+                // la app siempre descontaba el anticipo de Ingresos al
+                // cancelar, sin importar si de verdad se devolvió o si el
+                // negocio tiene una política de quedárselo). Solo aparece
+                // cuando el pedido de verdad tiene algo cobrado que decidir,
+                // y no viene preseleccionado , la persona elige activamente.
+                totalPagadoCancel>0&&e("div",{style:{marginBottom:14}},
+                  e("div",{style:{fontSize:11,fontWeight:700,color:C.textDim,textTransform:"uppercase",letterSpacing:"1px",marginBottom:8}},"¿Qué pasa con el anticipo ya cobrado?"),
+                  e("div",{style:{display:"flex",flexDirection:"column",gap:6}},
+                    [
+                      {key:"devuelto",label:"Le devolví el anticipo ($"+totalPagadoCancel.toLocaleString()+")",desc:"Se descuenta de tus ingresos"},
+                      {key:"conservado",label:"Conservo el anticipo ($"+totalPagadoCancel.toLocaleString()+")",desc:"Sigue contando como ingreso"}
+                    ].map(function(op){
+                      var sel=anticipoDecisionCancelPedido===op.key;
+                      return e("button",{key:op.key,style:{cursor:"pointer",padding:"11px 14px",borderRadius:12,textAlign:"left",background:sel?"#EEF2FF":"transparent",border:"1px solid "+(sel?"#5B5CF6":C.border)},onClick:function(){ setAnticipoDecisionCancelPedido(op.key); }},
+                        e("div",{style:{fontSize:13,fontWeight:sel?600:400,color:sel?"#5B5CF6":C.text}},op.label),
+                        e("div",{style:{fontSize:11,color:C.textMuted,marginTop:1}},op.desc)
+                      );
+                    })
+                  )
+                ),
+
                 e("button",{
-                  style:{cursor:"pointer",padding:"11px",borderRadius:14,border:"none",background:motivoSel?"#5B5CF6":C.border,fontSize:13,color:"#fff",fontWeight:600,width:"100%"},
-                  disabled:!motivoSel,
+                  style:{cursor:"pointer",padding:"11px",borderRadius:14,border:"none",background:(motivoSel&&(totalPagadoCancel<=0||anticipoDecisionCancelPedido))?"#5B5CF6":C.border,fontSize:13,color:"#fff",fontWeight:600,width:"100%"},
+                  disabled:!motivoSel||(totalPagadoCancel>0&&!anticipoDecisionCancelPedido),
                   onClick:function(){
                     if(!motivoSel) return;
+                    if(totalPagadoCancel>0&&!anticipoDecisionCancelPedido) return;
                     var motivoFinal=motivoSel==="Otro"?(motivoCancelLibre||"Otro"):motivoSel;
                     var motivoCat=(MOTIVOS_CANCEL.find(function(m){ return m.key===motivoSel; })||{}).lado||"otro";
                     // fechaCancelacion , fecha real en que se registra la
                     // cancelación (no la de creación del pedido), usada
                     // para fechar la línea de reversión en Ingresos si el
-                    // pedido ya tenía anticipo cobrado.
-                    actualizarPedido(cancelarPedidoId,{estadoPedido:"cancelado",motivoCancelacion:motivoFinal,motivoCancelacionLado:motivoCat,fechaCancelacion:fmtFechaLocal(HOY)});
+                    // pedido ya tenía anticipo cobrado y se decidió devolverlo.
+                    // anticipoConservado , única fuente de verdad que lee
+                    // obtenerReversionIngresoPedido para decidir si genera
+                    // esa reversión o no (ver esa función).
+                    actualizarPedido(cancelarPedidoId,{estadoPedido:"cancelado",motivoCancelacion:motivoFinal,motivoCancelacionLado:motivoCat,fechaCancelacion:fmtFechaLocal(HOY),anticipoConservado:totalPagadoCancel>0&&anticipoDecisionCancelPedido==="conservado"});
                     cerrarCancelModal();
                     if(cl&&!cl.origen) setOrigenPromptId(cl.id);
                   }
@@ -8302,13 +8596,15 @@ export default function CLEO(props){
           e("div",{style:{fontSize:28,fontWeight:700,color:C.text,lineHeight:1.1,marginBottom:4}},"Cotizaciones"),
           e("div",{style:{fontSize:14,color:C.textMuted,marginBottom:6}},"Las propuestas que tus clientes siguen pensando y las que esta vez no se concretaron.")
         ),
-        e("div",{style:{display:"flex",gap:8,marginBottom:16,flexWrap:"wrap",alignItems:"center"}},
-          e("input",{placeholder:"Buscar...",value:filtroCot.busqueda,onChange:function(ev){ setFiltroCot(Object.assign({},filtroCot,{busqueda:ev.target.value})); },style:Object.assign({},st.inp,{flex:1,minWidth:120})}),
-          e("select",{value:filtroCot.estatus,onChange:function(ev){ setHighlightCotId(null); setFiltroCot(Object.assign({},filtroCot,{estatus:ev.target.value})); },style:{cursor:"pointer",padding:"7px 12px",borderRadius:12,border:"1px solid "+C.border,background:C.surface,fontSize:16,color:C.textMuted,outline:"none"}},
-            [["","Todas"],["Pendiente","Esperando respuesta"],["Rechazada","Sin cerrar"]].map(function(f){ return e("option",{key:f[0]||"todas",value:f[0]},f[1]); })
-          ),
-          e("select",{value:filtroCot.periodo,onChange:function(ev){ setFiltroCot(Object.assign({},filtroCot,{periodo:ev.target.value})); },style:{cursor:"pointer",padding:"7px 12px",borderRadius:12,border:"1px solid "+C.border,background:C.surface,fontSize:16,color:C.textMuted,outline:"none"}},
-            [["todo","Todo el tiempo"],["semana","Esta semana"],["mes","Este mes"],["trimestre","Trimestre"]].map(function(p){ return e("option",{key:p[0],value:p[0]},p[1]); })
+        e("div",{style:{display:"flex",flexDirection:isMobile?"column":"row",gap:8,marginBottom:16,flexWrap:isMobile?"nowrap":"wrap",alignItems:isMobile?"stretch":"center"}},
+          e("input",{placeholder:"Buscar...",value:filtroCot.busqueda,onChange:function(ev){ setFiltroCot(Object.assign({},filtroCot,{busqueda:ev.target.value})); },style:Object.assign({},st.inp,{flex:1,minWidth:120,width:isMobile?"100%":"auto"})}),
+          e("div",{style:isMobile?{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8}:{display:"flex",gap:8}},
+            e("select",{value:filtroCot.estatus,onChange:function(ev){ setHighlightCotId(null); setFiltroCot(Object.assign({},filtroCot,{estatus:ev.target.value})); },style:{cursor:"pointer",padding:"7px 12px",borderRadius:12,border:"1px solid "+C.border,background:C.surface,fontSize:isMobile?13:16,color:C.textMuted,outline:"none",width:isMobile?"100%":"auto",minWidth:0}},
+              [["","Todas"],["Pendiente","Esperando respuesta"],["Rechazada","Sin cerrar"]].map(function(f){ return e("option",{key:f[0]||"todas",value:f[0]},f[1]); })
+            ),
+            e("select",{value:filtroCot.periodo,onChange:function(ev){ setFiltroCot(Object.assign({},filtroCot,{periodo:ev.target.value})); },style:{cursor:"pointer",padding:"7px 12px",borderRadius:12,border:"1px solid "+C.border,background:C.surface,fontSize:isMobile?13:16,color:C.textMuted,outline:"none",width:isMobile?"100%":"auto",minWidth:0}},
+              [["todo","Todo el tiempo"],["semana","Esta semana"],["mes","Este mes"],["trimestre","Trimestre"]].map(function(p){ return e("option",{key:p[0],value:p[0]},p[1]); })
+            )
           )
         ),
         cotsFiltradas.length===0&&e("div",{style:{fontSize:13,color:C.textDim,textAlign:"center",padding:"24px 0"}},"No hay cotizaciones con esos filtros."),
@@ -8352,29 +8648,46 @@ export default function CLEO(props){
             // dos, así que igualarlos a él tampoco debe hacerlo.
             (function(){
               var pillH=26;
-              return e("div",{style:{display:"flex",gap:6,flexWrap:"wrap",alignItems:"center",marginBottom:esAceptada||esRechazada?10:0}},
-                e("div",{style:{display:"flex",alignItems:"center",gap:2,background:C.surfaceUp,borderRadius:6,padding:"0 3px",height:pillH,boxSizing:"border-box",border:"0.5px solid "+C.border}},
-                  ["Pendiente","Aceptada","Rechazada"].map(function(est){
-                    var activo=cot.estatus===est;
-                    return e("button",{key:est,style:{cursor:"pointer",padding:"0 8px",height:"100%",boxSizing:"border-box",borderRadius:4,border:"none",background:activo?C.surface:"transparent",fontSize:11,color:activo?C.text:C.textMuted,fontWeight:activo?500:400,display:"inline-flex",alignItems:"center"},onClick:function(){ var eraAceptada=cot.estatus==="Aceptada"; cambiarEstatus(cot.id,est); if(est==="Aceptada"&&!eraAceptada) mostrarToastTrabajo(); }},est);
-                  })
+              // El toggle Pendiente/Aceptada/Rechazada se queda exactamente
+              // igual (mismo tamaño, mismo estilo) , solo cambia cómo se
+              // acomoda junto a las demás acciones. En móvil, Editar/PDF/
+              // Adjuntar/WA pasan a ser botones ícono-únicamente de 32×32
+              // (mismo patrón ya usado en Pedidos) en su propia fila, en vez
+              // de mezclarse con el toggle en una sola fila que envolvía en
+              // tamaños distintos.
+              var segmentado=e("div",{style:{display:"flex",alignItems:"center",gap:2,background:C.surfaceUp,borderRadius:6,padding:"0 3px",height:pillH,boxSizing:"border-box",border:"0.5px solid "+C.border,flexShrink:0}},
+                ["Pendiente","Aceptada","Rechazada"].map(function(est){
+                  var activo=cot.estatus===est;
+                  return e("button",{key:est,style:{cursor:"pointer",padding:"0 8px",height:"100%",boxSizing:"border-box",borderRadius:4,border:"none",background:activo?C.surface:"transparent",fontSize:11,color:activo?C.text:C.textMuted,fontWeight:activo?500:400,display:"inline-flex",alignItems:"center"},onClick:function(){ var eraAceptada=cot.estatus==="Aceptada"; cambiarEstatus(cot.id,est); if(est==="Aceptada"&&!eraAceptada) mostrarToastTrabajo(); }},est);
+                })
+              );
+              var iconBtnStyle={cursor:"pointer",padding:isMobile?0:"0 12px",width:isMobile?32:"auto",height:isMobile?32:pillH,boxSizing:"border-box",borderRadius:8,border:"1px solid "+C.border,background:"transparent",color:C.textMuted,fontSize:12,fontWeight:500,display:"inline-flex",alignItems:"center",justifyContent:"center",gap:5,flexShrink:0};
+              var acciones=e("div",{style:{display:"flex",gap:isMobile?8:6,alignItems:"center",flexWrap:"wrap"}},
+                e("button",{style:iconBtnStyle,title:"Editar",onClick:function(){ editarCot(cot); }},
+                  e("svg",{width:isMobile?14:12,height:isMobile?14:12,viewBox:"0 0 24 24",fill:"none",stroke:"currentColor",strokeWidth:2,strokeLinecap:"round",strokeLinejoin:"round"},e("path",{d:"M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"}),e("path",{d:"M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"})),
+                  !isMobile&&"Editar"
                 ),
-                e("div",{style:{width:1,alignSelf:"stretch",background:C.border,margin:"2px 2px"}}),
-                e("button",{style:{cursor:"pointer",padding:"0 12px",height:pillH,boxSizing:"border-box",borderRadius:8,border:"1px solid "+C.border,background:"transparent",color:C.textMuted,fontSize:12,fontWeight:500,display:"inline-flex",alignItems:"center",gap:5},onClick:function(){ editarCot(cot); }},
-                  e("svg",{width:12,height:12,viewBox:"0 0 24 24",fill:"none",stroke:"currentColor",strokeWidth:2,strokeLinecap:"round",strokeLinejoin:"round"},e("path",{d:"M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"}),e("path",{d:"M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"})),
-                  "Editar"
+                e("button",{style:iconBtnStyle,title:"Descargar o compartir cotización en PDF",onClick:function(){ manejarGenerarCotizacionPDF(cot,cl,perfil); }},
+                  e("svg",{width:isMobile?14:12,height:isMobile?14:12,viewBox:"0 0 24 24",fill:"none",stroke:"currentColor",strokeWidth:2,strokeLinecap:"round",strokeLinejoin:"round"},e("path",{d:"M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"}),e("path",{d:"M14 2v6h6"})),
+                  !isMobile&&"PDF"
                 ),
-                e("button",{style:{cursor:"pointer",padding:"0 12px",height:pillH,boxSizing:"border-box",borderRadius:8,border:"1px solid "+C.border,background:"transparent",color:C.textMuted,fontSize:12,fontWeight:500,display:"inline-flex",alignItems:"center",gap:5},title:"Descargar o compartir cotización en PDF",onClick:function(){ manejarGenerarCotizacionPDF(cot,cl,perfil); }},
-                  e("svg",{width:12,height:12,viewBox:"0 0 24 24",fill:"none",stroke:"currentColor",strokeWidth:2,strokeLinecap:"round",strokeLinejoin:"round"},e("path",{d:"M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"}),e("path",{d:"M14 2v6h6"})),
-                  "PDF"
-                ),
-                !esProductos&&e("div",{className:"cot-adjunto-btn-wrap",style:{height:pillH,display:"inline-flex",alignItems:"center"}},
-                  e(ArchivoAdjunto,{tipoDocumento:"cotizacion",documento:cot,demoActivo:!!(perfil.modoDemo||props.demoActivo),onActualizarDocumento:actualizarArchivoAdjuntoCotizacion})
+                !esProductos&&e("div",{className:"cot-adjunto-btn-wrap",style:{height:isMobile?32:pillH,display:"inline-flex",alignItems:"center"}},
+                  e(ArchivoAdjunto,{tipoDocumento:"cotizacion",documento:cot,demoActivo:!!(perfil.modoDemo||props.demoActivo),onActualizarDocumento:actualizarArchivoAdjuntoCotizacion,compacto:isMobile})
                 ),
                 waUrl
-                  ? e("a",{href:waUrl,target:"_blank",rel:"noopener noreferrer",style:{padding:"0 12px",height:pillH,boxSizing:"border-box",borderRadius:8,background:C.greenBg,color:C.green,border:"0.5px solid "+C.greenBorder,fontSize:12,fontWeight:500,textDecoration:"none",display:"inline-flex",alignItems:"center",gap:5}},e(SvgWA,{size:12}),"WA")
-                  : cl&&cl.canalPrincipal&&cl.canalPrincipal!=="WhatsApp"&&contactUrl(cl,"Hola")&&e("a",{href:contactUrl(cl,"Hola"),target:"_blank",rel:"noopener noreferrer",style:{padding:"0 12px",height:pillH,boxSizing:"border-box",borderRadius:8,background:C.purplePale,color:C.purple,border:"0.5px solid "+C.purple+"33",fontSize:12,fontWeight:500,textDecoration:"none",display:"inline-flex",alignItems:"center",gap:5}},e(SvgIcon,{canal:cl.canalPrincipal,size:12}),cl.canalPrincipal.slice(0,2))
+                  ? e("a",{href:waUrl,target:"_blank",rel:"noopener noreferrer",title:"Enviar por WhatsApp",style:{padding:isMobile?0:"0 12px",width:isMobile?32:"auto",height:isMobile?32:pillH,boxSizing:"border-box",borderRadius:8,background:C.greenBg,color:C.green,border:"0.5px solid "+C.greenBorder,fontSize:12,fontWeight:500,textDecoration:"none",display:"inline-flex",alignItems:"center",justifyContent:"center",gap:5,flexShrink:0}},e(SvgWA,{size:isMobile?14:12}),!isMobile&&"WA")
+                  : cl&&cl.canalPrincipal&&cl.canalPrincipal!=="WhatsApp"&&contactUrl(cl,"Hola")&&e("a",{href:contactUrl(cl,"Hola"),target:"_blank",rel:"noopener noreferrer",title:"Escribir por "+cl.canalPrincipal,style:{padding:isMobile?0:"0 12px",width:isMobile?32:"auto",height:isMobile?32:pillH,boxSizing:"border-box",borderRadius:8,background:C.purplePale,color:C.purple,border:"0.5px solid "+C.purple+"33",fontSize:12,fontWeight:500,textDecoration:"none",display:"inline-flex",alignItems:"center",justifyContent:"center",gap:5,flexShrink:0}},e(SvgIcon,{canal:cl.canalPrincipal,size:isMobile?14:12}),!isMobile&&cl.canalPrincipal.slice(0,2))
               );
+              return isMobile
+                ? e("div",{style:{display:"flex",flexDirection:"column",gap:8,marginBottom:esAceptada||esRechazada?10:0}},
+                    segmentado,
+                    acciones
+                  )
+                : e("div",{style:{display:"flex",gap:6,flexWrap:"wrap",alignItems:"center",marginBottom:esAceptada||esRechazada?10:0}},
+                    segmentado,
+                    e("div",{style:{width:1,alignSelf:"stretch",background:C.border,margin:"2px 2px"}}),
+                    acciones
+                  );
             })(),
             esAceptada&&e("div",{style:{paddingTop:10,borderTop:"0.5px solid "+C.border}},
               (function(){
@@ -8407,12 +8720,15 @@ export default function CLEO(props){
       // TRABAJOS , cotizaciones aceptadas + ventas con cliente, por completar o completadas
       vista==="trabajos"&&(function(){
         var trabajosTodos=obtenerTrabajos();
-        var trabajos=filtroTrabajo==="todos"?trabajosTodos
-          :filtroTrabajo==="conSaldo"?trabajosTodos.filter(function(t){ return (t.total-t.cobrado)>0; })
-          :trabajosTodos.filter(function(t){ return filtroTrabajo==="completado"?t.entregado:!t.entregado; });
-        var nPorCompletar=trabajosTodos.filter(function(t){ return !t.entregado; }).length;
-        var nCompletados=trabajosTodos.filter(function(t){ return t.entregado; }).length;
-        var nConSaldo=trabajosTodos.filter(function(t){ return (t.total-t.cobrado)>0; }).length;
+        // Período aplica antes que el filtro de estado , para que los
+        // contadores de cada pestaña ya reflejen el período elegido.
+        var trabajosPer=filtroTrabajoPeriodo==="todo"?trabajosTodos:trabajosTodos.filter(function(t){ return enPeriodo(t.fecha,filtroTrabajoPeriodo); });
+        var trabajos=filtroTrabajo==="todos"?trabajosPer
+          :filtroTrabajo==="conSaldo"?trabajosPer.filter(function(t){ return (t.total-t.cobrado)>0; })
+          :trabajosPer.filter(function(t){ return filtroTrabajo==="completado"?t.entregado:!t.entregado; });
+        var nPorCompletar=trabajosPer.filter(function(t){ return !t.entregado; }).length;
+        var nCompletados=trabajosPer.filter(function(t){ return t.entregado; }).length;
+        var nConSaldo=trabajosPer.filter(function(t){ return (t.total-t.cobrado)>0; }).length;
         function nivelUrgenciaT(t){
           if(!t.fechaEntrega) return 3;
           var hoyU=new Date(); hoyU.setHours(0,0,0,0);
@@ -8436,22 +8752,36 @@ export default function CLEO(props){
             e("div",{style:{fontSize:14,color:C.textMuted,marginTop:2}},"Lo que tus clientes ya contrataron y tienes por completar.")
           ),
           e("div",{style:{display:"flex",gap:8,marginBottom:20,alignItems:"center",flexWrap:"wrap"}},
-            [{k:"porCompletar",l:"Por completar",n:nPorCompletar},{k:"completado",l:"Completados",n:nCompletados},{k:"conSaldo",l:"Con saldo",n:nConSaldo}].map(function(f,idx){
-              var activo=filtroTrabajo===f.k;
-              return [
-                idx>0&&e("span",{key:"sep",style:{color:C.textDim,fontSize:14}},"·"),
-                e("button",{key:f.k,style:{cursor:"pointer",padding:0,border:"none",background:"none",fontSize:14,color:activo?(f.k==="conSaldo"?C.amber:C.text):C.textMuted,fontWeight:activo?700:400,display:"flex",alignItems:"center",gap:4,borderBottom:activo?"2px solid "+(f.k==="conSaldo"?C.amber:C.purple):"2px solid transparent",paddingBottom:6},onClick:function(){ setFiltroTrabajo(f.k); }},
-                  f.l+" "+f.n
-                )
-              ];
-            })
+            // En móvil los 3 filtros se acomodan en cuadrícula de 3 columnas
+            // iguales, siempre parejos , antes, si envolvían, el último
+            // quedaba flotando solo y angosto en su propia fila.
+            e("div",{style:isMobile?{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:8,width:"100%"}:{display:"flex",gap:8,flexWrap:"wrap",flex:"0 1 auto"}},
+              [{k:"porCompletar",l:"Por completar",n:nPorCompletar,color:C.purple},{k:"completado",l:"Completados",n:nCompletados,color:C.green},{k:"conSaldo",l:"Con saldo",n:nConSaldo,color:C.amber}].map(function(f){
+                var activo=filtroTrabajo===f.k;
+                return e("button",{key:f.k,style:{cursor:"pointer",padding:isMobile?"9px 6px":"7px 14px",borderRadius:isMobile?14:20,border:"1.5px solid "+(activo?f.color:C.border),background:activo?f.color+"18":"transparent",fontSize:isMobile?12:13,color:activo?f.color:C.textMuted,fontWeight:activo?700:500,display:"flex",flexDirection:isMobile?"column":"row",alignItems:"center",justifyContent:"center",gap:isMobile?4:6,whiteSpace:isMobile?"normal":"nowrap",textAlign:"center",lineHeight:1.15,minWidth:0},onClick:function(){ setFiltroTrabajo(f.k); }},
+                  f.l,
+                  e("span",{style:{fontSize:11,padding:"1px 7px",borderRadius:20,background:activo?f.color:C.border,color:activo?"#fff":C.textMuted,fontWeight:700,flexShrink:0}},f.n)
+                );
+              })
+            ),
+            e("select",{
+              value:filtroTrabajoPeriodo,
+              onChange:function(ev){ setFiltroTrabajoPeriodo(ev.target.value); },
+              style:{cursor:"pointer",padding:"7px 12px",borderRadius:12,border:"1px solid "+C.border,background:C.surface,fontSize:12,color:C.textMuted,outline:"none",width:isMobile?"100%":"auto",minWidth:0,marginLeft:isMobile?0:"auto"}
+            },
+              [["todo","Todo el tiempo"],["semana","Esta semana"],["mes","Este mes"],["trimestre","Trimestre"]].map(function(p){ return e("option",{key:p[0],value:p[0]},p[1]); })
+            )
           ),
           sinFechaCount>=2&&filtroTrabajo!=="completado"&&e("div",{style:{fontSize:13,color:C.textMuted,padding:"14px 16px",background:C.surface,borderRadius:12,marginBottom:14,border:"1px solid "+C.border,display:"flex",alignItems:"center",gap:10}},
             e("span",{style:{fontSize:16}},"📅"),
             sinFechaCount+" trabajos necesitan una fecha de entrega. Agregarla ayudará a que ninguno se te pase."
           ),
           trabajos.length===0
-            ? e("div",{style:{fontSize:13,color:C.textDim,textAlign:"center",padding:"40px 0"}},filtroTrabajo==="completado"?"Todavía no has marcado ningún trabajo como completado.":filtroTrabajo==="conSaldo"?"No tienes ningún trabajo con saldo pendiente en este momento.":"No tienes trabajos por completar en este momento , buen momento para revisar si algo quedó pendiente de registrar.")
+            ? e("div",{style:{fontSize:13,color:C.textDim,textAlign:"center",padding:"40px 0"}},
+                filtroTrabajoPeriodo!=="todo"
+                  ? "No hay trabajos con esos filtros en el período elegido."
+                  : (filtroTrabajo==="completado"?"Todavía no has marcado ningún trabajo como completado.":filtroTrabajo==="conSaldo"?"No tienes ningún trabajo con saldo pendiente en este momento.":"No tienes trabajos por completar en este momento , buen momento para revisar si algo quedó pendiente de registrar.")
+              )
             : e("div",{style:{display:"flex",flexDirection:"column",gap:12}},
                 trabajos.map(function(t){
                   var ac=avatarColor(t.cliente.id);
@@ -8499,13 +8829,13 @@ export default function CLEO(props){
                     e("div",{style:{flex:isMobile?"1 1 100%":"0 0 180px",minWidth:isMobile?"100%":160,paddingTop:isMobile?14:0,borderTop:isMobile?"1px solid "+C.border:"none"}},
                       saldoT<=0
                         ? e("div",null,
-                            e("div",{style:{fontSize:13,fontWeight:700,color:C.green,display:"flex",alignItems:"center",gap:6,marginBottom:4}},"✓ Pagado completo"),
-                            e("button",{style:{cursor:"pointer",padding:0,border:"none",background:"none",fontSize:13,color:C.purple,fontWeight:600},onClick:function(){ setPagosModalTipo(t.tipo==="venta"?"venta":"cotizacion"); setPagosModalId(t.id); setFormPago({monto:"",fecha:FECHA_HOY,concepto:"Pago"}); }},"Ver pagos")
+                            e("div",{style:{fontSize:13,fontWeight:700,color:C.green,display:"flex",alignItems:"center",gap:6,marginBottom:6}},"✓ Pagado completo"),
+                            e("button",{style:{cursor:"pointer",padding:"6px 12px",borderRadius:8,border:"1px solid "+C.border,background:"transparent",fontSize:12,color:C.textMuted,fontWeight:600},onClick:function(){ setPagosModalTipo(t.tipo==="venta"?"venta":"cotizacion"); setPagosModalId(t.id); setFormPago({monto:"",fecha:FECHA_HOY,concepto:"Pago"}); }},"Ver pagos")
                           )
                         : e("div",null,
                             e("div",{style:{fontSize:14,fontWeight:700,color:C.amber,marginBottom:2}},"Falta $"+saldoT.toLocaleString()),
-                            e("div",{style:{fontSize:12,color:C.textDim,marginBottom:4}},"$"+t.cobrado.toLocaleString()+" pagado de $"+t.total.toLocaleString()),
-                            e("button",{style:{cursor:"pointer",padding:0,border:"none",background:"none",fontSize:13,color:C.purple,fontWeight:600},onClick:function(){ setPagosModalTipo(t.tipo==="venta"?"venta":"cotizacion"); setPagosModalId(t.id); setFormPago({monto:"",fecha:FECHA_HOY,concepto:"Pago"}); }},"+ Registrar pago")
+                            e("div",{style:{fontSize:12,color:C.textDim,marginBottom:8}},"$"+t.cobrado.toLocaleString()+" pagado de $"+t.total.toLocaleString()),
+                            e("button",{style:{cursor:"pointer",padding:"8px 16px",borderRadius:10,border:"none",background:C.purple,fontSize:12,color:"#fff",fontWeight:600,width:isMobile?"100%":"auto"},onClick:function(){ setPagosModalTipo(t.tipo==="venta"?"venta":"cotizacion"); setPagosModalId(t.id); setFormPago({monto:"",fecha:FECHA_HOY,concepto:"Pago"}); }},"Registrar pago")
                           )
                     ),
 
@@ -8834,12 +9164,23 @@ export default function CLEO(props){
         // día de la cancelación con el total ya cobrado descontado.
         pedidos.forEach(function(ped){
           var cl=clientes.find(function(c){ return c.id===ped.clienteId; });
+          // Mismo criterio que Servicios (ver v.etiqueta más abajo): un
+          // pedido "Total del día"/"Venta rápida" sin cliente vinculado
+          // guarda el lugar de la venta en ped.etiqueta , antes se perdía
+          // aquí y siempre se mostraba "Sin cliente" en vez del lugar.
+          // origen para el filtro de esta pantalla ("todos"/"pedido"/
+          // "venta_rapida") , antes SIEMPRE decía "pedido" sin importar de
+          // dónde nació el pedido, así que el filtro "Ventas rápidas" nunca
+          // mostraba nada real (todo lo actual vive en pedidos, ver
+          // crearPedidoDesdeVenta). origenVenta ya traía el dato correcto,
+          // pero origen (el campo que de verdad usa el filtro) no lo leía.
+          var origenFiltroPed=ped.origenVenta==="venta_rapida"?"venta_rapida":"pedido";
           (ped.pagos||[]).forEach(function(pago){
             ingresos.push({
               id:"vp_ped_"+pago.id,
               clienteId:ped.clienteId,
-              clienteNombre:cl?cl.nombre:"Sin cliente",
-              origen:"pedido",
+              clienteNombre:cl?cl.nombre:(ped.etiqueta||"Sin cliente"),
+              origen:origenFiltroPed,
               origenVenta:ped.origenVenta||"registro_manual",
               pedidoId:ped.id,
               monto:Number(pago.monto),
@@ -8853,8 +9194,8 @@ export default function CLEO(props){
             ingresos.push({
               id:"vp_ped_cancel_"+ped.id,
               clienteId:ped.clienteId,
-              clienteNombre:cl?cl.nombre:"Sin cliente",
-              origen:"pedido",
+              clienteNombre:cl?cl.nombre:(ped.etiqueta||"Sin cliente"),
+              origen:origenFiltroPed,
               origenVenta:ped.origenVenta||"registro_manual",
               pedidoId:ped.id,
               monto:reversionPed.monto,
@@ -9051,6 +9392,15 @@ export default function CLEO(props){
         var pedidosPer=pedidos.filter(function(p){ return enPeriodoRes(p.fecha||p.fechaCreado); });
         var pedidosEntregados=pedidosPer.filter(function(p){ return p.estadoPedido==="entregado"; });
 
+        // Pedidos cancelados EN el período , se cuenta por fechaCancelacion
+        // (cuándo se canceló de verdad), no por cuándo se creó el pedido ,
+        // mismo criterio que ya usa la reversión de ingresos de arriba. Se
+        // guarda también el motivo más común entre esos, para el insight.
+        var canceladosPer=pedidos.filter(function(p){ return p.estadoPedido==="cancelado"&&enPeriodoRes(p.fechaCancelacion||p.fecha||p.fechaCreado); });
+        var motivoCancelPerCount={};
+        canceladosPer.forEach(function(p){ if(p.motivoCancelacion) motivoCancelPerCount[p.motivoCancelacion]=(motivoCancelPerCount[p.motivoCancelacion]||0)+1; });
+        var topMotivoCancelPer=Object.entries(motivoCancelPerCount).sort(function(a,b){ return b[1]-a[1]; })[0]||null;
+
         // Saldo por cobrar
         var saldoPorCobrar=pedidos.filter(function(p){ return p.estadoPedido!=="cancelado"; }).reduce(function(s,p){
           var pagado=(p.pagos||[]).reduce(function(a,pg){ return a+Number(pg.monto); },0);
@@ -9190,6 +9540,7 @@ export default function CLEO(props){
         if(promDiasConv!==null) insights.push({ic:"⏱️",color:promDiasConv<=3?"#DCFCE7":"#FEF3C7",icBg:promDiasConv<=3?"#166534":"#92400E",titulo:promDiasConv===0?"Tus clientes deciden rápido":"En promedio tardas "+promDiasConv+" días en cerrar",desc:promDiasConv<=3?"La mayoría de tus ventas se cierran muy rápido. Eso es buena señal de confianza.":"Entre más rápido le mandas el precio, más probabilidad de que compre."});
         if(topRazon) insights.push({ic:"🏆",color:"#FEF9C3",icBg:"#713F12",titulo:"La razón de compra más común es "+topRazon[0],desc:"Registrada "+topRazon[1]+" veces. Eso es lo que más convence a tus clientes — úsalo en tu comunicación."});
         if(topMotivoPerdida&&topMotivoPerdida[1]>=2) insights.push({ic:"⚠️",color:"#FEE2E2",icBg:"#991B1B",titulo:'"'+topMotivoPerdida[0]+'" es el motivo más común de que se te vayan clientes',desc:"Apareció en "+topMotivoPerdida[1]+" de "+totalPerdidasProd+" oportunidades o pedidos que no se concretaron."});
+        if(canceladosPer.length>0) insights.push({ic:"❌",color:"#FEE2E2",icBg:"#991B1B",titulo:canceladosPer.length+" pedido"+(canceladosPer.length>1?"s":"")+" cancelado"+(canceladosPer.length>1?"s":"")+" en este período",desc:topMotivoCancelPer?"El motivo más común fue \""+topMotivoCancelPer[0]+"\" ("+topMotivoCancelPer[1]+" de "+canceladosPer.length+").":"Todavía sin un motivo dominante."});
         if(saldoPorCobrar>0) insights.push({ic:"💰",color:"#FEF3C7",icBg:"#92400E",titulo:"Tienes $"+saldoPorCobrar.toLocaleString()+" pendientes de cobrar",desc:"Pedidos entregados o en proceso con saldo sin liquidar. Un mensaje puede acelerar el pago."});
 
         // Stats para card oscura
@@ -10333,20 +10684,30 @@ export default function CLEO(props){
           ),
 
           // PASO 3: interes
-          pasoPregunto===3&&e("div",null,
-            e("div",{style:{fontSize:15,fontWeight:700,color:C.text,marginBottom:16}},"¿Qué servicio le interesó a "+nombreCorto+"?"),
-            e(ItemsEditor,{
-              items:fp.items||[],
-              setItems:function(v){ setFormPregunto(Object.assign({},fp,{items:v})); },
-              catalogo:servicios,
-              esProductos:false,
-              st:st,TXT:TXT
-            }),
-            e("div",{style:{marginTop:14,marginBottom:6}},e("label",{style:st.lbl},"Guarda algo importante de la conversación (opcional)")),
-            e("textarea",{value:fp.notaAdicional,onChange:function(ev){ setFormPregunto(Object.assign({},fp,{notaAdicional:ev.target.value})); },placeholder:"Ej. Necesita el logotipo antes de agosto y quiere una imagen moderna.",style:Object.assign({},st.inp,{minHeight:60,resize:"vertical"})}),
-            e("div",{style:{fontSize:11,color:C.textDim,marginTop:8,marginBottom:20,lineHeight:1.5}},"Anota solamente lo que necesitarás recordar cuando vuelvas a hablarle."),
-            e("button",{style:Object.assign({},st.btnP,{width:"100%",opacity:(fp.items||[]).some(function(it){ return it.nombre.trim(); })?1:0.4}),disabled:!(fp.items||[]).some(function(it){ return it.nombre.trim(); }),onClick:function(){ setPasoPregunto(4); }},"Continuar")
-          ),
+          pasoPregunto===3&&(function(){
+            // El precio ya es obligatorio aquí (antes solo se pedía el
+            // nombre) , desde que "ya le enviaste el precio" crea la
+            // cotización real directo al terminar el wizard (sin pasar por
+            // un modal de confirmación aparte), este es el único momento
+            // en que se valida que el precio esté capturado.
+            var itemsConNombrePg3=(fp.items||[]).filter(function(it){ return it.nombre&&it.nombre.trim(); });
+            var paso3Listo=itemsConNombrePg3.length>0&&itemsConNombrePg3.every(function(it){ return Number(it.precioUnitario)>0; });
+            return e("div",null,
+              e("div",{style:{fontSize:15,fontWeight:700,color:C.text,marginBottom:16}},"¿Qué servicio le interesó a "+nombreCorto+"?"),
+              e(ItemsEditor,{
+                items:fp.items||[],
+                setItems:function(v){ setFormPregunto(Object.assign({},fp,{items:v})); },
+                catalogo:servicios,
+                esProductos:false,
+                st:st,TXT:TXT
+              }),
+              e("div",{style:{marginTop:14,marginBottom:6}},e("label",{style:st.lbl},"Guarda algo importante de la conversación (opcional)")),
+              e("textarea",{value:fp.notaAdicional,onChange:function(ev){ setFormPregunto(Object.assign({},fp,{notaAdicional:ev.target.value})); },placeholder:"Ej. Necesita el logotipo antes de agosto y quiere una imagen moderna.",style:Object.assign({},st.inp,{minHeight:60,resize:"vertical"})}),
+              e("div",{style:{fontSize:11,color:C.textDim,marginTop:8,marginBottom:20,lineHeight:1.5}},"Anota solamente lo que necesitarás recordar cuando vuelvas a hablarle."),
+              e("button",{style:Object.assign({},st.btnP,{width:"100%",opacity:paso3Listo?1:0.4}),disabled:!paso3Listo,onClick:function(){ setPasoPregunto(4); }},"Continuar"),
+              itemsConNombrePg3.length>0&&!paso3Listo&&e("div",{style:{fontSize:11,color:"#E53E3E",marginTop:8,textAlign:"center"}},"Agrega el precio de cada servicio para continuar.")
+            );
+          })(),
 
           // PASO 4: precio
           pasoPregunto===4&&e("div",null,
@@ -10525,7 +10886,23 @@ export default function CLEO(props){
             ),
             fp.yaEnvio===true&&e("div",null,
               e("div",{style:{fontSize:13,color:C.purple,fontWeight:600,marginBottom:16}},"Buen paso. Ahora conviene asegurarnos de que lo revise."),
-              e("button",{style:Object.assign({},st.btnP,{width:"100%"}),onClick:guardarPreguntoP},"Guardar")
+              e("div",{style:{marginBottom:6}},e("label",{style:st.lbl},"¿Cuándo se lo enviaste? (opcional)")),
+              e("div",{style:{display:"flex",gap:6,flexWrap:"wrap",marginBottom:10}},
+                [{k:"hoy",l:"Hoy"},{k:"ayer",l:"Ayer"},{k:"elegir",l:"Elegir fecha"}].map(function(op){
+                  var activo=fp.fechaEnvio===op.k;
+                  return e("button",{key:op.k,style:{cursor:"pointer",padding:"7px 12px",borderRadius:10,border:"1.5px solid "+(activo?C.purple:C.border),background:activo?C.purple:"transparent",fontSize:12,color:activo?"#fff":C.textMuted},onClick:function(){ setFormPreguntoP(Object.assign({},fp,{fechaEnvio:op.k})); }},op.l);
+                })
+              ),
+              fp.fechaEnvio==="elegir"&&e("input",{type:"date",value:fp.fechaEnvioCustom,onChange:function(ev){ setFormPreguntoP(Object.assign({},fp,{fechaEnvioCustom:ev.target.value})); },style:Object.assign({},st.inp,{marginBottom:10})}),
+              e("div",{style:{marginTop:8,marginBottom:6}},e("label",{style:st.lbl},"¿Cuándo conviene preguntarle si lo revisó?")),
+              e("div",{style:{display:"flex",gap:6,flexWrap:"wrap",marginBottom:16}},
+                [{k:"manana",l:"Mañana"},{k:"2dias",l:"En 2 días"},{k:"3dias",l:"En 3 días"},{k:"elegir",l:"Elegir otra fecha"}].map(function(op){
+                  var activo=fp.fechaSeguimiento===op.k;
+                  return e("button",{key:op.k,style:{cursor:"pointer",padding:"7px 12px",borderRadius:10,border:"1.5px solid "+(activo?C.purple:C.border),background:activo?C.purple:"transparent",fontSize:12,color:activo?"#fff":C.textMuted},onClick:function(){ setFormPreguntoP(Object.assign({},fp,{fechaSeguimiento:op.k})); }},op.l);
+                })
+              ),
+              fp.fechaSeguimiento==="elegir"&&e("input",{type:"date",value:fp.fechaSeguimientoCustom,onChange:function(ev){ setFormPreguntoP(Object.assign({},fp,{fechaSeguimientoCustom:ev.target.value})); },style:Object.assign({},st.inp,{marginBottom:16})}),
+              e("button",{style:Object.assign({},st.btnP,{width:"100%",opacity:fp.fechaSeguimiento?1:0.4}),disabled:!fp.fechaSeguimiento,onClick:guardarPreguntoP},"Continuar")
             ),
             fp.yaEnvio===false&&e("div",null,
               e("div",{style:{fontSize:13,color:C.purple,fontWeight:600,marginBottom:16}},"Enviar el precio puede ser el siguiente paso."),
@@ -10545,7 +10922,18 @@ export default function CLEO(props){
           pasoPreguntoP===5&&(function(){
             var resumenFinalP=resumenItemsCotizacion((fp.items||[]).filter(function(it){ return it.nombre&&it.nombre.trim(); }));
             var totalFinalP=(fp.items||[]).reduce(function(s,it){ return s+(Number(it.cantidad)||0)*(Number(it.precioUnitario)||0); },0);
-            var mensajeFinal="A "+nombreCorto+" le interesa "+resumenFinalP+"."+(fp.yaEnvio&&totalFinalP?" Le enviaste un precio de $"+totalFinalP.toLocaleString()+".":" Quedó registrado como oportunidad nueva.");
+            // Mismo criterio que el paso 5 de Servicios: el mensaje final
+            // menciona cuándo reaparecerá la tarjeta de seguimiento, en vez
+            // de dejarlo implícito , antes Productos nunca lo mencionaba en
+            // ninguno de los dos casos.
+            var mensajeFinal;
+            if(fp.yaEnvio){
+              var fechaSegP=resolverFechaPregunto(fp.fechaSeguimiento,fp.fechaSeguimientoCustom);
+              mensajeFinal="A "+nombreCorto+" le interesa "+resumenFinalP+(totalFinalP?". Le enviaste un precio de $"+totalFinalP.toLocaleString()+".":".")+" "+fraseDia(fechaSegP)+" aparecerá entre tus conversaciones por retomar.";
+            } else {
+              var fechaEnvP=resolverFechaPregunto(fp.fechaEnvioPlaneada,fp.fechaEnvioPlaneadaCustom);
+              mensajeFinal="A "+nombreCorto+" le interesa "+resumenFinalP+". "+fraseDia(fechaEnvP)+" te recordaremos enviarle el precio.";
+            }
             var urlFinal=contactUrl({canalPrincipal:fp.canal,contacto:fp.contacto,instagram:fp.instagram,messenger:fp.messenger},"Hola "+nombreCorto+"!");
             return e("div",null,
               e("div",{style:{fontSize:16,fontWeight:700,color:C.green,marginBottom:12}},"Listo, ya quedó en tus oportunidades."),
@@ -10838,7 +11226,11 @@ export default function CLEO(props){
         return e("div",{style:st.ov},
           e("div",{style:Object.assign({},st.modal,{maxWidth:420}),onClick:function(ev){ ev.stopPropagation(); }},
             e("div",{style:{fontSize:15,fontWeight:700,color:C.green,marginBottom:6}},"✓ Venta registrada"),
-            e("div",{style:{fontSize:12,color:C.green,fontWeight:600,marginBottom:12,padding:"8px 12px",background:C.green+"12",borderRadius:8}},"Ya quedó en tu pestaña Pedidos, para que no se te olvide entregarlo."),
+            // El aviso de "no se te olvide entregarlo" solo tiene sentido si
+            // el pedido nació pendiente , si en el paso anterior ya dijiste
+            // "ya lo entregué" (fc.yaEntregado===true), decirle que no se le
+            // olvide entregarlo lo contradice.
+            e("div",{style:{fontSize:12,color:C.green,fontWeight:600,marginBottom:12,padding:"8px 12px",background:C.green+"12",borderRadius:8}},fc.yaEntregado===true?"Ya quedó registrado como entregado en tu pestaña Pedidos.":"Ya quedó en tu pestaña Pedidos, para que no se te olvide entregarlo."),
             e("div",{style:{fontSize:13,color:C.textMuted,marginBottom:18,lineHeight:1.5}},"¿Por dónde le puedes escribir a "+(clCompletarVP?clCompletarVP.nombre.split(" ")[0]:"")+"?"),
             renderCompletarContacto(),
             e("div",{style:{display:"flex",gap:8,marginTop:6}},
@@ -10853,7 +11245,11 @@ export default function CLEO(props){
         return e("div",{style:st.ov},
           e("div",{style:Object.assign({},st.modal,{maxWidth:420}),onClick:function(ev){ ev.stopPropagation(); }},
             e("div",{style:{fontSize:16,fontWeight:700,color:C.green,marginBottom:12}},"✓ Venta registrada"),
-            e("div",{style:{fontSize:13,color:C.text,lineHeight:1.6,marginBottom:20,background:C.green+"0D",padding:"14px 16px",borderRadius:10,border:"1px solid "+C.green+"33"}},"Ya quedó en tu pestaña Pedidos, para que no se te olvide entregarlo."),
+            // Mismo criterio que la variante de arriba (clienteCompletarId):
+            // el mensaje depende de si ya dijiste "ya lo entregué" en el
+            // paso anterior , nunca le pide recordar entregar algo que
+            // acabas de confirmar que ya entregaste.
+            e("div",{style:{fontSize:13,color:C.text,lineHeight:1.6,marginBottom:20,background:C.green+"0D",padding:"14px 16px",borderRadius:10,border:"1px solid "+C.green+"33"}},fc.yaEntregado===true?"Ya quedó registrado como entregado en tu pestaña Pedidos.":"Ya quedó en tu pestaña Pedidos, para que no se te olvide entregarlo."),
             e("button",{style:Object.assign({},st.btnP,{width:"100%"}),onClick:cerrarCerreP},"Listo")
           )
         );
@@ -11447,21 +11843,63 @@ export default function CLEO(props){
                 )
               ),
 
-              // Ya cerró — solo si tiene cotización pendiente
+              // Ya cerró — solo si tiene cotización pendiente , marca la
+              // cotización como Aceptada y al cliente como Ganado AQUÍ
+              // MISMO, antes de abrir el asistente , mismo criterio que las
+              // otras 2 formas de llegar a este asistente (arrastrar en el
+              // pipeline vía moverEtapa, o cambiar estatus desde
+              // Cotizaciones vía cambiarEstatus). Antes este botón abría el
+              // asistente completo sin hacer este cambio, así que aunque lo
+              // terminaras, la cotización se quedaba "Pendiente" y el
+              // cliente nunca pasaba a "Ganado" , también se guarda
+              // estatusAnteriorCot para que cancelarGanado() pueda revertir
+              // correctamente si cierras en el primer paso.
               (function(){
                 var cotPend=cotizaciones.find(function(x){ return x.clienteId===cl.id&&x.estatus==="Pendiente"; });
                 if(!cotPend) return null;
                 return e("div",{style:{borderRadius:12,border:"1px solid "+C.green+"44",overflow:"hidden",cursor:"pointer"},
                   onClick:function(){
                     cerrar();
-                    setCotAceptadaId(cotPend.id);
+                    setEstatusAnteriorCot({cotId:cotPend.id,estatus:cotPend.estatus,fecha:cotPend.fecha});
+                    setCotizaciones(cotizaciones.map(function(c){ return c.id===cotPend.id?Object.assign({},c,{estatus:"Aceptada",fechaCierre:FECHA_HOY,entregado:false,fechaEntrega:""}):c; }));
                     setEtapaAnteriorGanado(cl.etapa);
+                    setClientes(clientes.map(function(c){ return c.id===cl.id?Object.assign({},c,{etapa:"Ganado",fechaEtapa:FECHA_HOY}):c; }));
+                    setCotAceptadaId(cotPend.id);
                     setPasoGanado(1); setPagoGanado({tipo:"",monto:"",fecha:FECHA_HOY}); setRazonCierre([]);
                   }
                 },
                   e("div",{style:{padding:"12px 14px"}},
                     e("div",{style:{fontSize:14,fontWeight:500,color:C.green}},"Ya cerró"),
                     e("div",{style:{fontSize:12,color:C.textMuted,marginTop:1}},"Marcar como cliente ganado")
+                  )
+                );
+              })(),
+
+              // Ya confirmó su pedido — Productos , equivalente a "Ya
+              // cerró" para clientes que nunca llegaron a tener una
+              // cotización formal (lo normal en Productos: "Alguien
+              // preguntó" guarda el interés directo en la ficha, sin pasar
+              // por cotización). Sin esta opción, un cliente así solo podía
+              // marcarse "Sigue interesado"/"No respondió"/"Ya no está
+              // interesado" , nunca "ya me compró". Reabre el flujo ya
+              // existente y seguro de "Cerré una venta" (guardarCerreP),
+              // prellenado con este cliente y los productos que ya sabemos
+              // que le interesan , solo pide confirmar el pago.
+              esProductos&&(function(){
+                var cotPendP=cotizaciones.find(function(x){ return x.clienteId===cl.id&&x.estatus==="Pendiente"; });
+                if(cotPendP) return null;
+                var itemsInteresCC=obtenerItemsInteres(cl);
+                if(itemsInteresCC.length===0) return null;
+                return e("div",{style:{borderRadius:12,border:"1px solid "+C.green+"44",overflow:"hidden",cursor:"pointer"},
+                  onClick:function(){
+                    cerrar();
+                    setFormCerreP({busqueda:cl.nombre,clienteId:cl.id,mostrarForm:true,items:itemsInteresCC,tipoPago:"completo",anticipo:"",yaEntregado:null,origenVentaP:"oportunidad"});
+                    setModalCerreP(true);
+                  }
+                },
+                  e("div",{style:{padding:"12px 14px"}},
+                    e("div",{style:{fontSize:14,fontWeight:500,color:C.green}},"Ya confirmó su pedido"),
+                    e("div",{style:{fontSize:12,color:C.textMuted,marginTop:1}},"Registrar la venta")
                   )
                 );
               })(),
@@ -11617,7 +12055,7 @@ export default function CLEO(props){
             // intactas , cancelarRecordatoriosPipeline nunca las toca.
             return atenderRecordatorioReactivacion(base,contactadoRecordatorioId);
           }));
-          setCotizaciones(cotizaciones.map(function(c){ return c.clienteId===cl.id&&c.estatus==="Pendiente"?Object.assign({},c,{estatus:"Rechazada"}):c; }));
+          setCotizaciones(cotizaciones.map(function(c){ return c.clienteId===cl.id&&c.estatus==="Pendiente"?Object.assign({},c,{estatus:"Rechazada",fechaRechazo:FECHA_HOY}):c; }));
           setContactadoResult({titulo:"Marcado como perdido",desc:nombre+" fue archivada. El historial se conserva."});
         }
       }
@@ -11915,7 +12353,7 @@ export default function CLEO(props){
         {key:"Precio alto",   icono:"💸",label:"Le pareció caro",    msg:"Un no por precio casi siempre significa que no vio suficiente valor todavía. En unos meses su situación puede cambiar , o tú puedes tener un argumento mejor.",    seg:"60", sugerencia:"Hola [nombre], terminé un proyecto similar y quedó muy bien. Si en algún momento quieres ver cómo quedó, con gusto te lo muestro."},
         {key:"Eligio a otro", icono:"🤝",label:"Eligió a otro",       msg:"El que eligió hoy puede decepcionar mañana. Muchos clientes regresan después de probar a la competencia. Vale la pena quedarse en su radar.",                        seg:"90", sugerencia:"Hola [nombre], ¿cómo te fue con el proyecto? Solo quería saber si resultó como esperabas."},
         {key:"Sin presupuesto",icono:"📆",label:"Sin presupuesto",        msg:"Sin presupuesto hoy no significa sin presupuesto siempre. En unos meses puede tener los recursos que hoy no tiene.",                                                              seg:"90", sugerencia:"Hola [nombre], estoy abriendo agenda para el próximo trimestre. Si quieres que lo tengamos en mente, con gusto."},
-        {key:"No respondio",  icono:"💬",label:"Dejó de responder",   msg:"El silencio no es un no definitivo. A veces la gente se pierde en el día a día. Un mensaje en el momento correcto puede reabrir todo.",                              seg:"30", sugerencia:"Hola [nombre], ¿todo bien por allá? , Sin mencionar la cotización. Si responde, ahí retomas la conversación."},
+        {key:"No respondio",  icono:"💬",label:"Dejó de responder",   msg:"El silencio no es un no definitivo. A veces la gente se pierde en el día a día. Un mensaje en el momento correcto puede reabrir todo.",                              seg:"30", sugerencia:"Escríbele algo ligero, sin mencionar la cotización. Si responde, ahí retomas la conversación."},
         {key:"Otro",          icono:"📝",label:"Otro motivo",             msg:"Un no de hoy puede ser un sí en 3 meses. Dejar la puerta abierta no cuesta nada y a veces trae la mejor venta.",                                                          seg:"30", sugerencia:"Hola [nombre], ¿cómo has estado? Por aquí si en algún momento surge algo en lo que pueda ayudarte."}
       ];
 
@@ -11936,14 +12374,21 @@ export default function CLEO(props){
         setSeguimientoLost({dias:"",custom:"",nota:""});
       }
 
-      return e("div",{style:st.ov,onClick:consejoMotivo?null:cancelarMotivoPipeline},
+      return e("div",{style:st.ov,onClick:consejoMotivo?null:cerrarPerdida},
         e("div",{style:Object.assign({},st.modal,{maxWidth:isMobile?"100%":420}),onClick:function(ev){ ev.stopPropagation(); }},
 
           e("div",{style:{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:16}},
             e("div",null,
               e("div",{style:{fontWeight:700,fontSize:18,color:C.text,marginBottom:4}},"¿Qué pasó con este cliente?")
             ),
-            consejoMotivo?null:e("button",{style:{background:"none",border:"none",cursor:"pointer",color:C.textDim,fontSize:20,lineHeight:1,padding:"0 4px"},onClick:cancelarMotivoPipeline},"×")
+            // × y clic afuera usan cerrarPerdida (local, ya sabe distinguir
+            // Productos de Servicios vía esOpoProductos) , antes usaban la
+            // función vieja cancelarMotivoPipeline, que solo sabía revertir
+            // c.etapa , en un cliente de Productos, eso escribía basura en
+            // .etapa (un campo que Productos no usa) y NUNCA revertía
+            // estadoProspecto (el campo real), dejándolo pegado en lo que
+            // sea que tuviera al momento de cerrar sin elegir motivo.
+            consejoMotivo?null:e("button",{style:{background:"none",border:"none",cursor:"pointer",color:C.textDim,fontSize:20,lineHeight:1,padding:"0 4px"},onClick:cerrarPerdida},"×")
           ),
 
           e("div",{style:{marginBottom:16,padding:"10px 14px",background:C.surfaceUp,borderRadius:10,border:"1px solid "+C.border}},
@@ -12013,7 +12458,7 @@ export default function CLEO(props){
                   }));
                 } else {
                   var cotP=cotizaciones.find(function(c){ return c.clienteId===targetId&&(c.estatus==="Pendiente"||c.estatus==="Aceptada"); });
-                  if(cotP) setCotizaciones(cotizaciones.map(function(c){ return c.id===cotP.id?Object.assign({},c,{estatus:"Rechazada",motivoPerdida:consejoMotivo}):c; }));
+                  if(cotP) setCotizaciones(cotizaciones.map(function(c){ return c.id===cotP.id?Object.assign({},c,{estatus:"Rechazada",motivoPerdida:consejoMotivo,fechaRechazo:FECHA_HOY}):c; }));
                   setClientes(clientes.map(function(c){
                     if(c.id!==targetId) return c;
                     var limpio=cancelarRecordatoriosPipeline(c);
@@ -12039,7 +12484,7 @@ export default function CLEO(props){
                   }));
                 } else {
                   var cotP2=cotizaciones.find(function(c){ return c.clienteId===targetId&&(c.estatus==="Pendiente"||c.estatus==="Aceptada"); });
-                  if(cotP2) setCotizaciones(cotizaciones.map(function(c){ return c.id===cotP2.id?Object.assign({},c,{estatus:"Rechazada",motivoPerdida:consejoMotivo}):c; }));
+                  if(cotP2) setCotizaciones(cotizaciones.map(function(c){ return c.id===cotP2.id?Object.assign({},c,{estatus:"Rechazada",motivoPerdida:consejoMotivo,fechaRechazo:FECHA_HOY}):c; }));
                   setClientes(clientes.map(function(c){
                     if(c.id!==targetId) return c;
                     var limpio2=cancelarRecordatoriosPipeline(c);

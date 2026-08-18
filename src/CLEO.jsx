@@ -6823,13 +6823,19 @@ export default function CLEO(props){
                 // Usar c.fecha aquí hacía que estos dos eventos cayeran
                 // siempre en el mismo día que "Cliente registrado", sin
                 // importar cuánto tiempo real hubiera pasado.
-                if(c.etapa==="Perdido") eventos.push({fecha:c.fechaEtapa||c.fecha,tipo:"perdido",titulo:"Marcado como perdido",desc:c.motivoPerdida?"Motivo: "+c.motivoPerdida:"Sin motivo registrado",color:C.red,orden:6});
+                // c.etapa (Servicios) O c.estadoProspecto (Productos) , antes
+                // solo se revisaba c.etapa, así que un cliente de Productos
+                // marcado como Perdido/Convertido (que usa estadoProspecto,
+                // nunca etapa) nunca generaba este evento , "Oportunidad
+                // perdida" simplemente no aparecía en su historial.
+                if(c.etapa==="Perdido"||c.estadoProspecto==="Perdido") eventos.push({fecha:c.fechaEtapa||c.fecha,tipo:"perdido",titulo:"Marcado como perdido",desc:c.motivoPerdida?"Motivo: "+c.motivoPerdida:"Sin motivo registrado",color:C.red,orden:6});
                 // fechaPedido como segundo fallback , el botón "Crear
                 // pedido" directo de la tarjeta de Oportunidades (Productos)
                 // marca etapa:"Ganado" pero solo guarda fechaPedido, nunca
                 // fechaEtapa , sin este fallback, ese caso seguía cayendo en
-                // c.fecha (registro) igual que antes.
-                if(c.etapa==="Ganado") eventos.push({fecha:c.fechaEtapa||c.fechaPedido||c.fecha,tipo:"ganado",titulo:"Venta cerrada",desc:"Cliente ganado",color:C.green,orden:6});
+                // c.fecha (registro) igual que antes. "Convertido" es el
+                // equivalente de "Ganado" en Productos (estadoProspecto).
+                if(c.etapa==="Ganado"||c.estadoProspecto==="Convertido") eventos.push({fecha:c.fechaEtapa||c.fechaPedido||c.fecha,tipo:"ganado",titulo:"Venta cerrada",desc:"Cliente ganado",color:C.green,orden:6});
                 // Historial de contactos
                 (c.historialContactos||[]).forEach(function(h){
                   var isRecup=h.resultado&&(h.resultado.includes("recuperad")||h.resultado.includes("Recuperad")||h.resultado.includes("reactivad"));
@@ -8222,7 +8228,7 @@ export default function CLEO(props){
                           ),
                           e("div",{style:{fontSize:14,fontWeight:700,color:C.green,marginRight:6}},"$"+Number(pago.monto).toLocaleString()),
                           e("button",{style:{cursor:"pointer",padding:"4px 10px",borderRadius:8,border:"1px solid "+C.border,background:"transparent",fontSize:11,color:C.amber,fontWeight:500},
-                            onClick:function(){ generarDocumentoParaMovimiento(pago,{id:ped.id,concepto:ped.productos||"Pedido",monto:totalPedido,pagos:pagosArr},cl||{nombre:"Cliente"},perfil); }
+                            onClick:function(){ generarDocumentoParaMovimiento(pago,{id:ped.id,concepto:ped.productos||"Pedido",items:obtenerItemsPedido(ped),monto:totalPedido,pagos:pagosArr},cl||{nombre:"Cliente"},perfil); }
                           },"Comprobante"),
                           e("button",{style:{background:"none",border:"none",cursor:"pointer",color:C.textDim,fontSize:16,padding:"2px 6px"},
                             onClick:function(){ eliminarPago("pedido",ped.id,pago.id,pago.monto); }
@@ -8235,7 +8241,7 @@ export default function CLEO(props){
                       e("span",{style:{fontSize:16,fontWeight:700,color:saldoReal<=0?C.green:C.amber}},"$"+saldoReal.toLocaleString())
                     ),
                     e("button",{style:{cursor:"pointer",marginTop:10,padding:"8px 14px",borderRadius:10,border:"1px solid "+C.amberBorder,background:"transparent",fontSize:12,color:C.amber,fontWeight:500,width:"100%"},
-                      onClick:function(){ manejarGenerarDocumentoFinancieroPDF({tipo:"estado_cuenta",cot:{id:ped.id,concepto:ped.productos||"Pedido",monto:totalPedido,pagos:pagosArr},cliente:cl||{nombre:"Cliente"},perfil:perfil,fechaHoy:FECHA_HOY}); }
+                      onClick:function(){ manejarGenerarDocumentoFinancieroPDF({tipo:"estado_cuenta",cot:{id:ped.id,concepto:ped.productos||"Pedido",items:obtenerItemsPedido(ped),monto:totalPedido,pagos:pagosArr},cliente:cl||{nombre:"Cliente"},perfil:perfil,fechaHoy:FECHA_HOY}); }
                     },"Ver comprobante general (estado de cuenta)")
                   ),
 
@@ -9756,11 +9762,20 @@ export default function CLEO(props){
               else if(ri>0) break;
               d.setDate(d.getDate()-1);
             }
+            // hayAlgunaActividad: si nunca hubo NINGUNA venta/cotización/
+            // cliente con fecha, el ciclo de abajo nunca encuentra una
+            // coincidencia y se agota en los 365 intentos , antes eso hacía
+            // que diasSinAct terminara en 365 y el mensaje dijera "Han
+            // pasado 365 días desde tu última actividad" para una cuenta
+            // recién creada que en realidad nunca tuvo actividad alguna.
+            var hayAlgunaActividad=todasFechas.length>0;
             var diasSinAct=0;
-            var d2=new Date(HOY); d2.setDate(d2.getDate()-1);
-            for(var ri2=0;ri2<365;ri2++){
-              if(fechasSet[fmtFechaLocal(d2)]) break;
-              diasSinAct++; d2.setDate(d2.getDate()-1);
+            if(hayAlgunaActividad){
+              var d2=new Date(HOY); d2.setDate(d2.getDate()-1);
+              for(var ri2=0;ri2<365;ri2++){
+                if(fechasSet[fmtFechaLocal(d2)]) break;
+                diasSinAct++; d2.setDate(d2.getDate()-1);
+              }
             }
             var tieneHoy=!!fechasSet[hoyStr];
             var ultimos7=[];
@@ -9771,6 +9786,7 @@ export default function CLEO(props){
               rachaActual>=7?"¡Llevas "+rachaActual+" días seguidos activo en CLEO!":
               rachaActual>=3?"Llevas "+rachaActual+" días registrando actividad.":
               tieneHoy?"Hoy ya registraste actividad. Buen comienzo.":
+              !hayAlgunaActividad?"Registra tu primera venta, cotización o cliente para empezar a ver tu ritmo aquí.":
               diasSinAct===0?"Empieza hoy, registrar algo tarda menos de un minuto.":
               diasSinAct===1?"Ayer no registraste nada. Hoy puedes retomar el ritmo.":
               "Han pasado "+diasSinAct+" días desde tu última actividad.";
@@ -10163,11 +10179,20 @@ export default function CLEO(props){
                   else if(ri>0) break;
                   d.setDate(d.getDate()-1);
                 }
+                // hayAlgunaActividad: si nunca hubo NINGUNA venta/cotización/
+                // cliente con fecha, el ciclo de abajo nunca encuentra una
+                // coincidencia y se agota en los 365 intentos , antes eso
+                // hacía que diasSinAct terminara en 365 y el mensaje dijera
+                // "Han pasado 365 días desde tu última actividad" para una
+                // cuenta recién creada que en realidad nunca tuvo actividad.
+                var hayAlgunaActividad=todasFechas.length>0;
                 var diasSinAct=0;
-                var d2=new Date(HOY); d2.setDate(d2.getDate()-1);
-                for(var ri2=0;ri2<365;ri2++){
-                  if(fechasSet[fmtFechaLocal(d2)]) break;
-                  diasSinAct++; d2.setDate(d2.getDate()-1);
+                if(hayAlgunaActividad){
+                  var d2=new Date(HOY); d2.setDate(d2.getDate()-1);
+                  for(var ri2=0;ri2<365;ri2++){
+                    if(fechasSet[fmtFechaLocal(d2)]) break;
+                    diasSinAct++; d2.setDate(d2.getDate()-1);
+                  }
                 }
                 var tieneHoy=!!fechasSet[hoyStr];
                 var ultimos7=[];
@@ -10178,6 +10203,7 @@ export default function CLEO(props){
                   rachaActual>=7?"¡Llevas "+rachaActual+" días seguidos activo en CLEO!":
                   rachaActual>=3?"Llevas "+rachaActual+" días registrando actividad.":
                   tieneHoy?"Hoy ya registraste actividad. Buen comienzo.":
+                  !hayAlgunaActividad?"Registra tu primera venta, cotización o cliente para empezar a ver tu ritmo aquí.":
                   diasSinAct===0?"Empieza hoy, registrar algo tarda menos de un minuto.":
                   diasSinAct===1?"Ayer no registraste nada. Hoy puedes retomar el ritmo.":
                   "Han pasado "+diasSinAct+" días desde tu última actividad.";

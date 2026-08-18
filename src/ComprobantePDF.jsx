@@ -49,6 +49,45 @@ function formatearMonto(n) {
   return "$" + numeroSeguro(n).toLocaleString("es-MX");
 }
 
+// Equivalente local de obtenerItemsCotizacion/obtenerItemsPedido (definidas
+// en el archivo principal) , este módulo es independiente (evita imports
+// circulares, ver comentario arriba), así que mantiene su propia copia
+// mínima con la MISMA lógica no destructiva: si `cot.items` existe y tiene
+// contenido (cotización, pedido o el objeto "cotParaComprobante" armado en
+// CLEO_55.jsx, que siempre preserva items vía spread), se usa tal cual , si
+// no, se sintetiza UN item legacy a partir de cot.concepto/cantidad/
+// precioUnit, igual que ya hace CotizacionPDF.jsx. Antes este archivo nunca
+// miraba cot.items , siempre usaba cot.concepto directo, que para una
+// cotización de más de un producto/servicio es el resumen corto pensado
+// para tarjetas ("Aretes dorados + 1 concepto más"), no un texto pensado
+// para un comprobante formal , por eso el comprobante mostraba ese resumen
+// truncado en vez del desglose real.
+function obtenerItemsComprobantePDF(cot, fallbackNombre) {
+  if (!cot) return [{ nombre: textoPlanoSeguro(fallbackNombre || "", 300), cantidad: 1, precioUnitario: 0, total: 0 }];
+  if (Array.isArray(cot.items) && cot.items.length > 0) {
+    return cot.items.map(function (it) {
+      var cantidad = numeroSeguro(it.cantidad) || 1;
+      var precioUnitario = numeroSeguro(it.precioUnitario);
+      return {
+        nombre: textoPlanoSeguro(it.nombre, 300),
+        cantidad: cantidad,
+        precioUnitario: precioUnitario,
+        total: it.total != null ? numeroSeguro(it.total) : cantidad * precioUnitario,
+      };
+    });
+  }
+  var cantidadLegacy = numeroSeguro(cot.cantidad) || 1;
+  var precioLegacy = numeroSeguro(cot.precioUnit != null ? cot.precioUnit : cot.monto);
+  return [
+    {
+      nombre: textoPlanoSeguro(cot.concepto || fallbackNombre || "", 300),
+      cantidad: cantidadLegacy,
+      precioUnitario: precioLegacy,
+      total: cantidadLegacy * precioLegacy,
+    },
+  ];
+}
+
 // ── Movimientos (pagos) , limpieza defensiva ──────────────────────────────
 // Nunca deja que una entrada dañada rompa todo el documento: se ignoran
 // elementos nulos o que no son objetos, se limita la cantidad máxima, se
@@ -235,7 +274,20 @@ function DocumentoFinanciero({ datos }) {
 
         <View style={s.conceptoBlock} wrap={false}>
           <Text style={s.conceptoLabel}>Concepto</Text>
-          <Text style={s.conceptoNombre}>{datos.concepto}</Text>
+          {/* Con 1 solo item se muestra EXACTAMENTE igual que antes (mismo
+              estilo, sin prefijo de cantidad) , con varios, cada uno se
+              imprime en su propia línea, para que un comprobante de una
+              cotización con 3 productos ya no se vea truncado como "Aretes
+              dorados + 2 conceptos más". */}
+          {datos.items.map(function (it, i) {
+            var multiItem = datos.items.length > 1;
+            var etiqueta = multiItem && it.cantidad > 1 ? it.cantidad + "× " + it.nombre : it.nombre;
+            return (
+              <Text key={i} style={i > 0 ? [s.conceptoNombre, { marginTop: 3 }] : s.conceptoNombre}>
+                {etiqueta}
+              </Text>
+            );
+          })}
         </View>
 
         <View style={s.totalLine} wrap={false}>
@@ -339,7 +391,7 @@ function DocumentoFinanciero({ datos }) {
 }
 
 // ── Construcción de datos comunes ─────────────────────────────────────────
-function construirDatosBase(tipoLabel, folio, concepto, monto, pagosLimpios, saldo, cliente, perfil, fecha, mostrarMensajeSinPagos) {
+function construirDatosBase(tipoLabel, folio, itemsPDF, monto, pagosLimpios, saldo, cliente, perfil, fecha, mostrarMensajeSinPagos) {
   cliente = cliente || {};
   perfil = perfil || {};
 
@@ -377,7 +429,7 @@ function construirDatosBase(tipoLabel, folio, concepto, monto, pagosLimpios, sal
     clienteNombre: nombreCliente,
     clienteNegocio: textoPlanoSeguro(cliente.negocio, 120),
     iniciales: iniciales,
-    concepto: textoPlanoSeguro(concepto, 300),
+    items: itemsPDF && itemsPDF.length > 0 ? itemsPDF : [{ nombre: "", cantidad: 1, precioUnitario: 0, total: 0 }],
     monto: numeroSeguro(monto),
     pagos: pagosLimpios,
     mostrarMensajeSinPagos: !!mostrarMensajeSinPagos,
@@ -447,7 +499,7 @@ export async function crearDocumentoFinancieroPDF(opciones) {
     datos = construirDatosBase(
       "Comprobante de Anticipo",
       folio,
-      cot.concepto,
+      obtenerItemsComprobantePDF(cot),
       totalAnt,
       pagosAnticipo,
       saldoAnt,
@@ -482,7 +534,7 @@ export async function crearDocumentoFinancieroPDF(opciones) {
     datos = construirDatosBase(
       "Comprobante de Pago",
       folio,
-      cot.concepto || "Venta",
+      obtenerItemsComprobantePDF(cot, "Venta"),
       totalPag,
       pagosMarcados,
       saldoPag,
@@ -504,7 +556,7 @@ export async function crearDocumentoFinancieroPDF(opciones) {
     datos = construirDatosBase(
       "Estado de Cuenta",
       folio,
-      cot.concepto || "Venta directa",
+      obtenerItemsComprobantePDF(cot, "Venta directa"),
       totalEst,
       pagosLimpiosEst,
       saldoEst,
