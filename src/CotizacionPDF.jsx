@@ -157,6 +157,22 @@ function crearEstilos(pc, ps) {
     notasBlock: { marginTop: 8, marginBottom: 4 },
     notasLabel: { fontSize: 8, fontFamily: "Helvetica-Bold", color: pc, textTransform: "uppercase", marginBottom: 3 },
     notasTexto: { fontSize: 9, color: "#555555", lineHeight: 1.5 },
+    // ── Tarjeta de notas POR ITEM (descripción/condiciones de un renglón) ──
+    // Mismo lenguaje visual que condicionesBlock (más abajo, para
+    // "Condiciones de pago" del documento completo) , fondo del color
+    // secundario del negocio + borde izquierdo de acento, para que ambos
+    // tipos de "nota destacada" se sientan parte del mismo sistema. Se
+    // aplica SOLO cuando el item tiene descripción y/o condiciones , un item
+    // sin ninguna de las dos sigue viéndose exactamente igual que antes (fila
+    // simple, sin tarjeta), así que una cotización de un solo renglón sin
+    // notas no cambia en nada.
+    itemNotasCard: { backgroundColor: ps, borderLeftWidth: 2, borderLeftColor: pc, borderRadius: 4, padding: 10, marginTop: 4, marginBottom: 10 },
+    itemDescTexto: { fontSize: 9, color: "#555555", lineHeight: 1.5 },
+    // Condiciones un escalón más chico/claro que la descripción , se lee
+    // como letra chica de apoyo, no como párrafo principal, sin competir
+    // visualmente con el nombre/precio del item (lo más importante de la fila).
+    itemCondLabel: { fontSize: 7.5, fontFamily: "Helvetica-Bold", color: pc, textTransform: "uppercase", marginBottom: 3 },
+    itemCondTexto: { fontSize: 8, color: "#6B7280", lineHeight: 1.5 },
     totalsBlock: { marginTop: 12, marginBottom: 6 },
     totalLine: { flexDirection: "row", justifyContent: "space-between", paddingVertical: 4, fontSize: 9, color: "#888888", borderBottomWidth: 0.5, borderBottomColor: "#f5f5f5" },
     totalLineDiscount: { color: pc },
@@ -247,6 +263,11 @@ function DocumentoCotizacion({ datos }) {
             corte una fila a la mitad , el encabezado de arriba queda fuera
             de este bloque para no repetirse pegado a cada fila. */}
         {datos.items.map(function (it, i) {
+          // La fila de precio (nombre/cant/precio unit./total) NUNCA cambia
+          // , mismas columnas, misma alineación con el encabezado de arriba,
+          // exista o no descripción/condiciones. Solo lo que va DEBAJO se
+          // agrupa en una tarjeta cuando hay algo que agrupar.
+          var tieneNotas = !!(it.descripcion || it.condiciones);
           return (
             <View key={i}>
               <View style={s.tablaFila} wrap={false}>
@@ -255,18 +276,23 @@ function DocumentoCotizacion({ datos }) {
                 <Text style={[s.tdCelda, s.colPrecio]}>{formatearMonto(it.precioUnitario)}</Text>
                 <Text style={[s.tdCelda, s.colTotal]}>{formatearMonto(it.total)}</Text>
               </View>
-              {/* Descripción/condiciones DE ESTE renglón (si existen) , se
-                  imprimen debajo de su propio producto/servicio, no
-                  mezcladas con las de los demás items del documento. */}
-              {it.descripcion ? (
-                <View style={s.notasBlock} wrap={false}>
-                  <Text style={s.notasTexto}>{it.descripcion}</Text>
-                </View>
-              ) : null}
-              {it.condiciones ? (
-                <View style={s.notasBlock} wrap={false}>
-                  <Text style={s.notasLabel}>Condiciones</Text>
-                  <Text style={s.notasTexto}>{it.condiciones}</Text>
+              {/* Descripción/condiciones DE ESTE renglón (si existen) , antes
+                  eran dos bloques de texto sueltos con la misma jerarquía
+                  visual que el resto del documento, así que con varios items
+                  no quedaba claro dónde terminaba la información de uno y
+                  empezaba la del siguiente. Ahora van juntas dentro de UNA
+                  sola tarjeta (un solo wrap={false}, nunca se separan entre
+                  sí en un salto de página) que delimita claramente qué
+                  pertenece a este item. */}
+              {tieneNotas ? (
+                <View style={s.itemNotasCard} wrap={false}>
+                  {it.descripcion ? <Text style={s.itemDescTexto}>{it.descripcion}</Text> : null}
+                  {it.condiciones ? (
+                    <View style={it.descripcion ? { marginTop: 6 } : null}>
+                      <Text style={s.itemCondLabel}>Condiciones</Text>
+                      <Text style={s.itemCondTexto}>{it.condiciones}</Text>
+                    </View>
+                  ) : null}
                 </View>
               ) : null}
             </View>

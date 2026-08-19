@@ -855,6 +855,53 @@ function nombreArchivoSeguro(valor,fallback){
   return texto||fallback;
 }
 
+// convertirImagenAPngDataURL: normaliza CUALQUIER imagen subida (WEBP, HEIC,
+// GIF, SVG, lo que sea) a un data URL PNG antes de guardarla como logo del
+// negocio. CotizacionPDF.jsx y ComprobantePDF.jsx solo aceptan PNG/JPEG en
+// base64 por diseño (ver logoSeguroPDF en ambos archivos , GIF/WEBP/SVG/URLs
+// externas se descartan ahí en silencio para no romper la generación del
+// PDF). Antes, si el logo se subía en cualquier otro formato, se guardaba
+// tal cual: se veía bien DENTRO de CLEO (el navegador sí lo renderiza), pero
+// desaparecía en silencio al generar cualquier PDF, sin ningún aviso.
+// Convertir siempre a PNG en el momento de subirlo hace que el formato de
+// origen deje de importar para el PDF. De paso, limita el lado más largo a
+// 512px , un logo nunca necesita más resolución que esa para verse nítido en
+// un documento, y evita guardar data URLs innecesariamente grandes.
+function convertirImagenAPngDataURL(file){
+  return new Promise(function(resolve,reject){
+    var lector=new FileReader();
+    lector.onerror=function(){ reject(new Error("No se pudo leer el archivo.")); };
+    lector.onload=function(e){
+      var img=new Image();
+      // HEIC (fotos de iPhone) y algunos otros formatos no se pueden
+      // decodificar como <img> en la mayoría de los navegadores , en vez de
+      // fallar en silencio, esto rechaza la promesa para que quien llama
+      // pueda avisar con un mensaje claro en el momento, no días después al
+      // generar un PDF sin logo sin saber por qué.
+      img.onerror=function(){ reject(new Error("No se pudo procesar esta imagen.")); };
+      img.onload=function(){
+        var maxLado=512;
+        var w=img.naturalWidth||img.width;
+        var h=img.naturalHeight||img.height;
+        if(!w||!h){ reject(new Error("Imagen inválida.")); return; }
+        var escala=Math.min(1,maxLado/Math.max(w,h));
+        var canvas=document.createElement("canvas");
+        canvas.width=Math.max(1,Math.round(w*escala));
+        canvas.height=Math.max(1,Math.round(h*escala));
+        var ctx=canvas.getContext("2d");
+        ctx.drawImage(img,0,0,canvas.width,canvas.height);
+        try{
+          resolve(canvas.toDataURL("image/png"));
+        }catch(errExport){
+          reject(errExport);
+        }
+      };
+      img.src=e.target.result;
+    };
+    lector.readAsDataURL(file);
+  });
+}
+
 // ── Continuidad de navegación (solo la sección principal) ──────────────
 // Recuerda EXCLUSIVAMENTE en qué sección principal estaba la persona
 // (Inicio, Cotizaciones, Pedidos, etc.), para restaurarla tras un
@@ -13464,9 +13511,16 @@ export default function CLEO(props){
                     e("input",{type:"file",accept:"image/*",style:{display:"none"},onChange:function(ev){
                       var file=ev.target.files&&ev.target.files[0];
                       if(!file) return;
-                      var reader=new FileReader();
-                      reader.onload=function(e){ setFormPerfil(Object.assign({},formPerfil,{logo:e.target.result})); };
-                      reader.readAsDataURL(file);
+                      // Se convierte SIEMPRE a PNG antes de guardar (ver
+                      // convertirImagenAPngDataURL) , así el formato original
+                      // del archivo (WEBP, HEIC, GIF, etc.) nunca hace que el
+                      // logo desaparezca en silencio al generar un PDF.
+                      convertirImagenAPngDataURL(file).then(function(pngDataURL){
+                        setFormPerfil(Object.assign({},formPerfil,{logo:pngDataURL}));
+                      }).catch(function(){
+                        window.alert("No pudimos procesar esta imagen como logo. Prueba con otro archivo (PNG o JPG funcionan mejor).");
+                      });
+                      ev.target.value="";
                     }})
                   ),
                   formPerfil.logo&&e("button",{style:{cursor:"pointer",background:"none",border:"none",fontSize:12,color:C.red,textAlign:"left",padding:0},onClick:function(){ setFormPerfil(Object.assign({},formPerfil,{logo:""})); }},"Quitar logo")
