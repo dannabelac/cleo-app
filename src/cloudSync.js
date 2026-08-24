@@ -47,6 +47,42 @@ export var CONFLICT_BACKUP_KEY = "cleo_conflict_backup";
 // inicia sesión en el mismo navegador.
 export var CACHE_OWNER_KEY = "cleo_cache_owner_user_id";
 
+// Prefijo de las claves de borrador temporal de "Importar catálogo"
+// (ImportarCatalogo.jsx). A diferencia de las claves de arriba, estas
+// dependen dinámicamente del userId y del perfil (productos/servicios) —
+// una por cada combinación — así que no pueden vivir como una cadena fija
+// dentro de CLEO_TEMP_KEYS. En su lugar se registran aquí como un PREFIJO
+// conocido y único: ImportarCatalogo.jsx importa esta misma constante para
+// construir sus claves (nunca escribe el prefijo por su cuenta), y
+// clearCleoDraftKeys() de abajo es la ÚNICA función en todo CLEO que
+// recorre sessionStorage buscándolas. Viven en sessionStorage, nunca en
+// localStorage — el archivo original que la persona sube nunca se guarda
+// en ninguno de los dos.
+export var CLEO_DRAFT_KEY_PREFIX = "cleo_import_borrador_";
+
+// Borra EXCLUSIVAMENTE las claves de borrador de "Importar catálogo"
+// (nunca sessionStorage.clear(), por la misma razón que clearCleoLocalData
+// nunca usa localStorage.clear(): no se debe afectar nada ajeno a CLEO que
+// pudiera compartir el mismo dominio/pestaña). Como el número de claves y
+// sus nombres exactos son dinámicos (uno por userId+perfil), no se puede
+// enumerar de antemano — por eso se recorre sessionStorage buscando el
+// prefijo, en vez de mantener una lista fija como CLEO_TEMP_KEYS.
+export function clearCleoDraftKeys() {
+  try {
+    if (typeof sessionStorage === "undefined") return;
+    var aBorrar = [];
+    for (var i = 0; i < sessionStorage.length; i++) {
+      var key = sessionStorage.key(i);
+      if (key && key.indexOf(CLEO_DRAFT_KEY_PREFIX) === 0) aBorrar.push(key);
+    }
+    aBorrar.forEach(function (key) {
+      try {
+        sessionStorage.removeItem(key);
+      } catch (e) {}
+    });
+  } catch (e) {}
+}
+
 // Borra exclusivamente las claves de CLEO (nunca localStorage.clear(), para no
 // afectar otras apps que pudieran compartir el mismo dominio).
 export function clearCleoLocalData() {
@@ -63,6 +99,13 @@ export function clearCleoLocalData() {
   try {
     localStorage.removeItem(CACHE_OWNER_KEY);
   } catch (e) {}
+  // Los borradores de "Importar catálogo" viven en sessionStorage (no en
+  // localStorage), pero deben limpiarse exactamente en los mismos momentos
+  // que el resto del caché local: cerrar sesión, cambiar de cuenta (ambos
+  // ya llaman a esta misma función, ver AuthGate.jsx y pullUserData más
+  // abajo) y eliminar la cuenta. Un solo punto central, nunca una lista
+  // duplicada en otro archivo.
+  clearCleoDraftKeys();
 }
 
 // Lee el respaldo de conflicto guardado y lo valida a fondo antes de

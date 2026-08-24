@@ -1793,7 +1793,7 @@ export default function AuthGate() {
     return React.createElement(
       React.Fragment,
       null,
-      React.createElement(CLEO, { onSignOut: cerrarSesion, userEmail: userEmail, syncError: syncError, syncConflicto: syncConflicto, forzarSync: forzarSync, onEntrarModoDemo: onEntrarModoDemo, onSalirModoDemo: onSalirModoDemo, demoActivo: demoActivo, onDeleteAccount: eliminarCuenta }),
+      React.createElement(CLEO, { onSignOut: cerrarSesion, userEmail: userEmail, userId: userId, syncError: syncError, syncConflicto: syncConflicto, forzarSync: forzarSync, onEntrarModoDemo: onEntrarModoDemo, onSalirModoDemo: onSalirModoDemo, demoActivo: demoActivo, onDeleteAccount: eliminarCuenta }),
       errorCierreSesion &&
         React.createElement(
           "div",
