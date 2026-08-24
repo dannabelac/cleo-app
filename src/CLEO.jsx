@@ -789,6 +789,29 @@ function fmtFechaLocal(d){
   var y=d.getFullYear(),m=String(d.getMonth()+1).padStart(2,"0"),dd=String(d.getDate()).padStart(2,"0");
   return y+"-"+m+"-"+dd;
 }
+// ── Atajos de periodo del Reporte comercial ──────────────────────────────
+// Única fuente de verdad para los 3 rangos rápidos (antes vivían como 3
+// funciones sueltas dentro del render del modal) , se reutiliza tanto para
+// las píldoras como para precargar un rango por default al abrir el modal.
+// Nunca se abre con Desde/Hasta vacíos: un <input type="date"> vacío en
+// iOS se ve como una caja en blanco sin placeholder ni ícono, lo que
+// parece un campo roto en vez de un selector de fecha.
+var ATAJOS_REPORTE_COMERCIAL=[
+  {key:"7dias",label:"Últimos 7 días",fn:function(){
+    var h=new Date(HOY); var d=new Date(HOY); d.setDate(d.getDate()-6);
+    return {desde:fmtFechaLocal(d),hasta:fmtFechaLocal(h)};
+  }},
+  {key:"estemes",label:"Este mes",fn:function(){
+    var h=new Date(HOY); var d=new Date(HOY.getFullYear(),HOY.getMonth(),1);
+    return {desde:fmtFechaLocal(d),hasta:fmtFechaLocal(h)};
+  }},
+  {key:"mesanterior",label:"Mes anterior",fn:function(){
+    var d=new Date(HOY.getFullYear(),HOY.getMonth()-1,1);
+    var h=new Date(HOY.getFullYear(),HOY.getMonth(),0);
+    return {desde:fmtFechaLocal(d),hasta:fmtFechaLocal(h)};
+  }}
+];
+function rangoReporteComercialPorDefecto(){ return ATAJOS_REPORTE_COMERCIAL[0].fn(); }
 // ── Comparación central de fechas de calendario (recordatorios/seguimiento) ──
 // new Date("AAAA-MM-DD") interpreta el string en UTC medianoche, lo cual en
 // zonas horarias negativas (México, UTC-6) puede adelantar la fecha varias
@@ -1470,7 +1493,7 @@ var clientesDemoProductos=[
   // ── Caso demo 2: contacto nuevo con pedido activo , alta hace 4 días,
   // convertida dentro del periodo, pedido ped_demo_11 con pago parcial y
   // seguimiento vencido/hoy.
-  {id:110,nombre:"Ximena Cab",negocio:"",contacto:"9991234000",origen:"Facebook",notas:"Confirmó su collar personalizado, quedó de pagar el resto al recibirlo",fecha:fechaDemoHaceDias(4),instagram:"",canalPrincipal:"Facebook",messenger:"ximenacab",email:"",fechaEtapa:fechaDemoHaceDias(4),estadoProspecto:"Convertido",productoInteres:"Collar dorado",cantidadInteres:"1",precioInteres:"480",ultimoContacto:fechaDemoHaceDias(4),
+  {id:110,nombre:"Ximena Cab",negocio:"",contacto:"9991234000",origen:"Facebook",notas:"Confirmó su collar personalizado, quedó de pagar el resto al recibirlo",fecha:fechaDemoHaceDias(4),instagram:"",canalPrincipal:"Facebook",messenger:"ximenacab",email:"",fechaEtapa:fechaDemoHaceDias(4),estadoProspecto:"Convertido",etapa:"Ganado",productoInteres:"Collar dorado",cantidadInteres:"1",precioInteres:"480",ultimoContacto:fechaDemoHaceDias(4),
     recordatorios:[{id:"r_demo_110",fecha:fechaDemoHaceDias(0),nota:"Confirmar avance del pedido y dar seguimiento.",esPersonalizada:false,origen:"cleo",categoria:"postventa"}],
     seguimientoFecha:fechaDemoHaceDias(0),mensajeSeguimientoPostVenta:"Confirmar avance del pedido y dar seguimiento.",seguimientoEsPersonalizada:false},
   // ── Caso demo 3: oportunidad perdida con pedido cancelado , alta hace 5
@@ -1482,7 +1505,7 @@ var clientesDemoProductos=[
   // entregado dentro del periodo, con seguimiento vencido/hoy. Confirma que
   // un cliente antiguo puede aparecer en actividad/cobros/seguimientos del
   // periodo sin contar como contacto nuevo.
-  {id:112,nombre:"Roberto Cauich",negocio:"",contacto:"9993456789",origen:"Referido",notas:"Cliente antiguo, regresó por otro collar y aretes a juego",fecha:fechaDemoHaceDias(40),instagram:"",canalPrincipal:"WhatsApp",messenger:"",email:"",fechaEtapa:fechaDemoHaceDias(38),estadoProspecto:"Convertido",productoInteres:"Set collar y aretes",cantidadInteres:"1",precioInteres:"960",ultimoContacto:fechaDemoHaceDias(2),
+  {id:112,nombre:"Roberto Cauich",negocio:"",contacto:"9993456789",origen:"Referido",notas:"Cliente antiguo, regresó por otro collar y aretes a juego",fecha:fechaDemoHaceDias(40),instagram:"",canalPrincipal:"WhatsApp",messenger:"",email:"",fechaEtapa:fechaDemoHaceDias(38),estadoProspecto:"Convertido",etapa:"Ganado",productoInteres:"Set collar y aretes",cantidadInteres:"1",precioInteres:"960",ultimoContacto:fechaDemoHaceDias(2),
     recordatorios:[{id:"r_demo_112",fecha:fechaDemoHaceDias(1),nota:"Revisar satisfacción y dar seguimiento al saldo pendiente.",esPersonalizada:false,origen:"cleo",categoria:"postventa"}],
     seguimientoFecha:fechaDemoHaceDias(1),mensajeSeguimientoPostVenta:"Revisar satisfacción y dar seguimiento al saldo pendiente.",seguimientoEsPersonalizada:false},
 ];
@@ -10270,7 +10293,7 @@ export default function CLEO(props){
             ),
             e("button",{style:Object.assign({},st.btnP,{whiteSpace:"nowrap",flexShrink:0}),onClick:function(){
               setErrorReporteComercial("");
-              setFormReporteComercial(formReporteComercialVacio);
+              setFormReporteComercial(rangoReporteComercialPorDefecto());
               setModalReporteComercial(true);
             }},"Generar reporte PDF")
           ),
@@ -10708,7 +10731,7 @@ export default function CLEO(props){
                 ),
                 e("button",{style:Object.assign({},st.btnP,{whiteSpace:"nowrap",flexShrink:0}),onClick:function(){
                   setErrorReporteComercial("");
-                  setFormReporteComercial(formReporteComercialVacio);
+                  setFormReporteComercial(rangoReporteComercialPorDefecto());
                   setModalReporteComercial(true);
                 }},"Generar reporte PDF")
               ),
@@ -12085,8 +12108,15 @@ export default function CLEO(props){
         )
       );
 
-      var esPerdidoC=cl.etapa==="Perdido";
-      var esGanadoC=cl.etapa==="Ganado";
+      // Productos usa estadoProspecto para su estado ("Convertido"); Servicios
+      // usa etapa ("Ganado"). Antes esto solo revisaba cl.etapa, así que un
+      // cliente de Productos "Convertido" pero sin etapa:"Ganado" (p.ej. dato
+      // viejo o escrito a mano sin pasar por
+      // marcarOportunidadConvertidaProductos/guardarCerreP) caía al flujo de
+      // prospecto en vez del flujo post-venta. Ver mismo patrón esOpoProductos.
+      // Mismo criterio aplica a esPerdidoC.
+      var esPerdidoC=esProductos?cl.estadoProspecto==="Perdido":cl.etapa==="Perdido";
+      var esGanadoC=esProductos?cl.estadoProspecto==="Convertido":cl.etapa==="Ganado";
 
       // FLUJO GANADO — cliente que ya compró
       if(esGanadoC){
@@ -12156,7 +12186,15 @@ export default function CLEO(props){
                 onClick:function(){
                   if(!window.confirm("¿Marcar a "+nombre+" como inactivo?")) return;
                   var ev={fecha:FECHA_HOY,resultado:"Marcado como inactivo tras recontacto"};
-                  setClientes(clientes.map(function(x){ return x.id===cl.id?cancelarRecordatoriosPipeline(Object.assign({},x,{etapa:"Perdido",ultimoContacto:FECHA_HOY,seguimientoFecha:"",archivado:true,historialContactos:[...(x.historialContactos||[]),ev]})):x; }));
+                  // Productos lee estadoProspecto, no etapa , sin este campo
+                  // el cliente se quedaría "Convertido" para siempre aunque
+                  // ya esté archivado (mismo bug de fondo que esGanadoC).
+                  setClientes(clientes.map(function(x){
+                    if(x.id!==cl.id) return x;
+                    var cambios={etapa:"Perdido",ultimoContacto:FECHA_HOY,seguimientoFecha:"",archivado:true,historialContactos:[...(x.historialContactos||[]),ev]};
+                    if(esProductos) cambios.estadoProspecto="Perdido";
+                    return cancelarRecordatoriosPipeline(Object.assign({},x,cambios));
+                  }));
                   cerrar();
                 }
               },
@@ -12512,7 +12550,15 @@ export default function CLEO(props){
               e("div",{style:{borderRadius:12,border:"1px solid "+C.red+"44",overflow:"hidden",cursor:"pointer"},
                 onClick:function(){
                   cerrar();
-                  setEtapaAnteriorPipeline(cl.etapa);
+                  // El modal de motivo (motivoPipelineId) decide cómo
+                  // revertir con su propio esOpoProductos (estadoProspecto
+                  // definido Y sin ninguna cotización propia , línea ~13011).
+                  // Hay que guardar AQUÍ el valor con el MISMO criterio, si
+                  // no, cancelar sin elegir motivo revertiría al campo
+                  // equivocado (mismo patrón que línea 7876).
+                  var tieneCotPropia=cotizaciones.some(function(x){ return x.clienteId===cl.id; });
+                  var esOpoProductosAqui=esProductos&&cl.estadoProspecto!==undefined&&!tieneCotPropia;
+                  setEtapaAnteriorPipeline(esOpoProductosAqui?(cl.estadoProspecto||"Nueva"):cl.etapa);
                   var cotPendHoy=cotizaciones.find(function(x){ return x.clienteId===cl.id&&x.estatus==="Pendiente"; });
                   if(cotPendHoy) setEstatusAnteriorCot({cotId:cotPendHoy.id,estatus:"Pendiente"});
                   setMotivoPipelineId(cl.id);
@@ -12565,7 +12611,13 @@ export default function CLEO(props){
                 var evRecup={fecha:FECHA_HOY,resultado:"Oportunidad recuperada — se restauró: "+(cot.concepto||"Cotización")+" $"+(cot.monto?Number(cot.monto).toLocaleString():"--")};
                 setClientes(clientes.map(function(x){
                   if(x.id!==cl.id) return x;
-                  var base=Object.assign({},x,{etapa:"Cotizacion enviada",ultimoContacto:FECHA_HOY,fechaEtapa:FECHA_HOY,motivoPerdida:"",historialContactos:[...(x.historialContactos||[]),evRecup]});
+                  // Productos lee estadoProspecto, no etapa , "En seguimiento"
+                  // es el equivalente de "Cotizacion enviada" ya con algo
+                  // enviado esperando respuesta (ver ETAPA_LABELS).
+                  var cambiosRecup=esProductos
+                    ?{estadoProspecto:"En seguimiento",ultimoContacto:FECHA_HOY,fechaEtapa:FECHA_HOY,motivoPerdida:"",historialContactos:[...(x.historialContactos||[]),evRecup]}
+                    :{etapa:"Cotizacion enviada",ultimoContacto:FECHA_HOY,fechaEtapa:FECHA_HOY,motivoPerdida:"",historialContactos:[...(x.historialContactos||[]),evRecup]};
+                  var base=Object.assign({},x,cambiosRecup);
                   return atenderRecordatorioReactivacion(base,contactadoRecordatorioId);
                 }));
                 setContactadoResult({titulo:"Oportunidad recuperada 🎉",desc:"Se restauró: "+(cot.concepto||"Cotización")+" — $"+(cot.monto?Number(cot.monto).toLocaleString():"--")+". Ya aparece en Cotización enviada."});
@@ -12641,7 +12693,13 @@ export default function CLEO(props){
             setContactadoResult({titulo:"Oportunidad reactivada",desc:nombre+" regresó al inicio del proceso, como nuevo contacto."});
             setClientes(clientes.map(function(x){
               if(x.id!==cl.id) return x;
-              var base=Object.assign({},x,{etapa:"Nuevo contacto",ultimoContacto:FECHA_HOY,fechaEtapa:FECHA_HOY,motivoPerdida:"",historialContactos:[...(x.historialContactos||[]),evReactiv]});
+              // Productos lee estadoProspecto, no etapa , mismo criterio que
+              // el resto del pipeline de Productos (línea 7876: "Nueva" es el
+              // estado inicial al reactivar sin más contexto).
+              var cambiosReactiv=esProductos
+                ?{estadoProspecto:"Nueva",ultimoContacto:FECHA_HOY,fechaEtapa:FECHA_HOY,motivoPerdida:"",historialContactos:[...(x.historialContactos||[]),evReactiv]}
+                :{etapa:"Nuevo contacto",ultimoContacto:FECHA_HOY,fechaEtapa:FECHA_HOY,motivoPerdida:"",historialContactos:[...(x.historialContactos||[]),evReactiv]};
+              var base=Object.assign({},x,cambiosReactiv);
               return atenderRecordatorioReactivacion(base,contactadoRecordatorioId);
             }));
           }
@@ -12652,7 +12710,8 @@ export default function CLEO(props){
           var contactoEvento={fecha:FECHA_HOY,resultado:"Sin interés — confirmado tras recontacto"};
           setClientes(clientes.map(function(x){
             if(x.id!==cl.id) return x;
-            var base=cancelarRecordatoriosPipeline(Object.assign({},x,{etapa:"Perdido",ultimoContacto:FECHA_HOY,archivado:true,historialContactos:[...(x.historialContactos||[]),contactoEvento]}));
+            var cambiosPerdido=esProductos?{estadoProspecto:"Perdido",ultimoContacto:FECHA_HOY,archivado:true,historialContactos:[...(x.historialContactos||[]),contactoEvento]}:{etapa:"Perdido",ultimoContacto:FECHA_HOY,archivado:true,historialContactos:[...(x.historialContactos||[]),contactoEvento]};
+            var base=cancelarRecordatoriosPipeline(Object.assign({},x,cambiosPerdido));
             // Se elimina EXACTAMENTE la reactivación que se acaba de atender
             // (usando el id conocido si venimos de un aviso concreto) , las
             // demás reactivaciones futuras, manuales y posventa quedan
@@ -13951,37 +14010,45 @@ export default function CLEO(props){
           e("button",{style:{background:"none",border:"none",cursor:"pointer",color:C.textDim,fontSize:20,lineHeight:1,padding:"0 4px"},onClick:function(){ setModalReporteComercial(false); }},"×")
         ),
         e("div",{style:{fontSize:13,color:C.textMuted,marginBottom:16}},"Elige el periodo que quieres revisar."),
-        e("div",{style:{display:"flex",gap:6,marginBottom:14,flexWrap:"wrap"}},
-          [
-            {label:"Últimos 7 días",fn:function(){
-              var h=new Date(HOY); var d=new Date(HOY); d.setDate(d.getDate()-6);
-              return {desde:fmtFechaLocal(d),hasta:fmtFechaLocal(h)};
-            }},
-            {label:"Este mes",fn:function(){
-              var h=new Date(HOY); var d=new Date(HOY.getFullYear(),HOY.getMonth(),1);
-              return {desde:fmtFechaLocal(d),hasta:fmtFechaLocal(h)};
-            }},
-            {label:"Mes anterior",fn:function(){
-              var d=new Date(HOY.getFullYear(),HOY.getMonth()-1,1);
-              var h=new Date(HOY.getFullYear(),HOY.getMonth(),0);
-              return {desde:fmtFechaLocal(d),hasta:fmtFechaLocal(h)};
-            }}
-          ].map(function(atajo){
-            return e("button",{key:atajo.label,style:{cursor:"pointer",padding:"7px 12px",borderRadius:20,border:"1px solid "+C.border,background:C.surface,fontSize:12,color:C.text,fontWeight:500},onClick:function(){
-              var rango=atajo.fn();
+        e("div",{style:{display:"flex",gap:6,marginBottom:16,flexWrap:"wrap"}},
+          ATAJOS_REPORTE_COMERCIAL.map(function(atajo){
+            var rango=atajo.fn();
+            var activo=rango.desde===formReporteComercial.desde&&rango.hasta===formReporteComercial.hasta;
+            return e("button",{key:atajo.key,style:{cursor:"pointer",padding:isMobile?"9px 14px":"7px 12px",borderRadius:20,border:"1px solid "+(activo?C.purple:C.border),background:activo?C.purple:C.surface,fontSize:12.5,color:activo?"#fff":C.text,fontWeight:activo?700:500,minHeight:isMobile?40:undefined,boxSizing:"border-box"},onClick:function(){
               setErrorReporteComercial("");
               setFormReporteComercial({desde:rango.desde,hasta:rango.hasta});
             }},atajo.label);
           })
         ),
-        e("div",{style:{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,marginBottom:14}},
+        // Cada campo de fecha lleva su propio ícono de calendario superpuesto
+        // (decorativo, pointerEvents:none: el <input type="date"> real sigue
+        // ocupando todo el ancho y respondiendo al tap en cualquier punto) ,
+        // en iOS un input de fecha vacío no muestra placeholder ni ícono
+        // propio, así que sin este refuerzo visual la caja se ve en blanco
+        // y no comunica que es un selector de fecha. fontSize:16 (nunca
+        // menos) evita que iOS haga zoom automático al enfocar el campo.
+        e("div",{style:{display:"grid",gridTemplateColumns:isMobile?"1fr":"1fr 1fr",gap:10,marginBottom:14}},
           e("div",null,
-            e("label",{style:{fontSize:11.5,color:C.textMuted,display:"block",marginBottom:4}},"Desde"),
-            e("input",{type:"date",value:formReporteComercial.desde,max:FECHA_HOY,onChange:function(ev){ setErrorReporteComercial(""); setFormReporteComercial(Object.assign({},formReporteComercial,{desde:ev.target.value})); },style:{width:"100%",padding:"10px 12px",borderRadius:10,border:"1px solid "+C.border,background:C.surface,color:C.text,fontSize:13.5}})
+            e("label",{style:{fontSize:11.5,color:C.textMuted,display:"block",marginBottom:5,fontWeight:600}},"Desde"),
+            e("div",{style:{position:"relative"}},
+              e("svg",{width:16,height:16,viewBox:"0 0 24 24",fill:"none",style:{position:"absolute",left:12,top:"50%",transform:"translateY(-50%)",pointerEvents:"none"}},
+                e("rect",{x:"3",y:"5",width:"18",height:"16",rx:"3",stroke:C.textMuted,strokeWidth:"1.6"}),
+                e("path",{d:"M3 9.5h18",stroke:C.textMuted,strokeWidth:"1.6"}),
+                e("path",{d:"M8 3v4M16 3v4",stroke:C.textMuted,strokeWidth:"1.6",strokeLinecap:"round"})
+              ),
+              e("input",{type:"date",value:formReporteComercial.desde,max:FECHA_HOY,onChange:function(ev){ setErrorReporteComercial(""); setFormReporteComercial(Object.assign({},formReporteComercial,{desde:ev.target.value})); },style:{width:"100%",minHeight:44,padding:"10px 12px 10px 36px",borderRadius:10,border:"1px solid "+C.borderStrong,background:C.surface,color:C.text,fontSize:16,boxSizing:"border-box",fontFamily:"-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif"}})
+            )
           ),
           e("div",null,
-            e("label",{style:{fontSize:11.5,color:C.textMuted,display:"block",marginBottom:4}},"Hasta"),
-            e("input",{type:"date",value:formReporteComercial.hasta,max:FECHA_HOY,onChange:function(ev){ setErrorReporteComercial(""); setFormReporteComercial(Object.assign({},formReporteComercial,{hasta:ev.target.value})); },style:{width:"100%",padding:"10px 12px",borderRadius:10,border:"1px solid "+C.border,background:C.surface,color:C.text,fontSize:13.5}})
+            e("label",{style:{fontSize:11.5,color:C.textMuted,display:"block",marginBottom:5,fontWeight:600}},"Hasta"),
+            e("div",{style:{position:"relative"}},
+              e("svg",{width:16,height:16,viewBox:"0 0 24 24",fill:"none",style:{position:"absolute",left:12,top:"50%",transform:"translateY(-50%)",pointerEvents:"none"}},
+                e("rect",{x:"3",y:"5",width:"18",height:"16",rx:"3",stroke:C.textMuted,strokeWidth:"1.6"}),
+                e("path",{d:"M3 9.5h18",stroke:C.textMuted,strokeWidth:"1.6"}),
+                e("path",{d:"M8 3v4M16 3v4",stroke:C.textMuted,strokeWidth:"1.6",strokeLinecap:"round"})
+              ),
+              e("input",{type:"date",value:formReporteComercial.hasta,max:FECHA_HOY,onChange:function(ev){ setErrorReporteComercial(""); setFormReporteComercial(Object.assign({},formReporteComercial,{hasta:ev.target.value})); },style:{width:"100%",minHeight:44,padding:"10px 12px 10px 36px",borderRadius:10,border:"1px solid "+C.borderStrong,background:C.surface,color:C.text,fontSize:16,boxSizing:"border-box",fontFamily:"-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif"}})
+            )
           )
         ),
         errorReporteComercial&&e("div",{style:{background:C.redBg,color:C.red,fontSize:12.5,padding:"9px 12px",borderRadius:10,marginBottom:14,lineHeight:1.4}},errorReporteComercial),

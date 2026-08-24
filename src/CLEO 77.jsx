@@ -2,6 +2,7 @@ import { useState, useMemo, useEffect, useRef } from "react";
 import React from "react";
 import DOMPurify from "dompurify";
 import { PRIVACY_VERSION, TERMS_VERSION, LegalModal, useDocumentoLegal } from "./LegalDocuments.jsx";
+import { ImportarCatalogo } from "./ImportarCatalogo.jsx";
 
 // ── Detección de móvil , centralizada y reactiva ────────────────────────
 // Antes existían 2 cálculos independientes de "isMobile" en el archivo, y
@@ -853,6 +854,53 @@ function nombreArchivoSeguro(valor,fallback){
   texto=texto.replace(/\s+/g,"_");
   texto=texto.slice(0,80);
   return texto||fallback;
+}
+
+// convertirImagenAPngDataURL: normaliza CUALQUIER imagen subida (WEBP, HEIC,
+// GIF, SVG, lo que sea) a un data URL PNG antes de guardarla como logo del
+// negocio. CotizacionPDF.jsx y ComprobantePDF.jsx solo aceptan PNG/JPEG en
+// base64 por diseño (ver logoSeguroPDF en ambos archivos , GIF/WEBP/SVG/URLs
+// externas se descartan ahí en silencio para no romper la generación del
+// PDF). Antes, si el logo se subía en cualquier otro formato, se guardaba
+// tal cual: se veía bien DENTRO de CLEO (el navegador sí lo renderiza), pero
+// desaparecía en silencio al generar cualquier PDF, sin ningún aviso.
+// Convertir siempre a PNG en el momento de subirlo hace que el formato de
+// origen deje de importar para el PDF. De paso, limita el lado más largo a
+// 512px , un logo nunca necesita más resolución que esa para verse nítido en
+// un documento, y evita guardar data URLs innecesariamente grandes.
+function convertirImagenAPngDataURL(file){
+  return new Promise(function(resolve,reject){
+    var lector=new FileReader();
+    lector.onerror=function(){ reject(new Error("No se pudo leer el archivo.")); };
+    lector.onload=function(e){
+      var img=new Image();
+      // HEIC (fotos de iPhone) y algunos otros formatos no se pueden
+      // decodificar como <img> en la mayoría de los navegadores , en vez de
+      // fallar en silencio, esto rechaza la promesa para que quien llama
+      // pueda avisar con un mensaje claro en el momento, no días después al
+      // generar un PDF sin logo sin saber por qué.
+      img.onerror=function(){ reject(new Error("No se pudo procesar esta imagen.")); };
+      img.onload=function(){
+        var maxLado=512;
+        var w=img.naturalWidth||img.width;
+        var h=img.naturalHeight||img.height;
+        if(!w||!h){ reject(new Error("Imagen inválida.")); return; }
+        var escala=Math.min(1,maxLado/Math.max(w,h));
+        var canvas=document.createElement("canvas");
+        canvas.width=Math.max(1,Math.round(w*escala));
+        canvas.height=Math.max(1,Math.round(h*escala));
+        var ctx=canvas.getContext("2d");
+        ctx.drawImage(img,0,0,canvas.width,canvas.height);
+        try{
+          resolve(canvas.toDataURL("image/png"));
+        }catch(errExport){
+          reject(errExport);
+        }
+      };
+      img.src=e.target.result;
+    };
+    lector.readAsDataURL(file);
+  });
 }
 
 // ── Continuidad de navegación (solo la sección principal) ──────────────
@@ -2186,7 +2234,7 @@ function ItemsEditor(props){
   }
   return e("div",{style:{marginBottom:20}},
     e("div",{style:{borderRadius:14,border:"1px solid "+C.border,overflow:"hidden",marginBottom:10,boxShadow:"0 1px 2px rgba(0,0,0,0.03)"}},
-      !isMobile&&e("div",{style:{display:"grid",gridTemplateColumns:"1fr 58px 108px 34px",gap:8,background:C.surfaceUp,borderBottom:"1px solid "+C.border,padding:"9px 12px"}},
+      !isMobile&&e("div",{style:{display:"grid",gridTemplateColumns:"minmax(0,1fr) 50px 94px 30px",gap:6,background:C.surfaceUp,borderBottom:"1px solid "+C.border,padding:"9px 10px"}},
         e("span",{style:{fontSize:10,color:C.textDim,fontWeight:700,textTransform:"uppercase",letterSpacing:"0.5px"}},etiquetaCorta),
         e("span",{style:{fontSize:10,color:C.textDim,fontWeight:700,textTransform:"uppercase",letterSpacing:"0.5px",textAlign:"center"}},"Cant."),
         e("span",{style:{fontSize:10,color:C.textDim,fontWeight:700,textTransform:"uppercase",letterSpacing:"0.5px",textAlign:"right"}},"Precio"),
@@ -2223,18 +2271,19 @@ function ItemsEditor(props){
           );
         }
         return e("div",{key:it.id,style:{borderBottom:idx<items.length-1?"1px solid "+C.border:"none",background:C.surface}},
-          e("div",{style:{display:"grid",gridTemplateColumns:"1fr 58px 108px 34px",gap:8,padding:"9px 12px",alignItems:"center"}},
-            e("div",null,
+          e("div",{style:{display:"grid",gridTemplateColumns:"minmax(0,1fr) 50px 94px 30px",gap:6,padding:"9px 10px",alignItems:"start"}},
+            e("div",{style:{minWidth:0}},
               e("input",{
                 value:it.nombre,
                 placeholder:esProductos?"ej. Aretes plata...":"ej. Sesión fotográfica...",
+                title:it.nombre||undefined,
                 onChange:function(ev){ actualizarItem(idx,{nombre:ev.target.value,catalogoId:null}); },
-                style:Object.assign({},st.inp,{width:"100%",boxSizing:"border-box",padding:"8px 10px",fontSize:15,marginBottom:0,borderRadius:8})
+                style:Object.assign({},st.inp,{width:"100%",boxSizing:"border-box",padding:"8px 10px",fontSize:15,marginBottom:0,borderRadius:8,textOverflow:"ellipsis"})
               }),
-              sub&&e("div",{style:{fontSize:10,color:C.textDim,marginTop:3}},sub)
+              sub&&e("div",{style:{fontSize:10,color:C.textDim,marginTop:3,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}},sub)
             ),
-            e("input",{type:"number",min:1,value:it.cantidad,onChange:function(ev){ actualizarItem(idx,{cantidad:ev.target.value}); },style:Object.assign({},st.inp,{padding:"8px 4px",fontSize:15,textAlign:"center",marginBottom:0,borderRadius:8})}),
-            e(MontoInput,{value:it.precioUnitario,placeholder:"0",onChange:function(ev){ actualizarItem(idx,{precioUnitario:ev.target.value}); },style:Object.assign({},st.inp,{padding:"8px 8px",fontSize:14,textAlign:"right",marginBottom:0,borderRadius:8})}),
+            e("input",{type:"number",min:1,value:it.cantidad,onChange:function(ev){ actualizarItem(idx,{cantidad:ev.target.value}); },style:Object.assign({},st.inp,{padding:"8px 2px",fontSize:14,textAlign:"center",marginBottom:0,borderRadius:8})}),
+            e(MontoInput,{value:it.precioUnitario,placeholder:"0",onChange:function(ev){ actualizarItem(idx,{precioUnitario:ev.target.value}); },style:Object.assign({},st.inp,{padding:"8px 6px",fontSize:13,textAlign:"right",marginBottom:0,borderRadius:8})}),
             items.length>1?botonQuitar(idx):e("span",null)
           ),
           detallesPorItem&&e("div",{style:{padding:"0 12px 9px"}},bloqueDetalle(it,idx))
@@ -2761,8 +2810,16 @@ export default function CLEO(props){
   // Estados de modales
   var s10=useState(false); var modalCliente=s10[0]; var setModalCliente=s10[1];
   var s11=useState(false); var modalCot=s11[0]; var setModalCot=s11[1];
+  // Override manual de "+ Más opciones" dentro de modalCot: null = todavía no
+  // se tocó (se usa el default calculado según si ya hay descuento/vigencia/
+  // condiciones cargados o si es una cotización existente), true/false = la
+  // persona ya decidió expandir/colapsar en esta sesión del modal. Se resetea
+  // a null cada vez que el modal se cierra, para que la próxima vez vuelva a
+  // calcular su propio default.
+  var s11b=useState(null); var modalCotAvanzadoOverride=s11b[0]; var setModalCotAvanzadoOverride=s11b[1];
   var s12=useState(false); var modalPerfil=s12[0]; var setModalPerfil=s12[1];
   var s12b=useState(false); var modalCatalogo=s12b[0]; var setModalCatalogo=s12b[1];
+  var s12bImp=useState(false); var modalImportarCatalogo=s12bImp[0]; var setModalImportarCatalogo=s12bImp[1];
   var s12c=useState(null); var svDetalleId=s12c[0]; var setSvDetalleId=s12c[1];
   var s12d=useState(null); var editSv=s12d[0]; var setEditSv=s12d[1];
   var s12d=useState(false); var mostrarDesc=s12d[0]; var setMostrarDesc=s12d[1];
@@ -2911,50 +2968,15 @@ export default function CLEO(props){
     setFormPreguntoP(fp);
     setPasoPreguntoP(5);
   }
-  // Flujo independiente "Envié un precio" para SERVICIOS , mismo patrón que
-  // el de Productos de aquí abajo (modal propio y rápido, con ItemsEditor
-  // para poder agregar más de un servicio, sin pasar por modalCot).
-  var sModalEnvie=useState(false); var modalEnvie=sModalEnvie[0]; var setModalEnvie=sModalEnvie[1];
-  var formEnvieVacio={busqueda:"",clienteId:null,items:[{id:"it_"+Date.now(),catalogoId:null,nombre:"",cantidad:1,precioUnitario:"",total:0}]};
-  var sFormEnvie=useState(formEnvieVacio); var formEnvie=sFormEnvie[0]; var setFormEnvie=sFormEnvie[1];
-  function cerrarEnvie(){ setModalEnvie(false); setFormEnvie(formEnvieVacio); }
-  function guardarEnvie(){
-    var fe=formEnvie;
-    var itemsValidosSE=(fe.items||[]).filter(function(it){ return it.nombre&&it.nombre.trim(); });
-    var itemsFinalSE=itemsValidosSE.map(function(it){
-      var cantidad=Number(it.cantidad)||0;
-      var precioUnitario=Number(it.precioUnitario)||0;
-      return {id:it.id||("it_"+Date.now()+"_"+Math.random().toString(36).slice(2,6)),catalogoId:it.catalogoId||null,nombre:it.nombre.trim(),cantidad:cantidad,precioUnitario:precioUnitario,total:cantidad*precioUnitario};
-    });
-    var compatSE=buildItemsCompat(itemsFinalSE);
-    // Servicios manuales nuevos → se agregan solos al catálogo, mismo
-    // criterio que el resto de los flujos.
-    itemsFinalSE.forEach(function(it){
-      if(it.catalogoId) return;
-      if(servicios.some(function(s){ return normalizarNombreItem(s.nombre)===normalizarNombreItem(it.nombre); })) return;
-      setServicios(function(prev){ return [...prev,{id:Date.now()+Math.floor(Math.random()*1000),nombre:it.nombre,precio:it.precioUnitario||0,descripcion:""}]; });
-    });
-    var clienteId=fe.clienteId;
-    if(!clienteId){
-      clienteId=Date.now();
-      var clienteFinalNuevoSE=Object.assign({},formVacio,{
-        id:clienteId,nombre:fe.busqueda.trim(),negocio:"",contacto:"",origen:"",
-        canalPrincipal:"WhatsApp",instagram:"",messenger:"",
-        etapa:"Nuevo contacto",fecha:FECHA_HOY,fechaEtapa:FECHA_HOY,ultimoContacto:FECHA_HOY,
-        estadoProspecto:"En seguimiento",items:itemsFinalSE,servicioInteres:compatSE.resumen,precioInteres:String(compatSE.total),cantidadInteres:String(compatSE.cantidad),notasProspecto:""
-      });
-      setClientes([clienteFinalNuevoSE,...clientes]);
-      if(!tieneContactoCompleto(clienteFinalNuevoSE)){ setClienteCompletarId(clienteId); } else { cerrarEnvie(); }
-    } else {
-      var clienteExistenteSE=clientes.find(function(c){ return c.id===clienteId; });
-      var clienteFinalUpdSE=Object.assign({},clienteExistenteSE,{
-        estadoProspecto:"En seguimiento",fechaEtapa:FECHA_HOY,ultimoContacto:FECHA_HOY,
-        items:itemsFinalSE,servicioInteres:compatSE.resumen,precioInteres:String(compatSE.total),cantidadInteres:String(compatSE.cantidad)
-      });
-      setClientes(clientes.map(function(c){ return c.id===clienteId?clienteFinalUpdSE:c; }));
-      if(!tieneContactoCompleto(clienteFinalUpdSE)){ setClienteCompletarId(clienteId); } else { cerrarEnvie(); }
-    }
-  }
+  // "Envié un precio" para SERVICIOS: YA NO es un modal/formulario propio ,
+  // se retiró (ver guardarEnvie, código anterior) porque nunca creaba una
+  // cotización real ni ponía la etapa correcta (se quedaba en "Nuevo
+  // contacto" para siempre, y el precio enviado nunca aparecía en
+  // Cotizaciones). El botón ahora abre directamente el editor de cotización
+  // (modalCot/cotVacio, ver los 3 call sites que decían setModalEnvie(true)),
+  // que sí escribe una cotización real con etapa:"Cotizacion enviada" (vía
+  // guardarCot → mirroring de estadoProspecto/etapa) , mismo camino que
+  // "+Nuevo → Cotización".
   // Flujo independiente "Envié un precio" para PRODUCTOS
   var sModalEnvieP=useState(false); var modalEnvieP=sModalEnvieP[0]; var setModalEnvieP=sModalEnvieP[1];
   var formEnvievPVacio={busqueda:"",clienteId:null,items:[{id:"it_"+Date.now(),catalogoId:null,nombre:"",cantidad:1,precioUnitario:"",total:0}]};
@@ -4476,6 +4498,21 @@ export default function CLEO(props){
     setSeguimientoLost({dias:"",custom:"",nota:""}); setMotivoLibre(""); setShowMotivoLibre(false);
     setEtapaAnteriorPipeline(null);
   }
+  // Default de "+ Más opciones" dentro de modalCot (ver s11b/modalCotAvanzadoOverride).
+  // Colapsado por default para que "Envié un precio" y "+Nueva cotización"
+  // arranquen ligeros , EXCEPTO cuando ya hay algo que mostrar ahí (se está
+  // editando una cotización existente, o ya hay descuento/vigencia/
+  // condiciones de pago cargados), para nunca esconder datos que la persona
+  // ya tenía. Un override manual (clic en "+ Más opciones"/"− Menos
+  // opciones") manda sobre este default mientras el modal siga abierto.
+  function mostrarAvanzadoCot(){
+    if(modalCotAvanzadoOverride!=null) return modalCotAvanzadoOverride;
+    if(editCotId) return true;
+    if(formCot.descuento&&String(formCot.descuento).trim()) return true;
+    if(formCot.vigenciaDias&&String(formCot.vigenciaDias).trim()) return true;
+    if(formCot.condicionesPago!=null&&formCot.condicionesPago!=="") return true;
+    return false;
+  }
   function guardarCot(){
     if(!formCot.clienteId&&!(formCot.nuevoNombre&&formCot.nuevoNombre.trim())){ alert("Selecciona o escribe el nombre del cliente antes de guardar."); return; }
     // Validación de items: al menos uno con nombre, cantidad>0 y precio>=0.
@@ -4625,7 +4662,7 @@ export default function CLEO(props){
         pendientes:itemsNuevosParaCatalogo.slice(1).map(function(it){ return {nombre:it.nombre,precio:it.precioUnitario,descripcion:it.descripcion||"",condiciones:it.condiciones||""}; })
       });
     }
-    setModalCot(false); setFormCot(cotVacio);
+    setModalCot(false); setFormCot(cotVacio); setModalCotAvanzadoOverride(null);
   }
   function editarCot(cot){
     setEditCotId(cot.id);
@@ -5147,7 +5184,7 @@ export default function CLEO(props){
   // y si tuvo éxito (se creó algo) o se canceló (regresa al paso de elegir situación).
   useEffect(function(){
     if(!onbFlujoActivo) return;
-    var todosCerrados=!pasoPregunto&&!modalCot&&!modalCerre&&!modalRecibi&&!pasoPreguntoP&&!modalEnvie&&!modalEnvieP&&!modalCerreP&&!modalRecibiP&&!clienteCompletarId&&!origenPromptId&&!pagosModalId;
+    var todosCerrados=!pasoPregunto&&!modalCot&&!modalCerre&&!modalRecibi&&!pasoPreguntoP&&!modalEnvieP&&!modalCerreP&&!modalRecibiP&&!clienteCompletarId&&!origenPromptId&&!pagosModalId;
     if(!todosCerrados) return;
     var huboExito=onbSnapshot&&(clientes.length>onbSnapshot.clientes||ventas.length>onbSnapshot.ventas||pedidos.length>onbSnapshot.pedidos||cotizaciones.length>onbSnapshot.cotizaciones);
     if(huboExito){
@@ -5158,7 +5195,7 @@ export default function CLEO(props){
     }
     setOnbFlujoActivo(null);
     setOnbSnapshot(null);
-  },[pasoPregunto,modalCot,modalCerre,modalRecibi,pasoPreguntoP,modalEnvie,modalEnvieP,modalCerreP,modalRecibiP,clienteCompletarId,origenPromptId,pagosModalId]);
+  },[pasoPregunto,modalCot,modalCerre,modalRecibi,pasoPreguntoP,modalEnvieP,modalCerreP,modalRecibiP,clienteCompletarId,origenPromptId,pagosModalId]);
   useEffect(function(){
     function onResize(){ setResizeTick(function(t){ return t+1; }); }
     window.addEventListener("resize",onResize);
@@ -5438,7 +5475,7 @@ export default function CLEO(props){
           setOnbSnapshot({clientes:clientes.length,ventas:ventas.length,pedidos:pedidos.length,cotizaciones:cotizaciones.length});
           setOnbFlujoActivo(tipo);
           if(tipo==="pregunto"){ if(esProductos){ setPasoPreguntoP(1); } else { setPasoPregunto(1); } }
-          else if(tipo==="envie"){ if(esProductos){ setModalEnvieP(true); } else { setModalEnvie(true); } }
+          else if(tipo==="envie"){ if(esProductos){ setModalEnvieP(true); } else { setFormCot(Object.assign({},cotVacio,{nuevoNombre:""})); setModalCot(true); } }
           else if(tipo==="cerre"){ if(esProductos){ setModalCerreP(true); } else { setModalCerre(true); } }
           else if(tipo==="recibi"){ if(esProductos){ setModalRecibiP(true); } else { setModalRecibi(true); } }
         }
@@ -5576,7 +5613,7 @@ export default function CLEO(props){
             e("div",{style:{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,width:"100%",maxWidth:380}},
               [
                 {ic:"💬",label:"Alguien preguntó",onClick:function(){ if(esProductos){ setPasoPreguntoP(1); } else { setPasoPregunto(1); } }},
-                {ic:"🏷️",label:"Envié un precio",onClick:function(){ if(esProductos){ setModalEnvieP(true); } else { setModalEnvie(true); } }},
+                {ic:"🏷️",label:"Envié un precio",onClick:function(){ if(esProductos){ setModalEnvieP(true); } else { setFormCot(Object.assign({},cotVacio,{nuevoNombre:""})); setModalCot(true); } }},
                 {ic:"🎉",label:"Cerré una venta",onClick:function(){ if(esProductos){ setModalCerreP(true); } else { setModalCerre(true); } }},
                 {ic:"💰",label:"Recibí un pago",onClick:function(){ if(esProductos){ setModalRecibiP(true); } else { setModalRecibi(true); } }}
               ].map(function(op,i){
@@ -5941,7 +5978,7 @@ export default function CLEO(props){
             e("div",{style:{display:"grid",gridTemplateColumns:isMobile?"1fr 1fr":"repeat(4,1fr)",gap:10}},
               [
                 {ic:"💬",label:"Alguien preguntó",onClick:function(){ if(esProductos){ setPasoPreguntoP(1); } else { setPasoPregunto(1); } }},
-                {ic:"🏷️",label:"Envié un precio",onClick:function(){ if(esProductos){ setModalEnvieP(true); } else { setModalEnvie(true); } }},
+                {ic:"🏷️",label:"Envié un precio",onClick:function(){ if(esProductos){ setModalEnvieP(true); } else { setFormCot(Object.assign({},cotVacio,{nuevoNombre:""})); setModalCot(true); } }},
                 {ic:"🛒",label:"Cerré una venta",onClick:function(){ if(esProductos){ setModalCerreP(true); } else { setModalCerre(true); } }},
                 {ic:"💰",label:"Recibí un pago",onClick:function(){ if(esProductos){ setModalRecibiP(true); } else { setModalRecibi(true); } }}
               ].map(function(op,i){
@@ -6823,13 +6860,19 @@ export default function CLEO(props){
                 // Usar c.fecha aquí hacía que estos dos eventos cayeran
                 // siempre en el mismo día que "Cliente registrado", sin
                 // importar cuánto tiempo real hubiera pasado.
-                if(c.etapa==="Perdido") eventos.push({fecha:c.fechaEtapa||c.fecha,tipo:"perdido",titulo:"Marcado como perdido",desc:c.motivoPerdida?"Motivo: "+c.motivoPerdida:"Sin motivo registrado",color:C.red,orden:6});
+                // c.etapa (Servicios) O c.estadoProspecto (Productos) , antes
+                // solo se revisaba c.etapa, así que un cliente de Productos
+                // marcado como Perdido/Convertido (que usa estadoProspecto,
+                // nunca etapa) nunca generaba este evento , "Oportunidad
+                // perdida" simplemente no aparecía en su historial.
+                if(c.etapa==="Perdido"||c.estadoProspecto==="Perdido") eventos.push({fecha:c.fechaEtapa||c.fecha,tipo:"perdido",titulo:"Marcado como perdido",desc:c.motivoPerdida?"Motivo: "+c.motivoPerdida:"Sin motivo registrado",color:C.red,orden:6});
                 // fechaPedido como segundo fallback , el botón "Crear
                 // pedido" directo de la tarjeta de Oportunidades (Productos)
                 // marca etapa:"Ganado" pero solo guarda fechaPedido, nunca
                 // fechaEtapa , sin este fallback, ese caso seguía cayendo en
-                // c.fecha (registro) igual que antes.
-                if(c.etapa==="Ganado") eventos.push({fecha:c.fechaEtapa||c.fechaPedido||c.fecha,tipo:"ganado",titulo:"Venta cerrada",desc:"Cliente ganado",color:C.green,orden:6});
+                // c.fecha (registro) igual que antes. "Convertido" es el
+                // equivalente de "Ganado" en Productos (estadoProspecto).
+                if(c.etapa==="Ganado"||c.estadoProspecto==="Convertido") eventos.push({fecha:c.fechaEtapa||c.fechaPedido||c.fecha,tipo:"ganado",titulo:"Venta cerrada",desc:"Cliente ganado",color:C.green,orden:6});
                 // Historial de contactos
                 (c.historialContactos||[]).forEach(function(h){
                   var isRecup=h.resultado&&(h.resultado.includes("recuperad")||h.resultado.includes("Recuperad")||h.resultado.includes("reactivad"));
@@ -8222,7 +8265,7 @@ export default function CLEO(props){
                           ),
                           e("div",{style:{fontSize:14,fontWeight:700,color:C.green,marginRight:6}},"$"+Number(pago.monto).toLocaleString()),
                           e("button",{style:{cursor:"pointer",padding:"4px 10px",borderRadius:8,border:"1px solid "+C.border,background:"transparent",fontSize:11,color:C.amber,fontWeight:500},
-                            onClick:function(){ generarDocumentoParaMovimiento(pago,{id:ped.id,concepto:ped.productos||"Pedido",monto:totalPedido,pagos:pagosArr},cl||{nombre:"Cliente"},perfil); }
+                            onClick:function(){ generarDocumentoParaMovimiento(pago,{id:ped.id,concepto:ped.productos||"Pedido",items:obtenerItemsPedido(ped),monto:totalPedido,pagos:pagosArr},cl||{nombre:"Cliente"},perfil); }
                           },"Comprobante"),
                           e("button",{style:{background:"none",border:"none",cursor:"pointer",color:C.textDim,fontSize:16,padding:"2px 6px"},
                             onClick:function(){ eliminarPago("pedido",ped.id,pago.id,pago.monto); }
@@ -8235,7 +8278,7 @@ export default function CLEO(props){
                       e("span",{style:{fontSize:16,fontWeight:700,color:saldoReal<=0?C.green:C.amber}},"$"+saldoReal.toLocaleString())
                     ),
                     e("button",{style:{cursor:"pointer",marginTop:10,padding:"8px 14px",borderRadius:10,border:"1px solid "+C.amberBorder,background:"transparent",fontSize:12,color:C.amber,fontWeight:500,width:"100%"},
-                      onClick:function(){ manejarGenerarDocumentoFinancieroPDF({tipo:"estado_cuenta",cot:{id:ped.id,concepto:ped.productos||"Pedido",monto:totalPedido,pagos:pagosArr},cliente:cl||{nombre:"Cliente"},perfil:perfil,fechaHoy:FECHA_HOY}); }
+                      onClick:function(){ manejarGenerarDocumentoFinancieroPDF({tipo:"estado_cuenta",cot:{id:ped.id,concepto:ped.productos||"Pedido",items:obtenerItemsPedido(ped),monto:totalPedido,pagos:pagosArr},cliente:cl||{nombre:"Cliente"},perfil:perfil,fechaHoy:FECHA_HOY}); }
                     },"Ver comprobante general (estado de cuenta)")
                   ),
 
@@ -9756,11 +9799,20 @@ export default function CLEO(props){
               else if(ri>0) break;
               d.setDate(d.getDate()-1);
             }
+            // hayAlgunaActividad: si nunca hubo NINGUNA venta/cotización/
+            // cliente con fecha, el ciclo de abajo nunca encuentra una
+            // coincidencia y se agota en los 365 intentos , antes eso hacía
+            // que diasSinAct terminara en 365 y el mensaje dijera "Han
+            // pasado 365 días desde tu última actividad" para una cuenta
+            // recién creada que en realidad nunca tuvo actividad alguna.
+            var hayAlgunaActividad=todasFechas.length>0;
             var diasSinAct=0;
-            var d2=new Date(HOY); d2.setDate(d2.getDate()-1);
-            for(var ri2=0;ri2<365;ri2++){
-              if(fechasSet[fmtFechaLocal(d2)]) break;
-              diasSinAct++; d2.setDate(d2.getDate()-1);
+            if(hayAlgunaActividad){
+              var d2=new Date(HOY); d2.setDate(d2.getDate()-1);
+              for(var ri2=0;ri2<365;ri2++){
+                if(fechasSet[fmtFechaLocal(d2)]) break;
+                diasSinAct++; d2.setDate(d2.getDate()-1);
+              }
             }
             var tieneHoy=!!fechasSet[hoyStr];
             var ultimos7=[];
@@ -9771,6 +9823,7 @@ export default function CLEO(props){
               rachaActual>=7?"¡Llevas "+rachaActual+" días seguidos activo en CLEO!":
               rachaActual>=3?"Llevas "+rachaActual+" días registrando actividad.":
               tieneHoy?"Hoy ya registraste actividad. Buen comienzo.":
+              !hayAlgunaActividad?"Registra tu primera venta, cotización o cliente para empezar a ver tu ritmo aquí.":
               diasSinAct===0?"Empieza hoy, registrar algo tarda menos de un minuto.":
               diasSinAct===1?"Ayer no registraste nada. Hoy puedes retomar el ritmo.":
               "Han pasado "+diasSinAct+" días desde tu última actividad.";
@@ -10163,11 +10216,20 @@ export default function CLEO(props){
                   else if(ri>0) break;
                   d.setDate(d.getDate()-1);
                 }
+                // hayAlgunaActividad: si nunca hubo NINGUNA venta/cotización/
+                // cliente con fecha, el ciclo de abajo nunca encuentra una
+                // coincidencia y se agota en los 365 intentos , antes eso
+                // hacía que diasSinAct terminara en 365 y el mensaje dijera
+                // "Han pasado 365 días desde tu última actividad" para una
+                // cuenta recién creada que en realidad nunca tuvo actividad.
+                var hayAlgunaActividad=todasFechas.length>0;
                 var diasSinAct=0;
-                var d2=new Date(HOY); d2.setDate(d2.getDate()-1);
-                for(var ri2=0;ri2<365;ri2++){
-                  if(fechasSet[fmtFechaLocal(d2)]) break;
-                  diasSinAct++; d2.setDate(d2.getDate()-1);
+                if(hayAlgunaActividad){
+                  var d2=new Date(HOY); d2.setDate(d2.getDate()-1);
+                  for(var ri2=0;ri2<365;ri2++){
+                    if(fechasSet[fmtFechaLocal(d2)]) break;
+                    diasSinAct++; d2.setDate(d2.getDate()-1);
+                  }
                 }
                 var tieneHoy=!!fechasSet[hoyStr];
                 var ultimos7=[];
@@ -10178,6 +10240,7 @@ export default function CLEO(props){
                   rachaActual>=7?"¡Llevas "+rachaActual+" días seguidos activo en CLEO!":
                   rachaActual>=3?"Llevas "+rachaActual+" días registrando actividad.":
                   tieneHoy?"Hoy ya registraste actividad. Buen comienzo.":
+                  !hayAlgunaActividad?"Registra tu primera venta, cotización o cliente para empezar a ver tu ritmo aquí.":
                   diasSinAct===0?"Empieza hoy, registrar algo tarda menos de un minuto.":
                   diasSinAct===1?"Ayer no registraste nada. Hoy puedes retomar el ritmo.":
                   "Han pasado "+diasSinAct+" días desde tu última actividad.";
@@ -10947,68 +11010,6 @@ export default function CLEO(props){
         )
       );
     })(),
-    modalEnvie&&(function(){
-      var fe=formEnvie;
-      var coincidencias=fe.busqueda.trim().length>0&&!fe.clienteId
-        ?clientes.filter(function(c){ return c.nombre.toLowerCase().indexOf(fe.busqueda.trim().toLowerCase())===0; }).slice(0,5)
-        :[];
-      var listo=fe.busqueda.trim().length>0&&(fe.items||[]).some(function(it){ return it.nombre.trim(); });
-
-      if(clienteCompletarId){
-        var clCompletarSE=clientes.find(function(c){ return c.id===clienteCompletarId; });
-        return e("div",{style:st.ov,onClick:cerrarEnvie},
-          e("div",{style:Object.assign({},st.modal,{maxWidth:420}),onClick:function(ev){ ev.stopPropagation(); }},
-            e("div",{style:{fontSize:15,fontWeight:700,color:C.green,marginBottom:6}},"✓ Precio registrado"),
-            e("div",{style:{fontSize:13,color:C.textMuted,marginBottom:18,lineHeight:1.5}},"¿Por dónde le puedes escribir a "+(clCompletarSE?clCompletarSE.nombre.split(" ")[0]:"")+"?"),
-            renderCompletarContacto(),
-            e("div",{style:{display:"flex",gap:8,marginTop:6}},
-              e("button",{style:Object.assign({},st.btn,{flex:1}),onClick:function(){ omitirCompletarContacto(); cerrarEnvie(); }},"Omitir por ahora"),
-              e("button",{style:Object.assign({},st.btnP,{flex:1,opacity:puedeGuardarCompletar()?1:0.4}),disabled:!puedeGuardarCompletar(),onClick:function(){ guardarCompletarContacto(clienteCompletarId); cerrarEnvie(); }},"Guardar")
-            )
-          )
-        );
-      }
-
-      return e("div",{style:st.ov,onClick:cerrarEnvie},
-        e("div",{style:Object.assign({},st.modal,{maxWidth:420}),onClick:function(ev){ ev.stopPropagation(); }},
-          e("div",{style:{display:"flex",justifyContent:"flex-end",marginBottom:8}},
-            e("button",{style:{background:"none",border:"none",cursor:"pointer",color:C.textDim,fontSize:20,lineHeight:1,padding:"0 4px"},onClick:cerrarEnvie},"×")
-          ),
-          e("div",{style:{fontSize:14,fontWeight:700,color:C.purple,marginBottom:18,lineHeight:1.4}},"Buen paso. Dejemos programado el seguimiento."),
-
-          e("div",{style:{marginBottom:14,position:"relative"}},
-            e("label",{style:st.lbl},"¿A quién le enviaste un precio?"),
-            fe.clienteId
-              ? e("div",{style:{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"9px 12px",borderRadius:10,background:C.purplePale,border:"1px solid "+C.purple+"33"}},
-                  e("span",{style:{fontSize:13,color:C.purple,fontWeight:600}},"✓ "+fe.busqueda),
-                  e("button",{style:{background:"none",border:"none",cursor:"pointer",color:C.textMuted,fontSize:12,fontWeight:500},onClick:function(){ setFormEnvie(Object.assign({},fe,{clienteId:null,busqueda:""})); }},"Cambiar")
-                )
-              : e("input",{value:fe.busqueda,onChange:function(ev){ setFormEnvie(Object.assign({},fe,{busqueda:ev.target.value})); },placeholder:"Escribe su nombre",style:st.inp,autoFocus:true}),
-            coincidencias.length>0&&e("div",{style:{position:"absolute",top:"100%",left:0,right:0,zIndex:10,background:C.surface,border:"1px solid "+C.border,borderRadius:10,marginTop:4,boxShadow:"0 4px 12px rgba(0,0,0,0.08)",overflow:"hidden"}},
-              coincidencias.map(function(c){
-                return e("button",{key:c.id,style:{display:"block",width:"100%",textAlign:"left",padding:"9px 12px",border:"none",background:"transparent",cursor:"pointer",fontSize:13,color:C.text},onClick:function(){
-                  var itemsGuardadosSE=obtenerItemsInteres(c);
-                  setFormEnvie(Object.assign({},fe,{clienteId:c.id,busqueda:c.nombre,items:itemsGuardadosSE.length>0?itemsGuardadosSE:fe.items}));
-                }},c.nombre+(c.estadoProspecto==="Nueva"?" (oportunidad nueva)":c.estadoProspecto==="En seguimiento"?" (en seguimiento)":""));
-              })
-            ),
-            !fe.clienteId&&fe.busqueda.trim().length>0&&coincidencias.length===0&&e("div",{style:{fontSize:11,color:C.textDim,marginTop:4}},"Se registrará como cliente nuevo.")
-          ),
-
-          e(ItemsEditor,{
-            items:fe.items||[],
-            setItems:function(v){ setFormEnvie(Object.assign({},fe,{items:v})); },
-            catalogo:servicios,
-            esProductos:false,
-            st:st,TXT:TXT
-          }),
-
-          e("div",{style:{fontSize:11,color:C.textDim,margin:"10px 0 16px",lineHeight:1.5}},"Quedará como oportunidad en seguimiento."),
-
-          e("button",{style:Object.assign({},st.btnP,{width:"100%",opacity:listo?1:0.4}),disabled:!listo,onClick:guardarEnvie},"Registrar")
-        )
-      );
-    })(),
     modalEnvieP&&(function(){
       var fe=formEnvieP;
       var coincidencias=fe.busqueda.trim().length>0&&!fe.clienteId
@@ -11071,7 +11072,7 @@ export default function CLEO(props){
         )
       );
     })(),
-    clienteCompletarId&&!modalCerre&&!modalEnvie&&!modalEnvieP&&!modalCerreP&&!modalCot&&(function(){
+    clienteCompletarId&&!modalCerre&&!modalEnvieP&&!modalCerreP&&!modalCot&&(function(){
       var clStandalone=clientes.find(function(c){ return c.id===clienteCompletarId; });
       function cerrarStandalone(){ setClienteCompletarId(null); setFormCompletar({canal:"",contacto:"",instagram:"",messenger:""}); }
       return e("div",{style:st.ov,onClick:cerrarStandalone},
@@ -11087,7 +11088,7 @@ export default function CLEO(props){
       );
     })(),
 
-    origenPromptId&&!modalCerre&&!pasoPregunto&&!clienteCompletarId&&!cotAceptadaId&&!motivoPipelineId&&!modalCerreP&&!modalEnvie&&!modalEnvieP&&!cancelarPedidoId&&!modalCot&&(function(){
+    origenPromptId&&!modalCerre&&!pasoPregunto&&!clienteCompletarId&&!cotAceptadaId&&!motivoPipelineId&&!modalCerreP&&!modalEnvieP&&!cancelarPedidoId&&!modalCot&&(function(){
       var clOrigen=clientes.find(function(c){ return c.id===origenPromptId; });
       function cerrarOrigenStandalone(){ omitirOrigenPrompt(); }
       return e("div",{style:st.ov,onClick:cerrarOrigenStandalone},
@@ -13438,9 +13439,16 @@ export default function CLEO(props){
                     e("input",{type:"file",accept:"image/*",style:{display:"none"},onChange:function(ev){
                       var file=ev.target.files&&ev.target.files[0];
                       if(!file) return;
-                      var reader=new FileReader();
-                      reader.onload=function(e){ setFormPerfil(Object.assign({},formPerfil,{logo:e.target.result})); };
-                      reader.readAsDataURL(file);
+                      // Se convierte SIEMPRE a PNG antes de guardar (ver
+                      // convertirImagenAPngDataURL) , así el formato original
+                      // del archivo (WEBP, HEIC, GIF, etc.) nunca hace que el
+                      // logo desaparezca en silencio al generar un PDF.
+                      convertirImagenAPngDataURL(file).then(function(pngDataURL){
+                        setFormPerfil(Object.assign({},formPerfil,{logo:pngDataURL}));
+                      }).catch(function(){
+                        window.alert("No pudimos procesar esta imagen como logo. Prueba con otro archivo (PNG o JPG funcionan mejor).");
+                      });
+                      ev.target.value="";
                     }})
                   ),
                   formPerfil.logo&&e("button",{style:{cursor:"pointer",background:"none",border:"none",fontSize:12,color:C.red,textAlign:"left",padding:0},onClick:function(){ setFormPerfil(Object.assign({},formPerfil,{logo:""})); }},"Quitar logo")
@@ -13666,7 +13674,13 @@ export default function CLEO(props){
 
           // SECCIÓN: Agregar nuevo servicio
           e("div",{style:{padding:"20px 24px",borderBottom:"1px solid "+C.border}},
-            e("div",{style:{fontSize:11,fontWeight:700,color:C.textDim,textTransform:"uppercase",letterSpacing:"1px",marginBottom:14}},"Agregar "+(esProductos?"producto":"servicio")),
+            e("div",{style:{display:"flex",alignItems:"center",justifyContent:"space-between",flexWrap:"wrap",gap:8,marginBottom:14}},
+              e("div",{style:{fontSize:11,fontWeight:700,color:C.textDim,textTransform:"uppercase",letterSpacing:"1px"}},"Agregar "+(esProductos?"producto":"servicio")),
+              e("button",{type:"button",onClick:function(){ setModalImportarCatalogo(true); },style:{cursor:"pointer",padding:"6px 12px",borderRadius:10,border:"1px solid "+C.border,background:"transparent",fontSize:11,color:C.purple,fontWeight:600,display:"inline-flex",alignItems:"center",gap:5,whiteSpace:"nowrap"}},
+                e("svg",{width:12,height:12,viewBox:"0 0 24 24",fill:"none"},e("path",{d:"M12 3v12m0 0l-4-4m4 4l4-4M4 17v2a2 2 0 002 2h12a2 2 0 002-2v-2",stroke:C.purple,strokeWidth:2,strokeLinecap:"round",strokeLinejoin:"round"})),
+                "Importar catálogo"
+              )
+            ),
             e("div",{style:{display:"grid",gridTemplateColumns:"1fr 110px",gap:8,marginBottom:10}},
               e("input",{placeholder:(esProductos?"ej. Aretes plata, Pastel...":"ej. Sesión fotográfica..."),value:formSv.nombre,onChange:function(ev){ setFormSv(Object.assign({},formSv,{nombre:ev.target.value})); },style:st.inp}),
               e(MontoInput,{value:formSv.precio,onChange:function(ev){ setFormSv(Object.assign({},formSv,{precio:ev.target.value})); },placeholder:"Precio",style:st.inp})
@@ -13725,6 +13739,46 @@ export default function CLEO(props){
         )
       )
     ),
+
+    // MODAL IMPORTAR CATÁLOGO , motor único compartido por Productos y
+    // Servicios (ver ImportarCatalogo.jsx). Solo existe en memoria mientras
+    // está abierto (montaje condicional), así al cerrarse React descarta
+    // TODO su estado interno de una vez (archivo, filas procesadas, mapeo
+    // de columnas) , nunca queda nada en memoria después de cerrar.
+    // CLEO_55.jsx sigue siendo el único que escribe el catálogo real: el
+    // componente solo entrega la lista final ya confirmada, y aquí se
+    // guarda con el mismo setCatActivo que ya usa el resto de la app
+    // (persistencia normal a localStorage, respeta modo demo igual que
+    // cualquier otro guardado , no hay caso especial nuevo).
+    modalImportarCatalogo&&e(ImportarCatalogo,{
+      esProductos:esProductos,
+      catalogoActual:catActivo,
+      isMobile:isMobile,
+      userId:props.userId,
+      st:st,
+      C:C,
+      onCerrar:function(){ setModalImportarCatalogo(false); },
+      onConfirmar:function(nuevaLista,resumen){
+        setCatActivo(nuevaLista);
+        setModalImportarCatalogo(false);
+        // resumen.mensaje , si viene, ya es el texto completo y correcto
+        // (ImportarCatalogo.jsx es la única fuente de verdad de los conteos:
+        // agregados/actualizados/omitidos por error/por duplicado/por
+        // elección). Se conserva el cálculo anterior como respaldo, por si
+        // algún día se llama onConfirmar sin ese campo.
+        var etiqueta=esProductos?"productos":"servicios";
+        var msg=resumen.mensaje;
+        if(!msg){
+          msg="Se importaron "+resumen.importados+" "+etiqueta+".";
+          var extra=[];
+          if(resumen.omitidos>0) extra.push(resumen.omitidos+" omitidos");
+          if(resumen.excluidos>0) extra.push(resumen.excluidos+" excluidos");
+          if(resumen.errores>0) extra.push(resumen.errores+" con errores");
+          if(extra.length>0) msg+=" ("+extra.join(", ")+")";
+        }
+        mostrarToast(msg);
+      }
+    }),
 
     // MODAL REGISTRAR PAGO VENTA RÁPIDA
     pagoVentaData&&(function(){
@@ -13999,7 +14053,7 @@ export default function CLEO(props){
     ),
 
     // MODAL COTIZACION
-    modalCot&&e("div",{style:Object.assign({},st.ov,{overflow:"hidden"}),onClick:function(){ setModalCot(false); setEditCotId(null); setFormCot(cotVacio); setEtapaPendiente(null); }},
+    modalCot&&e("div",{style:Object.assign({},st.ov,{overflow:"hidden"}),onClick:function(){ setModalCot(false); setEditCotId(null); setFormCot(cotVacio); setEtapaPendiente(null); setModalCotAvanzadoOverride(null); }},
       e("div",{style:{background:C.surface,borderRadius:isMobile?"20px 20px 0 0":"20px",width:isMobile?"100%":560,maxWidth:"100%",maxHeight:isMobile?"94vh":"88vh",border:isMobile?"none":"1px solid "+C.border,boxShadow:"0 8px 32px rgba(0,0,0,0.14)",display:"flex",flexDirection:"column",overflow:"hidden",margin:isMobile?0:"auto"},onClick:function(ev){ ev.stopPropagation(); }},
 
         // HEADER
@@ -14008,7 +14062,7 @@ export default function CLEO(props){
             e("div",{style:{fontWeight:700,fontSize:18,color:C.text}},editCotId?"Editar "+TXT.cotizacion:"Nueva cotización"),
             e("div",{style:{fontSize:12,color:C.textMuted,marginTop:2}},"Prepara una propuesta para tu cliente")
           ),
-          e("button",{style:{background:C.surfaceUp,border:"1px solid "+C.border,borderRadius:10,cursor:"pointer",color:C.textMuted,fontSize:16,lineHeight:1,padding:"6px 10px"},onClick:function(){ setModalCot(false); setEditCotId(null); setFormCot(cotVacio); setEtapaPendiente(null); }},"×")
+          e("button",{style:{background:C.surfaceUp,border:"1px solid "+C.border,borderRadius:10,cursor:"pointer",color:C.textMuted,fontSize:16,lineHeight:1,padding:"6px 10px"},onClick:function(){ setModalCot(false); setEditCotId(null); setFormCot(cotVacio); setEtapaPendiente(null); setModalCotAvanzadoOverride(null); }},"×")
         ),
 
         // BODY SCROLLABLE
@@ -14130,6 +14184,21 @@ export default function CLEO(props){
             keyPrefix:"cot-"+(editCotId||"new")
           }),
 
+          // "+ Más opciones" , colapsa Descuento/Vigencia/Condiciones de pago
+          // por defecto (así "Envié un precio" y "+Nueva cotización" arrancan
+          // ligeros: solo Cliente + Productos/Servicios visibles). Nunca se
+          // esconde nada que ya tenga datos: si ya hay descuento/vigencia
+          // cargados, si las condiciones de pago ya se personalizaron, o si
+          // se está editando una cotización existente, arranca expandido
+          // (ver mostrarAvanzadoCot()). La persona también puede
+          // expandir/colapsar a mano, y esa elección manda mientras el modal
+          // siga abierto.
+          e("button",{type:"button",style:{alignSelf:"flex-start",background:"none",border:"none",cursor:"pointer",color:C.purple,fontSize:12,fontWeight:600,padding:"2px 0",display:"flex",alignItems:"center",gap:4},onClick:function(){ setModalCotAvanzadoOverride(!mostrarAvanzadoCot()); }},
+            mostrarAvanzadoCot()?"− Menos opciones":"+ Más opciones (descuento, vigencia, condiciones de pago)"
+          ),
+
+          mostrarAvanzadoCot()&&e("div",{style:{display:"flex",flexDirection:"column",gap:isMobile?14:18}},
+
           // PRECIO + DESCUENTO unificados
           e("div",{style:{background:C.surfaceUp,borderRadius:14,padding:"16px",border:"1px solid "+C.border}},
             e("div",{style:{fontSize:11,fontWeight:700,color:C.textMuted,textTransform:"uppercase",letterSpacing:"0.8px",marginBottom:12}},"Precio"),
@@ -14197,13 +14266,14 @@ export default function CLEO(props){
               style:Object.assign({},st.inp,{minHeight:60,resize:"vertical",background:C.surface})
             })
           )
+          )
         ),
 
         // FOOTER FIJO
         (function(){
           var hayItemValido=(formCot.items||[]).some(function(it){ return it.nombre&&it.nombre.trim(); });
           return e("div",{style:{padding:isMobile?"12px 20px 28px":"14px 24px",borderTop:"1px solid "+C.border,display:"flex",gap:8,justifyContent:"flex-end",background:C.surfaceUp,flexShrink:0,flexWrap:"wrap"}},
-          e("button",{style:st.btn,onClick:function(){ setModalCot(false); setEditCotId(null); setFormCot(cotVacio); setEtapaPendiente(null); }},"Cancelar"),
+          e("button",{style:st.btn,onClick:function(){ setModalCot(false); setEditCotId(null); setFormCot(cotVacio); setEtapaPendiente(null); setModalCotAvanzadoOverride(null); }},"Cancelar"),
           e("button",{
             style:Object.assign({},st.btnP,{opacity:hayItemValido?1:0.5,background:"transparent",border:"1.5px solid "+C.purple,color:C.purple}),
             disabled:!hayItemValido,
