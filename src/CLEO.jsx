@@ -16575,27 +16575,37 @@ export default function CLEO(props){
         // propio, así que sin este refuerzo visual la caja se ve en blanco
         // y no comunica que es un selector de fecha. fontSize:16 (nunca
         // menos) evita que iOS haga zoom automático al enfocar el campo.
-        e("div",{style:{display:"grid",gridTemplateColumns:isMobile?"1fr":"1fr 1fr",gap:10,marginBottom:14}},
-          e("div",null,
+        // minWidth:0 en cada celda del grid (y en el wrapper relativo del
+        // input) es lo que corrige el desbordamiento en mobile: por default
+        // un hijo de grid no se encoge más allá del ancho intrínseco de su
+        // contenido, y <input type="date"> en iOS/Android tiene un ancho
+        // mínimo propio (el control nativo de fecha) mayor al disponible en
+        // pantallas angostas , sin minWidth:0 esa celda fuerza al grid
+        // (y por lo tanto al modal) a desbordarse hacia la derecha aunque
+        // el input tenga width:"100%". gridTemplateColumns usa minmax(0,1fr)
+        // por la misma razón: "1fr" solo no evita que la pista del grid
+        // crezca para acomodar ese mínimo intrínseco.
+        e("div",{style:{display:"grid",gridTemplateColumns:isMobile?"minmax(0,1fr)":"minmax(0,1fr) minmax(0,1fr)",gap:10,marginBottom:14}},
+          e("div",{style:{minWidth:0}},
             e("label",{style:{fontSize:11.5,color:C.textMuted,display:"block",marginBottom:5,fontWeight:600}},"Desde"),
-            e("div",{style:{position:"relative"}},
+            e("div",{style:{position:"relative",minWidth:0}},
               e("svg",{width:16,height:16,viewBox:"0 0 24 24",fill:"none",style:{position:"absolute",left:12,top:"50%",transform:"translateY(-50%)",pointerEvents:"none"}},
                 e("rect",{x:"3",y:"5",width:"18",height:"16",rx:"3",stroke:C.textMuted,strokeWidth:"1.6"}),
                 e("path",{d:"M3 9.5h18",stroke:C.textMuted,strokeWidth:"1.6"}),
                 e("path",{d:"M8 3v4M16 3v4",stroke:C.textMuted,strokeWidth:"1.6",strokeLinecap:"round"})
               ),
-              e("input",{type:"date",value:formReporteComercial.desde,max:FECHA_HOY,onChange:function(ev){ setErrorReporteComercial(""); setFormReporteComercial(Object.assign({},formReporteComercial,{desde:ev.target.value})); },style:{width:"100%",minHeight:44,padding:"10px 12px 10px 36px",borderRadius:10,border:"1px solid "+C.borderStrong,background:C.surface,color:C.text,fontSize:16,boxSizing:"border-box",fontFamily:"-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif"}})
+              e("input",{type:"date",value:formReporteComercial.desde,max:FECHA_HOY,onChange:function(ev){ setErrorReporteComercial(""); setFormReporteComercial(Object.assign({},formReporteComercial,{desde:ev.target.value})); },style:{width:"100%",minWidth:0,maxWidth:"100%",minHeight:44,padding:"10px 12px 10px 36px",borderRadius:10,border:"1px solid "+C.borderStrong,background:C.surface,color:C.text,fontSize:16,boxSizing:"border-box",fontFamily:"-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif"}})
             )
           ),
-          e("div",null,
+          e("div",{style:{minWidth:0}},
             e("label",{style:{fontSize:11.5,color:C.textMuted,display:"block",marginBottom:5,fontWeight:600}},"Hasta"),
-            e("div",{style:{position:"relative"}},
+            e("div",{style:{position:"relative",minWidth:0}},
               e("svg",{width:16,height:16,viewBox:"0 0 24 24",fill:"none",style:{position:"absolute",left:12,top:"50%",transform:"translateY(-50%)",pointerEvents:"none"}},
                 e("rect",{x:"3",y:"5",width:"18",height:"16",rx:"3",stroke:C.textMuted,strokeWidth:"1.6"}),
                 e("path",{d:"M3 9.5h18",stroke:C.textMuted,strokeWidth:"1.6"}),
                 e("path",{d:"M8 3v4M16 3v4",stroke:C.textMuted,strokeWidth:"1.6",strokeLinecap:"round"})
               ),
-              e("input",{type:"date",value:formReporteComercial.hasta,max:FECHA_HOY,onChange:function(ev){ setErrorReporteComercial(""); setFormReporteComercial(Object.assign({},formReporteComercial,{hasta:ev.target.value})); },style:{width:"100%",minHeight:44,padding:"10px 12px 10px 36px",borderRadius:10,border:"1px solid "+C.borderStrong,background:C.surface,color:C.text,fontSize:16,boxSizing:"border-box",fontFamily:"-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif"}})
+              e("input",{type:"date",value:formReporteComercial.hasta,max:FECHA_HOY,onChange:function(ev){ setErrorReporteComercial(""); setFormReporteComercial(Object.assign({},formReporteComercial,{hasta:ev.target.value})); },style:{width:"100%",minWidth:0,maxWidth:"100%",minHeight:44,padding:"10px 12px 10px 36px",borderRadius:10,border:"1px solid "+C.borderStrong,background:C.surface,color:C.text,fontSize:16,boxSizing:"border-box",fontFamily:"-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif"}})
             )
           )
         ),
