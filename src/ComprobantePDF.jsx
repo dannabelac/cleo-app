@@ -18,9 +18,15 @@ function textoPlanoSeguro(valor, maxLen) {
   return texto;
 }
 
+// numeroSeguro: además de blindar contra NaN/infinito, redondea a 2
+// decimales a salvo de coma flotante , mismo criterio que redondearDinero()
+// en CLEO.jsx (archivo independiente, evita imports circulares, ver
+// comentario arriba).
 function numeroSeguro(valor) {
   var n = Number(valor);
-  return Number.isFinite(n) ? n : 0;
+  if (!Number.isFinite(n)) return 0;
+  var signo = n < 0 ? -1 : 1;
+  return (signo * Math.round(Math.abs(n) * 100 + 1e-9)) / 100;
 }
 
 function colorHexSeguroPDF(valor, fallback) {
@@ -45,8 +51,13 @@ function nombreArchivoSeguroPDF(valor, fallback) {
   return texto || fallback;
 }
 
+// formatearMonto: muestra centavos SOLO cuando existen ($199.50) , entero
+// sin decimales ($199) , mismo criterio que formatoDinero() en CLEO.jsx.
 function formatearMonto(n) {
-  return "$" + numeroSeguro(n).toLocaleString("es-MX");
+  // Siempre 2 decimales, sin excepción , mismo criterio que formatoDinero()
+  // en CLEO.jsx: $199.00 , $199.50 , $1,250.00.
+  var x = numeroSeguro(n);
+  return "$" + x.toLocaleString("es-MX", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
 
 // Equivalente local de obtenerItemsCotizacion/obtenerItemsPedido (definidas
@@ -72,7 +83,7 @@ function obtenerItemsComprobantePDF(cot, fallbackNombre) {
         nombre: textoPlanoSeguro(it.nombre, 300),
         cantidad: cantidad,
         precioUnitario: precioUnitario,
-        total: it.total != null ? numeroSeguro(it.total) : cantidad * precioUnitario,
+        total: it.total != null ? numeroSeguro(it.total) : numeroSeguro(cantidad * precioUnitario),
       };
     });
   }
@@ -83,7 +94,7 @@ function obtenerItemsComprobantePDF(cot, fallbackNombre) {
       nombre: textoPlanoSeguro(cot.concepto || fallbackNombre || "", 300),
       cantidad: cantidadLegacy,
       precioUnitario: precioLegacy,
-      total: cantidadLegacy * precioLegacy,
+      total: numeroSeguro(cantidadLegacy * precioLegacy),
     },
   ];
 }
@@ -434,7 +445,7 @@ function construirDatosBase(tipoLabel, folio, itemsPDF, monto, pagosLimpios, sal
     pagos: pagosLimpios,
     mostrarMensajeSinPagos: !!mostrarMensajeSinPagos,
     saldoLabel: saldo <= 0 ? "Pagado completamente" : "Saldo pendiente",
-    saldo: Math.max(0, saldo),
+    saldo: numeroSeguro(Math.max(0, saldo)),
     tieneBanco: !!(perfil.banco || perfil.bancoclabe || perfil.bancoaccount),
     banco: textoPlanoSeguro(perfil.banco, 80),
     bancotitular: textoPlanoSeguro(perfil.bancotitular, 120),
@@ -492,7 +503,7 @@ export async function crearDocumentoFinancieroPDF(opciones) {
     // cot.pagos, para no duplicar el mismo movimiento dos veces.
     var anticipo = numeroSeguro(cot.anticipo);
     var totalAnt = numeroSeguro(cot.monto);
-    var saldoAnt = Math.max(0, totalAnt - anticipo);
+    var saldoAnt = numeroSeguro(Math.max(0, totalAnt - anticipo));
     var fechaAnt = textoPlanoSeguro(cot.fechaAnticipo, 40) || textoPlanoSeguro(fechaHoy, 40);
     folio = "ANT-" + String(cot.id || "").slice(-4).padStart(4, "0") + "-" + String(Date.now()).slice(-4);
     var pagosAnticipo = anticipo > 0 || cot.fechaAnticipo ? [{ concepto: "Anticipo recibido", fecha: fechaAnt, monto: anticipo }] : [];
@@ -523,8 +534,8 @@ export async function crearDocumentoFinancieroPDF(opciones) {
           limpiarPagosPDF([pagoEspecifico])
         );
     var totalPag = numeroSeguro(cot.monto);
-    var totalPagadoPag = pagosLimpiosTodos.reduce(function (s, p) { return s + p.monto; }, 0) + (yaEstaEnLista ? 0 : numeroSeguro(pagoEspecifico.monto));
-    var saldoPag = Math.max(0, totalPag - totalPagadoPag);
+    var totalPagadoPag = numeroSeguro(pagosLimpiosTodos.reduce(function (s, p) { return s + p.monto; }, 0) + (yaEstaEnLista ? 0 : numeroSeguro(pagoEspecifico.monto)));
+    var saldoPag = numeroSeguro(Math.max(0, totalPag - totalPagadoPag));
     var fechaPag = textoPlanoSeguro(pagoEspecifico.fecha, 40) || textoPlanoSeguro(fechaHoy, 40);
     folio = "PAG-" + String(pagoEspecifico.id || "").slice(-4);
     // El marcado del pago actual ocurre DESPUÉS de todos los cálculos de
@@ -549,8 +560,8 @@ export async function crearDocumentoFinancieroPDF(opciones) {
     // estado_cuenta
     var pagosLimpiosEst = limpiarPagosPDF(cot.pagos);
     var totalEst = numeroSeguro(cot.monto);
-    var totalPagadoEst = pagosLimpiosEst.reduce(function (s, p) { return s + p.monto; }, 0);
-    var saldoEst = Math.max(0, totalEst - totalPagadoEst);
+    var totalPagadoEst = numeroSeguro(pagosLimpiosEst.reduce(function (s, p) { return s + p.monto; }, 0));
+    var saldoEst = numeroSeguro(Math.max(0, totalEst - totalPagadoEst));
     var fechaEst = textoPlanoSeguro(fechaHoy, 40);
     folio = "EST-" + String(cot.id || "").slice(-4).padStart(4, "0");
     datos = construirDatosBase(

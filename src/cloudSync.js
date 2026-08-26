@@ -1,4 +1,14 @@
 import { supabase } from "./supabaseClient";
+// Diagnóstico técnico mínimo (beta, opcional) , ver sentry.js para la regla
+// completa de privacidad. Si Sentry no está configurado, estas funciones no
+// hacen nada , nunca cambian ni condicionan la lógica de sincronización de
+// abajo, solo la observan desde afuera.
+import {
+  inicializarDiagnostico,
+  registrarSyncExitoso,
+  reportarErrorSync,
+  reportarConflictoVersion,
+} from "./sentry.js";
 
 // Única lista de claves que CLEO.jsx guarda en localStorage.
 // pull y push usan exactamente esta misma lista para no desincronizarse entre sí.
@@ -260,6 +270,27 @@ function leerSnapshotLocalStorage() {
   return snap;
 }
 
+// Métricas puramente técnicas de un snapshot , SOLO números (tamaño en
+// bytes, conteos de renglones). Nunca se lee ni se toca el contenido en sí,
+// solo .length de cada arreglo y el tamaño total serializado , esto es lo
+// único que sentry.js acepta reportar (ver soloMetricas() ahí, que además
+// descarta cualquier otro campo como defensa adicional).
+function metricasSnapshot(snap, serializadoOpcional) {
+  var json = typeof serializadoOpcional === "string" ? serializadoOpcional : JSON.stringify(snap || {});
+  var bytes;
+  try {
+    bytes = new Blob([json]).size;
+  } catch (e) {
+    bytes = json.length;
+  }
+  return {
+    snapshotBytes: bytes,
+    clientesCount: Array.isArray(snap && snap.cleo_clientes) ? snap.cleo_clientes.length : 0,
+    pedidosCount: Array.isArray(snap && snap.cleo_pedidos) ? snap.cleo_pedidos.length : 0,
+    cotizacionesCount: Array.isArray(snap && snap.cleo_cots) ? snap.cleo_cots.length : 0,
+  };
+}
+
 function escribirSnapshotLocalStorage(data) {
   CLEO_KEYS.forEach(function (key) {
     if (!(key in data)) return;
@@ -272,16 +303,42 @@ function escribirSnapshotLocalStorage(data) {
 // ── PULL ──────────────────────────────────────────────────────────────────
 // Trae el estado guardado en Supabase y lo escribe en localStorage ANTES de
 // montar <CLEO/>, para que sus useState(() => lsGet(...)) lo lean ya listo.
-// Devuelve true si había datos guardados, false si el usuario es nuevo.
+// data, tipo_perfil y updated_at se traen en la MISMA consulta , así el
+// updated_at que usará startCloudSync como versión base corresponde EXACTO
+// a los datos que se acaban de escribir en localStorage, nunca a una
+// lectura posterior y separada (esa segunda lectura, la que hacía antes
+// establecerBaseline() en cuanto arrancaba la sincronización, es la ventana
+// de carrera real: otro dispositivo podía escribir justo entre ambas
+// lecturas, y esta pestaña terminaba usando una versión de updated_at más
+// nueva que los datos que en realidad tenía cargados, permitiéndole
+// sobrescribir en el siguiente ciclo un cambio remoto recién llegado que
+// nunca llegó a ver).
+// Devuelve SIEMPRE un objeto { tieneDatos, updatedAt, snapshot }:
+// - tieneDatos: true solo si había fila remota con datos.
+// - updatedAt: el valor EXACTO visto en esta misma consulta (o null si no
+//   hay fila todavía) , es lo único que startCloudSync usará como versión
+//   base, nunca genera ni asume uno propio.
+// - snapshot: el mismo objeto que acaba de quedar escrito en localStorage
+//   (o {} si la cuenta no tenía nada aún), normalizado con
+//   leerSnapshotLocalStorage() para que su serialización coincida
+//   exactamente con la que usará intentarGuardar() al comparar , así abrir
+//   CLEO sin tocar nada no se detecta como "cambió" por una simple
+//   diferencia de orden de llaves.
 export async function pullUserData(userId) {
+  inicializarDiagnostico(); // fuego y olvido , nunca bloquea ni condiciona lo de abajo
+  var _tInicioPull = Date.now();
   var res = await supabase
     .from("user_data")
-    .select("data, tipo_perfil")
+    .select("data, tipo_perfil, updated_at")
     .eq("user_id", userId)
     .maybeSingle();
 
   if (res.error) {
     console.error("cloudSync: error al leer user_data", res.error);
+    // reportarErrorSync solo recibe un texto técnico corto , NUNCA res.error
+    // (el objeto real de Supabase, que puede traer .details/.hint con
+    // fragmentos de la fila).
+    reportarErrorSync("pullUserData", "pull_error", { durationMs: Date.now() - _tInicioPull });
     // Se relanza como excepción real (en vez de solo devolver false), para que
     // quien llama pueda distinguir "cuenta nueva sin datos todavía" de
     // "hubo un error de verdad" y no monte la app con datos vacíos por error.
@@ -314,7 +371,13 @@ export async function pullUserData(userId) {
     try {
       localStorage.setItem(CACHE_OWNER_KEY, userId);
     } catch (e) {}
-    return false;
+    // snapshot:null a propósito , con un conflicto sin resolver pendiente,
+    // startCloudSync arranca pausado de todas formas (ve el mismo respaldo
+    // vía leerConflictoBackupValido), así que no hace falta ni conviene
+    // seedear una baseline aquí: cuando la persona resuelva el conflicto,
+    // resolverConflictoConservarLocal/UsarRemoto ya hacen su propia lectura
+    // fresca de updated_at antes de escribir.
+    return { tieneDatos: false, updatedAt: null, snapshot: null };
   }
 
   // Caché sin ningún propietario registrado (nunca se le asignó
@@ -341,7 +404,13 @@ export async function pullUserData(userId) {
     try {
       localStorage.setItem(CACHE_OWNER_KEY, userId);
     } catch (e) {}
-    return false;
+    // updatedAt:null , todavía no existe fila, así que el primer guardado
+    // de esta cuenta no tiene nada con qué compararse (mismo criterio que
+    // ya usaba intentarGuardar antes de este cambio). snapshot:{} refleja
+    // el estado local actual (vacío, o con datos reales aún no
+    // sincronizados si duenioActual===userId) , si difiere de lo que haya
+    // en localStorage al iniciar la sincronización, se sube tal cual.
+    return { tieneDatos: false, updatedAt: null, snapshot: {} };
   }
 
   // Sí hay fila remota: la nube es la fuente de verdad para esta cuenta.
@@ -370,13 +439,35 @@ export async function pullUserData(userId) {
     localStorage.setItem(CACHE_OWNER_KEY, userId);
   } catch (e) {}
 
-  return true;
+  // snapshot se recalcula leyendo localStorage recién escrito (en vez de
+  // devolver fila.data tal cual) para que quede en el mismo orden de
+  // llaves que usará intentarGuardar() al serializar , ambos pasan por
+  // leerSnapshotLocalStorage(), así su JSON.stringify() coincide byte a
+  // byte cuando nada cambió, y abrir CLEO sin tocar nada no dispara una
+  // subida innecesaria.
+  var snapshotPulled = leerSnapshotLocalStorage();
+  // Breadcrumb de carga exitosa , solo métricas (duración + tamaño + conteos),
+  // nunca el snapshot en sí. Nunca es un evento independiente.
+  registrarSyncExitoso(
+    Object.assign({ durationMs: Date.now() - _tInicioPull }, metricasSnapshot(snapshotPulled))
+  );
+  return { tieneDatos: true, updatedAt: fila.updated_at, snapshot: snapshotPulled };
 }
 
 // ── PUSH ──────────────────────────────────────────────────────────────────
 // Sincroniza localStorage -> user_data cada 5s, más flush en beforeunload y
 // al ocultarse la pestaña. Devuelve { stop } para cortar la sincronización.
-export function startCloudSync(userId, onEstadoCambia) {
+// baselineInicial (opcional) , { updatedAt, snapshot } exactamente como los
+// devuelve pullUserData(). Cuando viene con un snapshot válido, la baseline
+// queda lista de inmediato con ESOS valores, sin volver a preguntarle a
+// Supabase (eso era establecerBaseline(), una segunda lectura por separado
+// que dejaba abierta la ventana de carrera entre el pull y el arranque del
+// sync). Los call sites que no lo pasan (p. ej. reanudar la sincronización
+// tras un intento fallido de eliminar cuenta, donde nunca hubo un pull
+// nuevo de por medio) siguen exactamente igual que antes, estableciendo su
+// propia baseline con establecerBaseline().
+export function startCloudSync(userId, onEstadoCambia, baselineInicial) {
+  inicializarDiagnostico(); // fuego y olvido , nunca bloquea ni condiciona lo de abajo
   var ultimoEnviado = "";
   var enVueloPromise = null; // promesa del guardado actualmente en curso, o null si no hay ninguno
   // Cuando hay un conflicto sin resolver, se guarda aquí (en memoria) el
@@ -394,6 +485,17 @@ export function startCloudSync(userId, onEstadoCambia) {
   // cuenta) cambió algo mientras tanto, antes de arriesgarnos a sobrescribirlo.
   var ultimoUpdatedAt = null;
   var baselineLista = false;
+
+  // Si nos pasaron una baseline ya lista (ver comentario de arriba), se usa
+  // tal cual y se marca baselineLista=true de una vez , snapshot debe ser
+  // un objeto real (null significa "no venía baseline aprovechable", p. ej.
+  // el caso de conflicto pendiente en pullUserData, que de todas formas
+  // arranca pausado más abajo vía conflictoPendiente).
+  if (baselineInicial && baselineInicial.snapshot && typeof baselineInicial.snapshot === "object") {
+    ultimoUpdatedAt = baselineInicial.updatedAt || null;
+    ultimoEnviado = JSON.stringify(baselineInicial.snapshot);
+    baselineLista = true;
+  }
 
   function avisar(estado) {
     if (typeof onEstadoCambia === "function") {
@@ -443,6 +545,7 @@ export function startCloudSync(userId, onEstadoCambia) {
         console.error("cloudSync: no se pudo establecer el baseline tras varios intentos", err);
         baselineLista = false;
         avisar("error");
+        reportarErrorSync("establecerBaseline", "baseline_error", {});
         return { estado: "error" };
       });
   }
@@ -471,40 +574,72 @@ export function startCloudSync(userId, onEstadoCambia) {
   // nunca lanza, para que quien la llame pueda decidir qué hacer.
   function intentarGuardar() {
     if (!baselineLista) return Promise.resolve({ estado: "nada" });
+    var _tInicioGuardar = Date.now();
     var snap = leerSnapshotLocalStorage();
     var serializado = JSON.stringify(snap);
     if (serializado === ultimoEnviado) return Promise.resolve({ estado: "nada" });
+    var _metricasGuardado = metricasSnapshot(snap, serializado);
 
+    // nuevaFecha es solo una etiqueta local para el respaldo de conflicto
+    // (fecha:) si hace falta más abajo , updated_at YA NO se manda en el
+    // payload: el reloj del navegador no debe ser la autoridad sobre cuándo
+    // se guardó algo (puede estar desfasado entre dispositivos), así que se
+    // deja que la fila lo asigne del lado del servidor (ver el trigger SQL
+    // set_updated_at_user_data) y se relee con .select("updated_at") lo que
+    // el servidor realmente guardó.
     var nuevaFecha = new Date().toISOString();
     var payload = {
       data: snap,
       tipo_perfil: tipoPerfilActual(),
-      updated_at: nuevaFecha,
     };
 
     // Si ya conocemos un updated_at previo, escribimos condicionado a que siga
     // siendo el mismo (nadie más lo tocó desde otro dispositivo). Si es la
     // primera vez que esta cuenta guarda algo, no hay nada que comparar todavía.
-    var accion = ultimoUpdatedAt
+    // Antes se usaba upsert (onConflict:"user_id") también en este caso , un
+    // upsert nunca compara nada, así que si 2 dispositivos hacían su primer
+    // guardado casi al mismo tiempo (p. ej. 2 pestañas nuevas de la misma
+    // cuenta recién creada), el segundo upsert sobrescribía al primero en
+    // silencio, sin detectar nada. Ahora, cuando todavía no hay updated_at
+    // conocido, se intenta un INSERT puro , si la fila ya existe (el otro
+    // dispositivo se adelantó), la restricción única de user_id lo rechaza
+    // con un error de duplicado, y eso se trata exactamente igual que "0
+    // filas afectadas": conflicto explícito, nunca una sobrescritura muda.
+    var esPrimeraEscritura = !ultimoUpdatedAt;
+    var accion = esPrimeraEscritura
       ? supabase
+          .from("user_data")
+          .insert(Object.assign({ user_id: userId }, payload))
+          .select("updated_at")
+      : supabase
           .from("user_data")
           .update(payload)
           .eq("user_id", userId)
           .eq("updated_at", ultimoUpdatedAt)
-          .select("updated_at")
-      : supabase
-          .from("user_data")
-          .upsert(Object.assign({ user_id: userId }, payload), { onConflict: "user_id" })
           .select("updated_at");
 
     return accion
       .then(function (res) {
         if (res.error) {
+          if (esPrimeraEscritura && res.error.code === "23505") {
+            // Violación de la restricción única de user_id: otro dispositivo
+            // ya creó la fila de esta cuenta justo antes. Mismo tratamiento
+            // que "0 filas afectadas" más abajo , no se sobrescribe nada, se
+            // guarda el snapshot que provocó esto y se pausa lo automático.
+            conflictoPendiente = { snapshot: snap, fecha: nuevaFecha, userId: userId, estado: "pendiente" };
+            try {
+              localStorage.setItem(CONFLICT_BACKUP_KEY, JSON.stringify(conflictoPendiente));
+            } catch (e) {}
+            avisar("conflicto");
+            reportarConflictoVersion("intentarGuardar", Object.assign({ durationMs: Date.now() - _tInicioGuardar }, _metricasGuardado), "23505");
+            return { estado: "conflicto" };
+          }
           console.error("cloudSync: error al guardar user_data", res.error);
           avisar("error");
+          reportarErrorSync("intentarGuardar", "write_error", Object.assign({ durationMs: Date.now() - _tInicioGuardar }, _metricasGuardado));
           return { estado: "error" };
         }
-        if (ultimoUpdatedAt && (!res.data || res.data.length === 0)) {
+        if (!esPrimeraEscritura && (!res.data || res.data.length === 0)) {
           // 0 filas afectadas: otro dispositivo con la misma cuenta ya guardó
           // algo distinto mientras tanto. No sobrescribimos a ciegas , se
           // guarda el snapshot que provocó esto y se pausa todo lo automático.
@@ -513,16 +648,21 @@ export function startCloudSync(userId, onEstadoCambia) {
             localStorage.setItem(CONFLICT_BACKUP_KEY, JSON.stringify(conflictoPendiente));
           } catch (e) {}
           avisar("conflicto");
+          reportarConflictoVersion("intentarGuardar", Object.assign({ durationMs: Date.now() - _tInicioGuardar }, _metricasGuardado), "0_filas");
           return { estado: "conflicto" };
         }
         ultimoEnviado = serializado;
         ultimoUpdatedAt = res.data && res.data[0] ? res.data[0].updated_at : nuevaFecha;
         avisar("ok");
+        // Breadcrumb de guardado exitoso , solo métricas, nunca un evento
+        // independiente (ver sentry.js).
+        registrarSyncExitoso(Object.assign({ durationMs: Date.now() - _tInicioGuardar }, _metricasGuardado));
         return { estado: "ok" };
       })
       .catch(function (err) {
         console.error("cloudSync: excepción al guardar user_data", err);
         avisar("error");
+        reportarErrorSync("intentarGuardar", "excepcion", Object.assign({ durationMs: Date.now() - _tInicioGuardar }, _metricasGuardado));
         return { estado: "error" };
       });
   }
@@ -604,11 +744,13 @@ export function startCloudSync(userId, onEstadoCambia) {
       .then(function (resLectura) {
         if (resLectura.error) throw resLectura.error;
         var updatedAtFresco = resLectura.data ? resLectura.data.updated_at : null;
+        // updated_at ya no se manda desde el navegador , mismo criterio que
+        // intentarGuardar (ver comentario ahí): el servidor lo asigna vía el
+        // trigger SQL, nunca el reloj de este dispositivo.
         var nuevaFecha = new Date().toISOString();
         var payload = {
           data: snapshotAConservar,
           tipo_perfil: tipoPerfilActual(),
-          updated_at: nuevaFecha,
         };
         var accionEscritura = updatedAtFresco
           ? supabase
@@ -624,9 +766,10 @@ export function startCloudSync(userId, onEstadoCambia) {
         return accionEscritura.then(function (resEscritura) {
           if (resEscritura.error) throw resEscritura.error;
           if (updatedAtFresco && (!resEscritura.data || resEscritura.data.length === 0)) {
-            // Otra modificación ocurrió justo entre la lectura y la escritura , 
+            // Otra modificación ocurrió justo entre la lectura y la escritura ,
             // se conserva el conflicto (con el mismo snapshot local) y se pide
             // decidir de nuevo, en vez de forzar la escritura a ciegas.
+            reportarConflictoVersion("resolverConflictoConservarLocal", metricasSnapshot(snapshotAConservar));
             return { estado: "conflicto" };
           }
           // Escritura confirmada , solo ahora se actualizan estos valores.
@@ -645,6 +788,7 @@ export function startCloudSync(userId, onEstadoCambia) {
       })
       .catch(function (err) {
         console.error("cloudSync: error al conservar la versión de este dispositivo", err);
+        reportarErrorSync("resolverConflictoConservarLocal", "resolver_conflicto_error", {});
         // No se borra nada , el conflicto sigue bloqueado para poder reintentar.
         return { estado: "error" };
       })
@@ -708,6 +852,7 @@ export function startCloudSync(userId, onEstadoCambia) {
       })
       .catch(function (err) {
         console.error("cloudSync: error al usar la versión de la nube", err);
+        reportarErrorSync("resolverConflictoUsarRemoto", "resolver_remoto_error", {});
         // No se borra nada local , el conflicto sigue bloqueado para reintentar.
         return { estado: "error" };
       })

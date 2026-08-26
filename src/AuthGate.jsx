@@ -273,6 +273,13 @@ export default function AuthGate() {
   var userEmail = s10[0];
   var setUserEmail = s10[1];
   var syncRef = useRef(null);
+  // Guarda { updatedAt, snapshot } devuelto por el pullUserData más reciente
+  // que sí llegó a completarse, para que el efecto que arranca
+  // startCloudSync (más abajo) pueda usarlo como baseline inicial exacta ,
+  // así se cierra la ventana entre el pull y el arranque del sync (antes
+  // startCloudSync hacía su propia lectura de updated_at por separado,
+  // pudiendo quedar desfasada de los datos que este pull en concreto trajo).
+  var baselineSyncRef = useRef(null);
   var procesandoRef = useRef({ userId: null, promise: null });
   var s11 = useState(false);
   var syncError = s11[0];
@@ -329,11 +336,15 @@ export default function AuthGate() {
   var s29 = useState(""); var confirmarPasswordRegistro = s29[0]; var setConfirmarPasswordRegistro = s29[1];
 
   // ── Consentimiento legal ────────────────────────────────────────────
-  // Casilla del formulario de registro , NO sustituye el control real
-  // (la fila en legal_acceptances), es solo una primera fricción para no
-  // dejar avanzar sin marcarla. La fuente de verdad real es el control
-  // que corre dentro de manejarSesionReal después de autenticar.
-  var sAceptoLegal = useState(false); var aceptoLegalRegistro = sAceptoLegal[0]; var setAceptoLegalRegistro = sAceptoLegal[1];
+  // ÚNICA fuente de verdad: la fila en legal_acceptances, verificada y
+  // pedida DENTRO de manejarSesionReal (después de autenticar de verdad,
+  // vía correo/contraseña confirmado o Google), a través de la pantalla
+  // obligatoria de abajo. Antes existía además una casilla en el propio
+  // formulario de registro que bloqueaba el envío pero nunca escribía
+  // nada en Supabase , eso hacía que la persona "aceptara" dos veces:
+  // una casilla que no contaba para nada, y luego esta misma pantalla de
+  // verdad al volver de confirmar su correo. Se elimina esa casilla , el
+  // consentimiento ahora se pide UNA sola vez, aquí.
   // Estado de la pantalla legal obligatoria (post-autenticación).
   var sSessionLegalPendiente = useState(null); var sessionLegalPendiente = sSessionLegalPendiente[0]; var setSessionLegalPendiente = sSessionLegalPendiente[1];
   var sAceptoLegalPantalla = useState(false); var aceptoLegalPantalla = sAceptoLegalPantalla[0]; var setAceptoLegalPantalla = sAceptoLegalPantalla[1];
@@ -342,8 +353,8 @@ export default function AuthGate() {
   var sCerrandoSesionLegal = useState(false); var cerrandoSesionLegal = sCerrandoSesionLegal[0]; var setCerrandoSesionLegal = sCerrandoSesionLegal[1];
   var guardandoLegalRef = useRef(false); // bloqueo síncrono, además del estado visual
   var cerrandoSesionLegalRef = useRef(false);
-  // Documento legal abierto (desde el registro, la pantalla obligatoria, o "Mi cuenta")
-  var docLegalRegistro = useDocumentoLegal();
+  // Documento legal abierto , ahora solo se usa desde la pantalla
+  // obligatoria (y desde "Mi cuenta" en CLEO.jsx, sin cambios ahí).
   var docLegalPantalla = useDocumentoLegal();
   // Permite reanudar el MISMO flujo (manejarSesionReal) desde fuera del
   // efecto una vez aceptados los documentos , así "continuar tras aceptar"
@@ -388,6 +399,7 @@ export default function AuthGate() {
 
       if (!session) {
         detenerSync();
+        baselineSyncRef.current = null;
         if (!activo) return;
         setUserId(null);
         setUserEmail(null);
@@ -508,6 +520,13 @@ export default function AuthGate() {
         return;
       }
 
+      // resultado es el objeto { tieneDatos, updatedAt, snapshot } que
+      // devuelve pullUserData (huboExito ya confirma que sí es ese objeto y
+      // no el literal "timeout"/"error") , se guarda tal cual para que el
+      // efecto que arranca startCloudSync lo use como baseline exacta de
+      // ESTE pull, sin volver a preguntarle a Supabase por separado.
+      baselineSyncRef.current = huboExito ? resultado : null;
+
       setUserId(session.user.id);
       setUserEmail(session.user.email || null);
       setEstado("listo");
@@ -602,11 +621,19 @@ export default function AuthGate() {
   // existir ninguna sincronización corriendo sobre esas claves.
   useEffect(function () {
     if (estado !== "listo" || !userId || demoActivo) return;
+    // baselineSyncRef.current viene del pullUserData que acaba de traer a
+    // esta cuenta a "listo" (o null si no hubo pull de por medio, p. ej. al
+    // reanudar sync tras un intento fallido de eliminar cuenta) , se
+    // consume una sola vez aquí y se limpia, para que un reinicio posterior
+    // de este mismo efecto (userId distinto) nunca reutilice por error una
+    // baseline vieja de otra cuenta.
+    var baselineParaEsteArranque = baselineSyncRef.current;
+    baselineSyncRef.current = null;
     syncRef.current = startCloudSync(userId, function (estadoSync) {
       setSyncError(estadoSync === "error");
       setSyncConflicto(estadoSync === "conflicto");
       if (estadoSync === "conflicto") setModalConflictoAbierto(true);
-    });
+    }, baselineParaEsteArranque);
     return function () {
       if (syncRef.current) {
         syncRef.current.stop();
@@ -622,7 +649,6 @@ export default function AuthGate() {
     setMensajeRecuperacion(null);
     setConfirmarPasswordRegistro("");
     setMensajeReenvio(null);
-    setAceptoLegalRegistro(false);
   }
 
   function detectarLimiteCorreos(err) {
@@ -770,10 +796,12 @@ export default function AuthGate() {
         setError("Las contraseñas no coinciden.");
         return;
       }
-      if (!aceptoLegalRegistro) {
-        setError("Necesitas confirmar que eres mayor de edad y aceptar los documentos legales para crear tu cuenta.");
-        return;
-      }
+      // El consentimiento legal ya NO se valida aquí , se pide una única
+      // vez, después de autenticar de verdad, en la pantalla obligatoria
+      // ("requiereAceptacionLegal" más abajo). Antes esta casilla
+      // bloqueaba el envío sin guardar nada en Supabase, lo que hacía que
+      // la persona viera la pregunta dos veces (aquí y otra vez, de
+      // verdad, al volver de confirmar su correo).
     } else {
       if (!email.trim() || !password) {
         setError("Escribe tu correo y contraseña.");
@@ -2273,7 +2301,6 @@ export default function AuthGate() {
                         setConfirmarPasswordRegistro("");
                         setMensajeReenvio(null);
                         setCorreoRegistro("");
-                        setAceptoLegalRegistro(false);
                         setModo("signup");
                       },
                     },
@@ -2490,59 +2517,12 @@ export default function AuthGate() {
                 )
               ),
 
-            modo === "signup" &&
-              React.createElement(
-                "div",
-                { style: { display: "flex", alignItems: "flex-start", gap: 10, marginBottom: 16, marginTop: 2 } },
-                React.createElement("input", {
-                  type: "checkbox",
-                  id: "acepto-legal-registro",
-                  checked: aceptoLegalRegistro,
-                  onChange: function (ev) {
-                    setAceptoLegalRegistro(ev.target.checked);
-                  },
-                  style: { marginTop: 3, width: 18, height: 18, minWidth: 18, flexShrink: 0, cursor: "pointer" },
-                }),
-                React.createElement(
-                  "label",
-                  { htmlFor: "acepto-legal-registro", style: { fontSize: 12.5, color: C.textMuted, lineHeight: 1.55, cursor: "pointer" } },
-                  "Confirmo que soy mayor de 18 años y que leí los ",
-                  React.createElement(
-                    "button",
-                    {
-                      type: "button",
-                      onClick: function (ev) {
-                        ev.preventDefault();
-                        ev.stopPropagation();
-                        docLegalRegistro.abrirTerminos();
-                      },
-                      style: { background: "none", border: "none", padding: 0, cursor: "pointer", color: C.purple, fontWeight: 600, fontSize: 12.5, textDecoration: "underline" },
-                    },
-                    "Términos de la Beta"
-                  ),
-                  " y el ",
-                  React.createElement(
-                    "button",
-                    {
-                      type: "button",
-                      onClick: function (ev) {
-                        ev.preventDefault();
-                        ev.stopPropagation();
-                        docLegalRegistro.abrirPrivacidad();
-                      },
-                      style: { background: "none", border: "none", padding: 0, cursor: "pointer", color: C.purple, fontWeight: 600, fontSize: 12.5, textDecoration: "underline" },
-                    },
-                    "Aviso de Privacidad"
-                  ),
-                  ". Entiendo que CLEO se encuentra en etapa beta gratuita."
-                )
-              ),
-
-            docLegalRegistro.documentoAbierto &&
-              React.createElement(LegalModal, {
-                tipo: docLegalRegistro.documentoAbierto,
-                onClose: docLegalRegistro.cerrarDocumento,
-              }),
+            // La casilla de consentimiento que antes vivía aquí (con enlaces
+            // a Términos/Privacidad) se eliminó , no escribía nada en
+            // Supabase, así que solo duplicaba la pregunta real que ya hace,
+            // una única vez, la pantalla obligatoria post-autenticación
+            // ("requiereAceptacionLegal") tanto para correo/contraseña como
+            // para Google. Ver el bloque "Consentimiento legal" más arriba.
 
             modo === "login" &&
               React.createElement(

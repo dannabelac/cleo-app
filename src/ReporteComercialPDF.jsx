@@ -18,9 +18,17 @@ function textoPlanoSeguro(valor, maxLen) {
   return texto;
 }
 
+// numeroSeguro: además de blindar contra NaN/infinito, redondea a 2
+// decimales a salvo de coma flotante , mismo criterio que redondearDinero()
+// en CLEO.jsx (archivo independiente, evita imports circulares). Los
+// centavos reales SIEMPRE se conservan (ver formatearMonto abajo) , esta
+// función solo evita que un dato ya dañado (arrastre de coma flotante
+// desde CLEO.jsx) se propague con falsa precisión.
 function numeroSeguro(valor) {
   var n = Number(valor);
-  return Number.isFinite(n) ? n : 0;
+  if (!Number.isFinite(n)) return 0;
+  var signo = n < 0 ? -1 : 1;
+  return (signo * Math.round(Math.abs(n) * 100 + 1e-9)) / 100;
 }
 
 function nombreArchivoSeguroPDF(valor, fallback) {
@@ -35,9 +43,12 @@ function nombreArchivoSeguroPDF(valor, fallback) {
 // El cobro neto de un periodo puede ser negativo (ej. un pedido cobrado en
 // un periodo anterior se cancela y su reversión cae dentro de ESTE rango) ,
 // se muestra como "-$X" en vez de "$-X" para que se lea sin ambigüedad.
+// Conserva los centavos reales (nunca redondea a peso entero) , siempre 2
+// decimales , mismo criterio que formatoDinero() en CLEO.jsx y que
+// formatearMonto() en CotizacionPDF.jsx/ComprobantePDF.jsx.
 function formatearMonto(n) {
-  var v = Math.round(numeroSeguro(n));
-  return (v < 0 ? "-$" : "$") + Math.abs(v).toLocaleString("es-MX");
+  var v = numeroSeguro(n);
+  return (v < 0 ? "-$" : "$") + Math.abs(v).toLocaleString("es-MX", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
 
 // "AAAA-MM-DD" → "16 ago 2026" (fecha corta legible) mediante partición de

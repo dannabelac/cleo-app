@@ -2,81 +2,13 @@ import React from "react";
 import * as XLSX from "xlsx";
 import { CLEO_DRAFT_KEY_PREFIX } from "./cloudSync";
 
-// ─────────────────────────────────────────────────────────────────────────
-// ImportarCatalogo , motor único de importación de catálogo (CSV/XLSX/XLS)
-// compartido por Productos y Servicios.
-//
-// CLEO_55.jsx sigue siendo el único dueño del estado real del catálogo y de
-// su persistencia (localStorage / sincronización): este componente NUNCA
-// escribe el catálogo directamente. Recibe el catálogo actual por props
-// (catalogoActual), y al confirmar entrega UNA lista completa nueva vía
-// props.onConfirmar(nuevaListaCompleta, resumenConteos) , CLEO_55.jsx decide
-// cómo guardarla (setCatActivo).
-//
-// El archivo original (File) nunca se sube a ningún lado , se lee 100% en
-// el navegador con "xlsx" (SheetJS), que nunca ejecuta fórmulas (entrega
-// siempre el valor ya calculado que trae el archivo, nunca código), y se
-// descarta apenas se termina de leer. Lo único que se conserva más allá de
-// esa lectura es un BORRADOR TEMPORAL en sessionStorage (nunca el archivo
-// en sí, ver sección de borrador abajo).
-//
-// ── Una sola fuente de verdad por fila ──────────────────────────────────
-// Cada fila tiene un único campo `decision` que determina su resultado
-// final , nunca una casilla y un botón que puedan contradecirse:
-//   "importar"             , fila válida, se agregará tal cual.
-//   "omitir"                , no se importará (elección explícita, o
-//                             default de seguridad en duplicados/errores).
-//   "actualizar_existente"  , sobrescribe un producto/servicio ya existente
-//                             (conserva su id).
-//   "agregar_como_nuevo"    , se agrega de todas formas aunque sea un
-//                             posible duplicado.
-//   "error_pendiente"       , tiene errores de validación, nunca se importa
-//                             mientras no se corrija.
-// `tipo` (valido/error/duplicado_archivo/duplicado_existente) es la
-// CLASIFICACIÓN de los datos (se recalcula solo con recalcularFilas), y
-// determina qué decisiones son válidas para esa fila y cuál es el default
-// , `decision` es la ELECCIÓN final, y es lo único que lee
-// construirResultadoImportacion al confirmar. Ver DECISION_POR_DEFECTO /
-// DECISIONES_PERMITIDAS.
-//
-// ── Flujo en 4 pasos ─────────────────────────────────────────────────────
-//   0. "restaurar"   , solo aparece si ya existe un borrador válido de esta
-//                      cuenta+perfil guardado en una sesión anterior.
-//   1. "seleccion"   , elegir el archivo. Se lee y se detectan columnas.
-//   2. "mapeo"       , asociar cada columna del archivo a un campo real.
-//                      Aquí NO existen todavía "filas" , no hay nada que
-//                      perder al cambiar una asociación. Se avanza con el
-//                      botón explícito "Revisar catálogo".
-//   3. "vistaPrevia" , construida UNA sola vez al entrar (o al restaurar un
-//                      borrador). A partir de aquí el mapeo queda congelado
-//                      , ninguna interacción normal (editar una celda,
-//                      cambiar una decisión) vuelve a leer el archivo ni el
-//                      mapeo. Volver al paso 2 requiere una acción
-//                      explícita con advertencia y confirmación.
-//
-// ── Borrador temporal (sessionStorage, nunca localStorage) ──────────────
-// Se guarda automáticamente mientras se está en "vistaPrevia": nombre del
-// archivo, encabezados detectados, mapeo, filas ya normalizadas (con sus
-// correcciones, errores y decisión de cada una) y fecha de creación , NUNCA
-// el archivo original ni las filas crudas sin normalizar. La clave usa el
-// prefijo central CLEO_DRAFT_KEY_PREFIX (importado de cloudSync.js, nunca
-// redefinido aquí) + userId + perfil, así nunca se mezcla entre cuentas ni
-// entre Productos/Servicios. clearCleoLocalData() (cloudSync.js) ya limpia
-// estas claves en cada cierre de sesión, cambio de cuenta o eliminación de
-// cuenta , este archivo nunca duplica esa lógica, solo escribe con el
-// mismo prefijo.
-// ─────────────────────────────────────────────────────────────────────────
-
-var LIMITE_NOMBRE = 200; // límite razonable definido para este importador , no existía antes en CLEO
-var LIMITE_TEXTO = 2000; // idem, para descripción/condiciones
+var LIMITE_NOMBRE = 200;
+var LIMITE_TEXTO = 2000;
 var LIMITE_FILAS = 500;
-var LIMITE_TAMANO_BYTES = 5 * 1024 * 1024; // 5 MB
+var LIMITE_TAMANO_BYTES = 5 * 1024 * 1024;
 var EXTENSIONES_PERMITIDAS = [".csv", ".xlsx", ".xls"];
 var BORRADOR_VERSION = 1;
 
-// Sinónimos de encabezados que SÍ tienen un campo real donde aterrizar en
-// el modelo actual de CLEO (nombre, precio, descripcion, condiciones , ver
-// reporte de análisis: es el mismo shape para Productos y Servicios).
 var SINONIMOS = {
   productos: {
     nombre: ["producto", "nombre", "nombre del producto", "nombre producto", "articulo", "nombre del articulo"],
@@ -92,7 +24,6 @@ var SINONIMOS = {
   }
 };
 
-// Campos a los que se puede asociar cualquier columna del archivo.
 var CAMPOS_DESTINO = [
   { key: "nombre", label: "Nombre" },
   { key: "precio", label: "Precio" },
@@ -101,8 +32,6 @@ var CAMPOS_DESTINO = [
   { key: "ignorar", label: "No importar" }
 ];
 
-// Decisión con la que nace cada fila según su clasificación (tipo) , la
-// más segura siempre: nunca se importa nada por accidente.
 var DECISION_POR_DEFECTO = {
   valido: "importar",
   duplicado_archivo: "omitir",
@@ -110,19 +39,12 @@ var DECISION_POR_DEFECTO = {
   error: "error_pendiente"
 };
 
-// Decisiones que tiene sentido ofrecer para cada tipo , una fila "valido"
-// nunca puede tener decision:"actualizar_existente" (no hay nada que
-// actualizar), una fila "error" nunca puede tener decision:"importar"
-// (nunca se importa una fila inválida, sin importar qué haya elegido antes
-// la persona).
 var DECISIONES_PERMITIDAS = {
   valido: ["importar", "omitir"],
   duplicado_archivo: ["omitir", "agregar_como_nuevo"],
   duplicado_existente: ["omitir", "actualizar_existente", "agregar_como_nuevo"],
   error: ["error_pendiente", "omitir"]
 };
-
-// ── Helpers puros (sin estado, sin acceso a React) ──────────────────────
 
 function normalizarTexto(s) {
   return String(s == null ? "" : s)
@@ -133,10 +55,6 @@ function normalizarTexto(s) {
     .trim();
 }
 
-// Mismo CRITERIO que normalizarNombreItem, ya usado en CLEO_55.jsx para
-// comparar nombres de forma insensible a mayúsculas/acentos/espacios , se
-// reimplementa aquí (una línea) porque este componente vive en su propio
-// archivo y no puede importar funciones internas del componente principal.
 function normalizarNombreComparacion(s) {
   return normalizarTexto(s);
 }
@@ -150,9 +68,6 @@ function detectarColumna(encabezadoNormalizado, sinonimosPerfil) {
   return null;
 }
 
-// columnas: [{ indice, encabezado }] , el mapeo resultante usa SIEMPRE el
-// índice de columna como llave (nunca el texto), así encabezados repetidos
-// o vacíos nunca se pisan entre sí.
 function construirMapeoInicial(columnas, esProductos) {
   var sinonimosPerfil = esProductos ? SINONIMOS.productos : SINONIMOS.servicios;
   var mapeo = {};
@@ -170,28 +85,12 @@ function construirMapeoInicial(columnas, esProductos) {
   return mapeo;
 }
 
-// ── Parser de precios ────────────────────────────────────────────────────
-// Soporta, al menos: 1500 / 1500.00 / 1500,00 / 1,500 / 1,500.00 /
-// $1,500.00 / 1.500,00 / "$ 1 500.00". Nunca ejecuta nada , solo aritmética
-// de texto. Regresa NaN si no logra interpretar nada útil (nunca revienta).
-//
-// Regla, en este orden:
-//  1. Si aparecen PUNTO y COMA a la vez: el que aparece MÁS TARDE en el
-//     texto es el separador decimal , el otro (y cualquier repetición
-//     anterior de cualquiera de los dos) es separador de miles. Esto
-//     resuelve tanto "1,500.00" (es-MX) como "1.500,00" (formato europeo)
-//     de forma correcta y simétrica, sin asumir un locale fijo.
-//  2. Si aparece solo UN tipo de separador (una o varias veces): si el
-//     último grupo tiene exactamente 3 dígitos, se interpreta como
-//     separador de miles (sin parte decimal) , si tiene 1 o 2 dígitos, se
-//     interpreta como separador decimal.
-//  3. Sin separadores: el número tal cual.
 function parseNumeroLibre(v) {
   if (v == null) return NaN;
   if (typeof v === "number") return isFinite(v) ? v : NaN;
   var t = String(v).trim();
   if (t === "") return NaN;
-  t = t.replace(/[^0-9.,\-]/g, ""); // quita $, espacios, letras, cualquier otro símbolo
+  t = t.replace(/[^0-9.,\-]/g, "");
   if (t === "" || t === "-") return NaN;
   var negativo = t.charAt(0) === "-";
   t = t.replace(/-/g, "");
@@ -230,9 +129,6 @@ function parseNumeroLibre(v) {
   return negativo ? -n : n;
 }
 
-// Una fila (arreglo de valores por índice de columna) está "completamente
-// vacía" si ninguna celda tiene contenido , se ignora sin generar error ni
-// contar para el límite de filas.
 function filaCompletamenteVacia(filaArray) {
   for (var i = 0; i < filaArray.length; i++) {
     if (String(filaArray[i] == null ? "" : filaArray[i]).trim() !== "") return false;
@@ -240,22 +136,6 @@ function filaCompletamenteVacia(filaArray) {
   return true;
 }
 
-// Valida y normaliza los 4 campos de UNA fila ya mapeada. Nunca lanza ,
-// siempre regresa { campos, errores, erroresPorCampo, avisos }. errores =
-// bloqueantes (la fila no se puede importar mientras existan) , además de
-// la lista plana, erroresPorCampo ubica cada error bloqueante en su campo
-// exacto (nombre/precio) para poder mostrarlo justo debajo del input
-// correspondiente. avisos = informativos (la fila sí se puede importar,
-// pero algo se ajustó automáticamente, ej. un texto muy largo se acortó).
-//
-// Los errores SIEMPRE se generan a partir de nombre/precio , nunca se
-// infieren de la descripción ni de ningún otro texto libre del archivo:
-// la descripción es información del producto, nunca una señal de validez.
-//
-// Regla de precio: debe ser un número finito MAYOR A CERO , esto replica
-// el comportamiento real ya existente en "Mi catálogo" (el botón "Agregar
-// producto/servicio" también está deshabilitado si el precio es 0, "" o
-// no numérico: !formSv.precio), no es una regla nueva inventada aquí.
 function procesarCampos(campos) {
   var errores = []; var avisos = [];
   var erroresPorCampo = { nombre: null, precio: null, descripcion: null, condiciones: null };
@@ -283,6 +163,14 @@ function procesarCampos(campos) {
     } else if (precioNum <= 0) {
       var msgMayorCero = "El precio debe ser mayor que cero.";
       errores.push(msgMayorCero); erroresPorCampo.precio = msgMayorCero;
+    } else {
+      // Redondeo a 2 decimales a salvo de coma flotante , mismo criterio
+      // que redondearDinero() en CLEO.jsx (archivo independiente, evita
+      // imports circulares, ver comentario de parseNumeroLibre arriba).
+      // Un precio importado con más de 2 decimales ("199.567") se redondea
+      // aquí en vez de guardarse con precisión falsa.
+      var signoPrecioNum = precioNum < 0 ? -1 : 1;
+      precioNum = signoPrecioNum * Math.round(Math.abs(precioNum) * 100 + 1e-9) / 100;
     }
   }
 
@@ -306,13 +194,6 @@ function procesarCampos(campos) {
   };
 }
 
-// Construye las filas derivadas base (campos + validación), SIN todavía
-// clasificar tipo/decision , eso lo hace recalcularFilas por separado.
-// filasCrudasDatos: arreglo de arreglos (cada fila = valores por ÍNDICE de
-// columna, tal como vinieron del archivo). columnasArchivo: [{indice,
-// encabezado}]. mapeo: { [indice]: destino }. TODA lectura de valor usa
-// col.indice , nunca la posición dentro de un arreglo filtrado, así una
-// columna vacía en medio del archivo nunca desplaza a las siguientes.
 function construirFilasBase(filasCrudasDatos, columnasArchivo, mapeo) {
   return filasCrudasDatos.map(function (filaArray, idx) {
     var campos = { nombre: "", precio: "", descripcion: "", condiciones: "" };
@@ -321,14 +202,9 @@ function construirFilasBase(filasCrudasDatos, columnasArchivo, mapeo) {
       if (destino && destino !== "ignorar" && campos.hasOwnProperty(destino)) {
         var actual = campos[destino];
         var nuevo = filaArray[col.indice];
-        // Si dos columnas del archivo apuntan al mismo destino (caso raro,
-        // ej. dos columnas "Notas"), se concatenan en vez de perder una.
         campos[destino] = actual ? (actual + (nuevo ? " " + nuevo : "")) : (nuevo || "");
       }
     });
-    // precioEntradaInicial conserva el texto crudo tal como vino del
-    // archivo, ANTES de que procesarCampos lo normalice a número , es el
-    // valor inicial de precioEntrada (ver nota junto a handleEditarCampo).
     var precioEntradaInicial = campos.precio;
     var resultado = procesarCampos(campos);
     return {
@@ -338,30 +214,13 @@ function construirFilasBase(filasCrudasDatos, columnasArchivo, mapeo) {
       errores: resultado.errores,
       erroresPorCampo: resultado.erroresPorCampo,
       avisos: resultado.avisos,
-      tipo: null, // se calcula en recalcularFilas
-      decision: null, // idem , null toma el default del tipo calculado
+      tipo: null,
+      decision: null,
       duplicadoId: null
     };
   });
 }
 
-// Única función que clasifica cada fila (tipo) y resuelve su decisión
-// final , se llama tanto para construir la vista previa la primera vez
-// como para recalcular tras UNA edición puntual o al restaurar un borrador
-// (nunca para releer el archivo completo: solo usa fila.campos.nombre y
-// fila.errores, ya calculados).
-//
-// Prioridad de clasificación (idéntica a la ya usada/aprobada antes):
-// errores de validación > coincide con el catálogo real > coincide con
-// otra fila del mismo archivo > válida.
-//
-// La decisión se PRESERVA si sigue siendo válida para el tipo recalculado
-// (ej. la persona eligió "Agregar de todas formas" en un duplicado y sigue
-// siendo duplicado tras cerrar/abrir el acordeón , no se pierde). Si el
-// tipo cambia y la decisión anterior ya no tiene sentido para el nuevo
-// tipo (ej. una fila corregida deja de tener errores), se reemplaza por el
-// default MÁS SEGURO de ese tipo nuevo , nunca se inventa una decisión
-// intermedia.
 function recalcularFilas(filas, catalogoActual) {
   var existentesPorNombre = {};
   (catalogoActual || []).forEach(function (it) {
@@ -390,10 +249,6 @@ function recalcularFilas(filas, catalogoActual) {
   });
 }
 
-// Cuenta las filas por su DECISIÓN final , exactamente las 5 categorías
-// que pide la vista previa, mutuamente excluyentes por construcción (cada
-// fila cae en exactamente un bucket), así los conteos siempre sí suman el
-// total de filas sin necesidad de una verificación aparte.
 function contarPorDecision(filas) {
   var c = { listos: 0, actualizaran: 0, agregaranDuplicados: 0, omitidos: 0, conErrores: 0 };
   filas.forEach(function (f) {
@@ -401,15 +256,11 @@ function contarPorDecision(filas) {
     if (f.decision === "omitir") { c.omitidos++; return; }
     if (f.decision === "actualizar_existente") { c.actualizaran++; return; }
     if (f.decision === "agregar_como_nuevo") { c.agregaranDuplicados++; return; }
-    c.listos++; // decision === "importar"
+    c.listos++;
   });
   return c;
 }
 
-// Cuenta las filas por su CLASIFICACIÓN (tipo) , se usa solo para los
-// chips de filtro de la lista, independiente de qué decisión se haya
-// tomado (una fila duplicada sigue siendo "duplicada" en el filtro aunque
-// ya se haya decidido agregarla de todas formas).
 function contarPorTipo(filas) {
   var c = { errores: 0, duplicados: 0 };
   filas.forEach(function (f) {
@@ -419,12 +270,6 @@ function contarPorTipo(filas) {
   return c;
 }
 
-// ── Plantilla descargable (CSV) ─────────────────────────────────────────
-// Reproduce la misma técnica que ya usa CLEO_55.jsx en generarCSV/celdaCSV
-// (BOM UTF-8 para que Excel lea acentos bien, protección básica contra
-// fórmulas) , se reescribe aquí en unas pocas líneas porque este archivo
-// no puede importar esas funciones (viven dentro del componente principal),
-// pero el CRITERIO es el mismo, nunca uno paralelo distinto.
 function celdaCSVPlantilla(v) {
   var t = String(v == null ? "" : v);
   if (/^[=+\-@]/.test(t)) t = "'" + t;
@@ -454,15 +299,6 @@ function descargarPlantilla(esProductos) {
   } catch (e) { }
 }
 
-// Construye, en memoria y en UNA sola pasada, la lista completa final del
-// catálogo (existentes + nuevos + actualizados) y el conteo para el mensaje
-// final. Función pura (sin estado de React) para que sea fácil de probar,
-// y es lo único que toca el arreglo real , se llama UNA sola vez al
-// confirmar, nunca fila por fila contra el estado de React. Lee
-// EXCLUSIVAMENTE fila.decision (nunca un estado/casilla aparte) , una fila
-// con tipo:"error" JAMÁS se importa, sin importar qué decision tenga
-// guardada (defensa adicional, no debería poder pasar por la UI, pero el
-// motor no depende de que la UI se comporte bien).
 function construirResultadoImportacion(filas, catalogoActual) {
   var nuevaLista = catalogoActual.slice();
   var contador = {
@@ -482,9 +318,6 @@ function construirResultadoImportacion(filas, catalogoActual) {
     if (fila.decision === "actualizar_existente" && fila.duplicadoId != null) {
       nuevaLista = nuevaLista.map(function (it) {
         if (it.id !== fila.duplicadoId) return it;
-        // Conserva id y cualquier otro campo no confirmado aquí , solo
-        // actualiza lo que la persona confirmó, y nunca reemplaza un
-        // valor existente con una celda vacía del archivo.
         var actualizado = Object.assign({}, it, { nombre: fila.campos.nombre, precio: Number(fila.campos.precio) });
         if (fila.campos.descripcion) actualizado.descripcion = fila.campos.descripcion;
         if (fila.campos.condiciones) actualizado.condiciones = fila.campos.condiciones;
@@ -493,10 +326,9 @@ function construirResultadoImportacion(filas, catalogoActual) {
       contador.actualizados++; contador.importados++;
       return;
     }
-    // decision === "importar" (tipo valido) o "agregar_como_nuevo" (tipo duplicado_*)
     offset++;
     nuevaLista = nuevaLista.concat([{
-      id: base + offset, // mismo mecanismo (Date.now) que agregarServicio, con un contador para garantizar unicidad dentro de este lote
+      id: base + offset,
       nombre: fila.campos.nombre,
       precio: Number(fila.campos.precio),
       descripcion: fila.campos.descripcion || "",
@@ -513,10 +345,6 @@ function unirConY(partes) {
   return partes.slice(0, -1).join(", ") + " y " + partes[partes.length - 1];
 }
 
-// Arma el mensaje final legible ("Se importaron 7 productos. Se
-// actualizaron 2. Se omitieron 6 filas con errores y 2 posibles
-// duplicados.") a partir de los conteos REALES de construirResultadoImportacion
-// , nunca de una estimación previa a la importación.
 function construirMensajeResultado(contador, esProductos) {
   var etiqueta = esProductos ? "productos" : "servicios";
   var msg = "Se importaron " + contador.agregados + " " + etiqueta + ".";
@@ -529,22 +357,11 @@ function construirMensajeResultado(contador, esProductos) {
   return msg;
 }
 
-// ── Borrador temporal (sessionStorage) ──────────────────────────────────
-// Tres funciones centrales, nunca se llama sessionStorage directamente
-// desde ningún otro lugar del componente. La clave usa el mismo prefijo
-// central que cloudSync.js conoce (CLEO_DRAFT_KEY_PREFIX) , namespaced
-// por userId y por perfil, así nunca se mezcla entre cuentas ni entre
-// Productos/Servicios.
 function construirClaveBorrador(userId, esProductos) {
-  var uid = userId || "anonimo"; // no debería ocurrir en la práctica: este modal solo es alcanzable ya autenticado
+  var uid = userId || "anonimo";
   return CLEO_DRAFT_KEY_PREFIX + uid + "_" + (esProductos ? "productos" : "servicios");
 }
 
-// Guarda el progreso ACTUAL (nunca el archivo original ni las filas
-// crudas sin normalizar) en sessionStorage. Nunca lanza , si sessionStorage
-// no está disponible o se llenó, regresa false para que el componente
-// pueda avisar sin romper la importación en curso (el estado de React
-// sigue siendo la fuente de verdad mientras el componente siga montado).
 function guardarBorrador(userId, esProductos, datos) {
   try {
     if (typeof sessionStorage === "undefined") return false;
@@ -566,11 +383,6 @@ function guardarBorrador(userId, esProductos, datos) {
   }
 }
 
-// Lee y valida A FONDO el borrador de ESTE userId+perfil , nunca regresa
-// un borrador corrupto, de otra versión, o de otra cuenta/perfil. Esto es
-// una defensa EN PROFUNDIDAD además del namespacing de la clave: aunque
-// por cualquier motivo se leyera una clave ajena, esta validación explícita
-// de datos.userId/datos.perfil contra los actuales bloquea que se muestre.
 function leerBorradorValido(userId, esProductos) {
   try {
     if (typeof sessionStorage === "undefined") return null;
@@ -598,7 +410,6 @@ function eliminarBorrador(userId, esProductos) {
   } catch (e) {}
 }
 
-// ─────────────────────────────────────────────────────────────────────────
 export function ImportarCatalogo(props) {
   var e = React.createElement;
   var st = props.st;
@@ -610,21 +421,10 @@ export function ImportarCatalogo(props) {
   var onConfirmar = props.onConfirmar;
   var onCerrar = props.onCerrar;
 
-  // paso: "restaurar" | "seleccion" | "mapeo" | "vistaPrevia" , ver nota de flujo arriba.
   var sPaso = React.useState("seleccion"); var paso = sPaso[0]; var setPaso = sPaso[1];
   var sNombreArchivo = React.useState(""); var nombreArchivo = sNombreArchivo[0]; var setNombreArchivo = sNombreArchivo[1];
-  // columnasArchivo: [{ indice, encabezado, etiqueta }] , indice es la
-  // posición REAL de la columna en el archivo (nunca cambia aunque se
-  // ignoren columnas vacías al mostrar la lista), etiqueta es lo que se
-  // muestra en la interfaz (distingue vacíos/repetidos, ej. "(columna 2)").
   var sColumnas = React.useState([]); var columnasArchivo = sColumnas[0]; var setColumnasArchivo = sColumnas[1];
-  // filasCrudasDatos: arreglo de arreglos , fila[indiceColumna] = valor
-  // crudo tal como vino del archivo. Nunca se reordena ni se filtra por
-  // columna, así el índice siempre corresponde a la posición real. NUNCA
-  // se persiste en el borrador (ver guardarBorrador) , por eso, tras
-  // restaurar un borrador, "Cambiar columnas" queda deshabilitado.
   var sDatosCrudos = React.useState([]); var filasCrudasDatos = sDatosCrudos[0]; var setFilasCrudasDatos = sDatosCrudos[1];
-  // mapeo: { [indiceColumna]: "nombre"|"precio"|"descripcion"|"condiciones"|"ignorar" }
   var sMapeo = React.useState({}); var mapeo = sMapeo[0]; var setMapeo = sMapeo[1];
   var sFilas = React.useState([]); var filas = sFilas[0]; var setFilas = sFilas[1];
   var sErrorArchivo = React.useState(""); var errorArchivo = sErrorArchivo[0]; var setErrorArchivo = sErrorArchivo[1];
@@ -637,29 +437,16 @@ export function ImportarCatalogo(props) {
   var sSinAlmacenamiento = React.useState(false); var sinAlmacenamientoTemporal = sSinAlmacenamiento[0]; var setSinAlmacenamientoTemporal = sSinAlmacenamiento[1];
 
   var fileInputRef = React.useRef(null);
-  // Bloqueo síncrono real contra doble clic , un useState solo no alcanza
-  // porque React puede procesar dos clics antes de repintar (mismo patrón
-  // ya usado en ArchivoAdjunto.jsx).
   var bloqueoRef = React.useRef(false);
 
-  // Al montar (= al abrir el modal, por ser de montaje condicional), se
-  // busca UNA vez si ya existe un borrador válido de esta cuenta+perfil.
-  // Nunca se restaura en silencio , si existe, se muestra el paso
-  // "restaurar" para que la persona decida.
   React.useEffect(function () {
     var encontrado = leerBorradorValido(userId, esProductos);
     if (encontrado) {
       setBorradorDetectado(encontrado);
       setPaso("restaurar");
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Auto-guardado del borrador , se ejecuta en cada cambio relevante
-  // mientras se está en "vistaPrevia" (donde ya existen filas normalizadas
-  // con sus correcciones y decisiones). Antes de eso ("seleccion"/"mapeo")
-  // no hay nada útil que guardar todavía: no hay filas ni correcciones que
-  // perder si se cierra el modal en esos pasos.
   React.useEffect(function () {
     if (paso !== "vistaPrevia") return;
     if (!filas || filas.length === 0) return;
@@ -671,14 +458,8 @@ export function ImportarCatalogo(props) {
       fechaCreacion: fechaCreacionBorrador || Date.now()
     });
     if (!ok) setSinAlmacenamientoTemporal(true);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [paso, filas, nombreArchivo, columnasArchivo, mapeo, fechaCreacionBorrador]);
 
-  // Reinicia SOLO el estado local de React , nunca toca el borrador en
-  // sessionStorage (eso lo hacen explícitamente handleConfirmar al
-  // terminar con éxito, y handleDescartarImportacion/handleDescartarBorrador
-  // al descartar). Cerrar por la X, "Cancelar" o "Cerrar por ahora" siempre
-  // pasan por aquí , el progreso guardado sigue disponible después.
   function resetTodo() {
     setPaso("seleccion");
     setNombreArchivo("");
@@ -694,9 +475,6 @@ export function ImportarCatalogo(props) {
     if (fileInputRef.current) fileInputRef.current.value = "";
   }
 
-  // "Cerrar por ahora": conserva el progreso (el borrador ya se guardó
-  // automáticamente si se llegó a "vistaPrevia"). Es lo que hacen la X del
-  // encabezado, "Cancelar" (pasos sin progreso aún) y este botón.
   function handleCerrarPorAhora() {
     if (importando) return;
     resetTodo();
@@ -740,8 +518,6 @@ export function ImportarCatalogo(props) {
       var nombreHoja = workbook.SheetNames && workbook.SheetNames[0];
       if (!nombreHoja) { setErrorArchivo("Este archivo no tiene datos para importar."); setProcesando(false); if (fileInputRef.current) fileInputRef.current.value = ""; return; }
       var hoja = workbook.Sheets[nombreHoja];
-      // header:1 → arreglo de arreglos (fila 0 = encabezados). raw:false →
-      // valores ya formateados como texto/número calculado, NUNCA fórmulas.
       var filasArray = XLSX.utils.sheet_to_json(hoja, { header: 1, defval: "", raw: false, blankrows: false });
       if (!filasArray || filasArray.length === 0) {
         setErrorArchivo("Este archivo no tiene datos para importar.");
@@ -753,18 +529,9 @@ export function ImportarCatalogo(props) {
         return fila.map(function (v) { return v == null ? "" : String(v); });
       });
 
-      // Número real de columnas: el máximo entre el encabezado y cualquier
-      // fila de datos , así una columna sin encabezado pero CON datos en
-      // alguna fila nunca se pierde.
       var numColumnas = encabezadosCrudos.length;
       filasOriginales.forEach(function (fila) { if (fila.length > numColumnas) numColumnas = fila.length; });
 
-      // Columnas "útiles": tienen encabezado, o tienen algún dato en
-      // alguna fila. Las columnas totalmente vacías (sin encabezado y sin
-      // ningún dato en ninguna fila) se descartan de la interfaz , pero
-      // esto SOLO afecta qué se muestra en el mapeo, nunca el índice real
-      // de las columnas que sí se conservan (col.indice sigue siendo su
-      // posición original en el archivo).
       var columnasCandidatas = [];
       for (var idxCol = 0; idxCol < numColumnas; idxCol++) {
         var encabezado = String(encabezadosCrudos[idxCol] == null ? "" : encabezadosCrudos[idxCol]).trim();
@@ -776,9 +543,6 @@ export function ImportarCatalogo(props) {
         setProcesando(false); if (fileInputRef.current) fileInputRef.current.value = ""; return;
       }
 
-      // Etiquetas para la interfaz: distingue encabezados vacíos o
-      // repetidos mostrando el número de columna (1-based, como lo vería
-      // alguien contando columnas a mano), SIN tocar col.indice.
       var conteoEncabezados = {};
       columnasCandidatas.forEach(function (c) {
         if (c.encabezado) {
@@ -813,7 +577,7 @@ export function ImportarCatalogo(props) {
       setColumnasArchivo(columnasCandidatas);
       setFilasCrudasDatos(datosCrudos);
       setMapeo(mapeoInicial);
-      setFilas([]); // todavía no existe vista previa , se construye solo con "Revisar catálogo"
+      setFilas([]);
       setPaso("mapeo");
     } catch (e2) {
       setErrorArchivo("No pudimos leer este archivo. Verifica que no esté dañado y que sea .csv, .xlsx o .xls.");
@@ -823,9 +587,6 @@ export function ImportarCatalogo(props) {
     }
   }
 
-  // Cambiar una asociación de columna SOLO es posible en el paso "mapeo",
-  // donde todavía no existen filas de vista previa , por lo tanto nunca
-  // hay nada que reconstruir ni ninguna corrección que se pueda perder.
   function handleCambiarMapeo(indiceColumna, nuevoDestino) {
     setMapeo(function (prev) {
       var copia = Object.assign({}, prev);
@@ -834,9 +595,6 @@ export function ImportarCatalogo(props) {
     });
   }
 
-  // Único punto donde se construye la vista previa a partir del archivo ,
-  // se llama UNA vez, al presionar "Revisar catálogo". A partir de aquí el
-  // mapeo queda congelado mientras la persona corrige filas.
   function handleRevisarCatalogo() {
     var base = construirFilasBase(filasCrudasDatos, columnasArchivo, mapeo);
     var clasificadas = recalcularFilas(base, catalogoActual);
@@ -847,15 +605,6 @@ export function ImportarCatalogo(props) {
     setPaso("vistaPrevia");
   }
 
-  // Volver a mapear columnas DESCARTA las filas de la vista previa (y por
-  // lo tanto cualquier corrección/decisión hecha ahí) , por eso exige una
-  // confirmación explícita y nunca ocurre como efecto secundario de otra
-  // acción. Solo está disponible si todavía tenemos filasCrudasDatos en
-  // memoria (nunca es el caso tras restaurar un borrador, ya que las filas
-  // crudas nunca se persisten , ver guardarBorrador). Al confirmar, también
-  // se elimina el borrador guardado: la persona ya aceptó perder esa
-  // vista previa, así que no debe reaparecer como "importación pendiente"
-  // si cierra el modal después.
   function handleVolverAMapeo() {
     if (filasCrudasDatos.length === 0) return;
     var confirmado = window.confirm("Vas a volver a asociar columnas. Las correcciones que hiciste en esta vista previa (ediciones, exclusiones, decisiones de duplicados) se perderán. ¿Quieres continuar?");
@@ -868,16 +617,6 @@ export function ImportarCatalogo(props) {
     setPaso("mapeo");
   }
 
-  // Edición de UNA celda dentro de la vista previa: solo revalida esa fila
-  // y vuelve a clasificar sobre las filas YA EXISTENTES , nunca vuelve a
-  // leer filasCrudasDatos ni el mapeo, así que ninguna otra fila ni
-  // corrección se ve afectada.
-  //
-  // Caso especial "precio": el input de Precio muestra y edita
-  // fila.precioEntrada (el texto EXACTO como lo escribe la persona), nunca
-  // fila.campos.precio (el número ya normalizado) , evita que el parser
-  // sustituya el texto mientras la persona todavía está escribiendo un
-  // decimal ("1." → "1.5").
   function handleEditarCampo(idx, campo, valor) {
     setFilas(function (prev) {
       var copia = prev.slice();
@@ -886,7 +625,7 @@ export function ImportarCatalogo(props) {
         var nuevosCamposP = Object.assign({}, filaActual.campos, { precio: valor });
         var resultadoP = procesarCampos(nuevosCamposP);
         copia[idx] = Object.assign({}, filaActual, {
-          precioEntrada: valor, // texto visible , nunca se reemplaza por el número normalizado
+          precioEntrada: valor,
           campos: resultadoP.campos,
           errores: resultadoP.errores,
           erroresPorCampo: resultadoP.erroresPorCampo,
@@ -902,10 +641,6 @@ export function ImportarCatalogo(props) {
     });
   }
 
-  // Único punto que cambia la decisión de una fila , nunca una casilla y
-  // un botón por separado. No hace falta reclasificar las DEMÁS filas
-  // (cambiar la decisión de una fila no afecta el nombre de ninguna otra,
-  // así que no puede cambiar la clasificación de nadie más).
   function handleCambiarDecision(idx, nuevaDecision) {
     setFilas(function (prev) {
       var copia = prev.slice();
@@ -914,39 +649,23 @@ export function ImportarCatalogo(props) {
     });
   }
 
-  // El bloqueo (bloqueoRef) protege contra un segundo clic mientras React
-  // todavía no desmonta este componente. Si la confirmación se completó
-  // sin errores, bloqueoRef.current se queda en true A PROPÓSITO y nunca
-  // se libera aquí , el componente está a punto de desmontarse cuando el
-  // padre cierre el modal. Solo se libera en el camino de error, donde el
-  // modal debe seguir abierto y volver a ser usable.
   function handleConfirmar() {
-    if (bloqueoRef.current) return; // bloqueo síncrono contra doble clic
+    if (bloqueoRef.current) return;
     bloqueoRef.current = true;
     setImportando(true);
     try {
       var resultado = construirResultadoImportacion(filas, catalogoActual);
       var mensaje = construirMensajeResultado(resultado.contador, esProductos);
       if (onConfirmar) onConfirmar(resultado.nuevaLista, Object.assign({}, resultado.contador, { mensaje: mensaje }));
-      // Éxito confirmado (setCatActivo ya corrió dentro de onConfirmar,
-      // de forma síncrona, antes de esta línea): la importación terminó
-      // , ahora sí se elimina el borrador guardado.
       eliminarBorrador(userId, esProductos);
       resetTodo();
     } catch (err) {
-      // Solo aquí, ante un error real antes de completar la confirmación,
-      // se libera el bloqueo para que el modal (que sigue abierto) vuelva
-      // a ser usable , el borrador NO se toca, sigue disponible para
-      // reintentar.
       bloqueoRef.current = false;
       setImportando(false);
       throw err;
     }
   }
 
-  // "Descartar importación": a diferencia de "Cerrar por ahora", esta sí
-  // elimina el borrador , exige confirmación explícita porque es
-  // irreversible (se pierde todo el progreso, no solo se pospone).
   function handleDescartarImportacion() {
     var confirmado = window.confirm("¿Descartar esta importación? Se perderá todo el progreso guardado y no podrás continuarla después.");
     if (!confirmado) return;
@@ -957,14 +676,11 @@ export function ImportarCatalogo(props) {
 
   function handleContinuarBorrador() {
     if (!borradorDetectado) return;
-    // Se reclasifica contra el catálogo ACTUAL (no el de cuando se guardó
-    // el borrador) , pudo haber cambiado mientras tanto. Las decisiones ya
-    // tomadas se preservan si siguen teniendo sentido (ver recalcularFilas).
     var filasRecalculadas = recalcularFilas(borradorDetectado.filas, catalogoActual);
     setNombreArchivo(borradorDetectado.nombreArchivo || "");
     setColumnasArchivo(borradorDetectado.columnasArchivo || []);
     setMapeo(borradorDetectado.mapeo || {});
-    setFilasCrudasDatos([]); // nunca se persistió , "Cambiar columnas" no estará disponible
+    setFilasCrudasDatos([]);
     setFilas(filasRecalculadas);
     setFechaCreacionBorrador(borradorDetectado.fechaCreacion || null);
     setFiltroVista("todas");
@@ -1010,17 +726,13 @@ export function ImportarCatalogo(props) {
     if (fila.tipo === "error") return "red";
     if (fila.decision === "actualizar_existente") return "purple";
     if (fila.decision === "agregar_como_nuevo") return "amber";
-    return "green"; // importar
+    return "green";
   }
 
   function estiloBotonChico(activo) {
     return { cursor: "pointer", padding: "6px 12px", borderRadius: 20, border: "1px solid " + (activo ? C.purple : C.border), background: activo ? C.purple : "transparent", fontSize: 11, color: activo ? "#fff" : C.textMuted, fontWeight: activo ? 600 : 400 };
   }
 
-  // Control de decisión unificado por tipo , la ÚNICA UI que puede cambiar
-  // fila.decision. Los mismos botones sirven para la fila expandida; los
-  // atajos sin expandir (solo para tipo:"error", ver renderFila) llaman a
-  // la misma handleCambiarDecision, nunca a una ruta paralela.
   function renderControlDecision(fila, idx) {
     if (fila.tipo === "valido") {
       if (fila.decision === "omitir") {
@@ -1112,10 +824,6 @@ export function ImportarCatalogo(props) {
             ? e("div", { style: { fontSize: 11, color: C.red, marginTop: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" } }, fila.errores.join(" · "))
             : (fila.campos.precio !== "" && e("div", { style: { fontSize: 11, color: C.textMuted, marginTop: 1 } }, "$" + Number(fila.campos.precio).toLocaleString()))
         ),
-        // Atajos sin expandir , solo para filas con errores (sección 5): no
-        // debe obligar a abrir la tarjeta para decidir "no importar" o para
-        // ir a corregirla. stopPropagation evita que el clic también
-        // abra/cierre el acordeón.
         fila.tipo === "error" && fila.decision === "error_pendiente" && e("div", { style: { display: "flex", gap: 6, flexShrink: 0 } },
           e("button", { type: "button", onClick: function (ev) { ev.stopPropagation(); setFilaExpandidaIdx(idx); }, style: estiloBotonChico(false) }, "Corregir fila"),
           e("button", { type: "button", onClick: function (ev) { ev.stopPropagation(); handleCambiarDecision(idx, "omitir"); }, style: estiloBotonChico(false) }, "No importar")
@@ -1149,10 +857,6 @@ export function ImportarCatalogo(props) {
     );
   }
 
-  // Panel de asociación de columnas , SOLO se usa en el paso "mapeo". La
-  // llave de cada fila/valor es siempre col.indice (nunca el texto del
-  // encabezado), así dos columnas con el mismo nombre ("Precio" repetido)
-  // conservan asociaciones independientes.
   function renderMapeoColumnas() {
     return e("div", { style: { background: C.surfaceUp, borderRadius: 12, padding: "12px", border: "1px solid " + C.border } },
       e("div", { style: { fontSize: 11, fontWeight: 700, color: C.textDim, textTransform: "uppercase", letterSpacing: "1px", marginBottom: 10 } }, "Columnas de tu archivo"),

@@ -1,17 +1,6 @@
 import React from "react";
 import { Document, Page, View, Text, Image, StyleSheet, pdf } from "@react-pdf/renderer";
 
-// ── Helpers de seguridad locales ───────────────────────────────────────────
-// Este archivo es independiente de CLEO.jsx (evita imports circulares), así
-// que mantiene sus propias copias mínimas de las validaciones que necesita.
-// Nunca se usa dangerouslySetInnerHTML, nunca se interpretan etiquetas de
-// usuario, nunca se crean enlaces automáticos, nunca se cargan imágenes
-// remotas , todo el contenido de usuario se renderiza exclusivamente
-// dentro de <Text>, como texto plano.
-
-// Elimina caracteres de control no imprimibles (conserva \n y \t para el
-// formato) y limita la longitud, para que una entrada accidental con
-// millones de caracteres nunca pueda bloquear el navegador.
 function textoPlanoSeguro(valor, maxLen) {
   if (valor === null || valor === undefined) return "";
   var texto = String(valor);
@@ -21,17 +10,16 @@ function textoPlanoSeguro(valor, maxLen) {
   return texto;
 }
 
+// numeroSeguro: además de blindar contra NaN/infinito, redondea a 2
+// decimales a salvo de coma flotante , mismo criterio que redondearDinero()
+// en CLEO.jsx (archivo independiente, evita imports circulares).
 function numeroSeguro(valor) {
   var n = Number(valor);
-  return Number.isFinite(n) ? n : 0;
+  if (!Number.isFinite(n)) return 0;
+  var signo = n < 0 ? -1 : 1;
+  return (signo * Math.round(Math.abs(n) * 100 + 1e-9)) / 100;
 }
 
-// Equivalente local de obtenerItemsCotizacion (definida en el archivo
-// principal) , este módulo es independiente (evita imports circulares, ver
-// comentario arriba), así que mantiene su propia copia mínima con la MISMA
-// lógica no destructiva: si `cot.items` existe y tiene contenido, se usa tal
-// cual (normalizado) , si no, se sintetiza UN item a partir de los campos
-// legacy (concepto/cantidad/precioUnit/monto), sin tocar `cot`.
 function obtenerItemsCotizacionPDF(cot) {
   if (!cot) return [];
   if (Array.isArray(cot.items) && cot.items.length > 0) {
@@ -42,11 +30,7 @@ function obtenerItemsCotizacionPDF(cot) {
         nombre: textoPlanoSeguro(it.nombre, 300),
         cantidad: cantidad,
         precioUnitario: precioUnitario,
-        total: it.total != null ? numeroSeguro(it.total) : cantidad * precioUnitario,
-        // descripcion/condiciones PROPIAS de este renglón (ver
-        // detallesPorItem en ItemsEditor, archivo principal) , llegan como
-        // HTML ya saneado, se convierten a texto plano aquí mismo (nunca se
-        // manda HTML crudo a react-pdf, ver htmlANotaPlanaPDF más abajo).
+        total: it.total != null ? numeroSeguro(it.total) : numeroSeguro(cantidad * precioUnitario),
         descripcion: htmlANotaPlanaPDF(it.descripcion),
         condiciones: htmlANotaPlanaPDF(it.condiciones),
       };
@@ -59,7 +43,7 @@ function obtenerItemsCotizacionPDF(cot) {
       nombre: textoPlanoSeguro(cot.concepto, 300),
       cantidad: cantidadLegacy,
       precioUnitario: precioLegacy,
-      total: cantidadLegacy * precioLegacy,
+      total: numeroSeguro(cantidadLegacy * precioLegacy),
     },
   ];
 }
@@ -69,18 +53,12 @@ function colorHexSeguroPDF(valor, fallback) {
   return fallback;
 }
 
-// Solo PNG/JPEG en data URL base64 , GIF, WEBP, SVG, URLs externas o
-// cualquier otro formato se omiten sin hacer fallar la generación.
 function logoSeguroPDF(valor) {
   if (typeof valor !== "string") return "";
   if (!/^data:image\/(png|jpeg|jpg);base64,[A-Za-z0-9+/=]+$/i.test(valor)) return "";
   return valor;
 }
 
-// Convierte HTML enriquecido (de RichEditor/sanitizarHTMLRico, ya saneado
-// antes de llegar aquí) a texto plano legible , nunca se envía HTML crudo
-// a React PDF, solo texto con saltos de línea y viñetas básicas
-// reconstruidas a mano a partir de las etiquetas de lista.
 function htmlANotaPlanaPDF(html) {
   if (!html) return "";
   var texto = String(html);
@@ -89,7 +67,7 @@ function htmlANotaPlanaPDF(html) {
   texto = texto.replace(/<br\s*\/?>/gi, "\n");
   texto = texto.replace(/<\/p>/gi, "\n");
   texto = texto.replace(/<\/div>/gi, "\n");
-  texto = texto.replace(/<[^>]+>/g, ""); // se elimina cualquier otra etiqueta
+  texto = texto.replace(/<[^>]+>/g, "");
   texto = texto
     .replace(/&amp;/g, "&")
     .replace(/&lt;/g, "<")
@@ -110,12 +88,15 @@ function nombreArchivoSeguroPDF(valor, fallback) {
   return texto || fallback;
 }
 
+// formatearMonto: muestra centavos SOLO cuando existen ($199.50) , entero
+// sin decimales ($199) , mismo criterio que formatoDinero() en CLEO.jsx.
 function formatearMonto(n) {
-  return "$" + numeroSeguro(n).toLocaleString("es-MX");
+  // Siempre 2 decimales, sin excepción , mismo criterio que formatoDinero()
+  // en CLEO.jsx: $199.00 , $199.50 , $1,250.00.
+  var x = numeroSeguro(n);
+  return "$" + x.toLocaleString("es-MX", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
 
-// ── Estilos ─────────────────────────────────────────────────────────────
-// Tipografía Helvetica incorporada (no se descarga ninguna fuente externa).
 function crearEstilos(pc, ps) {
   return StyleSheet.create({
     pagina: {
@@ -157,20 +138,8 @@ function crearEstilos(pc, ps) {
     notasBlock: { marginTop: 8, marginBottom: 4 },
     notasLabel: { fontSize: 8, fontFamily: "Helvetica-Bold", color: pc, textTransform: "uppercase", marginBottom: 3 },
     notasTexto: { fontSize: 9, color: "#555555", lineHeight: 1.5 },
-    // ── Tarjeta de notas POR ITEM (descripción/condiciones de un renglón) ──
-    // Mismo lenguaje visual que condicionesBlock (más abajo, para
-    // "Condiciones de pago" del documento completo) , fondo del color
-    // secundario del negocio + borde izquierdo de acento, para que ambos
-    // tipos de "nota destacada" se sientan parte del mismo sistema. Se
-    // aplica SOLO cuando el item tiene descripción y/o condiciones , un item
-    // sin ninguna de las dos sigue viéndose exactamente igual que antes (fila
-    // simple, sin tarjeta), así que una cotización de un solo renglón sin
-    // notas no cambia en nada.
     itemNotasCard: { backgroundColor: ps, borderLeftWidth: 2, borderLeftColor: pc, borderRadius: 4, padding: 10, marginTop: 4, marginBottom: 10 },
     itemDescTexto: { fontSize: 9, color: "#555555", lineHeight: 1.5 },
-    // Condiciones un escalón más chico/claro que la descripción , se lee
-    // como letra chica de apoyo, no como párrafo principal, sin competir
-    // visualmente con el nombre/precio del item (lo más importante de la fila).
     itemCondLabel: { fontSize: 7.5, fontFamily: "Helvetica-Bold", color: pc, textTransform: "uppercase", marginBottom: 3 },
     itemCondTexto: { fontSize: 8, color: "#6B7280", lineHeight: 1.5 },
     totalsBlock: { marginTop: 12, marginBottom: 6 },
@@ -204,7 +173,6 @@ function crearEstilos(pc, ps) {
   });
 }
 
-// ── Documento ───────────────────────────────────────────────────────────
 function DocumentoCotizacion({ datos }) {
   var s = datos.estilos;
   var tienePagos = datos.pagos.length > 0;
@@ -257,16 +225,7 @@ function DocumentoCotizacion({ datos }) {
             <Text style={[s.thCelda, s.colTotal]}>Total</Text>
           </View>
         </View>
-        {/* Una fila por item , cada una en su propio wrap={false} (mismo
-            patrón que las filas de pagos más abajo) para que, si una
-            cotización con muchos conceptos ocupa más de una página, nunca se
-            corte una fila a la mitad , el encabezado de arriba queda fuera
-            de este bloque para no repetirse pegado a cada fila. */}
         {datos.items.map(function (it, i) {
-          // La fila de precio (nombre/cant/precio unit./total) NUNCA cambia
-          // , mismas columnas, misma alineación con el encabezado de arriba,
-          // exista o no descripción/condiciones. Solo lo que va DEBAJO se
-          // agrupa en una tarjeta cuando hay algo que agrupar.
           var tieneNotas = !!(it.descripcion || it.condiciones);
           return (
             <View key={i}>
@@ -276,14 +235,6 @@ function DocumentoCotizacion({ datos }) {
                 <Text style={[s.tdCelda, s.colPrecio]}>{formatearMonto(it.precioUnitario)}</Text>
                 <Text style={[s.tdCelda, s.colTotal]}>{formatearMonto(it.total)}</Text>
               </View>
-              {/* Descripción/condiciones DE ESTE renglón (si existen) , antes
-                  eran dos bloques de texto sueltos con la misma jerarquía
-                  visual que el resto del documento, así que con varios items
-                  no quedaba claro dónde terminaba la información de uno y
-                  empezaba la del siguiente. Ahora van juntas dentro de UNA
-                  sola tarjeta (un solo wrap={false}, nunca se separan entre
-                  sí en un salto de página) que delimita claramente qué
-                  pertenece a este item. */}
               {tieneNotas ? (
                 <View style={s.itemNotasCard} wrap={false}>
                   {it.descripcion ? <Text style={s.itemDescTexto}>{it.descripcion}</Text> : null}
@@ -299,11 +250,6 @@ function DocumentoCotizacion({ datos }) {
           );
         })}
 
-        {/* Descripción/condiciones GENERALES del documento , ya no tienen
-            campo de edición en la app (ver CLEO_55.jsx, modalCot , ahora
-            viven por producto/servicio arriba), pero cotizaciones guardadas
-            ANTES de ese cambio pueden traer texto aquí, y se sigue
-            imprimiendo tal cual para no perder ese dato. */}
         {datos.notas ? (
           <View style={s.notasBlock}>
             <Text style={s.notasTexto}>{datos.notas}</Text>
@@ -380,9 +326,6 @@ function DocumentoCotizacion({ datos }) {
   );
 }
 
-// ── API pública ─────────────────────────────────────────────────────────
-// Construye el <Document> y genera el Blob real mediante pdf(...).toBlob()
-// , nunca convierte HTML, nunca usa capturas de pantalla.
 export async function crearCotizacionPDF(cot, cliente, perfil) {
   cot = cot || {};
   cliente = cliente || {};
@@ -394,20 +337,20 @@ export async function crearCotizacionPDF(cot, cliente, perfil) {
   var folio = "COT-" + String(cot.id || "").slice(-4).padStart(4, "0");
 
   var pagosCrudos = Array.isArray(cot.pagos) ? cot.pagos : [];
-  var totalPagado = pagosCrudos.reduce(function (s, p) { return s + numeroSeguro(p.monto); }, 0);
+  var totalPagado = numeroSeguro(pagosCrudos.reduce(function (s, p) { return s + numeroSeguro(p.monto); }, 0));
   var total = numeroSeguro(cot.monto);
-  var saldo = total - totalPagado;
+  var saldo = numeroSeguro(total - totalPagado);
 
   var itemsPDF = obtenerItemsCotizacionPDF(cot);
   var subtotalItems =
     numeroSeguro(cot.subtotal) > 0
       ? numeroSeguro(cot.subtotal)
-      : itemsPDF.reduce(function (s, it) { return s + it.total; }, 0);
+      : numeroSeguro(itemsPDF.reduce(function (s, it) { return s + it.total; }, 0));
   var descuentoMonto = 0;
   var descuentoTexto = "";
   if (numeroSeguro(cot.descuento) > 0) {
     if (cot.tipoDescuento === "porcentaje") {
-      descuentoMonto = (subtotalItems * numeroSeguro(cot.descuento)) / 100;
+      descuentoMonto = numeroSeguro((subtotalItems * numeroSeguro(cot.descuento)) / 100);
       descuentoTexto = textoPlanoSeguro(cot.descuento, 10) + "% OFF";
     } else {
       descuentoMonto = numeroSeguro(cot.descuento);
@@ -467,21 +410,10 @@ export async function crearCotizacionPDF(cot, cliente, perfil) {
     bancoclabe: textoPlanoSeguro(perfil.bancoclabe, 40),
     bancoaccount: textoPlanoSeguro(perfil.bancoaccount, 40),
     bancoinstrucciones: textoPlanoSeguro(perfil.bancoinstrucciones, 500),
-    // Usa la copia propia de ESTA cotización si existe (puede diferir de las
-    // condiciones generales sin que estas se hayan tocado) , solo cae a las
-    // condiciones generales del perfil para cotizaciones de antes de que
-    // existiera este campo (cot.condicionesPago === undefined).
     condicionesPago: textoPlanoSeguro(cot.condicionesPago != null ? cot.condicionesPago : perfil.condicionesPago, 500),
     mensaje: textoPlanoSeguro(perfil.mensaje, 300),
   };
 
-  // Primer intento con el logo ya validado (si existía). El header PNG/JPEG
-  // válido no garantiza que el CONTENIDO de la imagen esté sano , si
-  // pdf().toBlob() falla y sí había logo, se reintenta UNA sola vez sin él,
-  // en vez de perder la cotización completa por una imagen dañada. Si no
-  // había logo desde el inicio, no tiene sentido reintentar , y si el
-  // segundo intento también falla, el error se propaga tal cual (nunca se
-  // oculta).
   var blobBruto;
   try {
     blobBruto = await pdf(<DocumentoCotizacion datos={datos} />).toBlob();
@@ -491,15 +423,12 @@ export async function crearCotizacionPDF(cot, cliente, perfil) {
     blobBruto = await pdf(<DocumentoCotizacion datos={datosSinLogo} />).toBlob();
   }
 
-  // Validación real del resultado antes de entregarlo , nunca se confía a
-  // ciegas en lo que devolvió la librería.
   if (!(blobBruto instanceof Blob)) throw new Error("PDF inválido: no es un Blob");
   if (blobBruto.size < 100) throw new Error("PDF inválido: tamaño insuficiente");
   var primerosBytes = await blobBruto.slice(0, 5).arrayBuffer();
   var firma = String.fromCharCode.apply(null, new Uint8Array(primerosBytes));
   if (firma !== "%PDF-") throw new Error("PDF inválido: firma incorrecta");
 
-  // El MIME solo se normaliza DESPUÉS de confirmar la firma real del PDF.
   var blob = blobBruto.type === "application/pdf" ? blobBruto : new Blob([blobBruto], { type: "application/pdf" });
 
   var nombreArchivo =
