@@ -584,13 +584,17 @@ function obtenerAccionesHoy(clientes,cotizaciones,esProductos,limite){
         mensajeSugeridoP=c.mensajeSeguimientoPostVenta||"";
       }
       else if(c.estadoProspecto==="Nueva"){
+        // tienePrecioReal(c), no `c.precioInteres` a secas , precioInteres
+        // se guarda como STRING y "0" (sin precio real capturado todavía)
+        // es truthy en JS, así que la versión anterior mostraba "($0)" en
+        // esta misma tarjeta de Hoy (reporte de fallos, punto 1).
         descP=c.productoInteres
-          ?"Preguntó por "+c.productoInteres+(c.precioInteres?" ($"+formatoDinero(Number(c.precioInteres))+")":"")+" "+textoHaceDias(dias)+" y todavía no le has dado seguimiento."
+          ?"Preguntó por "+c.productoInteres+(tienePrecioReal(c)?" ($"+formatoDinero(Number(c.precioInteres))+")":"")+" "+textoHaceDias(dias)+" y todavía no le has dado seguimiento."
           :"Sin retomar "+textoHaceDias(dias);
       }
       else{
         descP=c.productoInteres
-          ?"Tiene tu precio de "+c.productoInteres+(c.precioInteres?" ($"+formatoDinero(Number(c.precioInteres))+")":"")+" desde "+textoHaceDias(dias)+", sin que se haya convertido en pedido."
+          ?"Tiene tu precio de "+c.productoInteres+(tienePrecioReal(c)?" ($"+formatoDinero(Number(c.precioInteres))+")":"")+" desde "+textoHaceDias(dias)+", sin que se haya convertido en pedido."
           :"En seguimiento "+textoHaceDias(dias);
       }
       listaP.push({
@@ -2522,7 +2526,15 @@ function obtenerReversionIngresoPedido(ped){
   if(totalPagado<=0) return null;
   // Fallback para pedidos cancelados ANTES de que existiera fechaCancelacion
   // , se usa la fecha del pedido en vez de dejar la reversión sin fecha.
-  return { monto:-totalPagado, fecha:ped.fechaCancelacion||ped.fecha||ped.fechaCreado };
+  // fechaHora: ped.fechaHoraCancelacion (ver conCambiosEstadoPedido) , el
+  // momento REAL en que se canceló, siempre posterior al de cualquier pago
+  // ya recibido. Ingresos (vista="ventas_productos") la usa para ordenar
+  // esta reversión por encima del anticipo que revierte cuando ambos caen
+  // el mismo día , antes solo existía `fecha` (sin hora), así que un
+  // anticipo y su cancelación el mismo día podían mostrarse en cualquier
+  // orden. Pedidos cancelados ANTES de que existiera este campo caen a
+  // `null` , el llamador decide el fallback (nunca "hoy").
+  return { monto:-totalPagado, fecha:ped.fechaCancelacion||ped.fecha||ped.fechaCreado, fechaHora:ped.fechaHoraCancelacion||null };
 }
 // Única fórmula de subtotal/descuento/total a partir de un arreglo de items ,
 // usada por guardarCot, "Guardar y PDF" y cualquier otro lugar que necesite
@@ -2814,6 +2826,25 @@ function tieneOportunidadActivaProductos(cliente){
 // + resumenItemsCotizacion (ya existentes), nunca una fórmula nueva.
 function resumenOportunidadActivaProductos(cliente){
   return resumenItemsCotizacion(obtenerItemsInteres(cliente),"producto")||cliente.productoInteres||"sus productos";
+}
+// ── tienePrecioReal: ÚNICA función para saber si un cliente de PRODUCTOS ya
+// tiene un precio de interés REALMENTE capturado ──────────────────────────
+// c.precioInteres se guarda como STRING (ver compatP.total en
+// guardarPreguntoP/guardarEnvieP , buildItemsCompat), así que cuando el
+// total todavía es 0 (nadie ha escrito un precio) ese string queda
+// literalmente "0" , y en JS "0" es un valor TRUTHY. Todo `c.precioInteres
+// ? ... : ...` disperso por la app trataba entonces "sin precio" como "sí
+// tiene precio": Hoy mostraba "($0)" en la descripción, la ficha de
+// Oportunidades mostraba la etiqueta verde "$0", el botón "Enviar precio"
+// aparecía habilitado (y el mensaje de WhatsApp decía "el precio es $0"),
+// y el conteo de "oportunidades sin precio" las excluía por error. Esta
+// función es el ÚNICO punto que decide correctamente, comparando el valor
+// NUMÉRICO contra 0 en vez de la verdad booleana del string.
+function tienePrecioReal(cliente){
+  if(!cliente) return false;
+  if(cliente.precioInteres===undefined||cliente.precioInteres===null||cliente.precioInteres==="") return false;
+  var n=Number(cliente.precioInteres);
+  return isFinite(n)&&n>0;
 }
 // ── Equivalente de tieneOportunidadActivaProductos, para SERVICIOS ────────
 // Servicios no usa estadoProspecto (eso es exclusivo del mini-pipeline de
@@ -5895,7 +5926,22 @@ export default function CLEO(props){
     var nombresYaEscritos=(modal.fcCotBase.items||[]).filter(function(it){ return it.nombre&&it.nombre.trim(); }).map(function(it){ return normalizarNombreItem(it.nombre); });
     var itemsFaltantesDeOportunidad=(modal.itemsAntesOportunidad||[]).filter(function(it){ return nombresYaEscritos.indexOf(normalizarNombreItem(it.nombre))===-1; });
     var itemsMergeados=itemsFaltantesDeOportunidad.concat(modal.fcCotBase.items||[]);
-    guardarCot(Object.assign({},modal.fcCotBase,{items:itemsMergeados,_vinculadaOportunidadActual:true}));
+    // Antes de guardar, se pregunta CUÁNDO darle seguimiento después de
+    // enviar este precio , mismo patrón ya correcto que Productos usa en
+    // "Enviar precio" (ficha de Oportunidades): reutiliza el MISMO selector
+    // de fecha que ya existe (modalSeguimientoCotDif, hasta ahora solo
+    // usado por la rama "No, es una cotización diferente"), nunca un
+    // segundo selector paralelo. `modoVinculada:true` le indica a
+    // elegirSeguimientoCotDifDias/elegirSeguimientoCotDifFechaCustom/
+    // omitirSeguimientoCotDif que la fecha elegida aquí es para el
+    // RECORDATORIO automático de pipeline del cliente (categoria:"pipeline"),
+    // no para el seguimientoFecha propio de una cotización independiente
+    // (esos dos modelos nunca se mezclan). Antes, este camino guardaba
+    // directo sin preguntar , el recordatorio automático viejo ("quedaste
+    // en enviarle el precio") sobrevivía intacto y Seguimiento/Hoy seguían
+    // mostrando el estado anterior al envío.
+    setSeguimientoCotDifFechaCustom("");
+    setModalSeguimientoCotDif({fcCotBase:Object.assign({},modal.fcCotBase,{items:itemsMergeados,_vinculadaOportunidadActual:true}),modalVincularOriginal:modal,modoVinculada:true});
   }
   // "No, es una cotización diferente": reanuda guardarCot exactamente con
   // lo que ya se había escrito (nunca se le agrega ni se le quita nada de
@@ -5936,6 +5982,15 @@ export default function CLEO(props){
     setTimeout(function(){ resolviendoVincularOportunidadRef.current=false; },300);
     var f=new Date(HOY); f.setDate(f.getDate()+Number(dias));
     setModalSeguimientoCotDif(null);
+    // modoVinculada (ver confirmarVincularOportunidadCotSi) , la fecha va al
+    // recordatorio de pipeline del cliente (_seguimientoPipelineFecha), no
+    // al seguimientoFecha propio de una cotización independiente , esta
+    // rama NUNCA marca _vinculadaOportunidadActual:false (fcCotBase ya trae
+    // true), esa marca es exclusiva del camino "cotización diferente".
+    if(modal.modoVinculada){
+      guardarCot(Object.assign({},modal.fcCotBase,{_seguimientoPipelineFecha:fmtFechaLocal(f)}));
+      return;
+    }
     guardarCot(Object.assign({},modal.fcCotBase,{_vinculadaOportunidadActual:false,_seguimientoFechaElegida:fmtFechaLocal(f)}));
   }
   function elegirSeguimientoCotDifFechaCustom(){
@@ -5946,6 +6001,11 @@ export default function CLEO(props){
     setTimeout(function(){ resolviendoVincularOportunidadRef.current=false; },300);
     var fechaElegida=seguimientoCotDifFechaCustom;
     setModalSeguimientoCotDif(null);
+    // Mismo criterio que elegirSeguimientoCotDifDias , ver modoVinculada ahí.
+    if(modal.modoVinculada){
+      guardarCot(Object.assign({},modal.fcCotBase,{_seguimientoPipelineFecha:fechaElegida}));
+      return;
+    }
     guardarCot(Object.assign({},modal.fcCotBase,{_vinculadaOportunidadActual:false,_seguimientoFechaElegida:fechaElegida}));
   }
   // "Sin seguimiento": ÚNICA salida que guarda B con
@@ -5959,6 +6019,15 @@ export default function CLEO(props){
     resolviendoVincularOportunidadRef.current=true;
     setTimeout(function(){ resolviendoVincularOportunidadRef.current=false; },300);
     setModalSeguimientoCotDif(null);
+    // modoVinculada , "Sin seguimiento" explícito: no se crea un
+    // recordatorio nuevo, pero guardarCot igual limpia el recordatorio de
+    // pipeline viejo (_seguimientoPipelineFecha:"" , distinto de undefined,
+    // ver guardarCot), para no dejar "quedaste en enviarle el precio"
+    // sobreviviendo con el precio ya enviado.
+    if(modal.modoVinculada){
+      guardarCot(Object.assign({},modal.fcCotBase,{_seguimientoPipelineFecha:""}));
+      return;
+    }
     guardarCot(Object.assign({},modal.fcCotBase,{_vinculadaOportunidadActual:false,_seguimientoFechaElegida:""}));
   }
   // "×" / click fuera del modal: cancela ÚNICAMENTE este paso de la
@@ -7514,6 +7583,26 @@ export default function CLEO(props){
           // criterio que ya usa el botón "Enviar precio" de la tarjeta de
           // Oportunidades, que también pasa a "En seguimiento".
           if(esProductos&&c.estadoProspecto!=="Convertido"&&c.estadoProspecto!=="Perdido") upd=Object.assign(upd,{estadoProspecto:"En seguimiento"});
+          // Servicios , replica el patrón ya correcto de Productos ("Enviar
+          // precio" en la ficha de Oportunidades): al confirmar "Sí, es la
+          // misma oportunidad" ya se preguntó, vía el selector existente
+          // (modalSeguimientoCotDif, ver confirmarVincularOportunidadCotSi),
+          // cuándo darle seguimiento después de este envío , esa fecha llega
+          // aquí en fcCot._seguimientoPipelineFecha. Se reemplaza (nunca solo
+          // agrega) el recordatorio automático de pipeline anterior , mismo
+          // filtro exacto que ya usa el resto de la app
+          // (categoria:"pipeline"&&origen:"cleo"), así que recordatorios
+          // manuales, personalizados y de posventa quedan intactos. Solo
+          // corre cuando esta cotización de verdad pasó por esa pregunta
+          // (_seguimientoPipelineFecha!==undefined) , una cotización que se
+          // guarda sin ninguna oportunidad activa que proteger (el modal
+          // nunca se mostró) no debe tocar recordatorios.
+          if(!esProductos&&fcCot._seguimientoPipelineFecha!==undefined){
+            var recordatoriosSinPipelineAnteriorCot=recordatoriosDe(upd).filter(function(r){ return !(r&&r.categoria==="pipeline"&&r.origen==="cleo"); });
+            upd=fcCot._seguimientoPipelineFecha
+              ?conRecordatoriosActualizados(upd,recordatoriosSinPipelineAnteriorCot.concat([{id:"r_"+Date.now(),fecha:fcCot._seguimientoPipelineFecha,nota:"Le enviaste el precio de "+(resumenFinal||"tus servicios")+". Pregúntale si pudo revisarlo.",esPersonalizada:false,origen:"cleo",categoria:"pipeline"}]))
+              :conRecordatoriosActualizados(upd,recordatoriosSinPipelineAnteriorCot);
+          }
           return upd;
         });
       });
@@ -10589,7 +10678,11 @@ export default function CLEO(props){
                     // vacío con el nombre del producto/catálogo si aplica.
                     var itemsOpo=obtenerItemsInteres(c);
                     if(itemsOpo.length===0){
-                      var precioOpo=c.precioInteres||"";
+                      // tienePrecioReal(c) , "0" (sin precio real) es
+                      // truthy como string, así que antes se usaba "0" como
+                      // precio del renglón en vez de caer al precio del
+                      // catálogo (mismo bug raíz que el reporte, punto 1).
+                      var precioOpo=tienePrecioReal(c)?c.precioInteres:"";
                       if(!precioOpo&&c.productoInteres){
                         var match=catActivo.find(function(p){ return p.nombre===c.productoInteres; });
                         if(match&&match.precio) precioOpo=String(match.precio);
@@ -10637,7 +10730,7 @@ export default function CLEO(props){
                           c.productoInteres
                             ? e("div",{style:{fontSize:13,fontWeight:600,color:C.text,marginBottom:1}},c.productoInteres)
                             : e("div",{style:{fontSize:12,color:C.textDim}},"Sin producto aún — toca para agregar"),
-                          c.precioInteres&&e("div",{style:{fontSize:13,color:C.green,fontWeight:700}},"$"+formatoDinero(Number(c.precioInteres))),
+                          tienePrecioReal(c)&&e("div",{style:{fontSize:13,color:C.green,fontWeight:700}},"$"+formatoDinero(Number(c.precioInteres))),
                           c.notasProspecto&&e("div",{style:{fontSize:11,color:C.textMuted,marginTop:1,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}},c.notasProspecto)
                         ),
                         e("svg",{width:12,height:12,viewBox:"0 0 24 24",fill:"none",stroke:C.border,strokeWidth:2,flexShrink:0},e("path",{d:"M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"}))
@@ -10646,7 +10739,7 @@ export default function CLEO(props){
                   // HINT CLEO
                   !esPerdido&&!editando&&(function(){
                     var texto=!c.productoInteres?"Pregúntale qué producto le interesa y agrégalo aquí":
-                              c.estadoProspecto==="Nueva"&&c.precioInteres?"Envíale el precio para que confirme":
+                              c.estadoProspecto==="Nueva"&&tienePrecioReal(c)?"Envíale el precio para que confirme":
                               c.estadoProspecto==="En seguimiento"?"¿Ya confirmó? Convierte en pedido":
                               c.estadoProspecto==="Sin respuesta"?"Intenta contactarla de nuevo":"";
                     if(!texto) return null;
@@ -10665,7 +10758,7 @@ export default function CLEO(props){
                     isMobile
                       ? e(BtnCanal,{cliente:c,iconOnly:true})
                       : e(BtnCanal,{cliente:c,small:true}),
-                    c.productoInteres&&c.precioInteres&&(isMobile
+                    c.productoInteres&&tienePrecioReal(c)&&(isMobile
                       ? e("button",{
                           title:"Cotización",
                           style:{cursor:"pointer",width:32,height:32,padding:0,borderRadius:8,border:"1px solid "+C.border+"88",background:"transparent",fontSize:13,color:C.textDim,display:"inline-flex",alignItems:"center",justifyContent:"center",flexShrink:0},
@@ -10685,7 +10778,11 @@ export default function CLEO(props){
                       onClick:function(){ abrirEdicion(c); }
                     },"¿Qué le interesa? →"),
 
-                    c.productoInteres&&c.precioInteres&&c.estadoProspecto==="Nueva"&&e("button",{
+                    // tienePrecioReal(c) , no `c.precioInteres` a secas (ver
+                    // comentario junto a la función). Antes, un precio "0"
+                    // (todavía sin definir) igual mostraba este botón y
+                    // mandaba "el precio es $0" por WhatsApp.
+                    c.productoInteres&&tienePrecioReal(c)&&c.estadoProspecto==="Nueva"&&e("button",{
                       style:{cursor:"pointer",padding:"7px 16px",borderRadius:10,border:"none",background:C.purple,fontSize:12,color:"#fff",fontWeight:600},
                       onClick:function(){
                         var canal=c.canalPrincipal||"WhatsApp";
@@ -10695,7 +10792,8 @@ export default function CLEO(props){
                         // más") , el resumen central (resumenItemsCotizacion) es
                         // para tarjetas/listados internos, no para un mensaje
                         // real que la persona le manda al cliente.
-                        var nombresInteresC=obtenerItemsInteres(c).map(function(it){ return it.nombre; }).filter(Boolean);
+                        var itemsInteresOpoEnvio=obtenerItemsInteres(c);
+                        var nombresInteresC=itemsInteresOpoEnvio.map(function(it){ return it.nombre; }).filter(Boolean);
                         var listaProductoC=nombresInteresC.length===0?(c.productoInteres||"mi producto")
                           :nombresInteresC.length===1?nombresInteresC[0]
                           :nombresInteresC.slice(0,-1).join(", ")+" y "+nombresInteresC[nombresInteresC.length-1];
@@ -10705,14 +10803,44 @@ export default function CLEO(props){
                         else if(canal==="Instagram"&&c.instagram) url=crearUrlInstagram(c.instagram);
                         else if(c.contacto) url=crearUrlWhatsApp(c.contacto,msg);
                         if(url) abrirEnlaceExternoSeguro(url);
-                        // Actualizar estado y resetear contador
+                        // "Precio enviado" en el historial , vía la MISMA
+                        // función central que ya usan guardarEnvieP/
+                        // guardarPreguntoP (crearEventoPrecioEnviado), nunca
+                        // un motor aparte. Se construye UNA sola vez aquí,
+                        // dentro del onClick (nunca dentro de un render ni de
+                        // abrir/descargar el PDF de la cotización, que son
+                        // flujos de solo lectura) , así que se agrega
+                        // exactamente una vez por cada clic real (reporte de
+                        // fallos, punto 2: antes este botón nunca dejaba
+                        // rastro en el historial).
+                        var eventoPrecioEnviadoOpo=crearEventoPrecioEnviado(itemsInteresOpoEnvio);
+                        // Seguimiento posterior al envío , reemplaza (nunca
+                        // solo agrega) el recordatorio automático de pipeline
+                        // "quedaste en enviarle el precio" por UN único
+                        // recordatorio nuevo, mismo filtro exacto
+                        // (categoria:"pipeline"&&origen:"cleo") que ya usan
+                        // guardarPreguntoP/guardarPregunto , nunca toca
+                        // recordatorios manuales/personalizados (reporte,
+                        // punto 3). resolverFechaPregunto("manana") es el
+                        // mismo default que ya usa el resto de la app para
+                        // "hoy/mañana/2 días/3 días" cuando no hay un paso de
+                        // formulario propio que pregunte la fecha (este botón
+                        // es una acción de un solo clic, sin modal).
+                        var fechaSeguimientoOpoEnvio=resolverFechaPregunto("manana");
                         setClientes(clientes.map(function(x){
-                          return x.id===c.id?Object.assign({},x,{estadoProspecto:"En seguimiento",fechaEtapa:FECHA_HOY,ultimoContacto:FECHA_HOY}):x;
+                          if(x.id!==c.id) return x;
+                          var baseOpoEnvio=Object.assign({},x,{
+                            estadoProspecto:"En seguimiento",fechaEtapa:FECHA_HOY,ultimoContacto:FECHA_HOY,
+                            historialContactos:(x.historialContactos||[]).concat([eventoPrecioEnviadoOpo])
+                          });
+                          var recordatoriosSinPipelineAnteriorOpoEnvio=recordatoriosDe(baseOpoEnvio).filter(function(r){ return !(r&&r.categoria==="pipeline"&&r.origen==="cleo"); });
+                          if(!fechaSeguimientoOpoEnvio) return baseOpoEnvio;
+                          return conRecordatoriosActualizados(baseOpoEnvio,recordatoriosSinPipelineAnteriorOpoEnvio.concat([{id:"r_"+Date.now(),fecha:fechaSeguimientoOpoEnvio,nota:"Ya le enviaste el precio. Dijiste que le darías seguimiento.",esPersonalizada:false,origen:"cleo",categoria:"pipeline"}]));
                         }));
                       }
                     },"Enviar precio"),
 
-                    c.productoInteres&&!c.precioInteres&&c.estadoProspecto==="Nueva"&&e("button",{
+                    c.productoInteres&&!tienePrecioReal(c)&&c.estadoProspecto==="Nueva"&&e("button",{
                       style:{cursor:"pointer",padding:"7px 16px",borderRadius:10,border:"none",background:C.purple,fontSize:12,color:"#fff",fontWeight:600},
                       onClick:function(){ abrirEdicion(c); }
                     },"Agregar precio"),
@@ -12333,6 +12461,11 @@ export default function CLEO(props){
               pedidoId:ped.id,
               monto:Number(pago.monto),
               fecha:pago.fecha||ped.fecha,
+              // fechaHora: momento REAL en que se registró el pago (ver
+              // construirMovimientoPago) , se usa solo para el ORDEN dentro
+              // del mismo día, nunca para los cálculos/KPIs de arriba (esos
+              // siguen usando exclusivamente `fecha`).
+              fechaHora:pago.fechaHoraPago||null,
               concepto:pago.concepto||"Pago",
               productos:ped.productos||"",
             });
@@ -12348,6 +12481,7 @@ export default function CLEO(props){
               pedidoId:ped.id,
               monto:reversionPed.monto,
               fecha:reversionPed.fecha,
+              fechaHora:reversionPed.fechaHora,
               concepto:"Anticipo descontado · pedido cancelado",
               productos:ped.productos||"",
             });
@@ -12368,6 +12502,7 @@ export default function CLEO(props){
                 origenVenta:"venta_rapida",
                 monto:Number(pago.monto),
                 fecha:pago.fecha||v.fecha,
+                fechaHora:pago.fechaHoraPago||null,
                 concepto:(pago.concepto||"Pago")+(v.concepto?" · "+v.concepto:""),
                 productos:"",
               });
@@ -12376,8 +12511,29 @@ export default function CLEO(props){
           }
         });
 
-        // Ordenar por fecha desc
-        ingresos.sort(function(a,b){ return new Date(b.fecha)-new Date(a.fecha); });
+        // Ordenar por momento REAL más reciente arriba , nunca solo por
+        // `fecha` (día, sin hora): dos movimientos del mismo día se veían
+        // en el orden en que el código los había ido empujando al arreglo
+        // (más antiguo arriba), no en el orden en que realmente ocurrieron
+        // , y una reversión de cancelación el mismo día que su anticipo
+        // podía aparecer DEBAJO de él en vez de arriba (reporte de fallos,
+        // punto 4). claveOrdenIngresoProductos usa fechaHora (real,
+        // milisegundos) cuando existe: los pagos siempre la traen (ver
+        // construirMovimientoPago) y una reversión de cancelación también
+        // (ver conCambiosEstadoPedido/obtenerReversionIngresoPedido), y esa
+        // reversión SIEMPRE ocurre después del pago que revierte, así que
+        // ordenar por hora real ya la deja arriba sin ningún caso especial.
+        // Fallback para movimientos antiguos SIN hora registrada: mediodía
+        // de `fecha` (nunca "ahora"/"hoy", eso los haría parecer de hoy).
+        function claveOrdenIngresoProductos(ing){
+          if(ing.fechaHora){
+            var t=new Date(ing.fechaHora).getTime();
+            if(!isNaN(t)) return t;
+          }
+          var f=new Date((ing.fecha||"")+"T12:00:00").getTime();
+          return isNaN(f)?0:f;
+        }
+        ingresos.sort(function(a,b){ return claveOrdenIngresoProductos(b)-claveOrdenIngresoProductos(a); });
 
         // KPIs
         var totalHoy=ingresos.filter(function(i){ return enPeriodo(i.fecha,"hoy"); }).reduce(function(s,i){ return s+i.monto; },0);
@@ -12701,7 +12857,10 @@ export default function CLEO(props){
         // Acciones semanales
         var accionesSemana=[];
         var opsEnSeguimiento=clientes.filter(function(c){ return c.estadoProspecto==="En seguimiento"; });
-        var opsSinPrecio=clientes.filter(function(c){ return c.estadoProspecto==="Nueva"&&c.productoInteres&&!c.precioInteres; });
+        // !tienePrecioReal(c) , no `!c.precioInteres` (ver comentario junto
+        // a la función) , un precio "0" (string, sin definir todavía) era
+        // truthy y esta oportunidad se perdía silenciosamente del conteo.
+        var opsSinPrecio=clientes.filter(function(c){ return c.estadoProspecto==="Nueva"&&c.productoInteres&&!tienePrecioReal(c); });
         var opsSinProducto=clientes.filter(function(c){ return c.estadoProspecto==="Nueva"&&!c.productoInteres; });
         if(opsEnSeguimiento.length>0) accionesSemana.push({n:1,ic:"💬",tipo:"seguimiento_espera",titulo:"Da seguimiento a "+opsEnSeguimiento.length+" oportunidad"+(opsEnSeguimiento.length>1?"es":"")+" en espera",desc:"Ya saben el precio. Un mensaje puede cerrar la venta esta semana."});
         if(saldoPorCobrar>0) accionesSemana.push({n:accionesSemana.length+1,ic:"💰",tipo:"saldo_cobrar",titulo:"Cobra los $"+formatoDinero(saldoPorCobrar)+" pendientes",desc:"Ya entregaste o tienes pedidos activos con saldo. Un mensaje rápido lo resuelve."});

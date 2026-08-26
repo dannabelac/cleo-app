@@ -145,7 +145,6 @@ function crearEstilos(pc, ps) {
     totalsBlock: { marginTop: 12, marginBottom: 6 },
     totalLine: { flexDirection: "row", justifyContent: "space-between", paddingVertical: 4, fontSize: 9, color: "#888888", borderBottomWidth: 0.5, borderBottomColor: "#f5f5f5" },
     totalLineDiscount: { color: pc },
-    totalLinePaid: { color: "#1A7A5E" },
     totalFinal: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", paddingVertical: 14, borderTopWidth: 1.5, borderTopColor: pc, marginTop: 8, marginBottom: 16 },
     totalFinalLabel: { fontSize: 8, fontFamily: "Helvetica-Bold", color: "#999999", textTransform: "uppercase", letterSpacing: 1 },
     totalFinalVal: { fontSize: 20, fontFamily: "Helvetica-Bold", color: pc },
@@ -175,7 +174,6 @@ function crearEstilos(pc, ps) {
 
 function DocumentoCotizacion({ datos }) {
   var s = datos.estilos;
-  var tienePagos = datos.pagos.length > 0;
   return (
     <Document>
       <Page size="LETTER" style={s.pagina} wrap>
@@ -263,30 +261,18 @@ function DocumentoCotizacion({ datos }) {
           </View>
         ) : null}
 
-        {datos.descuentoMonto > 0 || tienePagos ? (
+        {datos.descuentoMonto > 0 ? (
           <View style={s.totalsBlock}>
-            {datos.descuentoMonto > 0 ? (
-              <View wrap={false}>
-                <View style={s.totalLine}>
-                  <Text>Subtotal</Text>
-                  <Text>{formatearMonto(datos.subtotal)} MXN</Text>
-                </View>
-                <View style={[s.totalLine, s.totalLineDiscount]}>
-                  <Text>Descuento especial ({datos.descuentoTexto})</Text>
-                  <Text>- {formatearMonto(datos.descuentoMonto)} MXN</Text>
-                </View>
+            <View wrap={false}>
+              <View style={s.totalLine}>
+                <Text>Subtotal</Text>
+                <Text>{formatearMonto(datos.subtotal)} MXN</Text>
               </View>
-            ) : null}
-            {datos.pagos.map(function (p, i) {
-              return (
-                <View style={[s.totalLine, s.totalLinePaid]} key={i} wrap={false}>
-                  <Text>
-                    {p.concepto} · {p.fecha}
-                  </Text>
-                  <Text>- {formatearMonto(p.monto)} MXN</Text>
-                </View>
-              );
-            })}
+              <View style={[s.totalLine, s.totalLineDiscount]}>
+                <Text>Descuento especial ({datos.descuentoTexto})</Text>
+                <Text>- {formatearMonto(datos.descuentoMonto)} MXN</Text>
+              </View>
+            </View>
           </View>
         ) : null}
 
@@ -326,6 +312,17 @@ function DocumentoCotizacion({ datos }) {
   );
 }
 
+// crearCotizacionPDF: genera SIEMPRE el documento ORIGINAL de la cotización,
+// tal como se cotizó , items, precios, descuento y total quedan fijos aquí
+// y NUNCA se les resta ningún pago registrado después. Antes este PDF traía
+// cot.pagos y mostraba "Saldo a cubrir"/"Pagado completamente" restando los
+// pagos ya cobrados , eso hacía que, en cuanto un trabajo quedaba saldado,
+// descargar "la cotización" mostrara $0.00 en vez del documento que
+// realmente se le mandó al cliente. El estado de pagos/saldo YA tiene su
+// propio documento dedicado (Comprobante general / estado de cuenta, ver
+// manejarGenerarDocumentoFinancieroPDF en CLEO.jsx), así que aquí nunca se
+// vuelve a mezclar , quien quiera ver pagos usa ese otro documento, y este
+// PDF siempre reproduce el original.
 export async function crearCotizacionPDF(cot, cliente, perfil) {
   cot = cot || {};
   cliente = cliente || {};
@@ -336,10 +333,7 @@ export async function crearCotizacionPDF(cot, cliente, perfil) {
 
   var folio = "COT-" + String(cot.id || "").slice(-4).padStart(4, "0");
 
-  var pagosCrudos = Array.isArray(cot.pagos) ? cot.pagos : [];
-  var totalPagado = numeroSeguro(pagosCrudos.reduce(function (s, p) { return s + numeroSeguro(p.monto); }, 0));
   var total = numeroSeguro(cot.monto);
-  var saldo = numeroSeguro(total - totalPagado);
 
   var itemsPDF = obtenerItemsCotizacionPDF(cot);
   var subtotalItems =
@@ -393,15 +387,10 @@ export async function crearCotizacionPDF(cot, cliente, perfil) {
     subtotal: subtotalItems,
     descuentoMonto: descuentoMonto,
     descuentoTexto: descuentoTexto,
-    pagos: pagosCrudos.map(function (p) {
-      return {
-        concepto: textoPlanoSeguro(p.concepto || "Pago recibido", 120),
-        fecha: textoPlanoSeguro(p.fecha, 40),
-        monto: numeroSeguro(p.monto),
-      };
-    }),
-    saldoLabel: saldo <= 0 ? "Pagado completamente" : "Saldo a cubrir",
-    saldo: Math.max(0, saldo),
+    // saldoLabel/saldo: SIEMPRE el total original cotizado (fijo), nunca se
+    // le resta ningún pago , ver comentario junto a crearCotizacionPDF.
+    saldoLabel: "Total",
+    saldo: total,
     notas: htmlANotaPlanaPDF(cot.notas),
     condicionesServicio: htmlANotaPlanaPDF(cot.svCondicionesHtml || cot.svCondiciones),
     tieneBanco: !!(perfil.banco || perfil.bancoclabe || perfil.bancoaccount),
