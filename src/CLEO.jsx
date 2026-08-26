@@ -570,6 +570,19 @@ function obtenerAccionesHoy(clientes,cotizaciones,esProductos,limite){
       // mostrarlo aparte solo repetía la tarjeta , mismo criterio que ya usa
       // esta función para Servicios (NIVEL 4/5 pasan "" a agregar() por la
       // misma razón).
+      // notaPipelineVigenteP: cuando el recordatorio automático vigente de
+      // este cliente es el de pipeline (categoria:"pipeline",origen:"cleo"
+      // , el mismo que crea guardarPreguntoP/guardarEnvieP/"Enviar precio"
+      // y que Cliente→Seguimiento lee tal cual vía r.nota), ESE texto es la
+      // única fuente de verdad , antes esta tarjeta recalculaba su propio
+      // texto desde estadoProspecto/productoInteres/precioInteres, lo que
+      // podía contradecir literalmente lo que Seguimiento mostraba para el
+      // mismo cliente el mismo día (p.ej. "todavía no le has dado
+      // seguimiento" en Hoy vs "quedaste en enviarle el precio" en
+      // Seguimiento). No aplica a Convertido/Perdido , esos usan sus
+      // propios recordatorios automáticos (postventa/reactivación, no
+      // pipeline) y su texto no se toca.
+      var notaPipelineVigenteP=(recordatorioAutomaticoP&&recordatorioAutomaticoP.categoria==="pipeline"&&recordatorioAutomaticoP.origen==="cleo"&&recordatorioAutomaticoP.nota)?recordatorioAutomaticoP.nota:null;
       var descP,mensajeSugeridoP="";
       if(c.estadoProspecto==="Convertido"){
         var frasesSegunTipoP={"15":"buen momento para pedirle una recomendación.","30":"buen momento para ver si necesita algo más.","60":"buen momento para platicarle de un proyecto nuevo.","90":"buen momento para mantenerte presente."};
@@ -582,6 +595,9 @@ function obtenerAccionesHoy(clientes,cotizaciones,esProductos,limite){
         var etiquetaMotivoP=etiquetasMotivoP[c.motivoPerdida]||"no siguió adelante";
         descP="En su momento "+etiquetaMotivoP+". Hoy habías programado retomar contacto — vale la pena ver si su situación cambió.";
         mensajeSugeridoP=c.mensajeSeguimientoPostVenta||"";
+      }
+      else if(notaPipelineVigenteP){
+        descP=notaPipelineVigenteP;
       }
       else if(c.estadoProspecto==="Nueva"){
         // tienePrecioReal(c), no `c.precioInteres` a secas , precioInteres
@@ -692,6 +708,15 @@ function obtenerAccionesHoy(clientes,cotizaciones,esProductos,limite){
         var etiquetaMotivo1=etiquetasMotivo1[c.motivoPerdida]||"no siguió adelante";
         desc1="En su momento "+etiquetaMotivo1+". Hoy habías programado retomar contacto — vale la pena ver si su situación cambió.";
       }
+      // Recordatorio de pipeline vigente (categoria:"pipeline",origen:"cleo"
+      // , el mismo que crea "Envié un precio"/guardarCot y que Cliente→
+      // Seguimiento muestra tal cual vía r.nota) es la única fuente de
+      // verdad para esta tarjeta , antes se recalculaba un texto paralelo
+      // desde cotP/servicio que podía contradecir literalmente lo que
+      // Seguimiento mostraba para el mismo cliente el mismo día. No aplica
+      // a Ganado/Perdido (ya resueltos arriba, con sus propios
+      // recordatorios de postventa/reactivación, que no se tocan).
+      else if(r.categoria==="pipeline"&&r.origen==="cleo"&&r.nota) desc1=r.nota;
       else if(cotP) desc1="Le enviaste el precio de "+servicio+". Hoy habías programado preguntarle si pudo revisarlo.";
       else if(servicio) desc1="Preguntó por "+servicio+" y todavía no ha recibido el precio. Hoy habías quedado en enviárselo.";
       else if(!cotP&&c.notas) desc1='Anotaste: "'+c.notas+'" — hoy habías programado retomar esta conversación.';
@@ -7433,6 +7458,25 @@ export default function CLEO(props){
     if(!esProductos&&!editCotId&&fcCot.clienteId&&fcCot._vinculadaOportunidadActual===undefined){
       var clienteActualCot=clientes.find(function(c){ return String(c.id)===String(fcCot.clienteId); });
       if(clienteActualCot&&tieneOportunidadActivaServicios(clienteActualCot)){
+        // Origen EXPLÍCITO: esta cotización se abrió desde la tarjeta de
+        // ESTA oportunidad específica ("Hacer/Crear cotización" dentro del
+        // modal cotRapidaId del pipeline) , el id real transportado en
+        // fcCot._origenOportunidadClienteId (nunca el nombre) coincide con
+        // el cliente que se está guardando ahora mismo. En ese caso la
+        // vinculación ya es un hecho, no una pregunta: se salta
+        // modalVincularOportunidadCot por completo y se va directo a la
+        // MISMA continuación que "Sí, es la misma oportunidad"
+        // (confirmarVincularOportunidadCotSi) , el selector de próximo
+        // seguimiento ya corregido (modalSeguimientoCotDif,
+        // modoVinculada:true). Entradas ambiguas (+Nueva cotización, Envié
+        // un precio, o cualquier flujo genérico que solo trae clienteId sin
+        // este marcador) NO cumplen esta condición y siguen preguntando,
+        // como antes.
+        if(fcCot._origenOportunidadClienteId&&String(fcCot._origenOportunidadClienteId)===String(clienteActualCot.id)){
+          setSeguimientoCotDifFechaCustom("");
+          setModalSeguimientoCotDif({fcCotBase:Object.assign({},fcCot,{_vinculadaOportunidadActual:true}),modalVincularOriginal:null,modoVinculada:true});
+          return;
+        }
         setModalVincularOportunidadCot({
           clienteId:clienteActualCot.id,
           resumenActual:resumenOportunidadActivaServicios(clienteActualCot),
@@ -9102,20 +9146,34 @@ export default function CLEO(props){
             !isMobile&&e("div",{style:{fontSize:14,color:C.textMuted,marginTop:8}},subtitulo)
           ),
 
-          // QUÉ HA PASADO , registro rápido de actividad
-          e("div",{style:{background:C.surface,borderRadius:20,padding:"28px",border:"1px solid "+C.border,boxShadow:"0 2px 12px rgba(0,0,0,0.06)",marginBottom:20}},
+          // QUÉ HA PASADO , registro rápido de actividad. width:"100%"+
+          // boxSizing:"border-box" en la tarjeta, y en cada nivel dentro de
+          // ella (grid, botones), para que el padding nunca se sume por
+          // fuera del ancho disponible del contenedor padre (línea ~8624,
+          // que ya es width:100%+border-box) , antes la tarjeta no fijaba
+          // box-sizing y la cuadrícula móvil usaba columnas "1fr 1fr" sin
+          // minmax(0,...), cuyo ancho mínimo por defecto es el contenido
+          // (min-content) , un botón cuyo texto/ícono no cabía empujaba esa
+          // columna (y con ella la cuadrícula completa) más ancha que la
+          // tarjeta, desplazando visualmente todo hacia la derecha y
+          // generando scroll horizontal en Chrome Android. minmax(0,1fr)
+          // fuerza el ancho mínimo de columna a 0 , las dos columnas quedan
+          // genuinamente iguales y nunca se salen del ancho del padre,
+          // incluso descontando el espacio que Android reserva para su
+          // barra de scroll. Escritorio (repeat(4,1fr)) no se toca.
+          e("div",{style:{background:C.surface,borderRadius:20,padding:isMobile?"20px 16px":"28px",border:"1px solid "+C.border,boxShadow:"0 2px 12px rgba(0,0,0,0.06)",marginBottom:20,width:"100%",boxSizing:"border-box"}},
             e("div",{style:{fontSize:isMobile?18:20,fontWeight:700,color:C.text,marginBottom:4}},"¿Qué ha pasado en "+empresa+"?"),
             e("div",{style:{fontSize:13,color:C.textMuted,marginBottom:18}},"Registra algo nuevo para mantener tus ventas al día."),
-            e("div",{style:{display:"grid",gridTemplateColumns:isMobile?"1fr 1fr":"repeat(4,1fr)",gap:10}},
+            e("div",{style:{display:"grid",gridTemplateColumns:isMobile?"repeat(2,minmax(0,1fr))":"repeat(4,1fr)",gap:10,width:"100%",boxSizing:"border-box"}},
               [
                 {ic:"💬",label:"Alguien preguntó",onClick:function(){ if(esProductos){ setPasoPreguntoP(1); } else { setPasoPregunto(1); } }},
                 {ic:"🏷️",label:"Envié un precio",onClick:function(){ if(esProductos){ setModalEnvieP(true); } else { setFormCot(Object.assign({},cotVacio,{nuevoNombre:""})); setModalCot(true); } }},
                 {ic:"🛒",label:"Cerré una venta",onClick:function(){ if(esProductos){ setModalCerreP(true); } else { setModalCerre(true); } }},
                 {ic:"💰",label:"Recibí un pago",onClick:function(){ if(esProductos){ setModalRecibiP(true); } else { setModalRecibi(true); } }}
               ].map(function(op,i){
-                return e("button",{key:i,style:{cursor:"pointer",padding:"12px 14px",borderRadius:12,border:"1px solid "+C.border,background:C.bg,fontSize:13,color:C.text,fontWeight:500,display:"flex",alignItems:"center",gap:8,width:"100%",textAlign:"left"},onClick:op.onClick},
+                return e("button",{key:i,style:{cursor:"pointer",padding:"12px 14px",borderRadius:12,border:"1px solid "+C.border,background:C.bg,fontSize:13,color:C.text,fontWeight:500,display:"flex",alignItems:"center",gap:8,width:"100%",minWidth:0,boxSizing:"border-box",textAlign:"left"},onClick:op.onClick},
                   e("span",{style:{fontSize:15,flexShrink:0}},op.ic),
-                  e("span",{style:{overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}},op.label)
+                  e("span",{style:{overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",minWidth:0}},op.label)
                 );
               })
             )
@@ -11843,13 +11901,39 @@ export default function CLEO(props){
         ),
         e("div",{style:{display:"flex",flexDirection:isMobile?"column":"row",gap:8,marginBottom:16,flexWrap:isMobile?"nowrap":"wrap",alignItems:isMobile?"stretch":"center"}},
           e("input",{placeholder:"Buscar...",value:filtroCot.busqueda,onChange:function(ev){ setFiltroCot(Object.assign({},filtroCot,{busqueda:ev.target.value})); },style:Object.assign({},st.inp,{flex:1,minWidth:120,width:isMobile?"100%":"auto"})}),
-          e("div",{style:isMobile?{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8}:{display:"flex",gap:8}},
-            e("select",{value:filtroCot.estatus,onChange:function(ev){ setHighlightCotId(null); setFiltroCot(Object.assign({},filtroCot,{estatus:ev.target.value})); },style:{cursor:"pointer",padding:"7px 12px",borderRadius:12,border:"1px solid "+C.border,background:C.surface,fontSize:isMobile?13:16,color:C.textMuted,outline:"none",width:isMobile?"100%":"auto",minWidth:0}},
-              [["","Todas"],["Pendiente","Esperando respuesta"],["Rechazada","Sin cerrar"]].map(function(f){ return e("option",{key:f[0]||"todas",value:f[0]},f[1]); })
-            ),
-            e("select",{value:filtroCot.periodo,onChange:function(ev){ setFiltroCot(Object.assign({},filtroCot,{periodo:ev.target.value})); },style:{cursor:"pointer",padding:"7px 12px",borderRadius:12,border:"1px solid "+C.border,background:C.surface,fontSize:isMobile?13:16,color:C.textMuted,outline:"none",width:isMobile?"100%":"auto",minWidth:0}},
-              [["todo","Todo el tiempo"],["semana","Esta semana"],["mes","Este mes"],["trimestre","Trimestre"]].map(function(p){ return e("option",{key:p[0],value:p[0]},p[1]); })
-            )
+          // Selects de estatus/periodo: en escritorio antes usaban un
+          // tratamiento visual propio (7px de padding, borderRadius 12,
+          // borde claro C.border, texto C.textMuted, flechita nativa de
+          // doble punta del navegador) distinto al del buscador de al lado
+          // (st.inp: más alto, borde C.borderStrong, texto C.text), así que
+          // se veían más chicos/desalineados/genéricos junto a él. En
+          // escritorio ahora comparten exactamente el alto/borde/tipografía
+          // de st.inp y usan el mismo patrón de flecha propia + appearance:
+          // "none" que ya usa el selector "+ Del catálogo..." de items ,
+          // minWidth fijo para que no se compriman al ancho del texto más
+          // corto ("Todas") y salten de tamaño al cambiar de opción. Móvil
+          // no se toca (sigue con su propio tratamiento compacto en grid).
+          e("div",{style:isMobile?{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8}:{display:"flex",gap:8,flexShrink:0}},
+            isMobile
+              ? e("select",{value:filtroCot.estatus,onChange:function(ev){ setHighlightCotId(null); setFiltroCot(Object.assign({},filtroCot,{estatus:ev.target.value})); },style:{cursor:"pointer",padding:"7px 12px",borderRadius:12,border:"1px solid "+C.border,background:C.surface,fontSize:13,color:C.textMuted,outline:"none",width:"100%",minWidth:0}},
+                  [["","Todas"],["Pendiente","Esperando respuesta"],["Rechazada","Sin cerrar"]].map(function(f){ return e("option",{key:f[0]||"todas",value:f[0]},f[1]); })
+                )
+              : e("div",{style:{position:"relative",flexShrink:0}},
+                  e("select",{value:filtroCot.estatus,onChange:function(ev){ setHighlightCotId(null); setFiltroCot(Object.assign({},filtroCot,{estatus:ev.target.value})); },style:Object.assign({},st.inp,{cursor:"pointer",appearance:"none",WebkitAppearance:"none",padding:"10px 30px 10px 14px",width:"auto",minWidth:190,outline:"none"})},
+                    [["","Todas"],["Pendiente","Esperando respuesta"],["Rechazada","Sin cerrar"]].map(function(f){ return e("option",{key:f[0]||"todas",value:f[0]},f[1]); })
+                  ),
+                  e("span",{style:{position:"absolute",right:12,top:"50%",transform:"translateY(-50%)",pointerEvents:"none",fontSize:10,color:C.textMuted}},"▾")
+                ),
+            isMobile
+              ? e("select",{value:filtroCot.periodo,onChange:function(ev){ setFiltroCot(Object.assign({},filtroCot,{periodo:ev.target.value})); },style:{cursor:"pointer",padding:"7px 12px",borderRadius:12,border:"1px solid "+C.border,background:C.surface,fontSize:13,color:C.textMuted,outline:"none",width:"100%",minWidth:0}},
+                  [["todo","Todo el tiempo"],["semana","Esta semana"],["mes","Este mes"],["trimestre","Trimestre"]].map(function(p){ return e("option",{key:p[0],value:p[0]},p[1]); })
+                )
+              : e("div",{style:{position:"relative",flexShrink:0}},
+                  e("select",{value:filtroCot.periodo,onChange:function(ev){ setFiltroCot(Object.assign({},filtroCot,{periodo:ev.target.value})); },style:Object.assign({},st.inp,{cursor:"pointer",appearance:"none",WebkitAppearance:"none",padding:"10px 30px 10px 14px",width:"auto",minWidth:170,outline:"none"})},
+                    [["todo","Todo el tiempo"],["semana","Esta semana"],["mes","Este mes"],["trimestre","Trimestre"]].map(function(p){ return e("option",{key:p[0],value:p[0]},p[1]); })
+                  ),
+                  e("span",{style:{position:"absolute",right:12,top:"50%",transform:"translateY(-50%)",pointerEvents:"none",fontSize:10,color:C.textMuted}},"▾")
+                )
           )
         ),
         cotsFiltradas.length===0&&e("div",{style:{fontSize:13,color:C.textDim,textAlign:"center",padding:"24px 0"}},"No hay cotizaciones con esos filtros."),
@@ -12009,13 +12093,31 @@ export default function CLEO(props){
                 );
               })
             ),
-            e("select",{
-              value:filtroTrabajoPeriodo,
-              onChange:function(ev){ setFiltroTrabajoPeriodo(ev.target.value); },
-              style:{cursor:"pointer",padding:"7px 12px",borderRadius:12,border:"1px solid "+C.border,background:C.surface,fontSize:12,color:C.textMuted,outline:"none",width:isMobile?"100%":"auto",minWidth:0,marginLeft:isMobile?0:"auto"}
-            },
-              [["todo","Todo el tiempo"],["semana","Esta semana"],["mes","Este mes"],["trimestre","Trimestre"]].map(function(p){ return e("option",{key:p[0],value:p[0]},p[1]); })
-            )
+            // Mismo tratamiento que ya se corrigió en Cotizaciones: en
+            // escritorio el select nativo se veía chico/genérico (flechita
+            // de doble punta del navegador, borde claro) junto a los pills
+            // de filtro , ahora usa el mismo patrón de flecha propia +
+            // appearance:"none" con alto/borde/tipografía de st.inp y
+            // minWidth fijo. Móvil sigue con su tratamiento compacto
+            // original (no se toca).
+            isMobile
+              ? e("select",{
+                  value:filtroTrabajoPeriodo,
+                  onChange:function(ev){ setFiltroTrabajoPeriodo(ev.target.value); },
+                  style:{cursor:"pointer",padding:"7px 12px",borderRadius:12,border:"1px solid "+C.border,background:C.surface,fontSize:12,color:C.textMuted,outline:"none",width:"100%",minWidth:0}
+                },
+                  [["todo","Todo el tiempo"],["semana","Esta semana"],["mes","Este mes"],["trimestre","Trimestre"]].map(function(p){ return e("option",{key:p[0],value:p[0]},p[1]); })
+                )
+              : e("div",{style:{position:"relative",flexShrink:0,marginLeft:"auto"}},
+                  e("select",{
+                    value:filtroTrabajoPeriodo,
+                    onChange:function(ev){ setFiltroTrabajoPeriodo(ev.target.value); },
+                    style:Object.assign({},st.inp,{cursor:"pointer",appearance:"none",WebkitAppearance:"none",padding:"10px 30px 10px 14px",width:"auto",minWidth:170,outline:"none"})
+                  },
+                    [["todo","Todo el tiempo"],["semana","Esta semana"],["mes","Este mes"],["trimestre","Trimestre"]].map(function(p){ return e("option",{key:p[0],value:p[0]},p[1]); })
+                  ),
+                  e("span",{style:{position:"absolute",right:12,top:"50%",transform:"translateY(-50%)",pointerEvents:"none",fontSize:10,color:C.textMuted}},"▾")
+                )
           ),
           sinFechaCount>=2&&filtroTrabajo!=="completado"&&e("div",{style:{fontSize:13,color:C.textMuted,padding:"14px 16px",background:C.surface,borderRadius:12,marginBottom:14,border:"1px solid "+C.border,display:"flex",alignItems:"center",gap:10}},
             e("span",{style:{fontSize:16}},"📅"),
@@ -16791,7 +16893,15 @@ export default function CLEO(props){
                 if(itemsCR.length===0){
                   itemsCR=[{id:"it_"+Date.now(),catalogoId:null,nombre:c.servicioInteres||c.notas||"",cantidad:1,precioUnitario:"",total:0}];
                 }
-                setFormCot(Object.assign({},cotVacio,{clienteId:String(c.id),items:itemsCR}));
+                // _origenOportunidadClienteId: contexto EXPLÍCITO (id real,
+                // nunca nombre) de que esta cotización se abre desde la
+                // tarjeta de ESTA oportunidad específica (modal cotRapidaId,
+                // que solo se abre al tocar la tarjeta del cliente en el
+                // pipeline , ver setCotRapidaId(c.id) más arriba). guardarCot
+                // lo compara contra fcCot.clienteId antes de preguntar
+                // "¿corresponde a la oportunidad actual?" , si coinciden, la
+                // vinculación ya es un hecho y no hay nada que preguntar.
+                setFormCot(Object.assign({},cotVacio,{clienteId:String(c.id),items:itemsCR,_origenOportunidadClienteId:String(c.id)}));
                 setModalCot(true); setCotRapidaId(null);
               }},"+ Crear cotización")
             )

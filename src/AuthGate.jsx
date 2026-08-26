@@ -20,7 +20,7 @@ var C = {
 };
 
 var FONT =
-  "'Inter','Segoe UI',-apple-system,BlinkMacSystemFont,Arial,sans-serif";
+  "'Plus Jakarta Sans','Segoe UI',-apple-system,BlinkMacSystemFont,Arial,sans-serif";
 
 var st = {
   page: {
@@ -2071,7 +2071,7 @@ export default function AuthGate() {
     React.createElement(
       "style",
       null,
-      "@import url('https://fonts.googleapis.com/css2?family=Caveat:wght@600;700&display=swap');" +
+      "@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');" +
         ".cleo-auth-brand{padding:44px 40px}" +
         ".cleo-auth-form{padding:44px 48px}" +
         "@media(max-width:640px){" +
@@ -2079,7 +2079,7 @@ export default function AuthGate() {
         ".cleo-auth-shell{border-radius:0!important;min-height:100vh!important;box-shadow:none!important}" +
         ".cleo-auth-brand{padding:32px 24px 28px!important;min-height:0!important}" +
         ".cleo-auth-form{padding:32px 24px 40px!important}" +
-        ".cleo-auth-greeting{font-size:34px!important}" +
+        ".cleo-auth-greeting{font-size:30px!important}" +
         "}"
     ),
     React.createElement(
@@ -2101,22 +2101,32 @@ export default function AuthGate() {
         React.createElement(
           "div",
           { style: { position: "relative", zIndex: 1 } },
+          // Bloque editorial: título en sans-serif grande/grueso (FONT, la
+          // misma familia que ya usa el resto de AuthGate , antes usaba
+          // 'Caveat' cursiva, un estilo de firma manuscrita que ya no
+          // aplica aquí) + párrafo + cierre resaltado en negritas. Mismo
+          // fondo/logo/estructura del panel , solo cambia el contenido y la
+          // tipografía del título. maxWidth:340 (antes 300) para que las
+          // oraciones nuevas, más largas, no fuercen quiebres de línea
+          // extraños en pantallas angostas , la media query de abajo
+          // (.cleo-auth-greeting) sigue reduciendo el tamaño del título en
+          // móvil, responsivo igual que antes.
           React.createElement(
             "div",
             {
               className: "cleo-auth-greeting",
               style: {
-                fontFamily: "'Caveat',cursive",
-                fontSize: 44,
-                fontWeight: 700,
+                fontFamily: FONT,
+                fontSize: 40,
+                fontWeight: 800,
                 color: "#fff",
-                lineHeight: 1.1,
+                lineHeight: 1.12,
+                letterSpacing: "-0.5px",
                 marginBottom: 16,
+                maxWidth: 340,
               },
             },
-            "Hecho para",
-            React.createElement("br", null),
-            "emprendedores como tú."
+            "Vender ya implica recordar demasiado"
           ),
           React.createElement(
             "div",
@@ -2125,27 +2135,12 @@ export default function AuthGate() {
                 fontSize: 14,
                 lineHeight: 1.6,
                 color: "rgba(255,255,255,0.82)",
-                maxWidth: 300,
+                maxWidth: 340,
                 marginBottom: 22,
               },
             },
-            "Emprender ya es suficientemente difícil. Tú ya te encargas de muchas cosas. CLEO te ayuda a saber qué cliente necesita tu atención, qué oportunidad se está enfriando y qué puedes hacer hoy para acercarte a tu próxima venta."
+            "Con CLEO, sabes a quién contactar, qué necesita seguimiento y qué falta cobrar."
           )
-        ),
-        React.createElement(
-          "div",
-          {
-            style: {
-              position: "relative",
-              zIndex: 1,
-              fontSize: 13,
-              color: "rgba(255,255,255,0.85)",
-              lineHeight: 1.5,
-              maxWidth: 300,
-              marginTop: "auto",
-            },
-          },
-          React.createElement("b", { style: { color: "#fff" } }, "Emprende con CLEO.")
         )
       ),
 
@@ -2332,7 +2327,7 @@ export default function AuthGate() {
                 marginBottom: 6,
               },
             },
-            "Hola, emprendedor"
+            modo === "login" ? "Vuelve a tu negocio" : "Crea tu cuenta"
           ),
           React.createElement(
             "div",
