@@ -220,6 +220,24 @@ function esTextoPipelineConocido(texto){
   if(/^Preguntó por .+ y quedaste en enviarle el precio\.$/.test(texto)) return true;
   return false;
 }
+// true SOLO mientras exista, YA PERSISTIDO, un recordatorio de pipeline
+// (categoria:"pipeline",origen:"cleo") cuyo texto sea exactamente el de
+// "todavía no le he enviado el precio" (el mismo patrón que arriba
+// reconoce en esTextoPipelineConocido, aislado aquí porque esa función
+// también reconoce OTROS textos de pipeline que sí representan "ya se lo
+// envié" , p.ej. "Ya le enviaste la cotización..." , y esos NO deben
+// contar como pendiente). Única fuente de verdad para "¿ya se le mandó el
+// precio a este cliente?" en Productos y Servicios , crear, guardar, abrir
+// o descargar una cotización/PDF nunca la reemplaza por sí solo, así que
+// nunca se deduce "enviado" a partir de eso: solo una acción explícita
+// (el botón "Enviar precio" en Productos, o "Ya se lo envié"/guardar la
+// cotización vinculada en Servicios) reemplaza este recordatorio.
+function tienePendienteEnviarPrecioVigente(cliente){
+  if(!cliente) return false;
+  return recordatoriosDe(cliente).some(function(r){
+    return r&&r.categoria==="pipeline"&&r.origen==="cleo"&&/^Preguntó por .+ y quedaste en enviarle el precio\.$/.test(r.nota||"");
+  });
+}
 
 // true SOLO cuando el cliente ya está en una etapa final (Ganado, Perdido,
 // o Convertido en Productos) Y el recordatorio pertenece claramente al
@@ -15709,15 +15727,28 @@ export default function CLEO(props){
         );
       }
 
-      // FLUJO ESPECIALIZADO — cliente en "Nuevo contacto": lo único que
-      // siempre falta aquí es mandarle el precio, así que en vez del listado
-      // genérico de abajo se muestran 4 acciones enfocadas exactamente en
-      // eso. Cubre tanto la tarjeta automática de Hoy (recordatorio real,
-      // con contactadoRecordatorioId) como la sugerencia calculada (sin
-      // recordatorio real detrás) , en ambos casos, cualquiera de las 4
-      // opciones saca a este cliente de "Nuevo contacto" o reprograma el
-      // aviso, así que la tarjeta de Hoy nunca se queda pegada.
-      if(!esPerdidoC&&!esGanadoC&&cl.etapa==="Nuevo contacto"){
+      // FLUJO ESPECIALIZADO — cliente en "Nuevo contacto"/"Nueva": lo único
+      // que siempre falta aquí es mandarle el precio, así que en vez del
+      // listado genérico de abajo se muestran 4 acciones enfocadas
+      // exactamente en eso. Cubre tanto la tarjeta automática de Hoy
+      // (recordatorio real, con contactadoRecordatorioId) como la
+      // sugerencia calculada (sin recordatorio real detrás) , en ambos
+      // casos, cualquiera de las 4 opciones saca a este cliente de "Nuevo
+      // contacto" o reprograma el aviso, así que la tarjeta de Hoy nunca se
+      // queda pegada.
+      // Gate real: (a) el estado inicial de cada perfil ANTES de mandar
+      // precio (etapa==="Nuevo contacto" en Servicios, estadoProspecto==
+      // "Nueva" en Productos , antes este `if` solo comparaba cl.etapa, que
+      // en Productos siempre es undefined, así que Productos NUNCA entraba
+      // aquí y perdía la opción "Ya se lo envié" por completo) , O (b)
+      // tienePendienteEnviarPrecioVigente(cl): mientras siga persistido el
+      // recordatorio de pipeline "...y quedaste en enviarle el precio.",
+      // el precio sigue sin confirmarse enviado aunque el estado ya haya
+      // avanzado (p.ej. por guardar/generar una cotización o PDF sin pasar
+      // por "Ya se lo envié" , guardarCot adelanta etapa/estadoProspecto al
+      // solo GUARDAR, no al confirmar envío). (b) es la fuente de verdad
+      // real; (a) solo amplía la cobertura al caso sin recordatorio aún.
+      if(!esPerdidoC&&!esGanadoC&&((esProductos?cl.estadoProspecto==="Nueva":cl.etapa==="Nuevo contacto")||tienePendienteEnviarPrecioVigente(cl))){
         var catalogoNC=esProductos?productosCat:servicios;
         var interesDefaultNC=(esProductos?cl.productoInteres:cl.servicioInteres)||cl.notas||"";
         // Quita EXACTAMENTE el recordatorio que disparó esta tarjeta (si
@@ -15862,7 +15893,11 @@ export default function CLEO(props){
                   e("div",{style:{borderRadius:12,border:"1px solid "+C.red+"44",overflow:"hidden",cursor:"pointer"},
                     onClick:function(){
                       cerrar();
-                      setEtapaAnteriorPipeline(cl.etapa);
+                      // Productos lee estadoProspecto, no etapa (cl.etapa es
+                      // siempre undefined ahí) , mismo criterio que ya usa
+                      // cambiarEstado en la tarjeta de Oportunidades para
+                      // este mismo valor de reversión.
+                      setEtapaAnteriorPipeline(esProductos?(cl.estadoProspecto||"Nueva"):cl.etapa);
                       // Debe apuntar a la MISMA cotización que guardarMotivoPipeline
                       // rechazará (la vinculada a la oportunidad activa) , si no,
                       // cancelar después revertiría la cotización equivocada.
@@ -16418,7 +16453,16 @@ export default function CLEO(props){
             ?e("div",null,
                 e("div",{style:{marginBottom:16}},
                   e("label",{style:st.lbl},"Fecha"),
-                  e("input",{type:"date",value:seguimientoFechaCal,onChange:function(ev){ setSeguimientoFechaCal(ev.target.value); },style:st.inp})
+                  // Mismo tratamiento que ya usan el resto de los inputs de
+                  // fecha de la app (ver los `type:"date"` de pagos/entregas)
+                  // , sin boxSizing:"border-box"+width:"100%"+WebkitAppearance:
+                  // "none" este input de iOS Safari se renderiza angosto/sin
+                  // el look nativo del resto del formulario (reporte: se ve
+                  // como una caja vacía sin la apariencia de selector de
+                  // fecha). Un solo modal compartido por Productos y
+                  // Servicios (se abre desde Cliente→Seguimiento en ambos
+                  // perfiles) , esta corrección aplica a los dos por igual.
+                  e("input",{type:"date",value:seguimientoFechaCal,onChange:function(ev){ setSeguimientoFechaCal(ev.target.value); },style:Object.assign({},st.inp,{width:"100%",maxWidth:"100%",boxSizing:"border-box",display:"block",minWidth:0,WebkitAppearance:"none"})})
                 ),
                 e("div",{style:{marginBottom:16}},
                   e("label",{style:st.lbl},"Qué quieres recordar"),
