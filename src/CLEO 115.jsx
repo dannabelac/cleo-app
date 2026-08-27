@@ -220,24 +220,6 @@ function esTextoPipelineConocido(texto){
   if(/^Preguntó por .+ y quedaste en enviarle el precio\.$/.test(texto)) return true;
   return false;
 }
-// true SOLO mientras exista, YA PERSISTIDO, un recordatorio de pipeline
-// (categoria:"pipeline",origen:"cleo") cuyo texto sea exactamente el de
-// "todavía no le he enviado el precio" (el mismo patrón que arriba
-// reconoce en esTextoPipelineConocido, aislado aquí porque esa función
-// también reconoce OTROS textos de pipeline que sí representan "ya se lo
-// envié" , p.ej. "Ya le enviaste la cotización..." , y esos NO deben
-// contar como pendiente). Única fuente de verdad para "¿ya se le mandó el
-// precio a este cliente?" en Productos y Servicios , crear, guardar, abrir
-// o descargar una cotización/PDF nunca la reemplaza por sí solo, así que
-// nunca se deduce "enviado" a partir de eso: solo una acción explícita
-// (el botón "Enviar precio" en Productos, o "Ya se lo envié"/guardar la
-// cotización vinculada en Servicios) reemplaza este recordatorio.
-function tienePendienteEnviarPrecioVigente(cliente){
-  if(!cliente) return false;
-  return recordatoriosDe(cliente).some(function(r){
-    return r&&r.categoria==="pipeline"&&r.origen==="cleo"&&/^Preguntó por .+ y quedaste en enviarle el precio\.$/.test(r.nota||"");
-  });
-}
 
 // true SOLO cuando el cliente ya está en una etapa final (Ganado, Perdido,
 // o Convertido en Productos) Y el recordatorio pertenece claramente al
@@ -588,19 +570,6 @@ function obtenerAccionesHoy(clientes,cotizaciones,esProductos,limite){
       // mostrarlo aparte solo repetía la tarjeta , mismo criterio que ya usa
       // esta función para Servicios (NIVEL 4/5 pasan "" a agregar() por la
       // misma razón).
-      // notaPipelineVigenteP: cuando el recordatorio automático vigente de
-      // este cliente es el de pipeline (categoria:"pipeline",origen:"cleo"
-      // , el mismo que crea guardarPreguntoP/guardarEnvieP/"Enviar precio"
-      // y que Cliente→Seguimiento lee tal cual vía r.nota), ESE texto es la
-      // única fuente de verdad , antes esta tarjeta recalculaba su propio
-      // texto desde estadoProspecto/productoInteres/precioInteres, lo que
-      // podía contradecir literalmente lo que Seguimiento mostraba para el
-      // mismo cliente el mismo día (p.ej. "todavía no le has dado
-      // seguimiento" en Hoy vs "quedaste en enviarle el precio" en
-      // Seguimiento). No aplica a Convertido/Perdido , esos usan sus
-      // propios recordatorios automáticos (postventa/reactivación, no
-      // pipeline) y su texto no se toca.
-      var notaPipelineVigenteP=(recordatorioAutomaticoP&&recordatorioAutomaticoP.categoria==="pipeline"&&recordatorioAutomaticoP.origen==="cleo"&&recordatorioAutomaticoP.nota)?recordatorioAutomaticoP.nota:null;
       var descP,mensajeSugeridoP="";
       if(c.estadoProspecto==="Convertido"){
         var frasesSegunTipoP={"15":"buen momento para pedirle una recomendación.","30":"buen momento para ver si necesita algo más.","60":"buen momento para platicarle de un proyecto nuevo.","90":"buen momento para mantenerte presente."};
@@ -614,21 +583,14 @@ function obtenerAccionesHoy(clientes,cotizaciones,esProductos,limite){
         descP="En su momento "+etiquetaMotivoP+". Hoy habías programado retomar contacto — vale la pena ver si su situación cambió.";
         mensajeSugeridoP=c.mensajeSeguimientoPostVenta||"";
       }
-      else if(notaPipelineVigenteP){
-        descP=notaPipelineVigenteP;
-      }
       else if(c.estadoProspecto==="Nueva"){
-        // tienePrecioReal(c), no `c.precioInteres` a secas , precioInteres
-        // se guarda como STRING y "0" (sin precio real capturado todavía)
-        // es truthy en JS, así que la versión anterior mostraba "($0)" en
-        // esta misma tarjeta de Hoy (reporte de fallos, punto 1).
         descP=c.productoInteres
-          ?"Preguntó por "+c.productoInteres+(tienePrecioReal(c)?" ($"+formatoDinero(Number(c.precioInteres))+")":"")+" "+textoHaceDias(dias)+" y todavía no le has dado seguimiento."
+          ?"Preguntó por "+c.productoInteres+(c.precioInteres?" ($"+formatoDinero(Number(c.precioInteres))+")":"")+" "+textoHaceDias(dias)+" y todavía no le has dado seguimiento."
           :"Sin retomar "+textoHaceDias(dias);
       }
       else{
         descP=c.productoInteres
-          ?"Tiene tu precio de "+c.productoInteres+(tienePrecioReal(c)?" ($"+formatoDinero(Number(c.precioInteres))+")":"")+" desde "+textoHaceDias(dias)+", sin que se haya convertido en pedido."
+          ?"Tiene tu precio de "+c.productoInteres+(c.precioInteres?" ($"+formatoDinero(Number(c.precioInteres))+")":"")+" desde "+textoHaceDias(dias)+", sin que se haya convertido en pedido."
           :"En seguimiento "+textoHaceDias(dias);
       }
       listaP.push({
@@ -726,15 +688,6 @@ function obtenerAccionesHoy(clientes,cotizaciones,esProductos,limite){
         var etiquetaMotivo1=etiquetasMotivo1[c.motivoPerdida]||"no siguió adelante";
         desc1="En su momento "+etiquetaMotivo1+". Hoy habías programado retomar contacto — vale la pena ver si su situación cambió.";
       }
-      // Recordatorio de pipeline vigente (categoria:"pipeline",origen:"cleo"
-      // , el mismo que crea "Envié un precio"/guardarCot y que Cliente→
-      // Seguimiento muestra tal cual vía r.nota) es la única fuente de
-      // verdad para esta tarjeta , antes se recalculaba un texto paralelo
-      // desde cotP/servicio que podía contradecir literalmente lo que
-      // Seguimiento mostraba para el mismo cliente el mismo día. No aplica
-      // a Ganado/Perdido (ya resueltos arriba, con sus propios
-      // recordatorios de postventa/reactivación, que no se tocan).
-      else if(r.categoria==="pipeline"&&r.origen==="cleo"&&r.nota) desc1=r.nota;
       else if(cotP) desc1="Le enviaste el precio de "+servicio+". Hoy habías programado preguntarle si pudo revisarlo.";
       else if(servicio) desc1="Preguntó por "+servicio+" y todavía no ha recibido el precio. Hoy habías quedado en enviárselo.";
       else if(!cotP&&c.notas) desc1='Anotaste: "'+c.notas+'" — hoy habías programado retomar esta conversación.';
@@ -2569,15 +2522,7 @@ function obtenerReversionIngresoPedido(ped){
   if(totalPagado<=0) return null;
   // Fallback para pedidos cancelados ANTES de que existiera fechaCancelacion
   // , se usa la fecha del pedido en vez de dejar la reversión sin fecha.
-  // fechaHora: ped.fechaHoraCancelacion (ver conCambiosEstadoPedido) , el
-  // momento REAL en que se canceló, siempre posterior al de cualquier pago
-  // ya recibido. Ingresos (vista="ventas_productos") la usa para ordenar
-  // esta reversión por encima del anticipo que revierte cuando ambos caen
-  // el mismo día , antes solo existía `fecha` (sin hora), así que un
-  // anticipo y su cancelación el mismo día podían mostrarse en cualquier
-  // orden. Pedidos cancelados ANTES de que existiera este campo caen a
-  // `null` , el llamador decide el fallback (nunca "hoy").
-  return { monto:-totalPagado, fecha:ped.fechaCancelacion||ped.fecha||ped.fechaCreado, fechaHora:ped.fechaHoraCancelacion||null };
+  return { monto:-totalPagado, fecha:ped.fechaCancelacion||ped.fecha||ped.fechaCreado };
 }
 // Única fórmula de subtotal/descuento/total a partir de un arreglo de items ,
 // usada por guardarCot, "Guardar y PDF" y cualquier otro lugar que necesite
@@ -2869,25 +2814,6 @@ function tieneOportunidadActivaProductos(cliente){
 // + resumenItemsCotizacion (ya existentes), nunca una fórmula nueva.
 function resumenOportunidadActivaProductos(cliente){
   return resumenItemsCotizacion(obtenerItemsInteres(cliente),"producto")||cliente.productoInteres||"sus productos";
-}
-// ── tienePrecioReal: ÚNICA función para saber si un cliente de PRODUCTOS ya
-// tiene un precio de interés REALMENTE capturado ──────────────────────────
-// c.precioInteres se guarda como STRING (ver compatP.total en
-// guardarPreguntoP/guardarEnvieP , buildItemsCompat), así que cuando el
-// total todavía es 0 (nadie ha escrito un precio) ese string queda
-// literalmente "0" , y en JS "0" es un valor TRUTHY. Todo `c.precioInteres
-// ? ... : ...` disperso por la app trataba entonces "sin precio" como "sí
-// tiene precio": Hoy mostraba "($0)" en la descripción, la ficha de
-// Oportunidades mostraba la etiqueta verde "$0", el botón "Enviar precio"
-// aparecía habilitado (y el mensaje de WhatsApp decía "el precio es $0"),
-// y el conteo de "oportunidades sin precio" las excluía por error. Esta
-// función es el ÚNICO punto que decide correctamente, comparando el valor
-// NUMÉRICO contra 0 en vez de la verdad booleana del string.
-function tienePrecioReal(cliente){
-  if(!cliente) return false;
-  if(cliente.precioInteres===undefined||cliente.precioInteres===null||cliente.precioInteres==="") return false;
-  var n=Number(cliente.precioInteres);
-  return isFinite(n)&&n>0;
 }
 // ── Equivalente de tieneOportunidadActivaProductos, para SERVICIOS ────────
 // Servicios no usa estadoProspecto (eso es exclusivo del mini-pipeline de
@@ -5969,22 +5895,7 @@ export default function CLEO(props){
     var nombresYaEscritos=(modal.fcCotBase.items||[]).filter(function(it){ return it.nombre&&it.nombre.trim(); }).map(function(it){ return normalizarNombreItem(it.nombre); });
     var itemsFaltantesDeOportunidad=(modal.itemsAntesOportunidad||[]).filter(function(it){ return nombresYaEscritos.indexOf(normalizarNombreItem(it.nombre))===-1; });
     var itemsMergeados=itemsFaltantesDeOportunidad.concat(modal.fcCotBase.items||[]);
-    // Antes de guardar, se pregunta CUÁNDO darle seguimiento después de
-    // enviar este precio , mismo patrón ya correcto que Productos usa en
-    // "Enviar precio" (ficha de Oportunidades): reutiliza el MISMO selector
-    // de fecha que ya existe (modalSeguimientoCotDif, hasta ahora solo
-    // usado por la rama "No, es una cotización diferente"), nunca un
-    // segundo selector paralelo. `modoVinculada:true` le indica a
-    // elegirSeguimientoCotDifDias/elegirSeguimientoCotDifFechaCustom/
-    // omitirSeguimientoCotDif que la fecha elegida aquí es para el
-    // RECORDATORIO automático de pipeline del cliente (categoria:"pipeline"),
-    // no para el seguimientoFecha propio de una cotización independiente
-    // (esos dos modelos nunca se mezclan). Antes, este camino guardaba
-    // directo sin preguntar , el recordatorio automático viejo ("quedaste
-    // en enviarle el precio") sobrevivía intacto y Seguimiento/Hoy seguían
-    // mostrando el estado anterior al envío.
-    setSeguimientoCotDifFechaCustom("");
-    setModalSeguimientoCotDif({fcCotBase:Object.assign({},modal.fcCotBase,{items:itemsMergeados,_vinculadaOportunidadActual:true}),modalVincularOriginal:modal,modoVinculada:true});
+    guardarCot(Object.assign({},modal.fcCotBase,{items:itemsMergeados,_vinculadaOportunidadActual:true}));
   }
   // "No, es una cotización diferente": reanuda guardarCot exactamente con
   // lo que ya se había escrito (nunca se le agrega ni se le quita nada de
@@ -6025,15 +5936,6 @@ export default function CLEO(props){
     setTimeout(function(){ resolviendoVincularOportunidadRef.current=false; },300);
     var f=new Date(HOY); f.setDate(f.getDate()+Number(dias));
     setModalSeguimientoCotDif(null);
-    // modoVinculada (ver confirmarVincularOportunidadCotSi) , la fecha va al
-    // recordatorio de pipeline del cliente (_seguimientoPipelineFecha), no
-    // al seguimientoFecha propio de una cotización independiente , esta
-    // rama NUNCA marca _vinculadaOportunidadActual:false (fcCotBase ya trae
-    // true), esa marca es exclusiva del camino "cotización diferente".
-    if(modal.modoVinculada){
-      guardarCot(Object.assign({},modal.fcCotBase,{_seguimientoPipelineFecha:fmtFechaLocal(f)}));
-      return;
-    }
     guardarCot(Object.assign({},modal.fcCotBase,{_vinculadaOportunidadActual:false,_seguimientoFechaElegida:fmtFechaLocal(f)}));
   }
   function elegirSeguimientoCotDifFechaCustom(){
@@ -6044,11 +5946,6 @@ export default function CLEO(props){
     setTimeout(function(){ resolviendoVincularOportunidadRef.current=false; },300);
     var fechaElegida=seguimientoCotDifFechaCustom;
     setModalSeguimientoCotDif(null);
-    // Mismo criterio que elegirSeguimientoCotDifDias , ver modoVinculada ahí.
-    if(modal.modoVinculada){
-      guardarCot(Object.assign({},modal.fcCotBase,{_seguimientoPipelineFecha:fechaElegida}));
-      return;
-    }
     guardarCot(Object.assign({},modal.fcCotBase,{_vinculadaOportunidadActual:false,_seguimientoFechaElegida:fechaElegida}));
   }
   // "Sin seguimiento": ÚNICA salida que guarda B con
@@ -6062,15 +5959,6 @@ export default function CLEO(props){
     resolviendoVincularOportunidadRef.current=true;
     setTimeout(function(){ resolviendoVincularOportunidadRef.current=false; },300);
     setModalSeguimientoCotDif(null);
-    // modoVinculada , "Sin seguimiento" explícito: no se crea un
-    // recordatorio nuevo, pero guardarCot igual limpia el recordatorio de
-    // pipeline viejo (_seguimientoPipelineFecha:"" , distinto de undefined,
-    // ver guardarCot), para no dejar "quedaste en enviarle el precio"
-    // sobreviviendo con el precio ya enviado.
-    if(modal.modoVinculada){
-      guardarCot(Object.assign({},modal.fcCotBase,{_seguimientoPipelineFecha:""}));
-      return;
-    }
     guardarCot(Object.assign({},modal.fcCotBase,{_vinculadaOportunidadActual:false,_seguimientoFechaElegida:""}));
   }
   // "×" / click fuera del modal: cancela ÚNICAMENTE este paso de la
@@ -7476,25 +7364,6 @@ export default function CLEO(props){
     if(!esProductos&&!editCotId&&fcCot.clienteId&&fcCot._vinculadaOportunidadActual===undefined){
       var clienteActualCot=clientes.find(function(c){ return String(c.id)===String(fcCot.clienteId); });
       if(clienteActualCot&&tieneOportunidadActivaServicios(clienteActualCot)){
-        // Origen EXPLÍCITO: esta cotización se abrió desde la tarjeta de
-        // ESTA oportunidad específica ("Hacer/Crear cotización" dentro del
-        // modal cotRapidaId del pipeline) , el id real transportado en
-        // fcCot._origenOportunidadClienteId (nunca el nombre) coincide con
-        // el cliente que se está guardando ahora mismo. En ese caso la
-        // vinculación ya es un hecho, no una pregunta: se salta
-        // modalVincularOportunidadCot por completo y se va directo a la
-        // MISMA continuación que "Sí, es la misma oportunidad"
-        // (confirmarVincularOportunidadCotSi) , el selector de próximo
-        // seguimiento ya corregido (modalSeguimientoCotDif,
-        // modoVinculada:true). Entradas ambiguas (+Nueva cotización, Envié
-        // un precio, o cualquier flujo genérico que solo trae clienteId sin
-        // este marcador) NO cumplen esta condición y siguen preguntando,
-        // como antes.
-        if(fcCot._origenOportunidadClienteId&&String(fcCot._origenOportunidadClienteId)===String(clienteActualCot.id)){
-          setSeguimientoCotDifFechaCustom("");
-          setModalSeguimientoCotDif({fcCotBase:Object.assign({},fcCot,{_vinculadaOportunidadActual:true}),modalVincularOriginal:null,modoVinculada:true});
-          return;
-        }
         setModalVincularOportunidadCot({
           clienteId:clienteActualCot.id,
           resumenActual:resumenOportunidadActivaServicios(clienteActualCot),
@@ -7645,26 +7514,6 @@ export default function CLEO(props){
           // criterio que ya usa el botón "Enviar precio" de la tarjeta de
           // Oportunidades, que también pasa a "En seguimiento".
           if(esProductos&&c.estadoProspecto!=="Convertido"&&c.estadoProspecto!=="Perdido") upd=Object.assign(upd,{estadoProspecto:"En seguimiento"});
-          // Servicios , replica el patrón ya correcto de Productos ("Enviar
-          // precio" en la ficha de Oportunidades): al confirmar "Sí, es la
-          // misma oportunidad" ya se preguntó, vía el selector existente
-          // (modalSeguimientoCotDif, ver confirmarVincularOportunidadCotSi),
-          // cuándo darle seguimiento después de este envío , esa fecha llega
-          // aquí en fcCot._seguimientoPipelineFecha. Se reemplaza (nunca solo
-          // agrega) el recordatorio automático de pipeline anterior , mismo
-          // filtro exacto que ya usa el resto de la app
-          // (categoria:"pipeline"&&origen:"cleo"), así que recordatorios
-          // manuales, personalizados y de posventa quedan intactos. Solo
-          // corre cuando esta cotización de verdad pasó por esa pregunta
-          // (_seguimientoPipelineFecha!==undefined) , una cotización que se
-          // guarda sin ninguna oportunidad activa que proteger (el modal
-          // nunca se mostró) no debe tocar recordatorios.
-          if(!esProductos&&fcCot._seguimientoPipelineFecha!==undefined){
-            var recordatoriosSinPipelineAnteriorCot=recordatoriosDe(upd).filter(function(r){ return !(r&&r.categoria==="pipeline"&&r.origen==="cleo"); });
-            upd=fcCot._seguimientoPipelineFecha
-              ?conRecordatoriosActualizados(upd,recordatoriosSinPipelineAnteriorCot.concat([{id:"r_"+Date.now(),fecha:fcCot._seguimientoPipelineFecha,nota:"Le enviaste el precio de "+(resumenFinal||"tus servicios")+". Pregúntale si pudo revisarlo.",esPersonalizada:false,origen:"cleo",categoria:"pipeline"}]))
-              :conRecordatoriosActualizados(upd,recordatoriosSinPipelineAnteriorCot);
-          }
           return upd;
         });
       });
@@ -9164,34 +9013,20 @@ export default function CLEO(props){
             !isMobile&&e("div",{style:{fontSize:14,color:C.textMuted,marginTop:8}},subtitulo)
           ),
 
-          // QUÉ HA PASADO , registro rápido de actividad. width:"100%"+
-          // boxSizing:"border-box" en la tarjeta, y en cada nivel dentro de
-          // ella (grid, botones), para que el padding nunca se sume por
-          // fuera del ancho disponible del contenedor padre (línea ~8624,
-          // que ya es width:100%+border-box) , antes la tarjeta no fijaba
-          // box-sizing y la cuadrícula móvil usaba columnas "1fr 1fr" sin
-          // minmax(0,...), cuyo ancho mínimo por defecto es el contenido
-          // (min-content) , un botón cuyo texto/ícono no cabía empujaba esa
-          // columna (y con ella la cuadrícula completa) más ancha que la
-          // tarjeta, desplazando visualmente todo hacia la derecha y
-          // generando scroll horizontal en Chrome Android. minmax(0,1fr)
-          // fuerza el ancho mínimo de columna a 0 , las dos columnas quedan
-          // genuinamente iguales y nunca se salen del ancho del padre,
-          // incluso descontando el espacio que Android reserva para su
-          // barra de scroll. Escritorio (repeat(4,1fr)) no se toca.
-          e("div",{style:{background:C.surface,borderRadius:20,padding:isMobile?"20px 16px":"28px",border:"1px solid "+C.border,boxShadow:"0 2px 12px rgba(0,0,0,0.06)",marginBottom:20,width:"100%",boxSizing:"border-box"}},
+          // QUÉ HA PASADO , registro rápido de actividad
+          e("div",{style:{background:C.surface,borderRadius:20,padding:"28px",border:"1px solid "+C.border,boxShadow:"0 2px 12px rgba(0,0,0,0.06)",marginBottom:20}},
             e("div",{style:{fontSize:isMobile?18:20,fontWeight:700,color:C.text,marginBottom:4}},"¿Qué ha pasado en "+empresa+"?"),
             e("div",{style:{fontSize:13,color:C.textMuted,marginBottom:18}},"Registra algo nuevo para mantener tus ventas al día."),
-            e("div",{style:{display:"grid",gridTemplateColumns:isMobile?"repeat(2,minmax(0,1fr))":"repeat(4,1fr)",gap:10,width:"100%",boxSizing:"border-box"}},
+            e("div",{style:{display:"grid",gridTemplateColumns:isMobile?"1fr 1fr":"repeat(4,1fr)",gap:10}},
               [
                 {ic:"💬",label:"Alguien preguntó",onClick:function(){ if(esProductos){ setPasoPreguntoP(1); } else { setPasoPregunto(1); } }},
                 {ic:"🏷️",label:"Envié un precio",onClick:function(){ if(esProductos){ setModalEnvieP(true); } else { setFormCot(Object.assign({},cotVacio,{nuevoNombre:""})); setModalCot(true); } }},
                 {ic:"🛒",label:"Cerré una venta",onClick:function(){ if(esProductos){ setModalCerreP(true); } else { setModalCerre(true); } }},
                 {ic:"💰",label:"Recibí un pago",onClick:function(){ if(esProductos){ setModalRecibiP(true); } else { setModalRecibi(true); } }}
               ].map(function(op,i){
-                return e("button",{key:i,style:{cursor:"pointer",padding:"12px 14px",borderRadius:12,border:"1px solid "+C.border,background:C.bg,fontSize:13,color:C.text,fontWeight:500,display:"flex",alignItems:"center",gap:8,width:"100%",minWidth:0,boxSizing:"border-box",textAlign:"left"},onClick:op.onClick},
+                return e("button",{key:i,style:{cursor:"pointer",padding:"12px 14px",borderRadius:12,border:"1px solid "+C.border,background:C.bg,fontSize:13,color:C.text,fontWeight:500,display:"flex",alignItems:"center",gap:8,width:"100%",textAlign:"left"},onClick:op.onClick},
                   e("span",{style:{fontSize:15,flexShrink:0}},op.ic),
-                  e("span",{style:{overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",minWidth:0}},op.label)
+                  e("span",{style:{overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}},op.label)
                 );
               })
             )
@@ -10754,11 +10589,7 @@ export default function CLEO(props){
                     // vacío con el nombre del producto/catálogo si aplica.
                     var itemsOpo=obtenerItemsInteres(c);
                     if(itemsOpo.length===0){
-                      // tienePrecioReal(c) , "0" (sin precio real) es
-                      // truthy como string, así que antes se usaba "0" como
-                      // precio del renglón en vez de caer al precio del
-                      // catálogo (mismo bug raíz que el reporte, punto 1).
-                      var precioOpo=tienePrecioReal(c)?c.precioInteres:"";
+                      var precioOpo=c.precioInteres||"";
                       if(!precioOpo&&c.productoInteres){
                         var match=catActivo.find(function(p){ return p.nombre===c.productoInteres; });
                         if(match&&match.precio) precioOpo=String(match.precio);
@@ -10806,7 +10637,7 @@ export default function CLEO(props){
                           c.productoInteres
                             ? e("div",{style:{fontSize:13,fontWeight:600,color:C.text,marginBottom:1}},c.productoInteres)
                             : e("div",{style:{fontSize:12,color:C.textDim}},"Sin producto aún — toca para agregar"),
-                          tienePrecioReal(c)&&e("div",{style:{fontSize:13,color:C.green,fontWeight:700}},"$"+formatoDinero(Number(c.precioInteres))),
+                          c.precioInteres&&e("div",{style:{fontSize:13,color:C.green,fontWeight:700}},"$"+formatoDinero(Number(c.precioInteres))),
                           c.notasProspecto&&e("div",{style:{fontSize:11,color:C.textMuted,marginTop:1,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}},c.notasProspecto)
                         ),
                         e("svg",{width:12,height:12,viewBox:"0 0 24 24",fill:"none",stroke:C.border,strokeWidth:2,flexShrink:0},e("path",{d:"M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"}))
@@ -10815,7 +10646,7 @@ export default function CLEO(props){
                   // HINT CLEO
                   !esPerdido&&!editando&&(function(){
                     var texto=!c.productoInteres?"Pregúntale qué producto le interesa y agrégalo aquí":
-                              c.estadoProspecto==="Nueva"&&tienePrecioReal(c)?"Envíale el precio para que confirme":
+                              c.estadoProspecto==="Nueva"&&c.precioInteres?"Envíale el precio para que confirme":
                               c.estadoProspecto==="En seguimiento"?"¿Ya confirmó? Convierte en pedido":
                               c.estadoProspecto==="Sin respuesta"?"Intenta contactarla de nuevo":"";
                     if(!texto) return null;
@@ -10834,7 +10665,7 @@ export default function CLEO(props){
                     isMobile
                       ? e(BtnCanal,{cliente:c,iconOnly:true})
                       : e(BtnCanal,{cliente:c,small:true}),
-                    c.productoInteres&&tienePrecioReal(c)&&(isMobile
+                    c.productoInteres&&c.precioInteres&&(isMobile
                       ? e("button",{
                           title:"Cotización",
                           style:{cursor:"pointer",width:32,height:32,padding:0,borderRadius:8,border:"1px solid "+C.border+"88",background:"transparent",fontSize:13,color:C.textDim,display:"inline-flex",alignItems:"center",justifyContent:"center",flexShrink:0},
@@ -10854,11 +10685,7 @@ export default function CLEO(props){
                       onClick:function(){ abrirEdicion(c); }
                     },"¿Qué le interesa? →"),
 
-                    // tienePrecioReal(c) , no `c.precioInteres` a secas (ver
-                    // comentario junto a la función). Antes, un precio "0"
-                    // (todavía sin definir) igual mostraba este botón y
-                    // mandaba "el precio es $0" por WhatsApp.
-                    c.productoInteres&&tienePrecioReal(c)&&c.estadoProspecto==="Nueva"&&e("button",{
+                    c.productoInteres&&c.precioInteres&&c.estadoProspecto==="Nueva"&&e("button",{
                       style:{cursor:"pointer",padding:"7px 16px",borderRadius:10,border:"none",background:C.purple,fontSize:12,color:"#fff",fontWeight:600},
                       onClick:function(){
                         var canal=c.canalPrincipal||"WhatsApp";
@@ -10868,8 +10695,7 @@ export default function CLEO(props){
                         // más") , el resumen central (resumenItemsCotizacion) es
                         // para tarjetas/listados internos, no para un mensaje
                         // real que la persona le manda al cliente.
-                        var itemsInteresOpoEnvio=obtenerItemsInteres(c);
-                        var nombresInteresC=itemsInteresOpoEnvio.map(function(it){ return it.nombre; }).filter(Boolean);
+                        var nombresInteresC=obtenerItemsInteres(c).map(function(it){ return it.nombre; }).filter(Boolean);
                         var listaProductoC=nombresInteresC.length===0?(c.productoInteres||"mi producto")
                           :nombresInteresC.length===1?nombresInteresC[0]
                           :nombresInteresC.slice(0,-1).join(", ")+" y "+nombresInteresC[nombresInteresC.length-1];
@@ -10879,44 +10705,14 @@ export default function CLEO(props){
                         else if(canal==="Instagram"&&c.instagram) url=crearUrlInstagram(c.instagram);
                         else if(c.contacto) url=crearUrlWhatsApp(c.contacto,msg);
                         if(url) abrirEnlaceExternoSeguro(url);
-                        // "Precio enviado" en el historial , vía la MISMA
-                        // función central que ya usan guardarEnvieP/
-                        // guardarPreguntoP (crearEventoPrecioEnviado), nunca
-                        // un motor aparte. Se construye UNA sola vez aquí,
-                        // dentro del onClick (nunca dentro de un render ni de
-                        // abrir/descargar el PDF de la cotización, que son
-                        // flujos de solo lectura) , así que se agrega
-                        // exactamente una vez por cada clic real (reporte de
-                        // fallos, punto 2: antes este botón nunca dejaba
-                        // rastro en el historial).
-                        var eventoPrecioEnviadoOpo=crearEventoPrecioEnviado(itemsInteresOpoEnvio);
-                        // Seguimiento posterior al envío , reemplaza (nunca
-                        // solo agrega) el recordatorio automático de pipeline
-                        // "quedaste en enviarle el precio" por UN único
-                        // recordatorio nuevo, mismo filtro exacto
-                        // (categoria:"pipeline"&&origen:"cleo") que ya usan
-                        // guardarPreguntoP/guardarPregunto , nunca toca
-                        // recordatorios manuales/personalizados (reporte,
-                        // punto 3). resolverFechaPregunto("manana") es el
-                        // mismo default que ya usa el resto de la app para
-                        // "hoy/mañana/2 días/3 días" cuando no hay un paso de
-                        // formulario propio que pregunte la fecha (este botón
-                        // es una acción de un solo clic, sin modal).
-                        var fechaSeguimientoOpoEnvio=resolverFechaPregunto("manana");
+                        // Actualizar estado y resetear contador
                         setClientes(clientes.map(function(x){
-                          if(x.id!==c.id) return x;
-                          var baseOpoEnvio=Object.assign({},x,{
-                            estadoProspecto:"En seguimiento",fechaEtapa:FECHA_HOY,ultimoContacto:FECHA_HOY,
-                            historialContactos:(x.historialContactos||[]).concat([eventoPrecioEnviadoOpo])
-                          });
-                          var recordatoriosSinPipelineAnteriorOpoEnvio=recordatoriosDe(baseOpoEnvio).filter(function(r){ return !(r&&r.categoria==="pipeline"&&r.origen==="cleo"); });
-                          if(!fechaSeguimientoOpoEnvio) return baseOpoEnvio;
-                          return conRecordatoriosActualizados(baseOpoEnvio,recordatoriosSinPipelineAnteriorOpoEnvio.concat([{id:"r_"+Date.now(),fecha:fechaSeguimientoOpoEnvio,nota:"Ya le enviaste el precio. Dijiste que le darías seguimiento.",esPersonalizada:false,origen:"cleo",categoria:"pipeline"}]));
+                          return x.id===c.id?Object.assign({},x,{estadoProspecto:"En seguimiento",fechaEtapa:FECHA_HOY,ultimoContacto:FECHA_HOY}):x;
                         }));
                       }
                     },"Enviar precio"),
 
-                    c.productoInteres&&!tienePrecioReal(c)&&c.estadoProspecto==="Nueva"&&e("button",{
+                    c.productoInteres&&!c.precioInteres&&c.estadoProspecto==="Nueva"&&e("button",{
                       style:{cursor:"pointer",padding:"7px 16px",borderRadius:10,border:"none",background:C.purple,fontSize:12,color:"#fff",fontWeight:600},
                       onClick:function(){ abrirEdicion(c); }
                     },"Agregar precio"),
@@ -11266,16 +11062,6 @@ export default function CLEO(props){
                     e("div",{style:{flex:1,minWidth:0}},
                       e("div",{style:{fontWeight:700,fontSize:13,color:C.text,marginBottom:1,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}},cl?cl.nombre:"Cliente"),
                       e("div",{style:{fontSize:11,color:C.textMuted,marginBottom:3,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}},ped.productos||"Sin producto"),
-                      // Origen de la venta rápida (ped.etiqueta) , mismo campo
-                      // que ya llena el formulario en "¿Donde fue esta venta?"
-                      // , no un campo paralelo nuevo. Solo informativo: no
-                      // toca totales/pagos/estados/filtros. Un pedido nacido
-                      // de "+ Pedido" nunca trae ped.etiqueta (pedidoVacio no
-                      // tiene ese campo), así que esta línea solo aparece en
-                      // pedidos que sí vinieron de Venta rápida con origen
-                      // capturado , sin importar si tienen cliente o no, ni
-                      // la modalidad de pago con la que se registraron.
-                      ped.etiqueta&&e("div",{style:{fontSize:10,color:C.textDim,marginBottom:3,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}},"Origen: "+ped.etiqueta),
                       e("div",{style:{display:"flex",gap:6,flexWrap:"wrap",alignItems:"center"}},
                         e("span",{style:{fontSize:11,padding:"2px 7px",borderRadius:8,background:ep.bg,color:ep.color,fontWeight:600}},ep.label),
                         ped.fechaEntrega&&e("span",{style:{fontSize:10,color:C.textDim}},"Entrega: "+ped.fechaEntrega),
@@ -11929,39 +11715,13 @@ export default function CLEO(props){
         ),
         e("div",{style:{display:"flex",flexDirection:isMobile?"column":"row",gap:8,marginBottom:16,flexWrap:isMobile?"nowrap":"wrap",alignItems:isMobile?"stretch":"center"}},
           e("input",{placeholder:"Buscar...",value:filtroCot.busqueda,onChange:function(ev){ setFiltroCot(Object.assign({},filtroCot,{busqueda:ev.target.value})); },style:Object.assign({},st.inp,{flex:1,minWidth:120,width:isMobile?"100%":"auto"})}),
-          // Selects de estatus/periodo: en escritorio antes usaban un
-          // tratamiento visual propio (7px de padding, borderRadius 12,
-          // borde claro C.border, texto C.textMuted, flechita nativa de
-          // doble punta del navegador) distinto al del buscador de al lado
-          // (st.inp: más alto, borde C.borderStrong, texto C.text), así que
-          // se veían más chicos/desalineados/genéricos junto a él. En
-          // escritorio ahora comparten exactamente el alto/borde/tipografía
-          // de st.inp y usan el mismo patrón de flecha propia + appearance:
-          // "none" que ya usa el selector "+ Del catálogo..." de items ,
-          // minWidth fijo para que no se compriman al ancho del texto más
-          // corto ("Todas") y salten de tamaño al cambiar de opción. Móvil
-          // no se toca (sigue con su propio tratamiento compacto en grid).
-          e("div",{style:isMobile?{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8}:{display:"flex",gap:8,flexShrink:0}},
-            isMobile
-              ? e("select",{value:filtroCot.estatus,onChange:function(ev){ setHighlightCotId(null); setFiltroCot(Object.assign({},filtroCot,{estatus:ev.target.value})); },style:{cursor:"pointer",padding:"7px 12px",borderRadius:12,border:"1px solid "+C.border,background:C.surface,fontSize:13,color:C.textMuted,outline:"none",width:"100%",minWidth:0}},
-                  [["","Todas"],["Pendiente","Esperando respuesta"],["Rechazada","Sin cerrar"]].map(function(f){ return e("option",{key:f[0]||"todas",value:f[0]},f[1]); })
-                )
-              : e("div",{style:{position:"relative",flexShrink:0}},
-                  e("select",{value:filtroCot.estatus,onChange:function(ev){ setHighlightCotId(null); setFiltroCot(Object.assign({},filtroCot,{estatus:ev.target.value})); },style:Object.assign({},st.inp,{cursor:"pointer",appearance:"none",WebkitAppearance:"none",padding:"10px 30px 10px 14px",width:"auto",minWidth:190,outline:"none"})},
-                    [["","Todas"],["Pendiente","Esperando respuesta"],["Rechazada","Sin cerrar"]].map(function(f){ return e("option",{key:f[0]||"todas",value:f[0]},f[1]); })
-                  ),
-                  e("span",{style:{position:"absolute",right:12,top:"50%",transform:"translateY(-50%)",pointerEvents:"none",fontSize:10,color:C.textMuted}},"▾")
-                ),
-            isMobile
-              ? e("select",{value:filtroCot.periodo,onChange:function(ev){ setFiltroCot(Object.assign({},filtroCot,{periodo:ev.target.value})); },style:{cursor:"pointer",padding:"7px 12px",borderRadius:12,border:"1px solid "+C.border,background:C.surface,fontSize:13,color:C.textMuted,outline:"none",width:"100%",minWidth:0}},
-                  [["todo","Todo el tiempo"],["semana","Esta semana"],["mes","Este mes"],["trimestre","Trimestre"]].map(function(p){ return e("option",{key:p[0],value:p[0]},p[1]); })
-                )
-              : e("div",{style:{position:"relative",flexShrink:0}},
-                  e("select",{value:filtroCot.periodo,onChange:function(ev){ setFiltroCot(Object.assign({},filtroCot,{periodo:ev.target.value})); },style:Object.assign({},st.inp,{cursor:"pointer",appearance:"none",WebkitAppearance:"none",padding:"10px 30px 10px 14px",width:"auto",minWidth:170,outline:"none"})},
-                    [["todo","Todo el tiempo"],["semana","Esta semana"],["mes","Este mes"],["trimestre","Trimestre"]].map(function(p){ return e("option",{key:p[0],value:p[0]},p[1]); })
-                  ),
-                  e("span",{style:{position:"absolute",right:12,top:"50%",transform:"translateY(-50%)",pointerEvents:"none",fontSize:10,color:C.textMuted}},"▾")
-                )
+          e("div",{style:isMobile?{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8}:{display:"flex",gap:8}},
+            e("select",{value:filtroCot.estatus,onChange:function(ev){ setHighlightCotId(null); setFiltroCot(Object.assign({},filtroCot,{estatus:ev.target.value})); },style:{cursor:"pointer",padding:"7px 12px",borderRadius:12,border:"1px solid "+C.border,background:C.surface,fontSize:isMobile?13:16,color:C.textMuted,outline:"none",width:isMobile?"100%":"auto",minWidth:0}},
+              [["","Todas"],["Pendiente","Esperando respuesta"],["Rechazada","Sin cerrar"]].map(function(f){ return e("option",{key:f[0]||"todas",value:f[0]},f[1]); })
+            ),
+            e("select",{value:filtroCot.periodo,onChange:function(ev){ setFiltroCot(Object.assign({},filtroCot,{periodo:ev.target.value})); },style:{cursor:"pointer",padding:"7px 12px",borderRadius:12,border:"1px solid "+C.border,background:C.surface,fontSize:isMobile?13:16,color:C.textMuted,outline:"none",width:isMobile?"100%":"auto",minWidth:0}},
+              [["todo","Todo el tiempo"],["semana","Esta semana"],["mes","Este mes"],["trimestre","Trimestre"]].map(function(p){ return e("option",{key:p[0],value:p[0]},p[1]); })
+            )
           )
         ),
         cotsFiltradas.length===0&&e("div",{style:{fontSize:13,color:C.textDim,textAlign:"center",padding:"24px 0"}},"No hay cotizaciones con esos filtros."),
@@ -12121,31 +11881,13 @@ export default function CLEO(props){
                 );
               })
             ),
-            // Mismo tratamiento que ya se corrigió en Cotizaciones: en
-            // escritorio el select nativo se veía chico/genérico (flechita
-            // de doble punta del navegador, borde claro) junto a los pills
-            // de filtro , ahora usa el mismo patrón de flecha propia +
-            // appearance:"none" con alto/borde/tipografía de st.inp y
-            // minWidth fijo. Móvil sigue con su tratamiento compacto
-            // original (no se toca).
-            isMobile
-              ? e("select",{
-                  value:filtroTrabajoPeriodo,
-                  onChange:function(ev){ setFiltroTrabajoPeriodo(ev.target.value); },
-                  style:{cursor:"pointer",padding:"7px 12px",borderRadius:12,border:"1px solid "+C.border,background:C.surface,fontSize:12,color:C.textMuted,outline:"none",width:"100%",minWidth:0}
-                },
-                  [["todo","Todo el tiempo"],["semana","Esta semana"],["mes","Este mes"],["trimestre","Trimestre"]].map(function(p){ return e("option",{key:p[0],value:p[0]},p[1]); })
-                )
-              : e("div",{style:{position:"relative",flexShrink:0,marginLeft:"auto"}},
-                  e("select",{
-                    value:filtroTrabajoPeriodo,
-                    onChange:function(ev){ setFiltroTrabajoPeriodo(ev.target.value); },
-                    style:Object.assign({},st.inp,{cursor:"pointer",appearance:"none",WebkitAppearance:"none",padding:"10px 30px 10px 14px",width:"auto",minWidth:170,outline:"none"})
-                  },
-                    [["todo","Todo el tiempo"],["semana","Esta semana"],["mes","Este mes"],["trimestre","Trimestre"]].map(function(p){ return e("option",{key:p[0],value:p[0]},p[1]); })
-                  ),
-                  e("span",{style:{position:"absolute",right:12,top:"50%",transform:"translateY(-50%)",pointerEvents:"none",fontSize:10,color:C.textMuted}},"▾")
-                )
+            e("select",{
+              value:filtroTrabajoPeriodo,
+              onChange:function(ev){ setFiltroTrabajoPeriodo(ev.target.value); },
+              style:{cursor:"pointer",padding:"7px 12px",borderRadius:12,border:"1px solid "+C.border,background:C.surface,fontSize:12,color:C.textMuted,outline:"none",width:isMobile?"100%":"auto",minWidth:0,marginLeft:isMobile?0:"auto"}
+            },
+              [["todo","Todo el tiempo"],["semana","Esta semana"],["mes","Este mes"],["trimestre","Trimestre"]].map(function(p){ return e("option",{key:p[0],value:p[0]},p[1]); })
+            )
           ),
           sinFechaCount>=2&&filtroTrabajo!=="completado"&&e("div",{style:{fontSize:13,color:C.textMuted,padding:"14px 16px",background:C.surface,borderRadius:12,marginBottom:14,border:"1px solid "+C.border,display:"flex",alignItems:"center",gap:10}},
             e("span",{style:{fontSize:16}},"📅"),
@@ -12588,20 +12330,9 @@ export default function CLEO(props){
               clienteNombre:cl?cl.nombre:(ped.etiqueta||"Sin cliente"),
               origen:origenFiltroPed,
               origenVenta:ped.origenVenta||"registro_manual",
-              // origenLugar: mismo ped.etiqueta de arriba, leído aquí
-              // directo del pedido exacto (dentro de este mismo
-              // pedidos.forEach) , nunca por nombre ni por cliente. Cada
-              // pago de este pedido ve siempre el mismo origen, el de SU
-              // pedidoId, sin importar cliente/pago/modalidad.
-              origenLugar:ped.etiqueta||"",
               pedidoId:ped.id,
               monto:Number(pago.monto),
               fecha:pago.fecha||ped.fecha,
-              // fechaHora: momento REAL en que se registró el pago (ver
-              // construirMovimientoPago) , se usa solo para el ORDEN dentro
-              // del mismo día, nunca para los cálculos/KPIs de arriba (esos
-              // siguen usando exclusivamente `fecha`).
-              fechaHora:pago.fechaHoraPago||null,
               concepto:pago.concepto||"Pago",
               productos:ped.productos||"",
             });
@@ -12617,7 +12348,6 @@ export default function CLEO(props){
               pedidoId:ped.id,
               monto:reversionPed.monto,
               fecha:reversionPed.fecha,
-              fechaHora:reversionPed.fechaHora,
               concepto:"Anticipo descontado · pedido cancelado",
               productos:ped.productos||"",
             });
@@ -12636,14 +12366,8 @@ export default function CLEO(props){
                 clienteNombre:cl?cl.nombre:(v.etiqueta||"Cliente general"),
                 origen:"venta_rapida",
                 origenVenta:"venta_rapida",
-                // origenLugar: registro legacy (colección "ventas", ya no se
-                // escribe en Productos) , mismo criterio que ped.etiqueta
-                // arriba, leído directo de ESTA venta dentro de su propio
-                // ventas.forEach.
-                origenLugar:v.etiqueta||"",
                 monto:Number(pago.monto),
                 fecha:pago.fecha||v.fecha,
-                fechaHora:pago.fechaHoraPago||null,
                 concepto:(pago.concepto||"Pago")+(v.concepto?" · "+v.concepto:""),
                 productos:"",
               });
@@ -12652,29 +12376,8 @@ export default function CLEO(props){
           }
         });
 
-        // Ordenar por momento REAL más reciente arriba , nunca solo por
-        // `fecha` (día, sin hora): dos movimientos del mismo día se veían
-        // en el orden en que el código los había ido empujando al arreglo
-        // (más antiguo arriba), no en el orden en que realmente ocurrieron
-        // , y una reversión de cancelación el mismo día que su anticipo
-        // podía aparecer DEBAJO de él en vez de arriba (reporte de fallos,
-        // punto 4). claveOrdenIngresoProductos usa fechaHora (real,
-        // milisegundos) cuando existe: los pagos siempre la traen (ver
-        // construirMovimientoPago) y una reversión de cancelación también
-        // (ver conCambiosEstadoPedido/obtenerReversionIngresoPedido), y esa
-        // reversión SIEMPRE ocurre después del pago que revierte, así que
-        // ordenar por hora real ya la deja arriba sin ningún caso especial.
-        // Fallback para movimientos antiguos SIN hora registrada: mediodía
-        // de `fecha` (nunca "ahora"/"hoy", eso los haría parecer de hoy).
-        function claveOrdenIngresoProductos(ing){
-          if(ing.fechaHora){
-            var t=new Date(ing.fechaHora).getTime();
-            if(!isNaN(t)) return t;
-          }
-          var f=new Date((ing.fecha||"")+"T12:00:00").getTime();
-          return isNaN(f)?0:f;
-        }
-        ingresos.sort(function(a,b){ return claveOrdenIngresoProductos(b)-claveOrdenIngresoProductos(a); });
+        // Ordenar por fecha desc
+        ingresos.sort(function(a,b){ return new Date(b.fecha)-new Date(a.fecha); });
 
         // KPIs
         var totalHoy=ingresos.filter(function(i){ return enPeriodo(i.fecha,"hoy"); }).reduce(function(s,i){ return s+i.monto; },0);
@@ -12763,10 +12466,7 @@ export default function CLEO(props){
                 var cl=clientes.find(function(c){ return c.id===ing.clienteId; });
                 var esVentaRapidaP=ing.origenVenta==="venta_rapida";
                 var esReversionP=ing.monto<0;
-                // Si hay origenLugar (ped.etiqueta/v.etiqueta) , se agrega
-                // discreto tras "Venta rápida" , mismo texto actual si no
-                // hay origen capturado, nunca una línea vacía con " · ".
-                var etiquetaOrigenP=esReversionP?"Pedido cancelado":(esVentaRapidaP?("Venta rápida"+(ing.origenLugar?" · "+ing.origenLugar:"")):"Pedido");
+                var etiquetaOrigenP=esReversionP?"Pedido cancelado":(esVentaRapidaP?"Venta rápida":"Pedido");
                 return e("div",{key:ing.id,style:{background:C.surface,borderRadius:12,border:"1px solid "+C.border,padding:"12px 14px",display:"flex",alignItems:"center",gap:10,boxShadow:"0 1px 3px rgba(0,0,0,0.04)"}},
                   // Avatar
                   e("div",{style:{width:36,height:36,borderRadius:9,background:cl?avatarColor(cl.id)+"22":"#F1F5F9",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,fontWeight:700,fontSize:12,color:cl?avatarColor(cl.id):"#94A3B8"}},
@@ -13001,10 +12701,7 @@ export default function CLEO(props){
         // Acciones semanales
         var accionesSemana=[];
         var opsEnSeguimiento=clientes.filter(function(c){ return c.estadoProspecto==="En seguimiento"; });
-        // !tienePrecioReal(c) , no `!c.precioInteres` (ver comentario junto
-        // a la función) , un precio "0" (string, sin definir todavía) era
-        // truthy y esta oportunidad se perdía silenciosamente del conteo.
-        var opsSinPrecio=clientes.filter(function(c){ return c.estadoProspecto==="Nueva"&&c.productoInteres&&!tienePrecioReal(c); });
+        var opsSinPrecio=clientes.filter(function(c){ return c.estadoProspecto==="Nueva"&&c.productoInteres&&!c.precioInteres; });
         var opsSinProducto=clientes.filter(function(c){ return c.estadoProspecto==="Nueva"&&!c.productoInteres; });
         if(opsEnSeguimiento.length>0) accionesSemana.push({n:1,ic:"💬",tipo:"seguimiento_espera",titulo:"Da seguimiento a "+opsEnSeguimiento.length+" oportunidad"+(opsEnSeguimiento.length>1?"es":"")+" en espera",desc:"Ya saben el precio. Un mensaje puede cerrar la venta esta semana."});
         if(saldoPorCobrar>0) accionesSemana.push({n:accionesSemana.length+1,ic:"💰",tipo:"saldo_cobrar",titulo:"Cobra los $"+formatoDinero(saldoPorCobrar)+" pendientes",desc:"Ya entregaste o tienes pedidos activos con saldo. Un mensaje rápido lo resuelve."});
@@ -15751,28 +15448,15 @@ export default function CLEO(props){
         );
       }
 
-      // FLUJO ESPECIALIZADO — cliente en "Nuevo contacto"/"Nueva": lo único
-      // que siempre falta aquí es mandarle el precio, así que en vez del
-      // listado genérico de abajo se muestran 4 acciones enfocadas
-      // exactamente en eso. Cubre tanto la tarjeta automática de Hoy
-      // (recordatorio real, con contactadoRecordatorioId) como la
-      // sugerencia calculada (sin recordatorio real detrás) , en ambos
-      // casos, cualquiera de las 4 opciones saca a este cliente de "Nuevo
-      // contacto" o reprograma el aviso, así que la tarjeta de Hoy nunca se
-      // queda pegada.
-      // Gate real: (a) el estado inicial de cada perfil ANTES de mandar
-      // precio (etapa==="Nuevo contacto" en Servicios, estadoProspecto==
-      // "Nueva" en Productos , antes este `if` solo comparaba cl.etapa, que
-      // en Productos siempre es undefined, así que Productos NUNCA entraba
-      // aquí y perdía la opción "Ya se lo envié" por completo) , O (b)
-      // tienePendienteEnviarPrecioVigente(cl): mientras siga persistido el
-      // recordatorio de pipeline "...y quedaste en enviarle el precio.",
-      // el precio sigue sin confirmarse enviado aunque el estado ya haya
-      // avanzado (p.ej. por guardar/generar una cotización o PDF sin pasar
-      // por "Ya se lo envié" , guardarCot adelanta etapa/estadoProspecto al
-      // solo GUARDAR, no al confirmar envío). (b) es la fuente de verdad
-      // real; (a) solo amplía la cobertura al caso sin recordatorio aún.
-      if(!esPerdidoC&&!esGanadoC&&((esProductos?cl.estadoProspecto==="Nueva":cl.etapa==="Nuevo contacto")||tienePendienteEnviarPrecioVigente(cl))){
+      // FLUJO ESPECIALIZADO — cliente en "Nuevo contacto": lo único que
+      // siempre falta aquí es mandarle el precio, así que en vez del listado
+      // genérico de abajo se muestran 4 acciones enfocadas exactamente en
+      // eso. Cubre tanto la tarjeta automática de Hoy (recordatorio real,
+      // con contactadoRecordatorioId) como la sugerencia calculada (sin
+      // recordatorio real detrás) , en ambos casos, cualquiera de las 4
+      // opciones saca a este cliente de "Nuevo contacto" o reprograma el
+      // aviso, así que la tarjeta de Hoy nunca se queda pegada.
+      if(!esPerdidoC&&!esGanadoC&&cl.etapa==="Nuevo contacto"){
         var catalogoNC=esProductos?productosCat:servicios;
         var interesDefaultNC=(esProductos?cl.productoInteres:cl.servicioInteres)||cl.notas||"";
         // Quita EXACTAMENTE el recordatorio que disparó esta tarjeta (si
@@ -15917,11 +15601,7 @@ export default function CLEO(props){
                   e("div",{style:{borderRadius:12,border:"1px solid "+C.red+"44",overflow:"hidden",cursor:"pointer"},
                     onClick:function(){
                       cerrar();
-                      // Productos lee estadoProspecto, no etapa (cl.etapa es
-                      // siempre undefined ahí) , mismo criterio que ya usa
-                      // cambiarEstado en la tarjeta de Oportunidades para
-                      // este mismo valor de reversión.
-                      setEtapaAnteriorPipeline(esProductos?(cl.estadoProspecto||"Nueva"):cl.etapa);
+                      setEtapaAnteriorPipeline(cl.etapa);
                       // Debe apuntar a la MISMA cotización que guardarMotivoPipeline
                       // rechazará (la vinculada a la oportunidad activa) , si no,
                       // cancelar después revertiría la cotización equivocada.
@@ -16477,16 +16157,7 @@ export default function CLEO(props){
             ?e("div",null,
                 e("div",{style:{marginBottom:16}},
                   e("label",{style:st.lbl},"Fecha"),
-                  // Mismo tratamiento que ya usan el resto de los inputs de
-                  // fecha de la app (ver los `type:"date"` de pagos/entregas)
-                  // , sin boxSizing:"border-box"+width:"100%"+WebkitAppearance:
-                  // "none" este input de iOS Safari se renderiza angosto/sin
-                  // el look nativo del resto del formulario (reporte: se ve
-                  // como una caja vacía sin la apariencia de selector de
-                  // fecha). Un solo modal compartido por Productos y
-                  // Servicios (se abre desde Cliente→Seguimiento en ambos
-                  // perfiles) , esta corrección aplica a los dos por igual.
-                  e("input",{type:"date",value:seguimientoFechaCal,onChange:function(ev){ setSeguimientoFechaCal(ev.target.value); },style:Object.assign({},st.inp,{width:"100%",maxWidth:"100%",boxSizing:"border-box",display:"block",minWidth:0,WebkitAppearance:"none"})})
+                  e("input",{type:"date",value:seguimientoFechaCal,onChange:function(ev){ setSeguimientoFechaCal(ev.target.value); },style:st.inp})
                 ),
                 e("div",{style:{marginBottom:16}},
                   e("label",{style:st.lbl},"Qué quieres recordar"),
@@ -16961,15 +16632,7 @@ export default function CLEO(props){
                 if(itemsCR.length===0){
                   itemsCR=[{id:"it_"+Date.now(),catalogoId:null,nombre:c.servicioInteres||c.notas||"",cantidad:1,precioUnitario:"",total:0}];
                 }
-                // _origenOportunidadClienteId: contexto EXPLÍCITO (id real,
-                // nunca nombre) de que esta cotización se abre desde la
-                // tarjeta de ESTA oportunidad específica (modal cotRapidaId,
-                // que solo se abre al tocar la tarjeta del cliente en el
-                // pipeline , ver setCotRapidaId(c.id) más arriba). guardarCot
-                // lo compara contra fcCot.clienteId antes de preguntar
-                // "¿corresponde a la oportunidad actual?" , si coinciden, la
-                // vinculación ya es un hecho y no hay nada que preguntar.
-                setFormCot(Object.assign({},cotVacio,{clienteId:String(c.id),items:itemsCR,_origenOportunidadClienteId:String(c.id)}));
+                setFormCot(Object.assign({},cotVacio,{clienteId:String(c.id),items:itemsCR}));
                 setModalCot(true); setCotRapidaId(null);
               }},"+ Crear cotización")
             )

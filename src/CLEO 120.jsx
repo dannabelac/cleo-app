@@ -11266,16 +11266,6 @@ export default function CLEO(props){
                     e("div",{style:{flex:1,minWidth:0}},
                       e("div",{style:{fontWeight:700,fontSize:13,color:C.text,marginBottom:1,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}},cl?cl.nombre:"Cliente"),
                       e("div",{style:{fontSize:11,color:C.textMuted,marginBottom:3,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}},ped.productos||"Sin producto"),
-                      // Origen de la venta rápida (ped.etiqueta) , mismo campo
-                      // que ya llena el formulario en "¿Donde fue esta venta?"
-                      // , no un campo paralelo nuevo. Solo informativo: no
-                      // toca totales/pagos/estados/filtros. Un pedido nacido
-                      // de "+ Pedido" nunca trae ped.etiqueta (pedidoVacio no
-                      // tiene ese campo), así que esta línea solo aparece en
-                      // pedidos que sí vinieron de Venta rápida con origen
-                      // capturado , sin importar si tienen cliente o no, ni
-                      // la modalidad de pago con la que se registraron.
-                      ped.etiqueta&&e("div",{style:{fontSize:10,color:C.textDim,marginBottom:3,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}},"Origen: "+ped.etiqueta),
                       e("div",{style:{display:"flex",gap:6,flexWrap:"wrap",alignItems:"center"}},
                         e("span",{style:{fontSize:11,padding:"2px 7px",borderRadius:8,background:ep.bg,color:ep.color,fontWeight:600}},ep.label),
                         ped.fechaEntrega&&e("span",{style:{fontSize:10,color:C.textDim}},"Entrega: "+ped.fechaEntrega),
@@ -12588,12 +12578,6 @@ export default function CLEO(props){
               clienteNombre:cl?cl.nombre:(ped.etiqueta||"Sin cliente"),
               origen:origenFiltroPed,
               origenVenta:ped.origenVenta||"registro_manual",
-              // origenLugar: mismo ped.etiqueta de arriba, leído aquí
-              // directo del pedido exacto (dentro de este mismo
-              // pedidos.forEach) , nunca por nombre ni por cliente. Cada
-              // pago de este pedido ve siempre el mismo origen, el de SU
-              // pedidoId, sin importar cliente/pago/modalidad.
-              origenLugar:ped.etiqueta||"",
               pedidoId:ped.id,
               monto:Number(pago.monto),
               fecha:pago.fecha||ped.fecha,
@@ -12636,11 +12620,6 @@ export default function CLEO(props){
                 clienteNombre:cl?cl.nombre:(v.etiqueta||"Cliente general"),
                 origen:"venta_rapida",
                 origenVenta:"venta_rapida",
-                // origenLugar: registro legacy (colección "ventas", ya no se
-                // escribe en Productos) , mismo criterio que ped.etiqueta
-                // arriba, leído directo de ESTA venta dentro de su propio
-                // ventas.forEach.
-                origenLugar:v.etiqueta||"",
                 monto:Number(pago.monto),
                 fecha:pago.fecha||v.fecha,
                 fechaHora:pago.fechaHoraPago||null,
@@ -12763,10 +12742,7 @@ export default function CLEO(props){
                 var cl=clientes.find(function(c){ return c.id===ing.clienteId; });
                 var esVentaRapidaP=ing.origenVenta==="venta_rapida";
                 var esReversionP=ing.monto<0;
-                // Si hay origenLugar (ped.etiqueta/v.etiqueta) , se agrega
-                // discreto tras "Venta rápida" , mismo texto actual si no
-                // hay origen capturado, nunca una línea vacía con " · ".
-                var etiquetaOrigenP=esReversionP?"Pedido cancelado":(esVentaRapidaP?("Venta rápida"+(ing.origenLugar?" · "+ing.origenLugar:"")):"Pedido");
+                var etiquetaOrigenP=esReversionP?"Pedido cancelado":(esVentaRapidaP?"Venta rápida":"Pedido");
                 return e("div",{key:ing.id,style:{background:C.surface,borderRadius:12,border:"1px solid "+C.border,padding:"12px 14px",display:"flex",alignItems:"center",gap:10,boxShadow:"0 1px 3px rgba(0,0,0,0.04)"}},
                   // Avatar
                   e("div",{style:{width:36,height:36,borderRadius:9,background:cl?avatarColor(cl.id)+"22":"#F1F5F9",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,fontWeight:700,fontSize:12,color:cl?avatarColor(cl.id):"#94A3B8"}},
@@ -16477,16 +16453,7 @@ export default function CLEO(props){
             ?e("div",null,
                 e("div",{style:{marginBottom:16}},
                   e("label",{style:st.lbl},"Fecha"),
-                  // Mismo tratamiento que ya usan el resto de los inputs de
-                  // fecha de la app (ver los `type:"date"` de pagos/entregas)
-                  // , sin boxSizing:"border-box"+width:"100%"+WebkitAppearance:
-                  // "none" este input de iOS Safari se renderiza angosto/sin
-                  // el look nativo del resto del formulario (reporte: se ve
-                  // como una caja vacía sin la apariencia de selector de
-                  // fecha). Un solo modal compartido por Productos y
-                  // Servicios (se abre desde Cliente→Seguimiento en ambos
-                  // perfiles) , esta corrección aplica a los dos por igual.
-                  e("input",{type:"date",value:seguimientoFechaCal,onChange:function(ev){ setSeguimientoFechaCal(ev.target.value); },style:Object.assign({},st.inp,{width:"100%",maxWidth:"100%",boxSizing:"border-box",display:"block",minWidth:0,WebkitAppearance:"none"})})
+                  e("input",{type:"date",value:seguimientoFechaCal,onChange:function(ev){ setSeguimientoFechaCal(ev.target.value); },style:st.inp})
                 ),
                 e("div",{style:{marginBottom:16}},
                   e("label",{style:st.lbl},"Qué quieres recordar"),

@@ -220,24 +220,6 @@ function esTextoPipelineConocido(texto){
   if(/^Preguntó por .+ y quedaste en enviarle el precio\.$/.test(texto)) return true;
   return false;
 }
-// true SOLO mientras exista, YA PERSISTIDO, un recordatorio de pipeline
-// (categoria:"pipeline",origen:"cleo") cuyo texto sea exactamente el de
-// "todavía no le he enviado el precio" (el mismo patrón que arriba
-// reconoce en esTextoPipelineConocido, aislado aquí porque esa función
-// también reconoce OTROS textos de pipeline que sí representan "ya se lo
-// envié" , p.ej. "Ya le enviaste la cotización..." , y esos NO deben
-// contar como pendiente). Única fuente de verdad para "¿ya se le mandó el
-// precio a este cliente?" en Productos y Servicios , crear, guardar, abrir
-// o descargar una cotización/PDF nunca la reemplaza por sí solo, así que
-// nunca se deduce "enviado" a partir de eso: solo una acción explícita
-// (el botón "Enviar precio" en Productos, o "Ya se lo envié"/guardar la
-// cotización vinculada en Servicios) reemplaza este recordatorio.
-function tienePendienteEnviarPrecioVigente(cliente){
-  if(!cliente) return false;
-  return recordatoriosDe(cliente).some(function(r){
-    return r&&r.categoria==="pipeline"&&r.origen==="cleo"&&/^Preguntó por .+ y quedaste en enviarle el precio\.$/.test(r.nota||"");
-  });
-}
 
 // true SOLO cuando el cliente ya está en una etapa final (Ganado, Perdido,
 // o Convertido en Productos) Y el recordatorio pertenece claramente al
@@ -11266,16 +11248,6 @@ export default function CLEO(props){
                     e("div",{style:{flex:1,minWidth:0}},
                       e("div",{style:{fontWeight:700,fontSize:13,color:C.text,marginBottom:1,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}},cl?cl.nombre:"Cliente"),
                       e("div",{style:{fontSize:11,color:C.textMuted,marginBottom:3,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}},ped.productos||"Sin producto"),
-                      // Origen de la venta rápida (ped.etiqueta) , mismo campo
-                      // que ya llena el formulario en "¿Donde fue esta venta?"
-                      // , no un campo paralelo nuevo. Solo informativo: no
-                      // toca totales/pagos/estados/filtros. Un pedido nacido
-                      // de "+ Pedido" nunca trae ped.etiqueta (pedidoVacio no
-                      // tiene ese campo), así que esta línea solo aparece en
-                      // pedidos que sí vinieron de Venta rápida con origen
-                      // capturado , sin importar si tienen cliente o no, ni
-                      // la modalidad de pago con la que se registraron.
-                      ped.etiqueta&&e("div",{style:{fontSize:10,color:C.textDim,marginBottom:3,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}},"Origen: "+ped.etiqueta),
                       e("div",{style:{display:"flex",gap:6,flexWrap:"wrap",alignItems:"center"}},
                         e("span",{style:{fontSize:11,padding:"2px 7px",borderRadius:8,background:ep.bg,color:ep.color,fontWeight:600}},ep.label),
                         ped.fechaEntrega&&e("span",{style:{fontSize:10,color:C.textDim}},"Entrega: "+ped.fechaEntrega),
@@ -11929,39 +11901,13 @@ export default function CLEO(props){
         ),
         e("div",{style:{display:"flex",flexDirection:isMobile?"column":"row",gap:8,marginBottom:16,flexWrap:isMobile?"nowrap":"wrap",alignItems:isMobile?"stretch":"center"}},
           e("input",{placeholder:"Buscar...",value:filtroCot.busqueda,onChange:function(ev){ setFiltroCot(Object.assign({},filtroCot,{busqueda:ev.target.value})); },style:Object.assign({},st.inp,{flex:1,minWidth:120,width:isMobile?"100%":"auto"})}),
-          // Selects de estatus/periodo: en escritorio antes usaban un
-          // tratamiento visual propio (7px de padding, borderRadius 12,
-          // borde claro C.border, texto C.textMuted, flechita nativa de
-          // doble punta del navegador) distinto al del buscador de al lado
-          // (st.inp: más alto, borde C.borderStrong, texto C.text), así que
-          // se veían más chicos/desalineados/genéricos junto a él. En
-          // escritorio ahora comparten exactamente el alto/borde/tipografía
-          // de st.inp y usan el mismo patrón de flecha propia + appearance:
-          // "none" que ya usa el selector "+ Del catálogo..." de items ,
-          // minWidth fijo para que no se compriman al ancho del texto más
-          // corto ("Todas") y salten de tamaño al cambiar de opción. Móvil
-          // no se toca (sigue con su propio tratamiento compacto en grid).
-          e("div",{style:isMobile?{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8}:{display:"flex",gap:8,flexShrink:0}},
-            isMobile
-              ? e("select",{value:filtroCot.estatus,onChange:function(ev){ setHighlightCotId(null); setFiltroCot(Object.assign({},filtroCot,{estatus:ev.target.value})); },style:{cursor:"pointer",padding:"7px 12px",borderRadius:12,border:"1px solid "+C.border,background:C.surface,fontSize:13,color:C.textMuted,outline:"none",width:"100%",minWidth:0}},
-                  [["","Todas"],["Pendiente","Esperando respuesta"],["Rechazada","Sin cerrar"]].map(function(f){ return e("option",{key:f[0]||"todas",value:f[0]},f[1]); })
-                )
-              : e("div",{style:{position:"relative",flexShrink:0}},
-                  e("select",{value:filtroCot.estatus,onChange:function(ev){ setHighlightCotId(null); setFiltroCot(Object.assign({},filtroCot,{estatus:ev.target.value})); },style:Object.assign({},st.inp,{cursor:"pointer",appearance:"none",WebkitAppearance:"none",padding:"10px 30px 10px 14px",width:"auto",minWidth:190,outline:"none"})},
-                    [["","Todas"],["Pendiente","Esperando respuesta"],["Rechazada","Sin cerrar"]].map(function(f){ return e("option",{key:f[0]||"todas",value:f[0]},f[1]); })
-                  ),
-                  e("span",{style:{position:"absolute",right:12,top:"50%",transform:"translateY(-50%)",pointerEvents:"none",fontSize:10,color:C.textMuted}},"▾")
-                ),
-            isMobile
-              ? e("select",{value:filtroCot.periodo,onChange:function(ev){ setFiltroCot(Object.assign({},filtroCot,{periodo:ev.target.value})); },style:{cursor:"pointer",padding:"7px 12px",borderRadius:12,border:"1px solid "+C.border,background:C.surface,fontSize:13,color:C.textMuted,outline:"none",width:"100%",minWidth:0}},
-                  [["todo","Todo el tiempo"],["semana","Esta semana"],["mes","Este mes"],["trimestre","Trimestre"]].map(function(p){ return e("option",{key:p[0],value:p[0]},p[1]); })
-                )
-              : e("div",{style:{position:"relative",flexShrink:0}},
-                  e("select",{value:filtroCot.periodo,onChange:function(ev){ setFiltroCot(Object.assign({},filtroCot,{periodo:ev.target.value})); },style:Object.assign({},st.inp,{cursor:"pointer",appearance:"none",WebkitAppearance:"none",padding:"10px 30px 10px 14px",width:"auto",minWidth:170,outline:"none"})},
-                    [["todo","Todo el tiempo"],["semana","Esta semana"],["mes","Este mes"],["trimestre","Trimestre"]].map(function(p){ return e("option",{key:p[0],value:p[0]},p[1]); })
-                  ),
-                  e("span",{style:{position:"absolute",right:12,top:"50%",transform:"translateY(-50%)",pointerEvents:"none",fontSize:10,color:C.textMuted}},"▾")
-                )
+          e("div",{style:isMobile?{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8}:{display:"flex",gap:8}},
+            e("select",{value:filtroCot.estatus,onChange:function(ev){ setHighlightCotId(null); setFiltroCot(Object.assign({},filtroCot,{estatus:ev.target.value})); },style:{cursor:"pointer",padding:"7px 12px",borderRadius:12,border:"1px solid "+C.border,background:C.surface,fontSize:isMobile?13:16,color:C.textMuted,outline:"none",width:isMobile?"100%":"auto",minWidth:0}},
+              [["","Todas"],["Pendiente","Esperando respuesta"],["Rechazada","Sin cerrar"]].map(function(f){ return e("option",{key:f[0]||"todas",value:f[0]},f[1]); })
+            ),
+            e("select",{value:filtroCot.periodo,onChange:function(ev){ setFiltroCot(Object.assign({},filtroCot,{periodo:ev.target.value})); },style:{cursor:"pointer",padding:"7px 12px",borderRadius:12,border:"1px solid "+C.border,background:C.surface,fontSize:isMobile?13:16,color:C.textMuted,outline:"none",width:isMobile?"100%":"auto",minWidth:0}},
+              [["todo","Todo el tiempo"],["semana","Esta semana"],["mes","Este mes"],["trimestre","Trimestre"]].map(function(p){ return e("option",{key:p[0],value:p[0]},p[1]); })
+            )
           )
         ),
         cotsFiltradas.length===0&&e("div",{style:{fontSize:13,color:C.textDim,textAlign:"center",padding:"24px 0"}},"No hay cotizaciones con esos filtros."),
@@ -12121,31 +12067,13 @@ export default function CLEO(props){
                 );
               })
             ),
-            // Mismo tratamiento que ya se corrigió en Cotizaciones: en
-            // escritorio el select nativo se veía chico/genérico (flechita
-            // de doble punta del navegador, borde claro) junto a los pills
-            // de filtro , ahora usa el mismo patrón de flecha propia +
-            // appearance:"none" con alto/borde/tipografía de st.inp y
-            // minWidth fijo. Móvil sigue con su tratamiento compacto
-            // original (no se toca).
-            isMobile
-              ? e("select",{
-                  value:filtroTrabajoPeriodo,
-                  onChange:function(ev){ setFiltroTrabajoPeriodo(ev.target.value); },
-                  style:{cursor:"pointer",padding:"7px 12px",borderRadius:12,border:"1px solid "+C.border,background:C.surface,fontSize:12,color:C.textMuted,outline:"none",width:"100%",minWidth:0}
-                },
-                  [["todo","Todo el tiempo"],["semana","Esta semana"],["mes","Este mes"],["trimestre","Trimestre"]].map(function(p){ return e("option",{key:p[0],value:p[0]},p[1]); })
-                )
-              : e("div",{style:{position:"relative",flexShrink:0,marginLeft:"auto"}},
-                  e("select",{
-                    value:filtroTrabajoPeriodo,
-                    onChange:function(ev){ setFiltroTrabajoPeriodo(ev.target.value); },
-                    style:Object.assign({},st.inp,{cursor:"pointer",appearance:"none",WebkitAppearance:"none",padding:"10px 30px 10px 14px",width:"auto",minWidth:170,outline:"none"})
-                  },
-                    [["todo","Todo el tiempo"],["semana","Esta semana"],["mes","Este mes"],["trimestre","Trimestre"]].map(function(p){ return e("option",{key:p[0],value:p[0]},p[1]); })
-                  ),
-                  e("span",{style:{position:"absolute",right:12,top:"50%",transform:"translateY(-50%)",pointerEvents:"none",fontSize:10,color:C.textMuted}},"▾")
-                )
+            e("select",{
+              value:filtroTrabajoPeriodo,
+              onChange:function(ev){ setFiltroTrabajoPeriodo(ev.target.value); },
+              style:{cursor:"pointer",padding:"7px 12px",borderRadius:12,border:"1px solid "+C.border,background:C.surface,fontSize:12,color:C.textMuted,outline:"none",width:isMobile?"100%":"auto",minWidth:0,marginLeft:isMobile?0:"auto"}
+            },
+              [["todo","Todo el tiempo"],["semana","Esta semana"],["mes","Este mes"],["trimestre","Trimestre"]].map(function(p){ return e("option",{key:p[0],value:p[0]},p[1]); })
+            )
           ),
           sinFechaCount>=2&&filtroTrabajo!=="completado"&&e("div",{style:{fontSize:13,color:C.textMuted,padding:"14px 16px",background:C.surface,borderRadius:12,marginBottom:14,border:"1px solid "+C.border,display:"flex",alignItems:"center",gap:10}},
             e("span",{style:{fontSize:16}},"📅"),
@@ -12588,12 +12516,6 @@ export default function CLEO(props){
               clienteNombre:cl?cl.nombre:(ped.etiqueta||"Sin cliente"),
               origen:origenFiltroPed,
               origenVenta:ped.origenVenta||"registro_manual",
-              // origenLugar: mismo ped.etiqueta de arriba, leído aquí
-              // directo del pedido exacto (dentro de este mismo
-              // pedidos.forEach) , nunca por nombre ni por cliente. Cada
-              // pago de este pedido ve siempre el mismo origen, el de SU
-              // pedidoId, sin importar cliente/pago/modalidad.
-              origenLugar:ped.etiqueta||"",
               pedidoId:ped.id,
               monto:Number(pago.monto),
               fecha:pago.fecha||ped.fecha,
@@ -12636,11 +12558,6 @@ export default function CLEO(props){
                 clienteNombre:cl?cl.nombre:(v.etiqueta||"Cliente general"),
                 origen:"venta_rapida",
                 origenVenta:"venta_rapida",
-                // origenLugar: registro legacy (colección "ventas", ya no se
-                // escribe en Productos) , mismo criterio que ped.etiqueta
-                // arriba, leído directo de ESTA venta dentro de su propio
-                // ventas.forEach.
-                origenLugar:v.etiqueta||"",
                 monto:Number(pago.monto),
                 fecha:pago.fecha||v.fecha,
                 fechaHora:pago.fechaHoraPago||null,
@@ -12763,10 +12680,7 @@ export default function CLEO(props){
                 var cl=clientes.find(function(c){ return c.id===ing.clienteId; });
                 var esVentaRapidaP=ing.origenVenta==="venta_rapida";
                 var esReversionP=ing.monto<0;
-                // Si hay origenLugar (ped.etiqueta/v.etiqueta) , se agrega
-                // discreto tras "Venta rápida" , mismo texto actual si no
-                // hay origen capturado, nunca una línea vacía con " · ".
-                var etiquetaOrigenP=esReversionP?"Pedido cancelado":(esVentaRapidaP?("Venta rápida"+(ing.origenLugar?" · "+ing.origenLugar:"")):"Pedido");
+                var etiquetaOrigenP=esReversionP?"Pedido cancelado":(esVentaRapidaP?"Venta rápida":"Pedido");
                 return e("div",{key:ing.id,style:{background:C.surface,borderRadius:12,border:"1px solid "+C.border,padding:"12px 14px",display:"flex",alignItems:"center",gap:10,boxShadow:"0 1px 3px rgba(0,0,0,0.04)"}},
                   // Avatar
                   e("div",{style:{width:36,height:36,borderRadius:9,background:cl?avatarColor(cl.id)+"22":"#F1F5F9",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,fontWeight:700,fontSize:12,color:cl?avatarColor(cl.id):"#94A3B8"}},
@@ -15751,28 +15665,15 @@ export default function CLEO(props){
         );
       }
 
-      // FLUJO ESPECIALIZADO — cliente en "Nuevo contacto"/"Nueva": lo único
-      // que siempre falta aquí es mandarle el precio, así que en vez del
-      // listado genérico de abajo se muestran 4 acciones enfocadas
-      // exactamente en eso. Cubre tanto la tarjeta automática de Hoy
-      // (recordatorio real, con contactadoRecordatorioId) como la
-      // sugerencia calculada (sin recordatorio real detrás) , en ambos
-      // casos, cualquiera de las 4 opciones saca a este cliente de "Nuevo
-      // contacto" o reprograma el aviso, así que la tarjeta de Hoy nunca se
-      // queda pegada.
-      // Gate real: (a) el estado inicial de cada perfil ANTES de mandar
-      // precio (etapa==="Nuevo contacto" en Servicios, estadoProspecto==
-      // "Nueva" en Productos , antes este `if` solo comparaba cl.etapa, que
-      // en Productos siempre es undefined, así que Productos NUNCA entraba
-      // aquí y perdía la opción "Ya se lo envié" por completo) , O (b)
-      // tienePendienteEnviarPrecioVigente(cl): mientras siga persistido el
-      // recordatorio de pipeline "...y quedaste en enviarle el precio.",
-      // el precio sigue sin confirmarse enviado aunque el estado ya haya
-      // avanzado (p.ej. por guardar/generar una cotización o PDF sin pasar
-      // por "Ya se lo envié" , guardarCot adelanta etapa/estadoProspecto al
-      // solo GUARDAR, no al confirmar envío). (b) es la fuente de verdad
-      // real; (a) solo amplía la cobertura al caso sin recordatorio aún.
-      if(!esPerdidoC&&!esGanadoC&&((esProductos?cl.estadoProspecto==="Nueva":cl.etapa==="Nuevo contacto")||tienePendienteEnviarPrecioVigente(cl))){
+      // FLUJO ESPECIALIZADO — cliente en "Nuevo contacto": lo único que
+      // siempre falta aquí es mandarle el precio, así que en vez del listado
+      // genérico de abajo se muestran 4 acciones enfocadas exactamente en
+      // eso. Cubre tanto la tarjeta automática de Hoy (recordatorio real,
+      // con contactadoRecordatorioId) como la sugerencia calculada (sin
+      // recordatorio real detrás) , en ambos casos, cualquiera de las 4
+      // opciones saca a este cliente de "Nuevo contacto" o reprograma el
+      // aviso, así que la tarjeta de Hoy nunca se queda pegada.
+      if(!esPerdidoC&&!esGanadoC&&cl.etapa==="Nuevo contacto"){
         var catalogoNC=esProductos?productosCat:servicios;
         var interesDefaultNC=(esProductos?cl.productoInteres:cl.servicioInteres)||cl.notas||"";
         // Quita EXACTAMENTE el recordatorio que disparó esta tarjeta (si
@@ -15917,11 +15818,7 @@ export default function CLEO(props){
                   e("div",{style:{borderRadius:12,border:"1px solid "+C.red+"44",overflow:"hidden",cursor:"pointer"},
                     onClick:function(){
                       cerrar();
-                      // Productos lee estadoProspecto, no etapa (cl.etapa es
-                      // siempre undefined ahí) , mismo criterio que ya usa
-                      // cambiarEstado en la tarjeta de Oportunidades para
-                      // este mismo valor de reversión.
-                      setEtapaAnteriorPipeline(esProductos?(cl.estadoProspecto||"Nueva"):cl.etapa);
+                      setEtapaAnteriorPipeline(cl.etapa);
                       // Debe apuntar a la MISMA cotización que guardarMotivoPipeline
                       // rechazará (la vinculada a la oportunidad activa) , si no,
                       // cancelar después revertiría la cotización equivocada.
@@ -16477,16 +16374,7 @@ export default function CLEO(props){
             ?e("div",null,
                 e("div",{style:{marginBottom:16}},
                   e("label",{style:st.lbl},"Fecha"),
-                  // Mismo tratamiento que ya usan el resto de los inputs de
-                  // fecha de la app (ver los `type:"date"` de pagos/entregas)
-                  // , sin boxSizing:"border-box"+width:"100%"+WebkitAppearance:
-                  // "none" este input de iOS Safari se renderiza angosto/sin
-                  // el look nativo del resto del formulario (reporte: se ve
-                  // como una caja vacía sin la apariencia de selector de
-                  // fecha). Un solo modal compartido por Productos y
-                  // Servicios (se abre desde Cliente→Seguimiento en ambos
-                  // perfiles) , esta corrección aplica a los dos por igual.
-                  e("input",{type:"date",value:seguimientoFechaCal,onChange:function(ev){ setSeguimientoFechaCal(ev.target.value); },style:Object.assign({},st.inp,{width:"100%",maxWidth:"100%",boxSizing:"border-box",display:"block",minWidth:0,WebkitAppearance:"none"})})
+                  e("input",{type:"date",value:seguimientoFechaCal,onChange:function(ev){ setSeguimientoFechaCal(ev.target.value); },style:st.inp})
                 ),
                 e("div",{style:{marginBottom:16}},
                   e("label",{style:st.lbl},"Qué quieres recordar"),
