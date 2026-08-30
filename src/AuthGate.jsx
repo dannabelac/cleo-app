@@ -1,6 +1,10 @@
 import React, { useEffect, useRef, useState } from "react";
 import { supabase } from "./supabaseClient";
 import { pullUserData, startCloudSync, clearCleoLocalData, crearDemoSession, eliminarDemoSession, leerDemoSessionValida } from "./cloudSync";
+// Único punto de integración con PostHog (ver analytics.js) , identidad y
+// los 2 eventos que le tocan a AuthGate (sesion_iniciada/demo_iniciada).
+// Nunca se importa "posthog-js" directamente aquí.
+import { identificarUsuario, resetearIdentidad, registrarEvento, marcarModoDemo, dispositivoActual, marcarSesionIniciadaUnica, actualizarTipoPerfil } from "./analytics.js";
 import CLEO from "./CLEO.jsx";
 import { PRIVACY_VERSION, TERMS_VERSION, LegalModal, useDocumentoLegal } from "./LegalDocuments.jsx";
 
@@ -400,6 +404,12 @@ export default function AuthGate() {
       if (!session) {
         detenerSync();
         baselineSyncRef.current = null;
+        // Único punto realmente central por el que pasa CUALQUIER cierre de
+        // sesión (logout normal, error de logout ya resuelto por otro
+        // lado, eliminación de cuenta) , nunca un reset() suelto solo en el
+        // botón de salir. modoDemo también se restablece por seguridad.
+        resetearIdentidad();
+        marcarModoDemo(false);
         if (!activo) return;
         setUserId(null);
         setUserEmail(null);
@@ -458,6 +468,11 @@ export default function AuthGate() {
       var sesionDemo = leerDemoSessionValida(session.user.id);
       if (sesionDemo) {
         if (!activo) return;
+        // Reanudar un demo (p. ej. tras refrescar) nunca identifica ni
+        // dispara demo_iniciada de nuevo , esa marca solo se registra una
+        // vez, en onEntrarModoDemo(). Aquí solo se asegura que analytics
+        // se quede en silencio mientras el demo siga activo.
+        marcarModoDemo(true);
         demoActivoRef.current = true;
         setDemoActivo(true);
         setUserId(session.user.id);
@@ -526,6 +541,38 @@ export default function AuthGate() {
       // efecto que arranca startCloudSync lo use como baseline exacta de
       // ESTE pull, sin volver a preguntarle a Supabase por separado.
       baselineSyncRef.current = huboExito ? resultado : null;
+
+      // Sesión real (no demo) ya autenticada y con datos cargados , único
+      // punto central para identificar y registrar el inicio de sesión.
+      // Nunca antes de este punto (todavía podía no haber sesión válida,
+      // o tratarse de un demo).
+      marcarModoDemo(false);
+      identificarUsuario(session.user.id);
+      // tipo_perfil , se intenta AQUÍ, antes de "sesion_iniciada", porque
+      // pullUserData (ya resuelto arriba) deja tipo_perfil recién escrito
+      // en localStorage ("cleo_perfil") como parte de esa misma carga ,
+      // este es el primer momento real en que CLEO conoce el perfil de
+      // esta cuenta, nunca antes. Es solo un intento temprano (no-op en
+      // silencio si todavía no hay nada cacheado, por ejemplo una cuenta
+      // sin perfil definido) , CLEO.jsx vuelve a llamar a
+      // actualizarTipoPerfil por su cuenta en cuanto termina de cargar el
+      // perfil real, así que ningún caso se queda sin cubrir. Nunca lee
+      // nombre/correo/teléfono ni ningún otro dato , solo el valor plano
+      // "productos"/"servicios".
+      try {
+        var tipoPerfilCacheado = JSON.parse(localStorage.getItem("cleo_perfil") || "null");
+        if (tipoPerfilCacheado && tipoPerfilCacheado.tipoPerfil) {
+          actualizarTipoPerfil(tipoPerfilCacheado.tipoPerfil);
+        }
+      } catch (e) {}
+      // marcarSesionIniciadaUnica evita el duplicado: Supabase puede
+      // disparar manejarSesionReal más de una vez para la MISMA sesión
+      // (getSession + INITIAL_SESSION) y React StrictMode puede montar
+      // este efecto 2 veces en desarrollo , el evento solo sale la
+      // primera vez que se confirma esta sesión real para este userId.
+      if (marcarSesionIniciadaUnica(session.user.id)) {
+        registrarEvento("sesion_iniciada", { dispositivo: dispositivoActual() });
+      }
 
       setUserId(session.user.id);
       setUserEmail(session.user.email || null);
@@ -1722,6 +1769,12 @@ export default function AuthGate() {
       syncRef.current.stop();
       syncRef.current = null;
 
+      // demo_iniciada se registra AQUÍ, antes de marcarModoDemo(true) , es
+      // la única transición que sí debe salir (el propio arranque del
+      // demo). A partir de la siguiente línea, analytics queda en
+      // silencio mientras el demo siga activo.
+      registrarEvento("demo_iniciada", { dispositivo: dispositivoActual() });
+      marcarModoDemo(true);
       demoActivoRef.current = true;
       setDemoActivo(true);
       return { estado: "ok" };
