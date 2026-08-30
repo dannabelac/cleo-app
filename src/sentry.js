@@ -163,19 +163,50 @@ function beforeSend(event) {
 
 var activo = false; // true solo si Sentry.init llegó a ejecutarse (prod + DSN)
 
+// ── Clasificación de entorno por DOMINIO, no por modo de build ──────────
+// import.meta.env.MODE/PROD solo dicen si el build es de producción, pero
+// Vercel Production y Vercel Preview corren el MISMO build de producción ,
+// antes eso hacía que un Preview (rama/PR) se reportara a Sentry como
+// "production" y contaminara esas métricas. La única señal real de en qué
+// entorno se está ejecutando de verdad es el dominio desde el que se sirve
+// la página (window.location.hostname), nunca el modo de build.
+// - concleo.com / www.concleo.com → "production".
+// - cualquier *.vercel.app (deploys de Preview) → "preview".
+// - localhost / 127.0.0.1 → null , Sentry queda desactivado por completo
+//   (ver el guard más abajo, antes de Sentry.init).
+// - cualquier otro dominio no reconocido → null , mismo criterio de
+//   degradación segura que el resto del archivo: ante la duda, no se manda
+//   nada a Sentry en vez de etiquetarlo mal.
+function obtenerEntornoSentry() {
+  try {
+    if (typeof window === "undefined" || !window.location) return null;
+    var host = String(window.location.hostname || "").toLowerCase();
+    if (host === "localhost" || host === "127.0.0.1") return null;
+    if (host === "concleo.com" || host === "www.concleo.com") return "production";
+    if (host.slice(-11) === ".vercel.app") return "preview";
+    return null;
+  } catch (e) {
+    return null;
+  }
+}
+
 // Solo Error Monitoring , sin Session Replay, Tracing, Logs, Metrics ni
-// Profiling. Se inicializa únicamente en producción y solo si existe DSN , si
-// falta cualquiera de las dos condiciones, todo lo demás en este archivo
-// queda como no-op y CLEO funciona igual.
+// Profiling. Se inicializa únicamente en producción (build) y solo si existe
+// DSN Y el dominio actual se reconoce como production/preview , si falta
+// cualquiera de esas condiciones, todo lo demás en este archivo queda como
+// no-op y CLEO funciona igual. localhost/127.0.0.1 nunca llega a
+// Sentry.init, sin importar el modo de build.
 export function inicializarSentry() {
   if (activo) return;
   var dsn = import.meta.env.VITE_SENTRY_DSN;
   if (!import.meta.env.PROD) return;
   if (!dsn) return;
+  var entorno = obtenerEntornoSentry();
+  if (!entorno) return;
 
   Sentry.init({
     dsn: dsn,
-    environment: import.meta.env.MODE,
+    environment: entorno,
     sendDefaultPii: false,
     // Ring buffer pequeño , antes en 0 impedía que existiera cualquier
     // breadcrumb, incluidos los de sync_ok que sí queremos mandar como
