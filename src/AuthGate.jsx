@@ -277,6 +277,15 @@ export default function AuthGate() {
   var userEmail = s10[0];
   var setUserEmail = s10[1];
   var syncRef = useRef(null);
+  // userId de la sesión que YA terminó de procesarse y está con CLEO
+  // montado (estado==="listo") , se usa solo para detectar un
+  // INITIAL_SESSION/SIGNED_IN duplicado que Supabase puede reemitir al
+  // recuperar el foco de la pestaña (sin que haya ocurrido ningún login ni
+  // recarga real), y así NO reprocesar esa sesión ni volver a pasar por
+  // "sincronizando" , eso es lo que remonta CLEO innecesariamente. Se lee
+  // de forma síncrona (a diferencia de un useState) porque el listener de
+  // onAuthStateChange vive dentro de un efecto con dependencias [].
+  var sesionActivaRef = useRef(null);
   // Guarda { updatedAt, snapshot } devuelto por el pullUserData más reciente
   // que sí llegó a completarse, para que el efecto que arranca
   // startCloudSync (más abajo) pueda usarlo como baseline inicial exacta ,
@@ -410,6 +419,7 @@ export default function AuthGate() {
         // botón de salir. modoDemo también se restablece por seguridad.
         resetearIdentidad();
         marcarModoDemo(false);
+        sesionActivaRef.current = null;
         if (!activo) return;
         setUserId(null);
         setUserEmail(null);
@@ -477,6 +487,7 @@ export default function AuthGate() {
         setDemoActivo(true);
         setUserId(session.user.id);
         setUserEmail(session.user.email || null);
+        sesionActivaRef.current = session.user.id;
         setEstado("listo");
         return;
       }
@@ -576,6 +587,7 @@ export default function AuthGate() {
 
       setUserId(session.user.id);
       setUserEmail(session.user.email || null);
+      sesionActivaRef.current = session.user.id;
       setEstado("listo");
     }
 
@@ -650,6 +662,21 @@ export default function AuthGate() {
           setUserId(session.user.id);
           setUserEmail(session.user.email || null);
         }
+        return;
+      }
+      // Supabase puede reemitir INITIAL_SESSION (y en algunos casos
+      // SIGNED_IN) para la MISMA cuenta que ya terminó de cargar y ya
+      // tiene CLEO montado , por ejemplo al recuperar el foco de la
+      // pestaña tras minimizar, cambiar de app o bloquear el celular, sin
+      // que haya ocurrido ningún login real ni recarga de la página. Si
+      // eso pasa, se trata igual que un TOKEN_REFRESHED de fondo (arriba):
+      // se refresca userId/userEmail por si acaso, pero NUNCA se vuelve a
+      // pasar por manejarSesion/"sincronizando" , eso es lo que
+      // desmontaba y remontaba CLEO de la nada, perdiendo modales abiertos
+      // y disparando el aviso de "retomar borrador" sin motivo real.
+      if (session && sesionActivaRef.current === session.user.id) {
+        setUserId(session.user.id);
+        setUserEmail(session.user.email || null);
         return;
       }
       manejarSesion(session);
