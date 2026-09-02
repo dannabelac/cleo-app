@@ -93,6 +93,43 @@ export function clearCleoDraftKeys() {
   } catch (e) {}
 }
 
+// Prefijo de los borradores LOCALES de los modales de captura (empieza por
+// el de cotización; el mismo mecanismo sirve para cualquier otro modal que
+// se sume después). Igual que CLEO_DRAFT_KEY_PREFIX de arriba, la clave real
+// es dinámica (depende del flujo Y del userId, ver guardarBorradorModal en
+// CLEO.jsx), así que se registra aquí como un PREFIJO conocido y único:
+// CLEO.jsx importa exactamente esta constante para construir sus claves,
+// nunca escribe el prefijo por su cuenta. A diferencia del borrador de
+// "Importar catálogo", éste SÍ vive en localStorage (no sessionStorage) a
+// propósito: tiene que sobrevivir a que el navegador recargue o descarte la
+// pestaña por presión de memoria (celular bloqueado, cambio a otra app) ,
+// ese es exactamente el escenario que existe para cubrir (mientras la
+// pestaña sigue viva, el modal nunca se desmonta y este borrador ni se lee).
+// Nunca contiene tokens ni contraseñas, ni se sincroniza a Supabase , es
+// solo continuidad de UI local de ESTE dispositivo.
+export var CLEO_MODAL_DRAFT_KEY_PREFIX = "cleo_borrador_modal_";
+
+// Borra EXCLUSIVAMENTE los borradores de modales (mismo criterio que
+// clearCleoDraftKeys de arriba, pero sobre localStorage). Se llama desde los
+// mismos puntos centrales que ya limpian todo lo demás , cerrar sesión,
+// cambiar de cuenta, eliminar cuenta (ver clearCleoLocalData más abajo) ,
+// nunca debe quedar el borrador de una cuenta visible para la siguiente que
+// inicie sesión en el mismo navegador.
+export function clearCleoModalDraftKeys() {
+  try {
+    var aBorrar = [];
+    for (var i = 0; i < localStorage.length; i++) {
+      var key = localStorage.key(i);
+      if (key && key.indexOf(CLEO_MODAL_DRAFT_KEY_PREFIX) === 0) aBorrar.push(key);
+    }
+    aBorrar.forEach(function (key) {
+      try {
+        localStorage.removeItem(key);
+      } catch (e) {}
+    });
+  } catch (e) {}
+}
+
 // Borra exclusivamente las claves de CLEO (nunca localStorage.clear(), para no
 // afectar otras apps que pudieran compartir el mismo dominio).
 export function clearCleoLocalData() {
@@ -116,6 +153,10 @@ export function clearCleoLocalData() {
   // abajo) y eliminar la cuenta. Un solo punto central, nunca una lista
   // duplicada en otro archivo.
   clearCleoDraftKeys();
+  // Mismo criterio, para los borradores de modales de captura (cotización,
+  // etc.), que sí viven en localStorage , ver CLEO_MODAL_DRAFT_KEY_PREFIX
+  // arriba.
+  clearCleoModalDraftKeys();
 }
 
 // Lee el respaldo de conflicto guardado y lo valida a fondo antes de

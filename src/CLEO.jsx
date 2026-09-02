@@ -8,6 +8,12 @@ import { ImportarCatalogo } from "./ImportarCatalogo.jsx";
 // Único punto de integración con PostHog (ver analytics.js) , nunca se
 // importa "posthog-js" directamente en este archivo.
 import { registrarEvento, marcarModoDemo, dispositivoActual, actualizarTipoPerfil } from "./analytics.js";
+// Prefijo de los borradores LOCALES de los modales de captura (continuidad
+// de captura) , se importa esta misma constante en vez de escribir el
+// prefijo aquí, para que CLEO.jsx y cloudSync.js (que es quien de verdad los
+// borra al cerrar sesión/cambiar de cuenta, ver clearCleoModalDraftKeys) NUNCA
+// se desincronicen sobre cuál es el prefijo real.
+import { CLEO_MODAL_DRAFT_KEY_PREFIX } from "./cloudSync.js";
 
 // ── Detección de móvil , centralizada y reactiva ────────────────────────
 // Antes existían 2 cálculos independientes de "isMobile" en el archivo, y
@@ -77,6 +83,15 @@ function sinConexionParaGuardar(){
   return typeof navigator!=="undefined"&&navigator.onLine===false;
 }
 var MSG_SIN_CONEXION_GUARDADO="Necesitas conexión para guardar. Dejamos este formulario abierto para que lo intentes nuevamente.";
+// Marca de módulo (NO es estado de React, NO se guarda en localStorage ni
+// sessionStorage) , vive en memoria mientras el script siga cargado. Sirve
+// para distinguir el PRIMER montaje real de CLEO en esta carga de página
+// (arranque real o recarga real del navegador, donde el módulo se vuelve a
+// evaluar desde cero) de un remontaje interno posterior dentro de la MISMA
+// página todavía viva (por ejemplo si AuthGate desmonta y vuelve a montar
+// CLEO al reprocesar una sesión). Solo el primer caso debe poder disparar
+// el aviso de "retomar borrador" de los modales de captura.
+var CLEO_YA_HUBO_UN_MONTAJE_EN_ESTA_PAGINA=false;
 const FECHA_HOY = (function(){
   var d = new Date();
   var y = d.getFullYear();
@@ -3745,10 +3760,10 @@ function ModalVenta(props){
             formVenta.nuevoOrigen==="Otro"&&e("input",{value:formVenta.nuevoOrigenOtro||"",onChange:function(ev){ setFormVenta(Object.assign({},formVenta,{nuevoOrigenOtro:ev.target.value})); },placeholder:"¿Cómo llegó? Ej. Feria, recomendación de un amigo...",style:Object.assign({},st.inp,{marginTop:8}),autoFocus:true,maxLength:60})
           ),
           e("div",{style:{marginTop:10}},
-            e("label",{style:Object.assign({},st.lbl,{display:"flex",alignItems:"center",gap:4})},
-              "¿Dónde lo contactas?",
-              e("span",{style:{fontSize:10,color:C.amber,fontWeight:600}},"obligatorio")
-            ),
+            // Ya NO es obligatorio , mismo criterio que el modal dedicado
+            // "+ Cliente" (guardarCliente): se puede guardar sin canal
+            // elegido, aparece como cualquier otro campo opcional.
+            e("label",{style:st.lbl},"¿Dónde lo contactas?"),
             e("div",{style:{display:"flex",gap:6,flexWrap:"wrap",marginBottom:8}},
               ["WhatsApp","Instagram","Facebook"].map(function(canal){
                 var activo=formVenta.nuevoCanal===canal;
@@ -3881,7 +3896,7 @@ function ModalVenta(props){
       ), // cierra body scrollable
       e("div",{style:{padding:isMobile?"12px 24px 28px":"14px 24px",borderTop:"1px solid "+C.border,background:C.surfaceUp,display:"flex",gap:8,justifyContent:"flex-end",flexShrink:0}},
         e("button",{style:st.btn,onClick:cancelarVentaDirectaProvisional},"Cancelar"),
-        e("button",{style:Object.assign({},st.btnG,{opacity:(tipoActual==="dia"||formVenta.tipoPago)&&!(!formVenta.clienteId&&formVenta.nuevoNombre&&formVenta.nuevoNombre.trim()&&(!formVenta.nuevoCanal||!formVenta.nuevoContacto||!formVenta.nuevoContacto.trim()))?1:0.5}),onClick:function(){
+        e("button",{style:Object.assign({},st.btnG,{opacity:(tipoActual==="dia"||formVenta.tipoPago)?1:0.5}),onClick:function(){
           if(tipoActual!=="dia"&&!formVenta.tipoPago){ alert("Selecciona cómo te pagaron antes de guardar."); return; }
           avanzarVenta();
         }},"Guardar venta")
@@ -4995,11 +5010,11 @@ export default function CLEO(props){
         return;
       }
     }
-    if(!fp.clienteId&&fp.nuevoNombre&&(!fp.nuevoCanal||!fp.nuevoContacto||!fp.nuevoContacto.trim())){
-      alert("Selecciona por dónde contactas a este cliente antes de guardar.");
-      return;
-    }
-    if(!fp.clienteId&&fp.nuevoNombre&&fp.nuevoCanal==="WhatsApp"&&fp.nuevoContacto.replace(/\D/g,"").length!==10){
+    // Canal/contacto ya NO es obligatorio , mismo criterio que el modal
+    // dedicado "+ Cliente" (guardarCliente): se puede guardar sin canal
+    // elegido, solo se valida el FORMATO si de verdad se escribió un
+    // número de WhatsApp incompleto.
+    if(!fp.clienteId&&fp.nuevoNombre&&fp.nuevoCanal==="WhatsApp"&&fp.nuevoContacto&&fp.nuevoContacto.replace(/\D/g,"").length!==10){
       alert("El número de WhatsApp debe tener exactamente 10 dígitos.");
       return;
     }
@@ -6195,6 +6210,9 @@ export default function CLEO(props){
     var clienteId=modal.clienteId;
     setModalVincularOportunidadCot(null);
     setModalCot(false); setEditCotId(null); setFormCot(cotVacio); setModalCotAvanzadoOverride(null);
+    // Igual que "×"/Cancelar , esta rama abandona el formulario sin guardar
+    // nada, así que el borrador tampoco debe sobrevivir.
+    borrarBorradorModal("cotizacion");
     setVista("clientes"); setClienteAbierto(clienteId); setTabCliente("perfil");
   }
   // "×"/cerrar: no llama a la continuación , no avanza, no guarda, no crea
@@ -7618,11 +7636,12 @@ export default function CLEO(props){
       }
     }
     if(!fcCot.clienteId&&fcCot.nuevoNombre&&fcCot.nuevoNombre.trim()){
-      if(!fcCot.nuevoCanal||!fcCot.nuevoContacto||!fcCot.nuevoContacto.trim()){
-        alert("Selecciona por dónde contactas a este cliente antes de guardar.");
-        return;
-      }
-      if(fcCot.nuevoCanal==="WhatsApp"&&fcCot.nuevoContacto.replace(/\D/g,"").length!==10){
+      // Canal/contacto ya NO es obligatorio para crear el cliente desde
+      // aquí , mismo criterio que el modal dedicado "+ Cliente"
+      // (guardarCliente): se guarda igual sin canal elegido, y solo se
+      // valida el formato SI de verdad se escribió un número de WhatsApp
+      // incompleto (nunca se exige que exista).
+      if(fcCot.nuevoCanal==="WhatsApp"&&fcCot.nuevoContacto&&fcCot.nuevoContacto.replace(/\D/g,"").length!==10){
         alert("El número de WhatsApp debe tener exactamente 10 dígitos.");
         return;
       }
@@ -7860,6 +7879,11 @@ export default function CLEO(props){
       });
     }
     setModalCot(false); setFormCot(cotVacio); setModalCotAvanzadoOverride(null);
+    // Guardado exitoso , la cotización real ya se escribió arriba (ver
+    // setCotizaciones), así que el borrador local ya no tiene nada que
+    // proteger , se borra aquí, en el único punto de éxito real de esta
+    // función (cubre tanto crear como editar, ambas ramas terminan aquí).
+    borrarBorradorModal("cotizacion");
   }
   function editarCot(cot){
     setEditCotId(cot.id);
@@ -8243,11 +8267,11 @@ export default function CLEO(props){
     var totalItems=items.reduce(function(s,it){ return s+Number(it.cantidad||1)*Number(it.precio||0); },0);
     if(!formVenta.monto&&totalItems===0) return;
     var creandoClienteV=!formVenta.clienteId&&formVenta.nuevoNombre&&formVenta.nuevoNombre.trim();
-    if(creandoClienteV&&(!formVenta.nuevoCanal||!formVenta.nuevoContacto||!formVenta.nuevoContacto.trim())){
-      alert("Selecciona por dónde contactas a este cliente antes de guardar.");
-      return;
-    }
-    if(creandoClienteV&&formVenta.nuevoCanal==="WhatsApp"&&formVenta.nuevoContacto.replace(/\D/g,"").length!==10){
+    // Canal/contacto ya NO es obligatorio , mismo criterio que el modal
+    // dedicado "+ Cliente" (guardarCliente): se puede guardar sin canal
+    // elegido, solo se valida el FORMATO si de verdad se escribió un
+    // número de WhatsApp incompleto.
+    if(creandoClienteV&&formVenta.nuevoCanal==="WhatsApp"&&formVenta.nuevoContacto&&formVenta.nuevoContacto.replace(/\D/g,"").length!==10){
       alert("El número de WhatsApp debe tener exactamente 10 dígitos.");
       return;
     }
@@ -8569,6 +8593,92 @@ export default function CLEO(props){
   // Bloqueo síncrono de doble clic para guardar la fecha de entrega editada
   // , mismo criterio que guardandoPagoRef/guardandoEnvieRef arriba.
   var guardandoFechaPedRef=useRef(false);
+
+  // ── Continuidad de los modales de captura (borrador local) ─────────────
+  // CAUSA del problema reportado: dentro de esta misma pestaña, modalCot ya
+  // se renderiza a nivel global (más abajo, junto a MODAL CLIENTE y el
+  // resto), fuera de cualquier `vista===...` , cambiar de sección en CLEO,
+  // cambiar de pestaña del navegador, minimizar o bloquear el celular NUNCA
+  // desmonta este componente ni reinicia su estado (formCot/editCotId
+  // siguen intactos en memoria mientras React siga vivo), y AuthGate.jsx ya
+  // ignora explícitamente los eventos de refresco de sesión en segundo
+  // plano (TOKEN_REFRESHED al volver de otra app) para no remontar CLEO por
+  // accidente. El único caso real en que se pierde el formulario es cuando
+  // el NAVEGADOR de verdad descarta o recarga la pestaña por presión de
+  // memoria (frecuente en celular al abrir WhatsApp o bloquear la pantalla
+  // un buen rato) , eso borra el estado de React sin que ningún código de
+  // CLEO pueda evitarlo, así que la única corrección real es un borrador
+  // local que sobreviva a esa recarga.
+  //
+  // Mecanismo REUTILIZABLE (no una solución distinta por pantalla): 3
+  // funciones genéricas por `flujo` ("cotizacion" es la primera; cualquier
+  // otro modal puede sumarse después con el mismo patrón). La clave vive en
+  // localStorage (sobrevive a una recarga real, a diferencia de
+  // sessionStorage) bajo CLEO_MODAL_DRAFT_KEY_PREFIX+flujo+"_"+userId ,
+  // separada por usuario para que un dispositivo compartido nunca ofrezca
+  // el borrador de otra cuenta, y clearCleoModalDraftKeys() (cloudSync.js)
+  // la limpia en los mismos puntos centrales que ya limpian todo lo demás
+  // al cerrar sesión/cambiar de cuenta. Nunca se guarda en modo demo (nada
+  // de eso es un dato real que valga la pena retomar) ni sin userId
+  // conocido. Nunca sincroniza a Supabase , es localStorage puro, ningún
+  // otro código de CLEO lee esta clave.
+  function claveBorradorModal(flujo){
+    return CLEO_MODAL_DRAFT_KEY_PREFIX+flujo+"_"+props.userId;
+  }
+  function guardarBorradorModal(flujo,datos){
+    if(perfil.modoDemo||props.demoActivo||!props.userId) return;
+    try{
+      localStorage.setItem(claveBorradorModal(flujo),JSON.stringify({v:1,ts:Date.now(),datos:datos}));
+    }catch(e){}
+  }
+  function leerBorradorModal(flujo){
+    if(perfil.modoDemo||props.demoActivo||!props.userId) return null;
+    try{
+      var raw=localStorage.getItem(claveBorradorModal(flujo));
+      if(!raw) return null;
+      var parsed=JSON.parse(raw);
+      if(!parsed||typeof parsed!=="object"||!parsed.datos||typeof parsed.datos!=="object") return null;
+      return parsed.datos;
+    }catch(e){ return null; }
+  }
+  function borrarBorradorModal(flujo){
+    if(!props.userId) return;
+    try{ localStorage.removeItem(claveBorradorModal(flujo)); }catch(e){}
+  }
+
+  // Borrador de la cotización en curso. Cada cambio real de estos valores
+  // (mientras modalCot siga abierto) se refleja de inmediato en
+  // localStorage , nunca con setTimeout/debounce: el propio useEffect ya
+  // corre exactamente cuando estos valores cambian, así que no hace falta
+  // ningún temporizador ni sondeo. NO incluye ningún dato que no exista ya
+  // en el formulario real (nunca se crea una estructura paralela).
+  useEffect(function(){
+    if(!modalCot) return;
+    guardarBorradorModal("cotizacion",{
+      formCot:formCot,editCotId:editCotId,buscaCli:buscaCli,
+      modalCotAvanzadoOverride:modalCotAvanzadoOverride,etapaPendiente:etapaPendiente
+    });
+  },[modalCot,formCot,editCotId,buscaCli,modalCotAvanzadoOverride,etapaPendiente,perfil.modoDemo,props.demoActivo,props.userId]);
+
+  // Al montar: si existe un borrador de cotización y el modal NO está ya
+  // abierto en este mismo montaje, se ofrece retomarlo , nunca se abre el
+  // modal solo, siempre se pregunta primero (ver el aviso global más abajo,
+  // junto al resto de modales). Pero SOLO se ofrece en el PRIMER montaje
+  // real de CLEO en esta carga de página (recarga real del navegador, o
+  // primer render tras iniciar sesión) , un remontaje interno posterior
+  // dentro de la misma página viva (p. ej. si AuthGate reprocesa la sesión
+  // al recuperar el foco de la pestaña) nunca debe mostrar este aviso,
+  // porque no hubo ninguna recarga real ni pérdida real de datos: ver
+  // CLEO_YA_HUBO_UN_MONTAJE_EN_ESTA_PAGINA arriba.
+  var sBorradorCotDisponible=useState(null); var borradorCotDisponible=sBorradorCotDisponible[0]; var setBorradorCotDisponible=sBorradorCotDisponible[1];
+  useEffect(function(){
+    if(modalCot) return;
+    if(CLEO_YA_HUBO_UN_MONTAJE_EN_ESTA_PAGINA) return;
+    CLEO_YA_HUBO_UN_MONTAJE_EN_ESTA_PAGINA=true;
+    var draft=leerBorradorModal("cotizacion");
+    if(draft) setBorradorCotDisponible(draft);
+  },[props.userId,perfil.modoDemo,props.demoActivo]);
+
   useEffect(function(){
     setHydrated(true);
   },[]);
@@ -11276,12 +11386,12 @@ export default function CLEO(props){
                   formProspecto.origen==="Otro"&&e("input",{value:formProspecto.origenOtro||"",onChange:function(ev){ setFormProspecto(Object.assign({},formProspecto,{origenOtro:ev.target.value})); },placeholder:"¿Cómo llegó? Ej. Feria, recomendación de un amigo...",style:Object.assign({},st.inp,{marginTop:8}),autoFocus:true,maxLength:60})
                 ),
 
-                // ¿POR DÓNDE LO CONTACTAS? — solo si es cliente nuevo, obligatorio
+                // ¿POR DÓNDE LO CONTACTAS? — solo si es cliente nuevo. Ya NO
+                // es obligatorio , mismo criterio que el modal dedicado
+                // "+ Cliente" (guardarCliente): se puede guardar sin canal
+                // elegido.
                 !formProspecto._editandoId&&!formProspecto.clienteId&&formProspecto.nuevoNombre&&e("div",null,
-                  e("label",{style:Object.assign({},st.lbl,{display:"flex",alignItems:"center",gap:4})},
-                    "¿Dónde lo contactas?",
-                    e("span",{style:{fontSize:10,color:C.amber,fontWeight:600}},"obligatorio")
-                  ),
+                  e("label",{style:st.lbl},"¿Dónde lo contactas?"),
                   e("div",{style:{display:"flex",gap:6,flexWrap:"wrap",marginBottom:8}},
                     ["WhatsApp","Instagram","Facebook"].map(function(canal){
                       var activo=formProspecto.canalPrincipal===canal;
@@ -11353,14 +11463,15 @@ export default function CLEO(props){
                 (function(){
                   var esEdicion=!!formProspecto._editandoId;
                   var esNuevo=!esEdicion&&!formProspecto.clienteId&&!!formProspecto.nuevoNombre.trim();
-                  var faltaCanal=esNuevo&&!formProspecto.canalPrincipal;
+                  // Canal/contacto ya NO es obligatorio , mismo criterio que
+                  // el modal dedicado "+ Cliente" (guardarCliente): solo se
+                  // valida el FORMATO si de verdad se escribió un número de
+                  // WhatsApp incompleto, nunca se exige que exista canal ni
+                  // contacto.
                   var telefonoBad=esNuevo&&formProspecto.canalPrincipal==="WhatsApp"&&formProspecto.contacto&&formProspecto.contacto.replace(/\D/g,"").length!==10;
-                  var faltaContacto=esNuevo&&formProspecto.canalPrincipal&&!formProspecto.contacto;
-                  var valido=esEdicion||(formProspecto.clienteId||formProspecto.nuevoNombre.trim())&&!faltaCanal&&!faltaContacto&&!telefonoBad;
+                  var valido=esEdicion||(formProspecto.clienteId||formProspecto.nuevoNombre.trim())&&!telefonoBad;
                   var faltantes=[];
                   if(!esEdicion&&!formProspecto.clienteId&&!formProspecto.nuevoNombre.trim()) faltantes.push("nombre");
-                  if(faltaCanal) faltantes.push("canal de contacto");
-                  if(faltaContacto) faltantes.push(formProspecto.canalPrincipal==="WhatsApp"?"número":"usuario");
                   if(telefonoBad) faltantes.push("número debe ser 10 dígitos");
                   return e("div",null,
                     !valido&&faltantes.length>0&&e("div",{style:{fontSize:11,color:C.amber,textAlign:"center",marginBottom:4}},"Falta: "+faltantes.join(", ")),
@@ -12109,10 +12220,10 @@ export default function CLEO(props){
                       nuevoPedidoForm.nuevoOrigen==="Otro"&&e("input",{value:nuevoPedidoForm.nuevoOrigenOtro||"",onChange:function(ev){ setNuevoPedidoForm(Object.assign({},nuevoPedidoForm,{nuevoOrigenOtro:ev.target.value})); },placeholder:"¿Cómo llegó? Ej. Feria, recomendación de un amigo...",style:Object.assign({},st.inp,{marginTop:8}),autoFocus:true,maxLength:60})
                     ),
                     e("div",{style:{marginTop:10}},
-                      e("label",{style:Object.assign({},st.lbl,{display:"flex",alignItems:"center",gap:4})},
-                        "¿Dónde lo contactas?",
-                        e("span",{style:{fontSize:10,color:C.amber,fontWeight:600}},"obligatorio")
-                      ),
+                      // Canal/contacto ya NO es obligatorio , mismo criterio
+                      // que el modal dedicado "+ Cliente" (guardarCliente):
+                      // se puede guardar sin canal elegido.
+                      e("label",{style:st.lbl},"¿Dónde lo contactas?"),
                       e("div",{style:{display:"flex",gap:6,flexWrap:"wrap",marginBottom:nuevoPedidoForm.nuevoCanal?8:0}},
                         ["WhatsApp","Instagram","Facebook"].map(function(canal){
                           var activo=nuevoPedidoForm.nuevoCanal===canal;
@@ -12171,7 +12282,7 @@ export default function CLEO(props){
               e("div",{style:{padding:"14px 24px",borderTop:"1px solid "+C.border,display:"flex",gap:8,justifyContent:"flex-end",background:C.surfaceUp,flexShrink:0}},
                 e("button",{style:st.btn,onClick:function(){ setNuevoPedidoModal(false); setBuscaCliPed(""); }},"Cancelar"),
                 e("button",{
-                  style:Object.assign({},st.btnP,{opacity:(nuevoPedidoForm.clienteId||nuevoPedidoForm.nuevoNombre)&&!(!nuevoPedidoForm.clienteId&&nuevoPedidoForm.nuevoNombre&&(!nuevoPedidoForm.nuevoCanal||!nuevoPedidoForm.nuevoContacto||!nuevoPedidoForm.nuevoContacto.trim()))?1:0.5}),
+                  style:Object.assign({},st.btnP,{opacity:(nuevoPedidoForm.clienteId||nuevoPedidoForm.nuevoNombre)?1:0.5}),
                   disabled:!nuevoPedidoForm.clienteId&&!nuevoPedidoForm.nuevoNombre,
                   onClick:function(){ guardarNuevoPedidoDirecto(); }
                 },"Guardar pedido")
@@ -18846,8 +18957,42 @@ export default function CLEO(props){
       )
     ),
 
+    // AVISO "Retomar cotización" , se muestra SOLO cuando, al montar CLEO
+    // (sesión nueva o página recién recargada de verdad), ya existía un
+    // borrador local de una cotización que se quedó a medias. Nunca abre el
+    // modal solo: siempre pregunta primero, y nunca aparece si modalCot ya
+    // está abierto en este mismo montaje (ver el efecto que llena
+    // borradorCotDisponible más arriba). Sin backdrop-click-para-cerrar a
+    // propósito , es una decisión real ("Retomar" o "Descartar"), no un
+    // modal informativo que se pueda cerrar sin elegir.
+    borradorCotDisponible&&e("div",{style:st.ov},
+      e("div",{style:Object.assign({},st.modal,{maxWidth:isMobile?"100%":380})},
+        e("div",{style:{fontWeight:700,fontSize:16,color:C.text,marginBottom:8}},"Cotización en progreso"),
+        e("div",{style:{fontSize:13,color:C.textMuted,marginBottom:20,lineHeight:1.5}},"Tienes una cotización en progreso. ¿Quieres retomarla?"),
+        e("div",{style:{display:"flex",gap:8}},
+          e("button",{style:{cursor:"pointer",padding:"11px",borderRadius:14,border:"1px solid "+C.border,background:"transparent",fontSize:13,color:C.textMuted,fontWeight:600,flex:1},onClick:function(){
+            borrarBorradorModal("cotizacion");
+            setBorradorCotDisponible(null);
+          }},"Descartar borrador"),
+          e("button",{style:{cursor:"pointer",padding:"11px",borderRadius:14,border:"none",background:"#5B5CF6",fontSize:13,color:"#fff",fontWeight:600,flex:1},onClick:function(){
+            // Reabre el mismo modal con exactamente los mismos datos que
+            // tenía al momento de guardarse el borrador , nunca crea nada,
+            // solo restaura el formulario en memoria.
+            var d=borradorCotDisponible;
+            setFormCot(d.formCot||cotVacio);
+            setEditCotId(d.editCotId||null);
+            setBuscaCli(d.buscaCli||"");
+            setModalCotAvanzadoOverride(d.modalCotAvanzadoOverride!=null?d.modalCotAvanzadoOverride:null);
+            setEtapaPendiente(d.etapaPendiente||null);
+            setBorradorCotDisponible(null);
+            setModalCot(true);
+          }},"Retomar cotización")
+        )
+      )
+    ),
+
     // MODAL COTIZACION
-    modalCot&&!modalIdentidadCliente&&!modalVincularOportunidadCot&&!modalSeguimientoCotDif&&e("div",{style:Object.assign({},st.ov,{overflow:"hidden"}),onClick:function(){ setModalCot(false); setEditCotId(null); setFormCot(cotVacio); setEtapaPendiente(null); setModalCotAvanzadoOverride(null); }},
+    modalCot&&!modalIdentidadCliente&&!modalVincularOportunidadCot&&!modalSeguimientoCotDif&&e("div",{style:Object.assign({},st.ov,{overflow:"hidden"}),onClick:function(){ setModalCot(false); setEditCotId(null); setFormCot(cotVacio); setEtapaPendiente(null); setModalCotAvanzadoOverride(null); borrarBorradorModal("cotizacion");}},
       e("div",{style:{background:C.surface,borderRadius:isMobile?"20px 20px 0 0":"20px",width:isMobile?"100%":560,maxWidth:"100%",maxHeight:isMobile?"94vh":"88vh",border:isMobile?"none":"1px solid "+C.border,boxShadow:"0 8px 32px rgba(0,0,0,0.14)",display:"flex",flexDirection:"column",overflow:"hidden",margin:isMobile?0:"auto"},onClick:function(ev){ ev.stopPropagation(); }},
 
         // HEADER
@@ -18856,7 +19001,7 @@ export default function CLEO(props){
             e("div",{style:{fontWeight:700,fontSize:18,color:C.text}},editCotId?"Editar "+TXT.cotizacion:"Nueva cotización"),
             e("div",{style:{fontSize:12,color:C.textMuted,marginTop:2}},"Prepara una propuesta para tu cliente")
           ),
-          e("button",{style:{background:C.surfaceUp,border:"1px solid "+C.border,borderRadius:10,cursor:"pointer",color:C.textMuted,fontSize:16,lineHeight:1,padding:"6px 10px"},onClick:function(){ setModalCot(false); setEditCotId(null); setFormCot(cotVacio); setEtapaPendiente(null); setModalCotAvanzadoOverride(null); }},"×")
+          e("button",{style:{background:C.surfaceUp,border:"1px solid "+C.border,borderRadius:10,cursor:"pointer",color:C.textMuted,fontSize:16,lineHeight:1,padding:"6px 10px"},onClick:function(){ setModalCot(false); setEditCotId(null); setFormCot(cotVacio); setEtapaPendiente(null); setModalCotAvanzadoOverride(null); borrarBorradorModal("cotizacion");}},"×")
         ),
 
         // BODY SCROLLABLE
@@ -18930,10 +19075,10 @@ export default function CLEO(props){
                 formCot.nuevoOrigen==="Otro"&&e("input",{value:formCot.nuevoOrigenOtro||"",onChange:function(ev){ setFormCot(Object.assign({},formCot,{nuevoOrigenOtro:ev.target.value})); },placeholder:"¿Cómo llegó? Ej. Feria, recomendación de un amigo...",style:Object.assign({},st.inp,{marginTop:8}),autoFocus:true,maxLength:60})
               ),
               e("div",{style:{marginTop:10}},
-                e("label",{style:Object.assign({},st.lbl,{display:"flex",alignItems:"center",gap:4})},
-                  "¿Dónde lo contactas?",
-                  e("span",{style:{fontSize:10,color:C.amber,fontWeight:600}},"obligatorio")
-                ),
+                // Canal/contacto ya NO es obligatorio , mismo criterio que
+                // el modal dedicado "+ Cliente" (guardarCliente): se puede
+                // guardar sin canal elegido.
+                e("label",{style:st.lbl},"¿Dónde lo contactas?"),
                 e("div",{style:{display:"flex",gap:6,flexWrap:"wrap",marginBottom:formCot.nuevoCanal?8:0}},
                   ["WhatsApp","Instagram","Facebook"].map(function(canal){
                     var activo=formCot.nuevoCanal===canal;
@@ -19073,7 +19218,7 @@ export default function CLEO(props){
         (function(){
           var hayItemValido=(formCot.items||[]).some(function(it){ return it.nombre&&it.nombre.trim(); });
           return e("div",{style:{padding:isMobile?"12px 20px 28px":"14px 24px",borderTop:"1px solid "+C.border,display:"flex",gap:8,justifyContent:"flex-end",background:C.surfaceUp,flexShrink:0,flexWrap:"wrap"}},
-          e("button",{style:st.btn,onClick:function(){ setModalCot(false); setEditCotId(null); setFormCot(cotVacio); setEtapaPendiente(null); setModalCotAvanzadoOverride(null); }},"Cancelar"),
+          e("button",{style:st.btn,onClick:function(){ setModalCot(false); setEditCotId(null); setFormCot(cotVacio); setEtapaPendiente(null); setModalCotAvanzadoOverride(null); borrarBorradorModal("cotizacion");}},"Cancelar"),
           e("button",{
             style:Object.assign({},st.btnP,{opacity:hayItemValido?1:0.5,background:"transparent",border:"1.5px solid "+C.purple,color:C.purple}),
             disabled:!hayItemValido,
@@ -19082,11 +19227,10 @@ export default function CLEO(props){
               if(!hayItemValido) return;
               var clienteIdPDF=formCot.clienteId;
               if(!clienteIdPDF&&formCot.nuevoNombre&&formCot.nuevoNombre.trim()){
-                if(!formCot.nuevoCanal||!formCot.nuevoContacto||!formCot.nuevoContacto.trim()){
-                  alert("Selecciona por dónde contactas a este cliente antes de guardar.");
-                  return;
-                }
-                if(formCot.nuevoCanal==="WhatsApp"&&formCot.nuevoContacto.replace(/\D/g,"").length!==10){
+                // Canal/contacto ya NO es obligatorio aquí tampoco , mismo
+                // criterio que guardarCot arriba y que el modal dedicado
+                // "+ Cliente".
+                if(formCot.nuevoCanal==="WhatsApp"&&formCot.nuevoContacto&&formCot.nuevoContacto.replace(/\D/g,"").length!==10){
                   alert("El número de WhatsApp debe tener exactamente 10 dígitos.");
                   return;
                 }
