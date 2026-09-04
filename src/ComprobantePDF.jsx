@@ -60,6 +60,108 @@ function formatearMonto(n) {
   return "$" + x.toLocaleString("es-MX", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
 
+// formatearTarjetaPDF: solo dígitos, agrupados de 4 en 4 para lectura ,
+// nunca valida ni verifica el número (eso no le corresponde a este
+// comprobante), simplemente lo muestra tal como se capturó en Perfil ,
+// mismo criterio que en CotizacionPDF.jsx.
+function formatearTarjetaPDF(valor) {
+  var soloDigitos = String(valor == null ? "" : valor).replace(/\D/g, "").slice(0, 16);
+  if (!soloDigitos) return "";
+  return soloDigitos.replace(/(.{4})/g, "$1 ").trim();
+}
+
+// ── Logo: dimensiones reales + recorte de margen vacío ────────────────────
+// Mismo criterio y mismo bug corregido que en CotizacionPDF.jsx: "Image" a
+// secas aquí es el componente de @react-pdf/renderer importado arriba, NO
+// el constructor nativo del navegador , usar "new Image()" a secas fallaría
+// en silencio (atrapado por el catch) y esta función SIEMPRE resolvería
+// null sin medir nada de verdad. Por eso se usa window.Image explícito.
+function obtenerDimensionesImagenPDF(dataUrl) {
+  return new Promise(function (resolve) {
+    if (typeof window === "undefined" || typeof window.Image === "undefined" || !dataUrl) { resolve(null); return; }
+    try {
+      var img = new window.Image();
+      img.onload = function () { resolve({ width: img.naturalWidth || 0, height: img.naturalHeight || 0 }); };
+      img.onerror = function () { resolve(null); };
+      img.src = dataUrl;
+    } catch (e) { resolve(null); }
+  });
+}
+
+// calcularEstiloLogoPDF: ajuste "contain" real dentro de una caja de 140x38
+// (el encabezado del comprobante es más compacto que el de la cotización) ,
+// un logo cuadrado/isotipo cae naturalmente a ~38x38, uno horizontal con
+// letras se estira hasta 140 de ancho manteniendo su altura real
+// proporcional , nunca se deforma ni se recorta.
+function calcularEstiloLogoPDF(dim) {
+  var maxW = 140, maxH = 38;
+  if (!dim || !dim.width || !dim.height) return { width: maxH, height: maxH };
+  var ratio = dim.width / dim.height;
+  var w = maxW, h = maxW / ratio;
+  if (h > maxH) { h = maxH; w = maxH * ratio; }
+  return { width: numeroSeguro(w) || maxH, height: numeroSeguro(h) || maxH };
+}
+
+// recortarPaddingLogoPDF: idéntica lógica que en CotizacionPDF.jsx , muchos
+// logos exportados (Canva, Illustrator, etc.) traen un margen transparente
+// grande alrededor de la marca real, esto lo recorta ANTES de medir y
+// dibujar el logo. Puramente visual para ESTE documento , nunca toca
+// perfil.logo. Cualquier fallo regresa la imagen original sin tocar.
+function recortarPaddingLogoPDF(dataUrl) {
+  return new Promise(function (resolve) {
+    if (!dataUrl || typeof window === "undefined" || typeof window.Image === "undefined" || typeof document === "undefined") { resolve(dataUrl); return; }
+    try {
+      var img = new window.Image();
+      img.onload = function () {
+        try {
+          var w = img.naturalWidth, h = img.naturalHeight;
+          if (!w || !h) { resolve(dataUrl); return; }
+          var canvas = document.createElement("canvas");
+          canvas.width = w; canvas.height = h;
+          var ctx = canvas.getContext("2d");
+          ctx.drawImage(img, 0, 0, w, h);
+          var data;
+          try { data = ctx.getImageData(0, 0, w, h).data; } catch (eLectura) { resolve(dataUrl); return; }
+          var bgR = data[0], bgG = data[1], bgB = data[2], bgA = data[3];
+          function esFondo(i) {
+            var a = data[i + 3];
+            if (a < 10) return true;
+            if (bgA < 10) return false;
+            var r = data[i], g = data[i + 1], b = data[i + 2];
+            return Math.abs(r - bgR) + Math.abs(g - bgG) + Math.abs(b - bgB) < 18;
+          }
+          var minX = w, minY = h, maxX = -1, maxY = -1;
+          var paso = Math.max(1, Math.floor(Math.max(w, h) / 400));
+          for (var y = 0; y < h; y += paso) {
+            for (var x = 0; x < w; x += paso) {
+              var i = (y * w + x) * 4;
+              if (!esFondo(i)) {
+                if (x < minX) minX = x;
+                if (x > maxX) maxX = x;
+                if (y < minY) minY = y;
+                if (y > maxY) maxY = y;
+              }
+            }
+          }
+          if (maxX < minX || maxY < minY) { resolve(dataUrl); return; }
+          var margenX = Math.round((maxX - minX) * 0.04) + paso;
+          var margenY = Math.round((maxY - minY) * 0.04) + paso;
+          minX = Math.max(0, minX - margenX); minY = Math.max(0, minY - margenY);
+          maxX = Math.min(w - 1, maxX + margenX); maxY = Math.min(h - 1, maxY + margenY);
+          var anchoRecorte = maxX - minX + 1, altoRecorte = maxY - minY + 1;
+          if (anchoRecorte >= w * 0.97 && altoRecorte >= h * 0.97) { resolve(dataUrl); return; }
+          var canvasRecorte = document.createElement("canvas");
+          canvasRecorte.width = anchoRecorte; canvasRecorte.height = altoRecorte;
+          canvasRecorte.getContext("2d").drawImage(canvas, minX, minY, anchoRecorte, altoRecorte, 0, 0, anchoRecorte, altoRecorte);
+          resolve(canvasRecorte.toDataURL("image/png"));
+        } catch (eProceso) { resolve(dataUrl); }
+      };
+      img.onerror = function () { resolve(dataUrl); };
+      img.src = dataUrl;
+    } catch (e) { resolve(dataUrl); }
+  });
+}
+
 // Equivalente local de obtenerItemsCotizacion/obtenerItemsPedido (definidas
 // en el archivo principal) , este módulo es independiente (evita imports
 // circulares, ver comentario arriba), así que mantiene su propia copia
@@ -161,7 +263,11 @@ function crearEstilosComprobante(pc, ps) {
       backgroundColor: "#ffffff",
     },
     header: { flexDirection: "row", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 20, paddingBottom: 16, borderBottomWidth: 1.5, borderBottomColor: pc },
-    logo: { width: 38, height: 38, objectFit: "contain", marginBottom: 8, borderRadius: 8 },
+    headerIzq: { maxWidth: 300 },
+    // width/height REALES se calculan por logo (ver calcularEstiloLogoPDF)
+    // y se mezclan con este estilo base al renderizar , nunca un tamaño fijo
+    // igual para un isotipo cuadrado y un logo horizontal con letras.
+    logo: { objectFit: "contain", marginBottom: 8, borderRadius: 6 },
     bizName: { fontSize: 13, fontFamily: "Helvetica-Bold" },
     bizMeta: { fontSize: 8.5, color: "#888888", marginTop: 2 },
     headerDer: { alignItems: "flex-end" },
@@ -261,7 +367,7 @@ function DocumentoFinanciero({ datos }) {
       <Page size="LETTER" style={s.pagina} wrap>
         <View style={s.header} wrap={false}>
           <View>
-            {datos.logo ? <Image src={datos.logo} style={s.logo} /> : null}
+            {datos.logo ? <Image src={datos.logo} style={[s.logo, { width: datos.logoAncho, height: datos.logoAlto }]} /> : null}
             <Text style={s.bizName}>{datos.nombreNegocio}</Text>
             {datos.bizMeta ? <Text style={s.bizMeta}>{datos.bizMeta}</Text> : null}
           </View>
@@ -349,6 +455,12 @@ function DocumentoFinanciero({ datos }) {
                 <Text style={s.bankVal}>{datos.bancoclabe}</Text>
               </View>
             ) : null}
+            {datos.bancotarjeta ? (
+              <View style={s.bankRow}>
+                <Text style={s.bankKey}>Tarjeta</Text>
+                <Text style={s.bankVal}>{datos.bancotarjeta}</Text>
+              </View>
+            ) : null}
             {datos.bancoaccount ? (
               <View style={s.bankRow}>
                 <Text style={s.bankKey}>Cuenta</Text>
@@ -402,7 +514,11 @@ function DocumentoFinanciero({ datos }) {
 }
 
 // ── Construcción de datos comunes ─────────────────────────────────────────
-function construirDatosBase(tipoLabel, folio, itemsPDF, monto, pagosLimpios, saldo, cliente, perfil, fecha, mostrarMensajeSinPagos) {
+// Ahora es ASYNC: el logo se recorta de su margen vacío y se miden sus
+// dimensiones reales ANTES de construir `datos` (misma secuencia que
+// crearCotizacionPDF en CotizacionPDF.jsx) , así calcularEstiloLogoPDF
+// siempre calcula sobre la marca real, nunca sobre el lienzo con padding.
+async function construirDatosBase(tipoLabel, folio, itemsPDF, monto, pagosLimpios, saldo, cliente, perfil, fecha, mostrarMensajeSinPagos) {
   cliente = cliente || {};
   perfil = perfil || {};
 
@@ -422,6 +538,10 @@ function construirDatosBase(tipoLabel, folio, itemsPDF, monto, pagosLimpios, sal
       : "?";
 
   var logo = logoSeguroPDF(perfil.logo);
+  if (logo) logo = await recortarPaddingLogoPDF(logo);
+  var logoDim = logo ? await obtenerDimensionesImagenPDF(logo) : null;
+  var logoEstilo = calcularEstiloLogoPDF(logoDim);
+
   var bizMeta = [perfil.email, perfil.direccion]
     .filter(Boolean)
     .map(function (v) { return textoPlanoSeguro(v, 120); })
@@ -437,6 +557,8 @@ function construirDatosBase(tipoLabel, folio, itemsPDF, monto, pagosLimpios, sal
     bizMeta: bizMeta,
     footerContacto: textoPlanoSeguro(perfil.telefono, 40),
     logo: logo || null,
+    logoAncho: logoEstilo.width,
+    logoAlto: logoEstilo.height,
     clienteNombre: nombreCliente,
     clienteNegocio: textoPlanoSeguro(cliente.negocio, 120),
     iniciales: iniciales,
@@ -446,10 +568,15 @@ function construirDatosBase(tipoLabel, folio, itemsPDF, monto, pagosLimpios, sal
     mostrarMensajeSinPagos: !!mostrarMensajeSinPagos,
     saldoLabel: saldo <= 0 ? "Pagado completamente" : "Saldo pendiente",
     saldo: numeroSeguro(Math.max(0, saldo)),
-    tieneBanco: !!(perfil.banco || perfil.bancoclabe || perfil.bancoaccount),
+    // La cotización muestra exactamente lo que esté capturado en Perfil ,
+    // si hay CLABE, sale CLABE; si hay número de tarjeta, sale número de
+    // tarjeta; si hay ambos, salen ambos. Ninguno se oculta a la fuerza ,
+    // mismo criterio que CotizacionPDF.jsx.
+    tieneBanco: !!(perfil.banco || perfil.bancoclabe || perfil.bancotarjeta || perfil.bancoaccount),
     banco: textoPlanoSeguro(perfil.banco, 80),
     bancotitular: textoPlanoSeguro(perfil.bancotitular, 120),
     bancoclabe: textoPlanoSeguro(perfil.bancoclabe, 40),
+    bancotarjeta: formatearTarjetaPDF(perfil.bancotarjeta),
     bancoaccount: textoPlanoSeguro(perfil.bancoaccount, 40),
     bancoinstrucciones: textoPlanoSeguro(perfil.bancoinstrucciones, 500),
     mensaje: textoPlanoSeguro(perfil.mensaje, 300),
@@ -507,7 +634,7 @@ export async function crearDocumentoFinancieroPDF(opciones) {
     var fechaAnt = textoPlanoSeguro(cot.fechaAnticipo, 40) || textoPlanoSeguro(fechaHoy, 40);
     folio = "ANT-" + String(cot.id || "").slice(-4).padStart(4, "0") + "-" + String(Date.now()).slice(-4);
     var pagosAnticipo = anticipo > 0 || cot.fechaAnticipo ? [{ concepto: "Anticipo recibido", fecha: fechaAnt, monto: anticipo }] : [];
-    datos = construirDatosBase(
+    datos = await construirDatosBase(
       "Comprobante de Anticipo",
       folio,
       obtenerItemsComprobantePDF(cot),
@@ -542,7 +669,7 @@ export async function crearDocumentoFinancieroPDF(opciones) {
     // arriba (totalPagadoPag/saldoPag) , es puramente visual, nunca los
     // altera.
     var pagosMarcados = marcarPagoActual(pagosParaMostrar, pagoEspecifico);
-    datos = construirDatosBase(
+    datos = await construirDatosBase(
       "Comprobante de Pago",
       folio,
       obtenerItemsComprobantePDF(cot, "Venta"),
@@ -564,7 +691,7 @@ export async function crearDocumentoFinancieroPDF(opciones) {
     var saldoEst = numeroSeguro(Math.max(0, totalEst - totalPagadoEst));
     var fechaEst = textoPlanoSeguro(fechaHoy, 40);
     folio = "EST-" + String(cot.id || "").slice(-4).padStart(4, "0");
-    datos = construirDatosBase(
+    datos = await construirDatosBase(
       "Estado de Cuenta",
       folio,
       obtenerItemsComprobantePDF(cot, "Venta directa"),

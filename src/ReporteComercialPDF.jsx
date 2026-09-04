@@ -264,6 +264,24 @@ function crearEstilos() {
     motivoTituloSolo: { color: TEXTO_PRINCIPAL, fontSize: 12, fontFamily: "Helvetica-Bold" },
     motivoDetalle: { color: TEXTO_SECUNDARIO, fontSize: 8.5, marginTop: 2, lineHeight: 1.25 },
 
+    // ── Productos más vendidos en este periodo (SOLO Productos) ────────
+    // Tabla simple de 3 columnas , mismo lenguaje visual sobrio que
+    // "Movimiento comercial" (filas con separador, sin color de fondo),
+    // nunca compite visualmente con las tarjetas de color de arriba.
+    prodTablaHead: { flexDirection: "row", paddingBottom: 5, borderBottomWidth: 1, borderBottomColor: BORDE, marginBottom: 2 },
+    prodTablaHeadTxt: { color: TEXTO_SECUNDARIO, fontSize: 7.5, fontFamily: "Helvetica-Bold", textTransform: "uppercase", letterSpacing: 0.5 },
+    prodRow: { flexDirection: "row", alignItems: "center", paddingVertical: 5.5, borderBottomWidth: 1, borderBottomColor: DIVISOR },
+    prodRowUltima: { flexDirection: "row", alignItems: "center", paddingVertical: 5.5 },
+    prodColNombre: { flex: 2.2, color: TEXTO_PRINCIPAL, fontSize: 9.5, paddingRight: 8 },
+    // Fila especial "Venta sin desglose por producto" (pedidos sin base de
+    // precio confiable para atribuir el monto a un producto puntual) , solo
+    // cambia el color/estilo del nombre para diferenciarla visualmente de
+    // un producto real, nunca esconde el monto ni la excluye de la suma.
+    prodColNombreSinDesglose: { color: TEXTO_SECUNDARIO, fontStyle: "italic" },
+    prodColUnidades: { flex: 1, color: TEXTO_PRINCIPAL, fontSize: 9.5, textAlign: "center" },
+    prodColMonto: { flex: 1, color: TEXTO_PRINCIPAL, fontSize: 9.5, fontFamily: "Helvetica-Bold", textAlign: "right" },
+    prodVacioTexto: { color: TEXTO_SECUNDARIO, fontSize: 9.5, fontStyle: "italic", paddingVertical: 6 },
+
     // ── Lectura de CLEO (bloque oscuro de cierre) ───────────────────────
     lecturaBloque: { backgroundColor: TINTA, borderRadius: 14, padding: 13, position: "relative", overflow: "hidden", marginBottom: 0 },
     lecturaGlow: { position: "absolute", width: 280, height: 280, borderRadius: 140, backgroundColor: "rgba(75,94,252,0.2)", bottom: -170, left: -90 },
@@ -287,7 +305,7 @@ function crearEstilos() {
 function DocumentoReporteComercial({ datos }) {
   var s = datos.estilos;
   var esProd = datos.esProductos;
-  var s1 = datos.s1, s2 = datos.s2, s3 = datos.s3, s4 = datos.s4, s5 = datos.s5;
+  var s1 = datos.s1, s2 = datos.s2, s3 = datos.s3, s4 = datos.s4, s5 = datos.s5, s6 = datos.s6;
 
   var montoVendidoTxt = formatearMonto(s1.montoVendido);
   var montoCobradoTxt = formatearMonto(s1.montoCobrado);
@@ -322,6 +340,29 @@ function DocumentoReporteComercial({ datos }) {
     ? (esProd ? "Estado de las oportunidades" : "Estado de las cotizaciones")
     : (esProd ? "¿Por qué se perdieron algunas oportunidades?" : "¿Por qué no se cerraron algunas cotizaciones?");
   var ruidoSustantivoPlur = esProd ? "oportunidades" : "cotizaciones";
+
+  // "Productos más vendidos en este periodo" , SOLO Productos (s6 viene
+  // undefined en Servicios, nunca se renderiza nada de esta sección ahí).
+  // Se muestran TODAS las filas (sin límite de 5 ni "Y X productos más") ,
+  // ya vienen ordenadas desc por unidades (empate: monto) desde
+  // obtenerProductosMasVendidos/construirDatosReporteComercial. Para que la
+  // tabla pueda continuar en páginas siguientes sin cortar una fila a la
+  // mitad y repitiendo el encabezado de columnas, se divide en bloques de
+  // FILAS_PROD_POR_BLOQUE filas , cada bloque (encabezado + sus filas) es
+  // un único View con wrap={false}: si no cabe en el espacio restante de la
+  // página actual, react-pdf lo mueve completo a la siguiente página (nunca
+  // lo parte), lo que en la práctica repite el encabezado cada vez que la
+  // tabla salta de página. El número de filas por bloque es una estimación
+  // conservadora (fila ~24pt, encabezado ~20pt) con margen amplio frente al
+  // alto útil de una página carta (~680pt), para no arriesgar overflow ni
+  // siquiera con nombres de producto que ocupen dos líneas.
+  var FILAS_PROD_POR_BLOQUE = 20;
+  var filasProdTodas = esProd && s6 ? s6.filas : [];
+  var hayVentasProdTop = filasProdTodas.length > 0;
+  var chunksProdTop = [];
+  for (var _i = 0; _i < filasProdTodas.length; _i += FILAS_PROD_POR_BLOQUE) {
+    chunksProdTop.push(filasProdTodas.slice(_i, _i + FILAS_PROD_POR_BLOQUE));
+  }
 
   return (
     <Document>
@@ -521,6 +562,44 @@ function DocumentoReporteComercial({ datos }) {
           )}
         </View>
 
+        {/* ── Sección 6: "Productos más vendidos en este periodo" ── SOLO
+             Productos. En Servicios, esProd es false y este bloque entero
+             no se monta , el reporte de Servicios queda exactamente igual
+             que antes. */}
+        {esProd ? (
+          <View style={s.seccionBlock}>
+            <View style={s.seccionTituloFila} wrap={false}>
+              <Text style={s.seccionTitulo}>Productos vendidos en este periodo</Text>
+              <View style={s.seccionRegla} />
+            </View>
+            {!hayVentasProdTop ? (
+              <Text style={s.prodVacioTexto}>Aún no registraste productos vendidos en este periodo.</Text>
+            ) : (
+              chunksProdTop.map(function (chunk, ci) {
+                return (
+                  <View key={ci} wrap={false}>
+                    <View style={s.prodTablaHead}>
+                      <Text style={[s.prodTablaHeadTxt, { flex: 2.2 }]}>Producto</Text>
+                      <Text style={[s.prodTablaHeadTxt, { flex: 1, textAlign: "center" }]}>Unidades vendidas</Text>
+                      <Text style={[s.prodTablaHeadTxt, { flex: 1, textAlign: "right" }]}>Monto vendido</Text>
+                    </View>
+                    {chunk.map(function (p, i) {
+                      var esUltimaGlobal = ci === chunksProdTop.length - 1 && i === chunk.length - 1;
+                      return (
+                        <View style={esUltimaGlobal ? s.prodRowUltima : s.prodRow} key={i} wrap={false}>
+                          <Text style={[s.prodColNombre, p.sinDesglose ? s.prodColNombreSinDesglose : null]}>{p.nombre}</Text>
+                          <Text style={s.prodColUnidades}>{p.sinDesglose ? "—" : p.unidades}</Text>
+                          <Text style={s.prodColMonto}>{formatearMonto(p.monto)}</Text>
+                        </View>
+                      );
+                    })}
+                  </View>
+                );
+              })
+            )}
+          </View>
+        ) : null}
+
         {/* ── Sección 5: Lectura de CLEO (bloque oscuro de cierre) ──
              El contenido (datos.s5) se genera íntegramente en CLEO.jsx , este
              módulo solo lo presenta: numera cada conclusión y resalta en
@@ -591,6 +670,10 @@ export async function crearReporteComercialPDF(datosReporte, perfil) {
   var s3 = datosReporte.seccion3 || {};
   var s4 = datosReporte.seccion4 || { total: 0, porMotivo: [] };
   var s5 = Array.isArray(datosReporte.seccion5) ? datosReporte.seccion5 : [];
+  // seccion6 ("Productos más vendidos") , SOLO existe para Productos , en
+  // Servicios datosReporte.seccion6 es undefined y s6 queda null, el
+  // componente entero de esta sección no se monta (ver esProd arriba).
+  var s6raw = datosReporte.seccion6;
 
   var datos = {
     estilos: crearEstilos(),
@@ -642,6 +725,25 @@ export async function crearReporteComercialPDF(datosReporte, perfil) {
       }),
     },
     s5: s5.map(function (t) { return textoPlanoSeguro(t, 400); }).filter(Boolean),
+    // Se sanitizan TODAS las filas, sin límite , el PDF ahora muestra la
+    // tabla completa (paginada en bloques, ver chunksProdTop en
+    // DocumentoReporteComercial), ya no se recorta a 5 filas. `sinDesglose`
+    // se preserva tal cual (booleano) , identifica la fila especial "Venta
+    // sin desglose por producto" que NO tiene unidades reales que mostrar
+    // (se renderiza "—", nunca un número inventado), pero SÍ participa en
+    // la suma visible de montos para que reconcilie con la sección 1.
+    s6: s6raw && Array.isArray(s6raw.filas)
+      ? {
+          filas: s6raw.filas.map(function (p) {
+            return {
+              nombre: textoPlanoSeguro(p.nombre, 200) || "(sin nombre)",
+              unidades: p.sinDesglose ? null : numeroSeguro(p.unidades),
+              monto: numeroSeguro(p.monto),
+              sinDesglose: !!p.sinDesglose,
+            };
+          }),
+        }
+      : null,
   };
 
   var blobBruto = await pdf(<DocumentoReporteComercial datos={datos} />).toBlob();

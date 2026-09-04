@@ -1230,6 +1230,70 @@ function nombreArchivoSeguro(valor,fallback){
   return texto||fallback;
 }
 
+// recortarPaddingLogoOrigen: MISMA lógica de recorte de margen vacío que
+// recortarPaddingLogoPDF en CotizacionPDF.jsx (detecta transparencia real o
+// un color casi idéntico al de la esquina superior izquierda), pero corrida
+// AQUÍ, en el momento de subir el logo, ANTES de limitar su resolución.
+// Motivo: muchos logos exportados (Canva, Illustrator, etc.) traen un
+// lienzo mucho más grande que la marca real , si primero se limita el lado
+// más largo del LIENZO completo a maxLado y DESPUÉS se recorta el margen
+// (como se hacía antes, solo en CotizacionPDF.jsx al generar el PDF), la
+// mayoría de esos píxeles de resolución se "gastan" en el margen vacío y a
+// la marca real le queda muy poca resolución real , por eso se veía
+// pixeleada en la cotización incluso después de subir el límite a 1200px.
+// Recortando el margen PRIMERO, todo el presupuesto de resolución (maxLado)
+// se dedica a la marca real. Cualquier fallo regresa el canvas original sin
+// tocar, nunca rompe la subida del logo.
+function recortarPaddingLogoOrigen(img,w,h){
+  try{
+    var canvas=document.createElement("canvas");
+    canvas.width=w; canvas.height=h;
+    var ctx=canvas.getContext("2d");
+    ctx.drawImage(img,0,0,w,h);
+    var data;
+    try{ data=ctx.getImageData(0,0,w,h).data; }catch(eLectura){ return canvas; }
+    var bgR=data[0],bgG=data[1],bgB=data[2],bgA=data[3];
+    function esFondo(i){
+      var a=data[i+3];
+      if(a<10) return true;
+      if(bgA<10) return false;
+      var r=data[i],g=data[i+1],b=data[i+2];
+      return Math.abs(r-bgR)+Math.abs(g-bgG)+Math.abs(b-bgB)<18;
+    }
+    var minX=w,minY=h,maxX=-1,maxY=-1;
+    var paso=Math.max(1,Math.floor(Math.max(w,h)/400));
+    for(var y=0;y<h;y+=paso){
+      for(var x=0;x<w;x+=paso){
+        var i=(y*w+x)*4;
+        if(!esFondo(i)){
+          if(x<minX) minX=x;
+          if(x>maxX) maxX=x;
+          if(y<minY) minY=y;
+          if(y>maxY) maxY=y;
+        }
+      }
+    }
+    if(maxX<minX||maxY<minY) return canvas;
+    var margenX=Math.round((maxX-minX)*0.04)+paso;
+    var margenY=Math.round((maxY-minY)*0.04)+paso;
+    minX=Math.max(0,minX-margenX); minY=Math.max(0,minY-margenY);
+    maxX=Math.min(w-1,maxX+margenX); maxY=Math.min(h-1,maxY+margenY);
+    var anchoRecorte=maxX-minX+1, altoRecorte=maxY-minY+1;
+    if(anchoRecorte>=w*0.97&&altoRecorte>=h*0.97) return canvas;
+    var canvasRecorte=document.createElement("canvas");
+    canvasRecorte.width=anchoRecorte; canvasRecorte.height=altoRecorte;
+    canvasRecorte.getContext("2d").drawImage(canvas,minX,minY,anchoRecorte,altoRecorte,0,0,anchoRecorte,altoRecorte);
+    return canvasRecorte;
+  }catch(eProceso){
+    try{
+      var canvasFallback=document.createElement("canvas");
+      canvasFallback.width=w; canvasFallback.height=h;
+      canvasFallback.getContext("2d").drawImage(img,0,0,w,h);
+      return canvasFallback;
+    }catch(e2){ return null; }
+  }
+}
+
 // convertirImagenAPngDataURL: normaliza CUALQUIER imagen subida (WEBP, HEIC,
 // GIF, SVG, lo que sea) a un data URL PNG antes de guardarla como logo del
 // negocio. CotizacionPDF.jsx y ComprobantePDF.jsx solo aceptan PNG/JPEG en
@@ -1239,9 +1303,11 @@ function nombreArchivoSeguro(valor,fallback){
 // tal cual: se veía bien DENTRO de CLEO (el navegador sí lo renderiza), pero
 // desaparecía en silencio al generar cualquier PDF, sin ningún aviso.
 // Convertir siempre a PNG en el momento de subirlo hace que el formato de
-// origen deje de importar para el PDF. De paso, limita el lado más largo a
-// 512px , un logo nunca necesita más resolución que esa para verse nítido en
-// un documento, y evita guardar data URLs innecesariamente grandes.
+// origen deje de importar para el PDF. De paso, recorta el margen vacío
+// (ver recortarPaddingLogoOrigen) y limita el lado más largo de la marca YA
+// RECORTADA a maxLado , un logo nunca necesita más resolución que esa para
+// verse nítido en un documento, y evita guardar data URLs innecesariamente
+// grandes.
 function convertirImagenAPngDataURL(file){
   return new Promise(function(resolve,reject){
     var lector=new FileReader();
@@ -1255,16 +1321,26 @@ function convertirImagenAPngDataURL(file){
       // generar un PDF sin logo sin saber por qué.
       img.onerror=function(){ reject(new Error("No se pudo procesar esta imagen.")); };
       img.onload=function(){
-        var maxLado=512;
-        var w=img.naturalWidth||img.width;
-        var h=img.naturalHeight||img.height;
-        if(!w||!h){ reject(new Error("Imagen inválida.")); return; }
+        // 1600px , sobre la marca YA RECORTADA de su margen vacío (antes
+        // este límite aplicaba al lienzo completo CON margen, así que en
+        // logos con mucho padding la marca real terminaba con muy poca
+        // resolución real y se veía pixeleada al imprimirse más grande en
+        // la cotización). Los logos suelen ser casi siempre color plano +
+        // transparencia, así que un PNG a esta resolución sigue pesando
+        // poco.
+        var maxLado=1600;
+        var wOriginal=img.naturalWidth||img.width;
+        var hOriginal=img.naturalHeight||img.height;
+        if(!wOriginal||!hOriginal){ reject(new Error("Imagen inválida.")); return; }
+        var canvasRecortado=recortarPaddingLogoOrigen(img,wOriginal,hOriginal);
+        if(!canvasRecortado){ reject(new Error("No se pudo procesar esta imagen.")); return; }
+        var w=canvasRecortado.width, h=canvasRecortado.height;
         var escala=Math.min(1,maxLado/Math.max(w,h));
         var canvas=document.createElement("canvas");
         canvas.width=Math.max(1,Math.round(w*escala));
         canvas.height=Math.max(1,Math.round(h*escala));
         var ctx=canvas.getContext("2d");
-        ctx.drawImage(img,0,0,canvas.width,canvas.height);
+        ctx.drawImage(canvasRecortado,0,0,canvas.width,canvas.height);
         try{
           resolve(canvas.toDataURL("image/png"));
         }catch(errExport){
@@ -1625,8 +1701,8 @@ var serviciosDemo=[
   {id:8,nombre:"Retoque de fotos",precio:650,descripcion:"Edición y retoque profesional, precio por sesión"},
   {id:9,nombre:"Sesión fotográfica premium",precio:6500,descripcion:"Medio día de sesión, 40 fotos editadas, locación incluida"},
 ];
-var perfilDemo={nombre:"Mi Negocio",tuNombre:"",telefono:"",email:"",direccion:"",color:C.purple,colorSecundario:"#E4E2F8",colorTexto:"#1A1635",logo:"",mensaje:"Gracias por tu confianza.",condicionesPago:"50% anticipo, 50% al entregar.",redesTT:"",redesIG:"",redesFB:"",tipoPerfil:"",banco:"",bancotitular:"",bancoclabe:"",bancoaccount:"",bancoinstrucciones:""};
-var perfilDemoServicios={nombre:"Vega Estudio Creativo",tuNombre:"Andrea Vega",telefono:"9992223344",email:"andrea@vegaestudio.mx",direccion:"Mérida, Yucatán",color:C.purple,colorSecundario:"#E4E2F8",colorTexto:"#1A1635",logo:"",mensaje:"Gracias por confiar en Vega Estudio para tu proyecto.",condicionesPago:"50% anticipo para reservar la fecha, 50% al entregar.",redesTT:"",redesIG:"@vegaestudiocreativo",redesFB:"",tipoPerfil:"Servicios",banco:"",bancotitular:"Andrea Vega",bancoclabe:"",bancoaccount:"",bancoinstrucciones:""};
+var perfilDemo={nombre:"Mi Negocio",tuNombre:"",telefono:"",email:"",direccion:"",color:C.purple,colorSecundario:"#E4E2F8",colorTexto:"#1A1635",logo:"",mensaje:"Gracias por tu confianza.",condicionesPago:"50% anticipo, 50% al entregar.",redesTT:"",redesIG:"",redesFB:"",tipoPerfil:"",banco:"",bancotitular:"",bancoclabe:"",bancoaccount:"",bancotarjeta:"",bancoinstrucciones:""};
+var perfilDemoServicios={nombre:"Vega Estudio Creativo",tuNombre:"Andrea Vega",telefono:"9992223344",email:"andrea@vegaestudio.mx",direccion:"Mérida, Yucatán",color:C.purple,colorSecundario:"#E4E2F8",colorTexto:"#1A1635",logo:"",mensaje:"Gracias por confiar en Vega Estudio para tu proyecto.",condicionesPago:"50% anticipo para reservar la fecha, 50% al entregar.",redesTT:"",redesIG:"@vegaestudiocreativo",redesFB:"",tipoPerfil:"Servicios",banco:"",bancotitular:"Andrea Vega",bancoclabe:"",bancoaccount:"",bancotarjeta:"",bancoinstrucciones:""};
 var productosDemo=["Aretes plata","Collar dorado","Pulsera tejida","Anillo boda custom","Aretes dorados","Collar perlas"];
 var ventasDemo=[
   {id:1,monto:800,fecha:diasAtras(9),concepto:"Venta directa",tipo:"dia",etiqueta:"",clienteId:null,pagos:[{id:"p_v1",monto:800,fecha:diasAtras(9),concepto:"Pago completo"}]},
@@ -1757,7 +1833,7 @@ var cotDemoProductos=[
 ];
 var ventasDemoProductos=[
 ];
-var perfilDemoProductos={nombre:"Joyería Artesanal Mía",tuNombre:"Mía",telefono:"9990001111",email:"mia@ejemplo.com",direccion:"Mérida, Yucatán",color:C.purple,colorSecundario:"#E4E2F8",colorTexto:"#1A1635",logo:"",mensaje:"Gracias por elegir mis piezas. Cada una está hecha con amor.",condicionesPago:"50% anticipo para comenzar, 50% al entregar.",redesTT:"",redesIG:"@joyeriamia",redesFB:"",tipoPerfil:"productos",banco:"",bancotitular:"Mía López",bancoclabe:"",bancoaccount:"",bancoinstrucciones:""};
+var perfilDemoProductos={nombre:"Joyería Artesanal Mía",tuNombre:"Mía",telefono:"9990001111",email:"mia@ejemplo.com",direccion:"Mérida, Yucatán",color:C.purple,colorSecundario:"#E4E2F8",colorTexto:"#1A1635",logo:"",mensaje:"Gracias por elegir mis piezas. Cada una está hecha con amor.",condicionesPago:"50% anticipo para comenzar, 50% al entregar.",redesTT:"",redesIG:"@joyeriamia",redesFB:"",tipoPerfil:"productos",banco:"",bancotitular:"Mía López",bancoclabe:"",bancoaccount:"",bancotarjeta:"",bancoinstrucciones:""};
 var productosCatDemo=[
   {id:1001,nombre:"Aretes plata",precio:350,descripcion:"Aretes de plata 925, acabado brillante.",condiciones:""},
   {id:1002,nombre:"Collar dorado",precio:480,descripcion:"Collar bañado en oro 18k.",condiciones:""},
@@ -2567,6 +2643,152 @@ function obtenerItemsPedido(ped){
     precioUnitario:precioLegacy,
     total:totalLegacy
   }];
+}
+// separarMontoConfiableDePedido: NUNCA asumas que pedido.total === suma de
+// item.total. Coinciden en la enorme mayoría de los casos (todo pedido
+// creado directo, incluida venta rápida, y todo pedido legacy , este último
+// SIEMPRE coincide por construcción, porque su único item se reconstruye
+// directamente a partir de ped.total en obtenerItemsPedido) , PERO hay un
+// caso real donde NO coinciden: un pedido vinculado a una cotización
+// (pedido.cotizacionId) cuya cotización se edita con un descuento>0 , el
+// sync de guardarCot (ver el único setPedidos que escribe
+// {total:monto,...,items:itemsFinal}) guarda ahí el TOTAL YA CON DESCUENTO
+// aplicado, pero cada item conserva su propio total SIN descuento
+// (cantidad×precioUnitario), porque el descuento vive a nivel cotización,
+// nunca repartido entre renglones. Sin esto, sumar "Monto vendido" por
+// producto en este reporte daría MÁS que "Monto vendido" del periodo
+// (sección 1) para cualquier pedido en ese caso.
+//
+// Caso CON base confiable (sumaItems>0, hay precios de referencia reales
+// por item): se reparte pedido.total proporcional al peso de cada item
+// dentro del pedido (cada item recibe pedido.total × (su total÷suma de
+// totales), redondeado a centavos , el residuo de redondeo, unos
+// centavos, se ajusta en el item de mayor monto), así la suma de items de
+// ESTE pedido queda IDÉNTICA a pedido.total. Esto es correcto porque SÍ
+// existe una base real (el precio de cada producto) para saber qué
+// proporción del descuento le tocó a cada uno.
+//
+// Caso SIN base confiable (todos los items del pedido están en $0, o el
+// pedido no tiene items, pero pedido.total es distinto de cero , p. ej. un
+// pedido legacy con precioUnitario faltante/corrupto): NUNCA se inventa un
+// reparto por producto aquí , repartir en partes iguales (o de cualquier
+// otra forma) atribuiría ventas a productos específicos sin respaldo real,
+// lo cual es peor que no reconciliar. En este caso los items conservan sus
+// UNIDADES reales (si se conocen, siguen siendo información real y se
+// muestran) pero su monto individual queda en $0 , el monto completo del
+// pedido se devuelve aparte, en `sinDesglose`, para que quien llama lo
+// muestre como una fila explícita ("Venta sin desglose por producto") en
+// vez de repartirlo. Así la integridad comercial nunca se sacrifica por
+// hacer cuadrar una suma.
+//
+// Cuando pedido.total ya coincide con la suma de items (el caso normal)
+// esta función es un no-op exacto. Es puramente de lectura , nunca
+// modifica el pedido real, solo la copia en memoria que usa este reporte.
+// Devuelve siempre {items, sinDesglose}.
+function separarMontoConfiableDePedido(items,totalPedido){
+  var total=numeroSeguro(totalPedido);
+  var sumaItems=redondearDinero((items||[]).reduce(function(s,it){ return s+(Number(it.total)||0); },0));
+  if(!items||items.length===0){
+    // Sin items no hay ni unidades ni base de precio que mostrar , si el
+    // pedido tiene un total real, va completo a "sin desglose" (no hay
+    // nada que fabricar).
+    return { items:[], sinDesglose: total!==0 ? total : 0 };
+  }
+  if(sumaItems===total) return { items:items, sinDesglose:0 };
+  if(sumaItems<=0){
+    // No hay precio de referencia en ningún item de este pedido , se
+    // conservan las unidades reales de cada item (siguen siendo un dato
+    // conocido), pero el monto de cada item se deja en $0 : el total del
+    // pedido no se atribuye a ningún producto puntual, se reporta aparte.
+    var itemsSinMonto=items.map(function(it){ return Object.assign({},it,{total:0}); });
+    return { items:itemsSinMonto, sinDesglose: total };
+  }
+  var factor=total/sumaItems;
+  var acumulado=0;
+  var idxMayor=0;
+  var ajustados=items.map(function(it,i){
+    var montoBase=redondearDinero((Number(it.total)||0)*factor);
+    acumulado=redondearDinero(acumulado+montoBase);
+    if((Number(it.total)||0)>(Number(items[idxMayor].total)||0)) idxMayor=i;
+    return Object.assign({},it,{total:montoBase});
+  });
+  var diferencia=redondearDinero(total-acumulado);
+  if(diferencia!==0) ajustados[idxMayor]=Object.assign({},ajustados[idxMayor],{total:redondearDinero(ajustados[idxMayor].total+diferencia)});
+  return { items:ajustados, sinDesglose:0 };
+}
+// numeroSeguro local mínima (evita depender de otra definición más abajo
+// en el archivo) , idéntico criterio que numeroSeguro() usado en los
+// módulos de PDF: nunca NaN/infinito, nunca más de 2 decimales reales.
+function numeroSeguro(valor){
+  var n=Number(valor);
+  if(!Number.isFinite(n)) return 0;
+  return redondearDinero(n);
+}
+// obtenerProductosMasVendidos: agrega por PRODUCTO (no por pedido) las
+// unidades y el monto vendidos dentro de una lista de pedidos YA FILTRADA
+// por quien llama (mismo conjunto que "monto vendido"/"ventas cerradas" del
+// Reporte comercial , ver construirDatosReporteComercial más abajo, nunca
+// se filtra de nuevo aquí ni por fecha ni por cancelado , esta función es
+// puramente de AGREGACIÓN, de solo lectura, nunca modifica pedidos).
+//
+// Fuente de items: SIEMPRE obtenerItemsPedido(ped) , la misma función
+// central que ya usan la cotización/comprobante de un pedido , nunca
+// combina items[] nuevos con campos legacy del mismo pedido (evita
+// duplicar cantidades), nunca consulta el catálogo actual (usa el
+// nombre/precio ya guardados en el pedido en el momento de venderse). El
+// MONTO de esos items pasa por separarMontoConfiableDePedido (ver arriba)
+// antes de acumularse , así el total de "Monto vendido" de esta tabla
+// SIEMPRE reconcilia con "Monto vendido en el periodo" (sección 1), aunque
+// el pedido venga de una cotización con descuento. Las UNIDADES nunca se
+// tocan , se muestran tal cual, incluso en pedidos sin base de precio
+// confiable, porque son un dato real, no dinero inventado.
+//
+// Integridad comercial > cuadrar la suma a la fuerza: cuando un pedido no
+// tiene una base de precio confiable para saber qué le tocó a cada
+// producto, ese monto NUNCA se reparte entre productos específicos , se
+// acumula aparte (sinDesgloseTotal) y se agrega como una única fila final
+// "Venta sin desglose por producto" (unidades null , se muestra "—" en el
+// PDF, nunca un número inventado), con el monto completo de esos pedidos.
+// Esa fila SÍ se incluye en la suma visible de la tabla, por eso la suma
+// total sigue reconciliando exacto con "Monto vendido en el periodo" ,
+// pero nunca finge saber cuánto vendió cada producto puntual cuando no lo
+// sabe.
+//
+// Agrupación: por catalogoId cuando el item lo trae , si no, por nombre
+// normalizado (normalizarNombreItem, insensible a mayúsculas/acentos/
+// espacios) , el nombre MOSTRADO de cada grupo es el del primer item visto
+// (nombre histórico tal cual se guardó, nunca el nombre actual del
+// catálogo si después se editó).
+function obtenerProductosMasVendidos(pedidosYaFiltrados){
+  var grupos={};
+  var orden=[];
+  var sinDesgloseTotal=0;
+  (pedidosYaFiltrados||[]).forEach(function(ped){
+    var resultado=separarMontoConfiableDePedido(obtenerItemsPedido(ped),ped.total);
+    sinDesgloseTotal=redondearDinero(sinDesgloseTotal+(Number(resultado.sinDesglose)||0));
+    resultado.items.forEach(function(it){
+      if(!it.nombre&&!it.cantidad&&!it.total) return;
+      var clave=it.catalogoId!=null?("cat_"+it.catalogoId):("nom_"+normalizarNombreItem(it.nombre));
+      if(!grupos[clave]){
+        grupos[clave]={nombre:it.nombre||"(sin nombre)",unidades:0,monto:0};
+        orden.push(clave);
+      }
+      grupos[clave].unidades+=Number(it.cantidad)||0;
+      grupos[clave].monto=redondearDinero(grupos[clave].monto+(Number(it.total)||0));
+    });
+  });
+  var filas=orden.map(function(clave){ return grupos[clave]; });
+  filas.sort(function(a,b){
+    if(b.unidades!==a.unidades) return b.unidades-a.unidades;
+    return b.monto-a.monto;
+  });
+  // La fila de "sin desglose" nunca participa del orden por unidades (no
+  // tiene unidades reales que ordenar) , siempre va al final, después de
+  // todos los productos identificados.
+  if(sinDesgloseTotal!==0){
+    filas.push({ nombre:"Venta sin desglose por producto", unidades:null, monto:sinDesgloseTotal, sinDesglose:true });
+  }
+  return filas;
 }
 // Reversión de ingreso al cancelar un pedido que ya tenía anticipo cobrado
 // , única fórmula usada por las 4 vistas de ingresos (Inicio, Ingresos,
@@ -6785,6 +7007,13 @@ export default function CLEO(props){
       // de raíz los pagos de un pedido cancelado.
       montoCobrado=cobroNetoPedidosEnRango(pedidos,desde,hasta);
       ventasCerradas=pedidosVendidosPeriodo.length;
+      // "Productos más vendidos en este periodo" (Reporte comercial,
+      // Productos) , se agrega EXACTAMENTE sobre pedidosVendidosPeriodo, el
+      // mismo conjunto ya filtrado (no cancelado + fecha en rango) que
+      // arriba calcula montoVendido/ventasCerradas , mismo criterio de
+      // fecha, misma exclusión de cancelados, nunca un segundo filtro
+      // paralelo que pudiera desincronizarse.
+      var productosMasVendidosPeriodo=obtenerProductosMasVendidos(pedidosVendidosPeriodo);
 
       movimiento.pedidosCreados=pedidosCreadosPeriodo.length;
       movimiento.pedidosEntregados=pedidosEntregadosPeriodo.length;
@@ -6960,7 +7189,12 @@ export default function CLEO(props){
       seccion2:movimiento,
       seccion3:atencionHoy,
       seccion4:{ total:totalPerdidas, porMotivo:porMotivo },
-      seccion5:lecturaCleo
+      seccion5:lecturaCleo,
+      // seccion6 (Productos más vendidos) , SOLO existe para Productos , en
+      // Servicios queda undefined a propósito, nunca un arreglo vacío que
+      // el PDF pudiera interpretar como "sin ventas" , el componente decide
+      // si renderiza la sección exclusivamente con esProductos.
+      seccion6:esProd?{ filas:productosMasVendidosPeriodo }:undefined
     };
   }
 
@@ -12819,6 +13053,16 @@ export default function CLEO(props){
               if(estadoNorm==="preparando"&&diasDesde(ped.fecha)>=5){
                 pedidosAccion.push({ped:ped,cl:cl,tipo:"atrasado",msg:"Lleva "+diasDesde(ped.fecha)+" días sin marcarse como entregado",color:"#EF4444",bg:"#FEF2F2",border:"#FCA5A5"});
               }
+              // Fecha de entrega programada para HOY , usa exactamente
+              // ped.fechaEntrega (mismo campo que "Cambiar fecha"/"+
+              // Agregar fecha de entrega" en Pedidos), comparado con
+              // esFechaExactamenteHoy , nunca con diasDesde(ped.fecha), que
+              // es la fecha de creación del pedido, no la de entrega. Es un
+              // recordatorio, no un problema, así que no usa el color rojo
+              // de "atrasado".
+              if(estadoNorm==="preparando"&&ped.fechaEntrega&&esFechaExactamenteHoy(ped.fechaEntrega)){
+                pedidosAccion.push({ped:ped,cl:cl,tipo:"entrega_hoy",msg:"Programaste entregarlo hoy",color:"#3B82F6",bg:"#EFF6FF",border:"#BFDBFE"});
+              }
             });
 
             var sinNada=opsRetomar.length===0&&pedidosAccion.length===0;
@@ -12881,7 +13125,7 @@ export default function CLEO(props){
                     var cl=item.cl;
                     var ac=cl?avatarColor(cl.id):"#94A3B8";
                     return e("div",{key:item.ped.id+"_"+item.tipo,style:{display:"flex",alignItems:"center",gap:12,padding:"14px",background:C.surface,border:"1px solid "+C.border,borderRadius:14,flexWrap:isMobile?"wrap":"nowrap",boxShadow:"0 1px 3px rgba(0,0,0,0.04)"}},
-                      e("div",{style:{padding:"4px 10px",borderRadius:20,background:item.bg,color:item.color,fontSize:10,fontWeight:700,letterSpacing:"0.3px",flexShrink:0,minWidth:isMobile?0:132,textAlign:"center",flex:isMobile?"1 1 100%":"0 0 auto"}},item.tipo==="atrasado"?"SIN ENTREGAR":"SALDO PENDIENTE"),
+                      e("div",{style:{padding:"4px 10px",borderRadius:20,background:item.bg,color:item.color,fontSize:10,fontWeight:700,letterSpacing:"0.3px",flexShrink:0,minWidth:isMobile?0:132,textAlign:"center",flex:isMobile?"1 1 100%":"0 0 auto"}},item.tipo==="atrasado"?"SIN ENTREGAR":item.tipo==="entrega_hoy"?"ENTREGA HOY":"SALDO PENDIENTE"),
                       e("div",{style:{display:"flex",alignItems:"flex-start",gap:12,flex:isMobile?"1 1 100%":"1 1 auto",minWidth:0}},
                       e("div",{style:{width:40,height:40,borderRadius:"50%",background:ac+"22",display:"flex",alignItems:"center",justifyContent:"center",fontSize:13,fontWeight:700,color:ac,flexShrink:0}},cl?iniciales(cl.nombre):"?"),
                       e("div",{style:{flex:1,minWidth:isMobile?0:200}},
@@ -18461,6 +18705,14 @@ export default function CLEO(props){
               e("div",null,e("label",{style:st.lbl},"CLABE (18 dígitos)"),e("input",{value:formPerfil.bancoclabe||"",onChange:function(ev){ var v=ev.target.value.replace(/\D/g,"").slice(0,18); setFormPerfil(Object.assign({},formPerfil,{bancoclabe:v})); },placeholder:"000000000000000000",maxLength:18,inputMode:"numeric",style:st.inp})),
               e("div",null,e("label",{style:st.lbl},"Número de cuenta"),e("input",{value:formPerfil.bancoaccount||"",onChange:function(ev){ var v=ev.target.value.replace(/\D/g,"").slice(0,20); setFormPerfil(Object.assign({},formPerfil,{bancoaccount:v})); },placeholder:"Solo números",maxLength:20,inputMode:"numeric",style:st.inp}))
             ),
+            e("div",{style:{marginBottom:10}},
+              // Número de tarjeta (16 dígitos) , campo nuevo, independiente
+              // de CLABE/Cuenta (ninguno de los dos se borra ni se
+              // reemplaza aquí). Por ahora solo la cotización lo muestra en
+              // vez de la CLABE , ver CotizacionPDF.jsx.
+              e("label",{style:st.lbl},"Número de tarjeta (16 dígitos)"),
+              e("input",{value:formPerfil.bancotarjeta||"",onChange:function(ev){ var v=ev.target.value.replace(/\D/g,"").slice(0,16); setFormPerfil(Object.assign({},formPerfil,{bancotarjeta:v})); },placeholder:"0000000000000000",maxLength:16,inputMode:"numeric",style:st.inp})
+            ),
             e("div",null,e("label",{style:st.lbl},"Instrucciones adicionales"),e("textarea",{value:formPerfil.bancoinstrucciones||"",onChange:function(ev){ setFormPerfil(Object.assign({},formPerfil,{bancoinstrucciones:ev.target.value})); },placeholder:"ej. Manda captura al 932...",style:Object.assign({},st.inp,{minHeight:50,resize:"vertical"})}))
 
             )
@@ -19257,7 +19509,12 @@ export default function CLEO(props){
               var itemsParaPDF=(formCot.items||[]).filter(function(it){ return it.nombre&&it.nombre.trim(); }).map(function(it){
                 var cantidad=Number(it.cantidad)||0;
                 var precioUnitario=redondearDinero(interpretarImporte(it.precioUnitario));
-                return {id:it.id,catalogoId:it.catalogoId||null,nombre:it.nombre.trim(),cantidad:cantidad,precioUnitario:precioUnitario,total:redondearDinero(cantidad*precioUnitario)};
+                // descripcion/condiciones: se habían quedado fuera de esta
+                // copia separada de items (a diferencia de itemsFinal en
+                // guardarCot), por eso "Guardar y PDF" generaba el PDF sin
+                // ellas aunque sí quedaban guardadas al editar la
+                // cotización , mismos campos que guardarCot, por renglón.
+                return {id:it.id,catalogoId:it.catalogoId||null,nombre:it.nombre.trim(),cantidad:cantidad,precioUnitario:precioUnitario,total:redondearDinero(cantidad*precioUnitario),descripcion:it.descripcion||"",condiciones:it.condiciones||""};
               });
               var totalesPDF=calcularTotalesCotizacion(itemsParaPDF,formCot.descuento,formCot.tipoDescuento);
               var cantidadResumenPDF=itemsParaPDF.reduce(function(s,it){ return s+it.cantidad; },0);
