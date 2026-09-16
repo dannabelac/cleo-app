@@ -18,7 +18,7 @@
   },
   "scripts": {
     "dev": "vite",
-    "build": "vite build",
+    "build": "node scripts/check-preview.cjs && vite build",
     "preview": "vite preview",
     "test:sync": "node --test tests/*.test.cjs"
   }

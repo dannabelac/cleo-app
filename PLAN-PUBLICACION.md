@@ -41,3 +41,9 @@ No se ha ejecutado una reversión real ni se ha verificado aún el deployment qu
 ## Ajuste local del aviso entre pestañas
 
 El aviso ahora consulta la misma protección que el guardado, en lugar de quedar activado por cualquier evento. Si los valores vuelven a coincidir, un nuevo evento retira el aviso; también contempla el vaciado del almacenamiento. No actualiza automáticamente el estado de la interfaz ni descarta formularios. Prueba de regresión con eventos retrasados, restauración de valores y clear superada. Falta verificación en navegador de este ajuste; no está publicado.
+
+## Rama temporal exclusiva de Preview
+
+La configuración Vercel de esta rama exige entorno Preview y URL/clave pública exactas de CLEO Pruebas antes de compilar. Una configuración heredada de producción hace fallar el build sin generar una vista previa nueva. La política de conexiones de esta rama permite solo el Supabase de pruebas. La clave incluida en la comprobación es publishable, no secreta. No fusionar esta configuración temporal a main: preparar y revisar por separado la configuración final de producción.
+
+El usuario confirmó que después de recargar ambas pestañas muestran PRUEBA C sin avisos. Esto confirma recuperación tras recarga; no prueba todas las carreras simultáneas.
