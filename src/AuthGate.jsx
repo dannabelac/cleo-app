@@ -140,6 +140,39 @@ function urlPareceRecuperacion() {
   );
 }
 
+// Seguridad: Supabase usa por defecto el flujo implícito de OAuth/enlaces
+// de correo , procesa el fragmento (#access_token=...&refresh_token=...)
+// y establece la sesión automáticamente, pero nunca limpia la URL visible
+// después. limpiarURLSensible() se llama SIEMPRE después de que la sesión
+// (real o de recuperación) ya quedó establecida , nunca antes , y deja
+// únicamente el origen + ruta, conservando de la query solo los parámetros
+// explícitamente seguros de QUERY_PARAMS_SEGUROS (hoy: cleo_recovery, para
+// no romper el flujo de recuperación mientras sigue en curso). Nunca deja
+// access_token, refresh_token, provider_token, code, expires_at ni
+// token_type en la URL.
+var QUERY_PARAMS_SEGUROS = ["cleo_recovery"];
+function limpiarURLSensible() {
+  if (typeof window === "undefined" || !window.history || !window.history.replaceState) return;
+  var hash = window.location.hash || "";
+  var search = window.location.search || "";
+  var queryLimpio = "";
+  try {
+    var actuales = new URLSearchParams(search);
+    var conservados = new URLSearchParams();
+    QUERY_PARAMS_SEGUROS.forEach(function (k) {
+      if (actuales.has(k)) conservados.set(k, actuales.get(k));
+    });
+    var qs = conservados.toString();
+    queryLimpio = qs ? "?" + qs : "";
+  } catch (e) {
+    queryLimpio = "";
+  }
+  if (!hash && queryLimpio === search) return; // nada que limpiar
+  try {
+    window.history.replaceState(null, "", window.location.origin + window.location.pathname + queryLimpio);
+  } catch (e) {}
+}
+
 // Banderas NO sensibles en sessionStorage (nunca tokens ni contraseñas) para
 // que el proceso de recuperación sobreviva a una recarga de página.
 var RECOVERY_ACTIVE_KEY = "cleo_password_recovery_active";
@@ -427,6 +460,18 @@ export default function AuthGate() {
         return;
       }
 
+      // Seguridad: si esta sesión se acaba de establecer a partir de un
+      // callback que dejó tokens en el fragmento de la URL (Google OAuth,
+      // confirmación de correo de signup , ambos usan el flujo implícito
+      // de Supabase por defecto), se limpia de inmediato. `session` ya
+      // existe en este punto , Supabase ya la leyó y la estableció antes
+      // de llegar aquí, así que nunca se corre el riesgo de limpiar la URL
+      // antes de tiempo. Nunca se ejecuta en el flujo de recuperación (ya
+      // se filtró arriba con enRecuperacionRef , esa tiene su propia
+      // limpieza inmediata en el evento PASSWORD_RECOVERY, ver más abajo
+      // en este mismo efecto).
+      limpiarURLSensible();
+
       // ── Control legal obligatorio ──────────────────────────────────
       // Antes de CUALQUIER otra cosa (demo, pullUserData, montar CLEO,
       // sincronizar): ¿esta cuenta ya aceptó EXACTAMENTE las versiones
@@ -644,6 +689,13 @@ export default function AuthGate() {
       // qué haya pasado antes.
       if (_event === "PASSWORD_RECOVERY") {
         enRecuperacionRef.current = true;
+        // Seguridad: este evento es la confirmación real de que Supabase ya
+        // leyó el fragmento del enlace de recuperación y estableció la
+        // sesión temporal , se limpia la URL AQUÍ, de inmediato, sin
+        // esperar a que la persona termine de cambiar su contraseña. La
+        // limpieza conserva cleo_recovery (vía QUERY_PARAMS_SEGUROS), así
+        // que el flujo de recuperación sigue funcionando exactamente igual.
+        limpiarURLSensible();
         mostrarVistaRecuperacionCorrecta();
         return;
       }

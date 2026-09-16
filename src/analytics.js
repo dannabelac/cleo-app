@@ -10,6 +10,105 @@ import posthog from "posthog-js";
 var POSTHOG_KEY = import.meta.env.VITE_POSTHOG_KEY;
 var POSTHOG_HOST = import.meta.env.VITE_POSTHOG_HOST;
 
+// Seguridad: posthog-js adjunta AUTOMÁTICAMENTE propiedades como
+// $current_url y $referrer a CUALQUIER evento capturado, sin importar
+// autocapture/capture_pageview/disable_session_recording (esas opciones
+// solo controlan la captura automática de clics/vistas, nunca el
+// enriquecimiento de propiedades por evento) , por eso la lista blanca
+// PROPIEDADES_PERMITIDAS de más abajo, que solo filtra lo que CLEO manda
+// explícito, no basta por sí sola. before_send (ver beforeSendPostHog más
+// abajo) es el único punto que también revisa esas propiedades
+// automáticas antes de que salgan del navegador.
+var NOMBRES_PROPIEDAD_SENSIBLES = [
+  "access_token",
+  "refresh_token",
+  "provider_token",
+  "provider_refresh_token",
+  "code",
+  "expires_at",
+  "expires_in",
+  "token_type",
+];
+// Cada patrón exige un límite real de parámetro de URL (inicio de cadena,
+// o precedido de ?/&/# o su forma codificada %3f/%26/%23, seguido de = o
+// %3d) , así nunca hay falso positivo con algo como "country_code=mx".
+var PATRONES_VALOR_SENSIBLE = NOMBRES_PROPIEDAD_SENSIBLES.map(function (nombre) {
+  var previos = "(?:^|[?&#]|%3f|%26|%23)";
+  var igual = "(?:=|%3d)";
+  return new RegExp(previos + nombre + igual, "i");
+});
+
+// Revisa un valor (string u objeto) tanto tal cual como decodificado con
+// decodeURIComponent , cubre tanto una URL sin codificar como una que
+// venga codificada dentro de otra (por ejemplo un referrer con la URL de
+// retorno como parámetro).
+function valorTieneDatoAutenticacion(valor) {
+  if (valor === null || valor === undefined) return false;
+  var texto;
+  if (typeof valor === "string") {
+    texto = valor;
+  } else {
+    try {
+      texto = JSON.stringify(valor);
+    } catch (e) {
+      texto = String(valor);
+    }
+  }
+  var candidatos = [texto];
+  try {
+    var decodificado = decodeURIComponent(texto);
+    if (decodificado !== texto) candidatos.push(decodificado);
+  } catch (e) {}
+  return candidatos.some(function (c) {
+    return PATRONES_VALOR_SENSIBLE.some(function (re) {
+      return re.test(c);
+    });
+  });
+}
+
+// Recorre el objeto (recursivo, cubre propiedades anidadas) y ELIMINA por
+// completo cualquier propiedad cuyo nombre sea una de las sensibles, o
+// cuyo valor contenga un dato de autenticación , nunca se manda una
+// versión parcial/truncada del token, la propiedad completa desaparece.
+function limpiarPropiedadesAutenticacion(obj) {
+  if (!obj || typeof obj !== "object") return obj;
+  Object.keys(obj).forEach(function (k) {
+    if (NOMBRES_PROPIEDAD_SENSIBLES.indexOf(k.toLowerCase()) !== -1) {
+      delete obj[k];
+      return;
+    }
+    var v = obj[k];
+    if (v && typeof v === "object") {
+      limpiarPropiedadesAutenticacion(v);
+      return;
+    }
+    if (valorTieneDatoAutenticacion(v)) delete obj[k];
+  });
+  return obj;
+}
+
+// Único before_send de PostHog , se aplica a TODO lo que se vaya a enviar,
+// incluidas las propiedades automáticas ($current_url, $referrer, etc.)
+// que nunca pasan por limpiarPropiedades/PROPIEDADES_PERMITIDAS más abajo.
+// Nunca deja pasar nada si algo falla inesperadamente (devuelve null ,
+// cancela el envío de ese evento , en vez de arriesgarse a mandarlo tal
+// cual).
+function beforeSendPostHog(capturaOArreglo) {
+  try {
+    function limpiarUna(captura) {
+      if (!captura) return captura;
+      if (captura.properties) limpiarPropiedadesAutenticacion(captura.properties);
+      if (captura.$set) limpiarPropiedadesAutenticacion(captura.$set);
+      if (captura.$set_once) limpiarPropiedadesAutenticacion(captura.$set_once);
+      return captura;
+    }
+    if (Array.isArray(capturaOArreglo)) return capturaOArreglo.map(limpiarUna);
+    return limpiarUna(capturaOArreglo);
+  } catch (e) {
+    return null;
+  }
+}
+
 var inicializado = false;
 // Bandera interna de modo demo , la marca el único punto central que
 // conoce ese estado (ver marcarModoDemo más abajo), nunca se adivina aquí.
@@ -30,6 +129,7 @@ export function inicializarAnalytics() {
       capture_pageview: false,
       disable_session_recording: true,
       person_profiles: "identified_only",
+      before_send: beforeSendPostHog,
     });
     inicializado = true;
   } catch (e) {
