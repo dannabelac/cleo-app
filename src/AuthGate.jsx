@@ -2048,7 +2048,7 @@ export default function AuthGate() {
           React.createElement(
             "span",
             null,
-            "Hay cambios de otro dispositivo sin resolver. Tus datos no se han borrado."
+            "Hay diferencias entre este dispositivo y la nube pendientes de resolver."
           ),
           React.createElement(
             "button",
@@ -2107,12 +2107,12 @@ export default function AuthGate() {
             React.createElement(
               "div",
               { style: { fontSize: 16, fontWeight: 700, color: "#1F2937", marginBottom: 10 } },
-              "Encontramos cambios de tu cuenta hechos desde otro dispositivo"
+              "Encontramos dos versiones de tus datos"
             ),
             React.createElement(
               "div",
               { style: { fontSize: 13.5, color: "#4B5563", lineHeight: 1.6, marginBottom: 20 } },
-              "Tus datos no se han borrado. Elige cuál versión quieres conservar."
+              "Este dispositivo tiene datos distintos a los de la nube, posiblemente cambios pendientes de guardar. Elige cuál versión conservar; las versiones no se combinan automáticamente."
             ),
             estadoResolucionConflicto === "error" &&
               React.createElement(

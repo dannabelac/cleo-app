@@ -38,6 +38,7 @@ export var CLEO_TEMP_KEYS = [
   "cleo_demo_productos_loaded_v2", // bandera de datos demo ya cargados
   "cleo_conflict_backup", // respaldo del snapshot local que provocó un conflicto sin resolver
   "cleo_demo_session", // marca de que hay una sesión de modo demo aislada activa
+  "cleo_sync_confirmado", // última versión confirmada, solo para detectar cambios locales pendientes
   "cleo_ui_vista", // última sección de navegación principal — solo continuidad de UI, nunca se sincroniza, nunca debe heredarse entre cuentas
 ];
 
@@ -332,13 +333,78 @@ function metricasSnapshot(snap, serializadoOpcional) {
   };
 }
 
-function escribirSnapshotLocalStorage(data) {
-  CLEO_KEYS.forEach(function (key) {
-    if (!(key in data)) return;
-    try {
-      localStorage.setItem(key, JSON.stringify(data[key]));
-    } catch (e) {}
+// La comparación ordena objetos, sin alterar el orden de las colecciones.
+function snapshotCanonico(valor) {
+  if (Array.isArray(valor)) return valor.map(snapshotCanonico);
+  if (valor && typeof valor === "object") {
+    var ordenado = {};
+    Object.keys(valor).sort().forEach(function (key) { ordenado[key] = snapshotCanonico(valor[key]); });
+    return ordenado;
+  }
+  return valor;
+}
+function serializarSnapshot(snap) { return JSON.stringify(snapshotCanonico(snap)); }
+
+async function huellaSnapshot(snap) {
+  var bytes = new TextEncoder().encode(serializarSnapshot(snap));
+  var hash = await crypto.subtle.digest("SHA-256", bytes);
+  return Array.from(new Uint8Array(hash)).map(function (n) { return n.toString(16).padStart(2, "0"); }).join("");
+}
+async function recordarConfirmado(userId, snap) {
+  // Guardar solo una huella: no duplicar todos los datos en localStorage.
+  // Si no puede guardarse, la próxima apertura conserva las diferencias
+  // como conflicto en lugar de asumir que ya llegaron al servidor.
+  try {
+    var huella = await huellaSnapshot(snap);
+    localStorage.setItem("cleo_sync_confirmado", JSON.stringify({ userId: userId, huella: huella }));
+  } catch (e) {}
+}
+async function cacheConfirmado(userId, snap) {
+  try {
+    var base = JSON.parse(localStorage.getItem("cleo_sync_confirmado"));
+    return !!base && base.userId === userId && base.huella === await huellaSnapshot(snap);
+  } catch (e) { return false; }
+}
+function snapshotRemoto(fila) {
+  if (!fila.data || typeof fila.data !== "object" || Array.isArray(fila.data)) {
+    throw new Error("Snapshot remoto inválido");
+  }
+  var snap = {};
+  CLEO_KEYS.forEach(function (key) { if (key in fila.data) snap[key] = fila.data[key]; });
+  if (fila.tipo_perfil) {
+    snap.cleo_tipo_perfil = fila.tipo_perfil;
+    snap.cleo_perfil = Object.assign({}, snap.cleo_perfil || {}, { tipoPerfil: fila.tipo_perfil });
+  }
+  return snap;
+}
+
+function escribirSnapshotLocalStorage(data, userId) {
+  // localStorage no tiene transacciones. No borrar primero: conservar los
+  // valores previos, verificar cada escritura y bloquear la carga si falla.
+  var keys = CLEO_KEYS.concat([CACHE_OWNER_KEY]);
+  var previos = {};
+  var siguientes = {};
+  keys.forEach(function (key) {
+    previos[key] = localStorage.getItem(key);
+    siguientes[key] = key === CACHE_OWNER_KEY ? userId :
+      Object.prototype.hasOwnProperty.call(data, key) ? JSON.stringify(data[key]) : null;
   });
+  try {
+    keys.forEach(function (key) {
+      if (previos[key] === siguientes[key]) return;
+      if (siguientes[key] === null) localStorage.removeItem(key);
+      else localStorage.setItem(key, siguientes[key]);
+      if (localStorage.getItem(key) !== siguientes[key]) throw new Error("Escritura local incompleta");
+    });
+  } catch (error) {
+    keys.forEach(function (key) {
+      try {
+        if (previos[key] === null) localStorage.removeItem(key);
+        else if (localStorage.getItem(key) !== previos[key]) localStorage.setItem(key, previos[key]);
+      } catch (e) { /* La carga seguirá bloqueada incluso si el navegador rechaza restaurar. */ }
+    });
+    throw error;
+  }
 }
 
 // ── PULL ──────────────────────────────────────────────────────────────────
@@ -454,31 +520,30 @@ export async function pullUserData(userId) {
     return { tieneDatos: false, updatedAt: null, snapshot: {} };
   }
 
-  // Sí hay fila remota: la nube es la fuente de verdad para esta cuenta.
-  // Se limpian primero las claves sincronizables locales, así ninguna clave
-  // vieja que ya no exista en el snapshot remoto queda mezclada con la
-  // cuenta actual.
-  CLEO_KEYS.forEach(function (key) {
-    try {
-      localStorage.removeItem(key);
-    } catch (e) {}
-  });
-  escribirSnapshotLocalStorage(fila.data);
-
-  // tipo_perfil (columna) es la fuente de verdad, pisa lo que traiga el blob.
-  if (fila.tipo_perfil) {
-    try {
-      localStorage.setItem("cleo_tipo_perfil", JSON.stringify(fila.tipo_perfil));
-      var perfilRaw = localStorage.getItem("cleo_perfil");
-      var perfil = perfilRaw ? JSON.parse(perfilRaw) : {};
-      perfil.tipoPerfil = fila.tipo_perfil;
-      localStorage.setItem("cleo_perfil", JSON.stringify(perfil));
-    } catch (e) {}
+  var remoto = snapshotRemoto(fila);
+  var local = leerSnapshotLocalStorage();
+  // El demo se restaura siempre desde la nube al salir, nunca se ofrece
+  // como información real pendiente de subir.
+  var esDemo = local.cleo_perfil && local.cleo_perfil.modoDemo === true;
+  var confirmado = await cacheConfirmado(userId, local);
+  // Calcular la huella es asíncrono. Otra pestaña puede haber editado el
+  // caché mientras tanto: no reemplazar una versión que ya cambió.
+  var propietarioAntesDeEscribir = localStorage.getItem(CACHE_OWNER_KEY);
+  if ((propietarioAntesDeEscribir && propietarioAntesDeEscribir !== userId) ||
+      serializarSnapshot(local) !== serializarSnapshot(leerSnapshotLocalStorage())) {
+    throw new Error("El caché cambió durante la carga; vuelve a intentar");
   }
-
-  try {
-    localStorage.setItem(CACHE_OWNER_KEY, userId);
-  } catch (e) {}
+  if (duenioActual === userId && !esDemo && Object.keys(local).length > 0 &&
+      serializarSnapshot(local) !== serializarSnapshot(remoto) && !confirmado) {
+    var respaldo = { userId: userId, snapshot: local, fecha: new Date().toISOString(), estado: "pendiente" };
+    var texto = JSON.stringify(respaldo);
+    // Si no cabe el respaldo, fallar sin tocar el caché original.
+    localStorage.setItem(CONFLICT_BACKUP_KEY, texto);
+    if (localStorage.getItem(CONFLICT_BACKUP_KEY) !== texto) throw new Error("No se pudo conservar el caché pendiente");
+    return { tieneDatos: true, updatedAt: null, snapshot: null };
+  }
+  escribirSnapshotLocalStorage(remoto, userId);
+  await recordarConfirmado(userId, remoto);
 
   // snapshot se recalcula leyendo localStorage recién escrito (en vez de
   // devolver fila.data tal cual) para que quede en el mismo orden de
@@ -660,7 +725,7 @@ export function startCloudSync(userId, onEstadoCambia, baselineInicial) {
           .select("updated_at");
 
     return accion
-      .then(function (res) {
+      .then(async function (res) {
         if (res.error) {
           if (esPrimeraEscritura && res.error.code === "23505") {
             // Violación de la restricción única de user_id: otro dispositivo
@@ -692,6 +757,7 @@ export function startCloudSync(userId, onEstadoCambia, baselineInicial) {
           reportarConflictoVersion("intentarGuardar", Object.assign({ durationMs: Date.now() - _tInicioGuardar }, _metricasGuardado), "0_filas");
           return { estado: "conflicto" };
         }
+        await recordarConfirmado(userId, snap);
         ultimoEnviado = serializado;
         ultimoUpdatedAt = res.data && res.data[0] ? res.data[0].updated_at : nuevaFecha;
         avisar("ok");
@@ -777,6 +843,16 @@ export function startCloudSync(userId, onEstadoCambia, baselineInicial) {
     if (!conflictoPendiente) return Promise.resolve({ estado: "ok" });
     resolviendoConflicto = true;
     var snapshotAConservar = conflictoPendiente.snapshot;
+    // No resolver con un respaldo anterior si hubo más cambios locales.
+    // Mantener el conflicto bloqueado; nunca reanudar y enviar otra versión.
+    function versionLocalSigueIgual() {
+      return localStorage.getItem(CACHE_OWNER_KEY) === userId &&
+        serializarSnapshot(leerSnapshotLocalStorage()) === serializarSnapshot(snapshotAConservar);
+    }
+    if (!versionLocalSigueIgual()) {
+      resolviendoConflicto = false;
+      return Promise.resolve({ estado: "conflicto" });
+    }
     return supabase
       .from("user_data")
       .select("updated_at")
@@ -784,6 +860,7 @@ export function startCloudSync(userId, onEstadoCambia, baselineInicial) {
       .maybeSingle()
       .then(function (resLectura) {
         if (resLectura.error) throw resLectura.error;
+        if (!versionLocalSigueIgual()) return { estado: "conflicto" };
         var updatedAtFresco = resLectura.data ? resLectura.data.updated_at : null;
         // updated_at ya no se manda desde el navegador , mismo criterio que
         // intentarGuardar (ver comentario ahí): el servidor lo asigna vía el
@@ -791,7 +868,7 @@ export function startCloudSync(userId, onEstadoCambia, baselineInicial) {
         var nuevaFecha = new Date().toISOString();
         var payload = {
           data: snapshotAConservar,
-          tipo_perfil: tipoPerfilActual(),
+          tipo_perfil: snapshotAConservar.cleo_perfil ? snapshotAConservar.cleo_perfil.tipoPerfil || null : null,
         };
         var accionEscritura = updatedAtFresco
           ? supabase
@@ -802,10 +879,12 @@ export function startCloudSync(userId, onEstadoCambia, baselineInicial) {
               .select("updated_at")
           : supabase
               .from("user_data")
-              .upsert(Object.assign({ user_id: userId }, payload), { onConflict: "user_id" })
+              .insert(Object.assign({ user_id: userId }, payload))
               .select("updated_at");
-        return accionEscritura.then(function (resEscritura) {
+        return accionEscritura.then(async function (resEscritura) {
+          if (resEscritura.error && resEscritura.error.code === "23505") return { estado: "conflicto" };
           if (resEscritura.error) throw resEscritura.error;
+          if (!versionLocalSigueIgual()) return { estado: "conflicto" };
           if (updatedAtFresco && (!resEscritura.data || resEscritura.data.length === 0)) {
             // Otra modificación ocurrió justo entre la lectura y la escritura ,
             // se conserva el conflicto (con el mismo snapshot local) y se pide
@@ -814,6 +893,7 @@ export function startCloudSync(userId, onEstadoCambia, baselineInicial) {
             return { estado: "conflicto" };
           }
           // Escritura confirmada , solo ahora se actualizan estos valores.
+          await recordarConfirmado(userId, snapshotAConservar);
           ultimoEnviado = JSON.stringify(snapshotAConservar);
           ultimoUpdatedAt =
             resEscritura.data && resEscritura.data[0] ? resEscritura.data[0].updated_at : nuevaFecha;
@@ -847,32 +927,25 @@ export function startCloudSync(userId, onEstadoCambia, baselineInicial) {
   function resolverConflictoUsarRemoto() {
     if (resolviendoConflicto) return Promise.resolve({ estado: "conflicto" });
     if (!conflictoPendiente) return Promise.resolve({ estado: "ok" });
+    var localAntesDeResolver = serializarSnapshot(leerSnapshotLocalStorage());
     resolviendoConflicto = true;
     return supabase
       .from("user_data")
       .select("data, tipo_perfil, updated_at")
       .eq("user_id", userId)
       .maybeSingle()
-      .then(function (res) {
+      .then(async function (res) {
         if (res.error) throw res.error;
         var fila = res.data;
         if (!fila) throw new Error("No se encontró la fila remota al intentar usar la versión de la nube.");
 
-        CLEO_KEYS.forEach(function (key) {
-          try {
-            localStorage.removeItem(key);
-          } catch (e) {}
-        });
-        escribirSnapshotLocalStorage(fila.data || {});
-        if (fila.tipo_perfil) {
-          try {
-            localStorage.setItem("cleo_tipo_perfil", JSON.stringify(fila.tipo_perfil));
-            var perfilRaw = localStorage.getItem("cleo_perfil");
-            var perfil = perfilRaw ? JSON.parse(perfilRaw) : {};
-            perfil.tipoPerfil = fila.tipo_perfil;
-            localStorage.setItem("cleo_perfil", JSON.stringify(perfil));
-          } catch (e) {}
+        if (localStorage.getItem(CACHE_OWNER_KEY) !== userId ||
+            serializarSnapshot(leerSnapshotLocalStorage()) !== localAntesDeResolver) {
+          return { estado: "conflicto" };
         }
+        var remoto = snapshotRemoto(fila);
+        escribirSnapshotLocalStorage(remoto, userId);
+        await recordarConfirmado(userId, remoto);
 
         ultimoEnviado = JSON.stringify(leerSnapshotLocalStorage());
         ultimoUpdatedAt = fila.updated_at;

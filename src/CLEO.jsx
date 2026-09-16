@@ -1,5 +1,6 @@
 import { useState, useMemo, useEffect, useRef } from "react";
 import { flushSync } from "react-dom";
+import { createLocalWriteGuard, STALE_TAB_MESSAGE } from "./localWriteGuard.js";
 import { reportarErrorAlmacenamiento, registrarAvisoAlmacenamiento } from "./sentry.js";
 import React from "react";
 import DOMPurify from "dompurify";
@@ -4404,7 +4405,7 @@ function eSeguro(tipo,props){
 // llamó ya hubiera seguido de largo, y un fallo real de guardado se
 // descubriría demasiado tarde para evitar mostrar éxito. Este es el ÚNICO
 // punto que decide esto , ningún formulario individual repite esta lógica.
-function crearSetterPersistente(setRawFn,storageKey){
+function crearSetterPersistente(setRawFn,storageKey,writeGuard){
   return function(v){
     var fallo=null;
     var avisoEspacio=false;
@@ -4433,17 +4434,17 @@ function crearSetterPersistente(setRawFn,storageKey){
           if(bytesAprox>=LIMITE_AVISO_ALMACENAMIENTO_BYTES){ avisoEspacio=true; bytesAvisoEspacio=bytesAprox; }
         }catch(e){}
         try{
-          localStorage.setItem(storageKey,json);
+          writeGuard.write(storageKey,json);
         }catch(err){
           console.error("CLEO: no se pudo guardar en localStorage ("+storageKey+")",err);
-          fallo={motivo:"cuota",error:err,bytesAprox:bytesAprox};
+          fallo={motivo:err.code==="CLEO_STALE_TAB"?"pestana":"cuota",error:err,bytesAprox:bytesAprox};
           return prev; // NUNCA se aplica `siguiente` , el estado anterior se conserva intacto
         }
         return siguiente;
       });
     });
     if(fallo){
-      alert(fallo.motivo==="cuota"?MSG_ALMACENAMIENTO_LLENO:"No pudimos guardar el cambio. Inténtalo nuevamente.");
+      alert(fallo.motivo==="pestana"?STALE_TAB_MESSAGE:fallo.motivo==="cuota"?MSG_ALMACENAMIENTO_LLENO:"No pudimos guardar el cambio. Inténtalo nuevamente.");
       // Diagnóstico técnico mínimo , solo el nombre técnico de la clave y el
       // tamaño aproximado, nunca el contenido guardado ni el objeto de error.
       try{
@@ -4465,6 +4466,7 @@ function crearSetterPersistente(setRawFn,storageKey){
 
 export default function CLEO(props){
   var e=eSeguro;
+  var writeGuard=useState(function(){ return createLocalWriteGuard(localStorage); })[0];
 
   // Estados principales , forzar datos frescos si version cambio
   var DATA_VERSION="v4";
@@ -4478,7 +4480,7 @@ export default function CLEO(props){
   var s3=useState(function(){ return lsGet("cleo_perfil",perfilDemo); }); var perfil=s3[0]; var setPerfilRaw=s3[1];
   var s4=useState(function(){ return lsGet("cleo_servicios",[]); }); var servicios=s4[0]; var setServiciosRaw=s4[1];
   var s4p=useState(function(){ return lsGet("cleo_productos_cat",[]); }); var productosCat=s4p[0]; var setProductosCatRaw=s4p[1];
-  function setProductosCat(v){ crearSetterPersistente(setProductosCatRaw,"cleo_productos_cat")(v); }
+  function setProductosCat(v){ crearSetterPersistente(setProductosCatRaw,"cleo_productos_cat",writeGuard)(v); }
   var s4b=useState(function(){ return lsGet("cleo_ventas",[]); }); var ventas=s4b[0]; var setVentasRaw=s4b[1];
   var s4c=useState(function(){ return lsGet("cleo_productos",[]); }); var productos=s4c[0]; var setProductosRaw=s4c[1];
 
@@ -6454,7 +6456,7 @@ export default function CLEO(props){
 
   // Estados de pedidos (modo productos)
   var sPedidos=useState(function(){ return lsGet("cleo_pedidos",[]); }); var pedidos=sPedidos[0]; var setPedidosRaw=sPedidos[1];
-  function setPedidos(v){ crearSetterPersistente(setPedidosRaw,"cleo_pedidos")(v); }
+  function setPedidos(v){ crearSetterPersistente(setPedidosRaw,"cleo_pedidos",writeGuard)(v); }
   var sPedFiltro=useState("todos"); var filtroPedido=sPedFiltro[0]; var setFiltroPedido=sPedFiltro[1];
   var sPedFiltroPeriodo=useState("todo"); var filtroPedidoPeriodo=sPedFiltroPeriodo[0]; var setFiltroPedidoPeriodo=sPedFiltroPeriodo[1];
   var sPedFiltroSaldo=useState("todos"); var filtroPedidoSaldo=sPedFiltroSaldo[0]; var setFiltroPedidoSaldo=sPedFiltroSaldo[1];
@@ -6481,7 +6483,7 @@ export default function CLEO(props){
   // Estado filtros Ventas (modo productos)
   var sVPFiltro=useState({periodo:"mes",origen:"todos",busqueda:""}); var filtroVP=sVPFiltro[0]; var setFiltroVP=sVPFiltro[1];
 
-  function setClientes(v){ crearSetterPersistente(setClientesRaw,"cleo_clientes")(v); }
+  function setClientes(v){ crearSetterPersistente(setClientesRaw,"cleo_clientes",writeGuard)(v); }
   // Migración idempotente: limpia recordatorios de pipeline que quedaron
   // obsoletos en datos YA GUARDADOS de antes de que existiera esta
   // corrección (clientes que ya estaban Ganado/Perdido/Convertido con un
@@ -6499,7 +6501,7 @@ export default function CLEO(props){
     });
     if(huboCambioReal) setClientes(clientesLimpios);
   },[]);
-  function setCotizaciones(v){ crearSetterPersistente(setCotizacionesRaw,"cleo_cots")(v); }
+  function setCotizaciones(v){ crearSetterPersistente(setCotizacionesRaw,"cleo_cots",writeGuard)(v); }
   // Actualiza SOLO el metadato ligero de archivoAdjunto de una cotización
   // (nunca contenido binario) , usada por ArchivoAdjunto tanto desde la
   // card de Cotizaciones como desde Trabajos → Ver pagos, mismo dato.
@@ -6567,11 +6569,11 @@ export default function CLEO(props){
       if(bytesAprox>=LIMITE_AVISO_ALMACENAMIENTO_BYTES) avisoEspacio=true;
     }catch(e){}
     try{
-      localStorage.setItem("cleo_perfil",json);
-      if(v.tipoPerfil) localStorage.setItem("cleo_tipo_perfil",v.tipoPerfil);
+      writeGuard.write("cleo_perfil",json);
+      if(v.tipoPerfil) writeGuard.write("cleo_tipo_perfil",v.tipoPerfil);
     }catch(err){
       console.error("CLEO: no se pudo guardar el perfil en localStorage",err);
-      alert(MSG_ALMACENAMIENTO_LLENO);
+      alert(err.code==="CLEO_STALE_TAB"?STALE_TAB_MESSAGE:MSG_ALMACENAMIENTO_LLENO);
       try{ reportarErrorAlmacenamiento("cleo_perfil",err&&err.name?err.name:"cuota",{snapshotBytes:bytesAprox}); }catch(e){}
       throw EsErrorControladoCleo("cleo:setPerfil:cuota");
     }
@@ -7427,9 +7429,9 @@ export default function CLEO(props){
       setEliminandoCuentaUI(false);
     }
   }
-  function setServicios(v){ crearSetterPersistente(setServiciosRaw,"cleo_servicios")(v); }
-  function setVentas(v){ crearSetterPersistente(setVentasRaw,"cleo_ventas")(v); }
-  function setProductos(v){ crearSetterPersistente(setProductosRaw,"cleo_productos")(v); }
+  function setServicios(v){ crearSetterPersistente(setServiciosRaw,"cleo_servicios",writeGuard)(v); }
+  function setVentas(v){ crearSetterPersistente(setVentasRaw,"cleo_ventas",writeGuard)(v); }
+  function setProductos(v){ crearSetterPersistente(setProductosRaw,"cleo_productos",writeGuard)(v); }
 
   // Aprender producto nuevo al guardar venta
   function aprenderProducto(concepto){
@@ -8958,10 +8960,16 @@ export default function CLEO(props){
     // cuando cambia localStorage aquí — nunca en la pestaña que hizo el cambio.
     // Sirve para avisar si la misma cuenta está abierta en 2 pestañas a la vez,
     // ya que cada una tiene su propio estado en memoria sin enterarse de la otra.
-    var clavesCleo=["cleo_clientes","cleo_cots","cleo_ventas","cleo_servicios","cleo_pedidos","cleo_productos","cleo_productos_cat","cleo_perfil"];
     function onStorage(ev){
-      if(clavesCleo.indexOf(ev.key)===-1) return;
-      setOtraPestanaActiva(true);
+      if(ev.storageArea!==localStorage) return;
+      // Eventos retrasados o escrituras revertidas no implican datos obsoletos.
+      // Usar exactamente la misma comprobación que protege los guardados.
+      try{
+        writeGuard.assertCurrent();
+        setOtraPestanaActiva(false);
+      }catch(error){
+        setOtraPestanaActiva(true);
+      }
     }
     window.addEventListener("storage",onStorage);
     return function(){ window.removeEventListener("storage",onStorage); };
@@ -9030,7 +9038,7 @@ export default function CLEO(props){
       // también aquí duplicaría el aviso y, peor, ofrecía "Recargar" como
       // salida, que podía sustituir en silencio los cambios locales.
       var avisoAtencion=otraPestanaActiva
-        ? {bg:"#7C2D12",texto:"CLEO está abierto en otra pestaña de este navegador. Para no perder nada, usa solo una a la vez y recarga esta.",conBoton:true}
+        ? {bg:"#7C2D12",texto:"Otra pestaña cambió los datos. Esta pestaña bloqueará nuevos guardados. Copia cualquier formulario pendiente antes de recargar.",conBoton:false}
         : props.syncError
         ? {bg:"#1F2937",texto:"No pudimos sincronizar con la nube. Reconecta internet antes de cerrar o recargar CLEO.",conBoton:false}
         : null;
@@ -18280,7 +18288,7 @@ export default function CLEO(props){
                   localStorage.removeItem("cleo_etapas_vistas");
                   localStorage.removeItem("cleo_tipo_perfil");
                   localStorage.removeItem("cleo_demo_productos_loaded_v2");
-                  localStorage.removeItem("cleo_productos");
+                  writeGuard.remove("cleo_productos");
                 }catch(e){}
                 setAlertasCerradas([]); setModalCuenta(false);
               }
