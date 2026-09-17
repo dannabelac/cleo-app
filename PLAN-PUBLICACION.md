@@ -47,3 +47,17 @@ El aviso ahora consulta la misma protección que el guardado, en lugar de quedar
 La configuración Vercel de esta rama exige entorno Preview y URL/clave pública exactas de CLEO Pruebas antes de compilar. Una configuración heredada de producción hace fallar el build sin generar una vista previa nueva. La política de conexiones de esta rama permite solo el Supabase de pruebas. La clave incluida en la comprobación es publishable, no secreta. No fusionar esta configuración temporal a main: preparar y revisar por separado la configuración final de producción.
 
 El usuario confirmó que después de recargar ambas pestañas muestran PRUEBA C sin avisos. Esto confirma recuperación tras recarga; no prueba todas las carreras simultáneas.
+
+## Preparación final autorizada — 16 septiembre 2026
+
+Carpeta principal: /Users/danna/Documents/cleo chatgtp mejoras. Main remoto confirmado en 8caabf1bd3e977a67be84a10c8981a501fa87f4c antes de publicar. Usuario autorizó publicar solo mejoras del guardado, sin migraciones, cambios de permisos ni diagnóstico de tablas.
+
+Se reemplaza la restricción temporal exclusiva de Preview: Production exige URL exacta del proyecto gpvpvkeqfcgypuoxvjne y clave pública; Preview sigue exigiendo credenciales públicas exactas del proyecto pconfadsbtwjbjeblxgl. Para claves JWT de producción se comprueba rol anon y referencia del proyecto, no su firma; las claves publishable opacas requieren verificación funcional tras desplegar. CSP permite ambos proyectos exactos, sin comodines.
+
+34 pruebas aprobadas y compilación correcta. Respaldo físico informado por el usuario: 16 Sep 2026 11:41:47 UTC. No cubre escrituras posteriores ni objetos Storage. Respaldo independiente de adjuntos diferido por decisión del usuario.
+
+Pruebas manuales reportadas: Preview recupera PRUEBA C y guarda PRUEBA PREVIEW, verificada en Supabase. SQL de producción: anon ve cero filas; una cuenta simulada ve una fila propia y cero ajenas en user_data y legal_acceptances. En pruebas: actualizar/borrar filas ajenas afecta cero filas, inserción ajena bloqueada por RLS. No equivalen a prueba integral de API.
+
+Referencia para reversión de aplicación: commit 8caabf1bd3e977a67be84a10c8981a501fa87f4c. Seleccionar en Vercel el deployment Ready de Production asociado a ese commit; el identificador de deployment no ha podido comprobarse automáticamente. No restaurar toda la base de datos para revertir esta entrega. No se han ejecutado migraciones.
+
+Pendiente tras envío: confirmar Ready de Production y verificar acceso, lectura y guardado con cuenta propia. No declarar despliegue exitoso solo por el push de Git.

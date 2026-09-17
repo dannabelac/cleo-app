@@ -11,7 +11,7 @@ Cuando hay cambios locales pendientes, cargar la nube podía sustituirlos. Esta 
 
 ## Validación
 
-30 pruebas automatizadas con almacenamiento y servidor simulados pasan. La compilación termina correctamente; conserva advertencias de tamaño de paquetes y API CJS de Vite. La prueba manual confirmó PRUEBA C en Supabase de pruebas y en ambas pestañas después de elegir dispositivo y luego nube. El ajuste más reciente del aviso todavía requiere verificación en navegador.
+34 pruebas automatizadas con almacenamiento y servidor simulados pasan. La compilación termina correctamente; conserva advertencias de tamaño de paquetes y API CJS de Vite. La prueba manual confirmó PRUEBA C en Supabase de pruebas y en ambas pestañas después de elegir dispositivo y luego nube. El ajuste más reciente del aviso todavía requiere verificación en navegador.
 
 ## Límites para revisar
 
@@ -20,3 +20,5 @@ No combina versiones automáticamente. La comprobación y escritura de localStor
 ## Alcance de publicación
 
 Sin migración de tablas. La configuración local apunta a Supabase de pruebas y no debe publicarse. El SQL de preparación de pruebas no forma parte de la corrección. Antes de publicar: comparar con main actual, preparar una vista previa conectada solo a pruebas, verificar recuperación y obtener una decisión de publicación sobre esa versión concreta.
+
+Configuración final preparada para Production y Preview separados; autorización de publicación recibida. No contiene SQL de migración. Véase la actualización final de PLAN-PUBLICACION.md para evidencia y reversión.

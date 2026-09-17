@@ -1,0 +1,10 @@
+const {test}=require('node:test');
+const assert=require('node:assert/strict');
+const {validateDeployment}=require('../scripts/check-preview.cjs');
+const jwt=p=>'header.'+Buffer.from(JSON.stringify(p)).toString('base64url')+'.signature';
+const prod={VERCEL:'1',VERCEL_ENV:'production',VITE_SUPABASE_URL:'https://gpvpvkeqfcgypuoxvjne.supabase.co',VITE_SUPABASE_ANON_KEY:jwt({role:'anon',ref:'gpvpvkeqfcgypuoxvjne'})};
+const preview={VERCEL:'1',VERCEL_ENV:'preview',VITE_SUPABASE_URL:'https://pconfadsbtwjbjeblxgl.supabase.co',VITE_SUPABASE_ANON_KEY:'sb_publishable_DbLeSS6Nu7cNe4WPiSmL8g_kZ-YPOas'};
+test('permite configuraciones publicas del entorno correcto',()=>{assert.doesNotThrow(()=>validateDeployment(prod));assert.doesNotThrow(()=>validateDeployment(preview));});
+test('bloquea cruce de bases entre production y preview',()=>{assert.throws(()=>validateDeployment({...prod,VITE_SUPABASE_URL:preview.VITE_SUPABASE_URL}));assert.throws(()=>validateDeployment({...preview,VITE_SUPABASE_URL:prod.VITE_SUPABASE_URL}));});
+test('rechaza claves privilegiadas o de otro proyecto',()=>{for(const key of ['sb_secret_example',jwt({role:'service_role',ref:'gpvpvkeqfcgypuoxvjne'}),jwt({role:'anon',ref:'otro'}),''])assert.throws(()=>validateDeployment({...prod,VITE_SUPABASE_ANON_KEY:key}));});
+test('CSP permite las dos bases exactas sin comodin supabase',()=>{const c=require('../vercel.json').headers[0].headers.find(x=>x.key==='Content-Security-Policy').value;for(const r of ['gpvpvkeqfcgypuoxvjne','pconfadsbtwjbjeblxgl'])assert.ok(c.includes('https://'+r+'.supabase.co'));assert.ok(!c.includes('*.supabase.co'));});
