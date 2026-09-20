@@ -6460,6 +6460,7 @@ export default function CLEO(props){
   var sPedFiltro=useState("todos"); var filtroPedido=sPedFiltro[0]; var setFiltroPedido=sPedFiltro[1];
   var sPedFiltroPeriodo=useState("todo"); var filtroPedidoPeriodo=sPedFiltroPeriodo[0]; var setFiltroPedidoPeriodo=sPedFiltroPeriodo[1];
   var sPedFiltroSaldo=useState("todos"); var filtroPedidoSaldo=sPedFiltroSaldo[0]; var setFiltroPedidoSaldo=sPedFiltroSaldo[1];
+  var sPedBuscar=useState(""); var buscarPedidosQ=sPedBuscar[0]; var setBuscarPedidosQ=sPedBuscar[1];
   var sPedModal=useState(null); var pedidoPagosId=sPedModal[0]; var setPedidoPagosId=sPedModal[1];
   var sPedFormPago=useState({monto:"",fecha:FECHA_HOY,concepto:"Anticipo"}); var formPagoPedido=sPedFormPago[0]; var setFormPagoPedido=sPedFormPago[1];
   var sPedFormPagoModal=useState({monto:"",fecha:FECHA_HOY,concepto:"Anticipo"}); var formPagoPedidoModal=sPedFormPagoModal[0]; var setFormPagoPedidoModal=sPedFormPagoModal[1];
@@ -11765,6 +11766,14 @@ export default function CLEO(props){
             var saldoF=Number(p.total||0)-pagadoF;
             if(!(saldoF>0&&p.estadoPedido!=="cancelado")) return false;
           }
+          if(buscarPedidosQ.trim()){
+            var qNorm=normalizarNombreItem(buscarPedidosQ);
+            var clBq=clientes.find(function(c){ return c.id===p.clienteId; });
+            var enCli=clBq?normalizarNombreItem(clBq.nombre).includes(qNorm):false;
+            var enProd=normalizarNombreItem(p.productos||"").includes(qNorm);
+            var enItems=(p.items||[]).some(function(it){ return normalizarNombreItem(it.nombre||"").includes(qNorm); });
+            if(!enCli&&!enProd&&!enItems) return false;
+          }
           return true;
         });
         if(highlightPedidoId){
@@ -11846,6 +11855,13 @@ export default function CLEO(props){
 
           // FILTROS — mismo estilo que Cotizaciones
           e("div",{style:isMobile?{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,marginBottom:16}:{display:"flex",gap:8,marginBottom:16,flexWrap:"wrap",alignItems:"center"}},
+            e("input",{
+              type:"text",
+              placeholder:"Buscar cliente o producto...",
+              value:buscarPedidosQ,
+              onChange:function(ev){ setBuscarPedidosQ(ev.target.value); },
+              style:{padding:"7px 12px",borderRadius:12,border:"1px solid "+C.border,background:C.surface,fontSize:12,color:C.text,outline:"none",width:isMobile?"100%":"auto",minWidth:isMobile?0:200,gridColumn:isMobile?"1 / -1":"auto"}
+            }),
             e("select",{
               value:filtroPedido,
               onChange:function(ev){ setFiltroPedido(ev.target.value); },
@@ -11879,9 +11895,9 @@ export default function CLEO(props){
             e("div",{style:{textAlign:"center",padding:"60px 0"}},
               e("div",{style:{fontSize:36,marginBottom:12}},"📦"),
               e("div",{style:{fontSize:15,fontWeight:600,color:C.textMuted,marginBottom:6}},
-                (filtroPedido==="todos"&&filtroPedidoPeriodo==="todo"&&filtroPedidoSaldo==="todos")?"Aún no hay pedidos":"No hay pedidos con esos filtros"
+                (filtroPedido==="todos"&&filtroPedidoPeriodo==="todo"&&filtroPedidoSaldo==="todos"&&!buscarPedidosQ.trim())?"Aún no hay pedidos":"No hay pedidos con esos filtros"
               ),
-              (filtroPedido==="todos"&&filtroPedidoPeriodo==="todo"&&filtroPedidoSaldo==="todos")&&e("div",{style:{fontSize:13,color:C.textDim}},"Convierte un prospecto en pedido para verlo aquí.")
+              (filtroPedido==="todos"&&filtroPedidoPeriodo==="todo"&&filtroPedidoSaldo==="todos"&&!buscarPedidosQ.trim())&&e("div",{style:{fontSize:13,color:C.textDim}},"Convierte un prospecto en pedido para verlo aquí.")
             ):
             e("div",{style:{display:"flex",flexDirection:"column",gap:12}},
               pedidosFiltrados.map(function(ped){
@@ -11984,6 +12000,10 @@ export default function CLEO(props){
                       ESTADOS_PEDIDO.map(function(x){ return e("option",{key:x.k,value:x.k},x.label); })
                     )
                   ),
+
+                  // Nota del pedido — alineada con la columna de info (46 = avatar 36 + gap 10)
+                  // typeof guard: pedidos antiguos pueden traer notas:undefined o notas:null; nunca llamar .trim() sobre un no-string.
+                  typeof ped.notas==="string"&&ped.notas.trim()&&e("div",{style:{fontSize:12,color:C.textMuted,lineHeight:1.5,marginBottom:8,paddingLeft:46,wordBreak:"break-word",whiteSpace:"pre-line"}},ped.notas.trim()),
 
                   // FILA 2: resumen financiero — 3 columnas con divisores
                   totalPedido>0&&e("div",{style:{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",borderRadius:10,background:C.surfaceUp,marginBottom:8,overflow:"hidden"}},
