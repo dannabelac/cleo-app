@@ -9275,7 +9275,7 @@ export default function CLEO(props){
               e("div",{style:{fontSize:40,marginBottom:20}},"👋"),
               e("div",{style:{fontSize:24,fontWeight:700,color:C.text,marginBottom:10,lineHeight:1.3}},"Hola, qué bueno tenerte aquí."),
               e("div",{style:{fontSize:16,color:C.text,marginBottom:8,lineHeight:1.5}},"Desde hoy ya no emprendes solo."),
-              e("div",{style:{fontSize:14,color:C.textMuted,marginBottom:32,lineHeight:1.6}},"CLEO te ayudará a recordar lo importante y a saber qué necesita tu atención."),
+              e("div",{style:{fontSize:14,color:C.textMuted,marginBottom:32,lineHeight:1.6}},"CLEO te ayudará a organizar tus ventas y a saber qué necesitas cobrar, entregar o retomar."),
               e("button",{style:{cursor:"pointer",padding:"13px 36px",borderRadius:12,border:"none",background:C.purple,fontSize:15,color:"#fff",fontWeight:600},onClick:function(){ setOnbSubPaso("nombre"); }},"Empecemos →")
             ),
 
@@ -9307,26 +9307,36 @@ export default function CLEO(props){
             // PASO: SITUACIÓN
             pasoMostrar==="situacion"&&e("div",null,
               puntos("situacion"),
-              e("div",{style:{textAlign:"center",marginBottom:8}},
-                e("div",{style:{fontSize:22,fontWeight:700,color:C.text,marginBottom:8,lineHeight:1.3}},nombreNegocioTxt?"¿Qué está pasando en "+nombreNegocioTxt+"?":"¿Qué está pasando hoy en tu negocio?"),
-                e("div",{style:{fontSize:14,color:C.textMuted,marginBottom:28,lineHeight:1.5}},"Empecemos con algo que quieras recordar o cuidar.")
+              e("div",{style:{textAlign:"center",marginBottom:20}},
+                e("div",{style:{fontSize:22,fontWeight:700,color:C.text,marginBottom:8,lineHeight:1.3}},"¿Qué quieres organizar primero?"),
+                e("div",{style:{fontSize:13,color:C.textMuted,lineHeight:1.5}},"Elige algo real que esté pasando en tu negocio. CLEO te ayudará a saber qué sigue y a no dejarlo pasar.")
               ),
-              e("div",{style:{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,marginBottom:20}},
+              e("div",{style:{display:"flex",flexDirection:"column",gap:10,marginBottom:16}},
                 [
-                  {ic:"💬",label:"Alguien preguntó",tipo:"pregunto"},
-                  {ic:"🏷️",label:"Envié un precio",tipo:"envie"},
-                  {ic:"🎉",label:"Cerré una venta",tipo:"cerre"},
-                  {ic:"💰",label:"Recibí un pago",tipo:"recibi"}
+                  {ic:"💬",label:"Alguien preguntó",desc:"Guarda lo que busca y recuerda retomar la conversación.",tipo:"pregunto"},
+                  {ic:"🏷️",label:"Envié un precio",desc:"Registra lo que ofreciste y mantén pendiente su respuesta.",tipo:"envie"},
+                  {ic:"🎉",label:"Cerré una venta",desc:"Organiza el pedido, el pago y lo que falta por entregar.",tipo:"cerre"}
                 ].map(function(op,i){
-                  return e("button",{key:i,style:{cursor:"pointer",padding:"14px",borderRadius:12,border:"1px solid "+C.border,background:C.bg,fontSize:13,color:C.text,fontWeight:500,display:"flex",alignItems:"center",gap:8,width:"100%",textAlign:"left"},onClick:function(){ lanzarFlujo(op.tipo); }},
-                    e("span",{style:{fontSize:16,flexShrink:0}},op.ic),
-                    e("span",{style:{overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}},op.label)
+                  return e("button",{key:i,style:{cursor:"pointer",padding:"16px",borderRadius:14,border:"1.5px solid "+C.border,background:C.surface,textAlign:"left",display:"flex",gap:14,alignItems:"flex-start",width:"100%"},
+                    onMouseEnter:function(ev){ ev.currentTarget.style.borderColor=C.purple; },
+                    onMouseLeave:function(ev){ ev.currentTarget.style.borderColor=C.border; },
+                    onClick:function(){ lanzarFlujo(op.tipo); }},
+                    e("span",{style:{fontSize:22,flexShrink:0,marginTop:1}},op.ic),
+                    e("div",null,
+                      e("div",{style:{fontSize:15,fontWeight:600,color:C.text,marginBottom:3}},op.label),
+                      e("div",{style:{fontSize:13,color:C.textMuted,lineHeight:1.5}},op.desc)
+                    )
                   );
                 })
               ),
-              e("button",{style:{cursor:"pointer",width:"100%",padding:"10px",borderRadius:12,border:"none",background:"none",fontSize:13,color:C.textDim},onClick:elegirAhoraNo},"Ahora no tengo nada que registrar"),
-              e("button",{style:{cursor:"pointer",width:"100%",padding:"6px",borderRadius:12,border:"none",background:"none",fontSize:12,color:C.purple},onClick:cargarDemoOnboarding},"O explora CLEO con datos de ejemplo"),
-              errorDemo&&e("div",{style:{fontSize:11,color:C.red,marginTop:6,lineHeight:1.4}},errorDemo),
+              e("div",{style:{display:"flex",alignItems:"center",gap:10,margin:"4px 0 14px"}},
+                e("div",{style:{flex:1,height:1,background:C.border}}),
+                e("span",{style:{fontSize:11,color:C.textMuted,flexShrink:0}},"o"),
+                e("div",{style:{flex:1,height:1,background:C.border}})
+              ),
+              e("button",{style:{cursor:"pointer",width:"100%",padding:"13px",borderRadius:12,border:"none",background:C.purple,fontSize:14,color:"#fff",fontWeight:600,marginBottom:8},onClick:cargarDemoOnboarding},"Ver cómo funciona con datos de ejemplo"),
+              errorDemo&&e("div",{style:{fontSize:11,color:C.red,marginBottom:8,lineHeight:1.4}},errorDemo),
+              e("button",{style:{cursor:"pointer",width:"100%",padding:"10px",borderRadius:12,border:"1px solid "+C.border,background:"none",fontSize:13,color:C.textMuted,marginBottom:6},onClick:elegirAhoraNo},"Prefiero empezar después"),
               botonAtras("negocio")
             ),
 
@@ -9338,12 +9348,12 @@ export default function CLEO(props){
               e("button",{style:{cursor:"pointer",padding:"13px 36px",borderRadius:12,border:"none",background:C.purple,fontSize:15,color:"#fff",fontWeight:600},onClick:irAInicio},"Ir a mi inicio →")
             ),
 
-            // PASO: OMITIDO ("Ahora no tengo nada que registrar")
+            // PASO: OMITIDO ("Prefiero empezar después")
             pasoMostrar==="omitido"&&e("div",{style:{textAlign:"center"}},
-              e("div",{style:{fontSize:40,marginBottom:20}},"👍"),
-              e("div",{style:{fontSize:22,fontWeight:700,color:C.text,marginBottom:10,lineHeight:1.35}},"Está bien, "+tuNombreCorto+". Puedes empezar cuando ocurra algo nuevo."),
-              e("div",{style:{fontSize:14,color:C.textMuted,marginBottom:32,lineHeight:1.6}},"Cuando alguien pregunte, hagas una venta o recibas un pago, CLEO estará aquí para ayudarte a recordarlo."),
-              e("button",{style:{cursor:"pointer",padding:"13px 36px",borderRadius:12,border:"none",background:C.purple,fontSize:15,color:"#fff",fontWeight:600},onClick:irAInicio},"Conocer mi inicio →")
+              e("div",{style:{fontSize:22,fontWeight:700,color:C.text,marginBottom:12,lineHeight:1.35}},"Está bien, puedes comenzar cuando tengas algo pendiente 😊"),
+              e("div",{style:{fontSize:14,color:C.textMuted,marginBottom:32,lineHeight:1.6}},"Cuando alguien pregunte, envíes un precio o cierres una venta, CLEO te ayudará a recordar qué sigue."),
+              e("button",{style:{cursor:"pointer",width:"100%",padding:"13px",borderRadius:12,border:"none",background:C.purple,fontSize:14,color:"#fff",fontWeight:600,marginBottom:10},onClick:cargarDemoOnboarding},"Ver un ejemplo de cómo funciona"),
+              e("button",{style:{cursor:"pointer",width:"100%",padding:"10px",borderRadius:12,border:"1px solid "+C.border,background:"none",fontSize:13,color:C.textMuted},onClick:irAInicio},"Ir a mi inicio")
             )
 
           )
@@ -9370,20 +9380,30 @@ export default function CLEO(props){
             e("div",{style:{fontSize:36,marginBottom:16}},"👋"),
             e("div",{style:{fontSize:20,fontWeight:700,color:C.text,marginBottom:8}},"¿Qué está pasando hoy en "+empresaVacia+"?"),
             e("div",{style:{fontSize:14,color:C.textMuted,marginBottom:28,maxWidth:380}},"En cuanto registres algo, CLEO empezará a mostrarte qué necesita tu atención."),
-            e("div",{style:{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,width:"100%",maxWidth:380}},
+            e("div",{style:{display:"flex",flexDirection:"column",gap:10,width:"100%",maxWidth:380}},
               [
-                {ic:"💬",label:"Alguien preguntó",onClick:function(){ if(esProductos){ setPasoPreguntoP(1); } else { setPasoPregunto(1); } }},
-                {ic:"🏷️",label:"Envié un precio",onClick:function(){ if(esProductos){ setModalEnvieP(true); } else { setFormCot(Object.assign({},cotVacio,{nuevoNombre:""})); setModalCot(true); } }},
-                {ic:"🎉",label:"Cerré una venta",onClick:function(){ if(esProductos){ setModalCerreP(true); } else { setModalCerre(true); } }},
-                {ic:"💰",label:"Recibí un pago",onClick:function(){ if(esProductos){ setModalRecibiP(true); } else { setModalRecibi(true); } }}
+                {ic:"💬",label:"Alguien preguntó",desc:"Guarda lo que busca y recuerda retomar la conversación.",onClick:function(){ if(esProductos){ setPasoPreguntoP(1); } else { setPasoPregunto(1); } }},
+                {ic:"🏷️",label:"Envié un precio",desc:"Registra lo que ofreciste y mantén pendiente su respuesta.",onClick:function(){ if(esProductos){ setModalEnvieP(true); } else { setFormCot(Object.assign({},cotVacio,{nuevoNombre:""})); setModalCot(true); } }},
+                {ic:"🎉",label:"Cerré una venta",desc:"Organiza el pedido, el pago y lo que falta por entregar.",onClick:function(){ if(esProductos){ setModalCerreP(true); } else { setModalCerre(true); } }}
               ].map(function(op,i){
-                return e("button",{key:i,style:{cursor:"pointer",padding:"14px",borderRadius:12,border:"1px solid "+C.border,background:C.bg,fontSize:13,color:C.text,fontWeight:500,display:"flex",alignItems:"center",gap:8,width:"100%",textAlign:"left"},onClick:op.onClick},
-                  e("span",{style:{fontSize:16,flexShrink:0}},op.ic),
-                  e("span",{style:{overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}},op.label)
+                return e("button",{key:i,style:{cursor:"pointer",padding:"16px",borderRadius:14,border:"1.5px solid "+C.border,background:C.surface,textAlign:"left",display:"flex",gap:14,alignItems:"flex-start",width:"100%"},
+                  onMouseEnter:function(ev){ ev.currentTarget.style.borderColor=C.purple; },
+                  onMouseLeave:function(ev){ ev.currentTarget.style.borderColor=C.border; },
+                  onClick:op.onClick},
+                  e("span",{style:{fontSize:22,flexShrink:0,marginTop:1}},op.ic),
+                  e("div",null,
+                    e("div",{style:{fontSize:15,fontWeight:600,color:C.text,marginBottom:3}},op.label),
+                    e("div",{style:{fontSize:13,color:C.textMuted,lineHeight:1.5}},op.desc)
+                  )
                 );
               })
             ),
-            e("button",{style:{cursor:"pointer",marginTop:16,padding:"6px",border:"none",background:"none",fontSize:12,color:C.purple},onClick:function(){ activarModoDemo(); }},"O explora CLEO con datos de ejemplo"),
+            e("div",{style:{display:"flex",alignItems:"center",gap:10,margin:"10px 0 12px",width:"100%",maxWidth:380}},
+              e("div",{style:{flex:1,height:1,background:C.border}}),
+              e("span",{style:{fontSize:11,color:C.textMuted,flexShrink:0}},"o"),
+              e("div",{style:{flex:1,height:1,background:C.border}})
+            ),
+            e("button",{style:{cursor:"pointer",width:"100%",maxWidth:380,padding:"12px",borderRadius:12,border:"none",background:C.purple,fontSize:13,color:"#fff",fontWeight:600},onClick:function(){ activarModoDemo(); }},"Ver cómo funciona con datos de ejemplo"),
             errorDemo&&e("div",{style:{fontSize:11,color:C.red,marginTop:6,lineHeight:1.4}},errorDemo)
           );
         }
