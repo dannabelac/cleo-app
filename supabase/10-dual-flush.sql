@@ -1322,6 +1322,38 @@ begin
     end;
   end loop;
 
+  -- ── 14b. ACTUALIZAR PERFIL EN NEGOCIOS ───────────────────────────────────
+  -- cleo_dual_read() lee color y otros campos del perfil directamente desde
+  -- las columnas de negocios. Sin este UPDATE, los cambios al perfil guardados
+  -- en el blob no se reflejarían en la siguiente lectura por cleo_dual_read().
+  -- Regla: coalesce(nuevo, existente) — solo sobreescribe cuando el blob trae
+  -- un valor no vacío; no borra valores previamente guardados.
+  update public.negocios set
+    nombre          = coalesce(nullif(p_data -> 'cleo_perfil' ->> 'nombre', ''),           nombre),
+    nombre_contacto = coalesce(nullif(p_data -> 'cleo_perfil' ->> 'tuNombre', ''),         nombre_contacto),
+    telefono        = coalesce(nullif(p_data -> 'cleo_perfil' ->> 'telefono', ''),         telefono),
+    email           = coalesce(nullif(p_data -> 'cleo_perfil' ->> 'email', ''),            email),
+    color           = coalesce(nullif(p_data -> 'cleo_perfil' ->> 'color', ''),            color),
+    color_sec       = coalesce(nullif(p_data -> 'cleo_perfil' ->> 'colorSecundario', ''),  color_sec),
+    banco           = coalesce(nullif(p_data -> 'cleo_perfil' ->> 'banco', ''),            banco),
+    cuenta          = coalesce(nullif(p_data -> 'cleo_perfil' ->> 'bancoaccount', ''),     cuenta),
+    clabe           = coalesce(nullif(p_data -> 'cleo_perfil' ->> 'bancoclabe', ''),       clabe),
+    titular         = coalesce(nullif(p_data -> 'cleo_perfil' ->> 'bancotitular', ''),     titular),
+    config          = coalesce(config, '{}'::jsonb) ||
+                      jsonb_strip_nulls(jsonb_build_object(
+                        'colorTexto',         nullif(p_data -> 'cleo_perfil' ->> 'colorTexto', ''),
+                        'logo',               nullif(p_data -> 'cleo_perfil' ->> 'logo', ''),
+                        'mensaje',            nullif(p_data -> 'cleo_perfil' ->> 'mensaje', ''),
+                        'condicionesPago',    nullif(p_data -> 'cleo_perfil' ->> 'condicionesPago', ''),
+                        'redesTT',            nullif(p_data -> 'cleo_perfil' ->> 'redesTT', ''),
+                        'redesIG',            nullif(p_data -> 'cleo_perfil' ->> 'redesIG', ''),
+                        'redesFB',            nullif(p_data -> 'cleo_perfil' ->> 'redesFB', ''),
+                        'bancotarjeta',       nullif(p_data -> 'cleo_perfil' ->> 'bancotarjeta', ''),
+                        'bancoinstrucciones', nullif(p_data -> 'cleo_perfil' ->> 'bancoinstrucciones', ''),
+                        'direccion',          nullif(p_data -> 'cleo_perfil' ->> 'direccion', '')
+                      ))
+  where id = v_neg_id;
+
   -- ── 15. ACTUALIZAR user_data ──────────────────────────────────────────────
   -- Después de escribir las tablas, actualizar user_data con el blob recibido
   -- más la versión limpia de tombstones (= []).

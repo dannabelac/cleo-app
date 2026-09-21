@@ -7632,7 +7632,16 @@ export default function CLEO(props){
   }
 
   function editarCliente(c){ setClienteSel(c); var origenPrev=estadoOrigenParaEditar(c.origen); setForm({nombre:c.nombre,negocio:c.negocio,contacto:c.contacto,origen:origenPrev.origen,origenOtro:origenPrev.origenOtro,etapa:c.etapa,notas:c.notas,instagram:c.instagram||"",canalPrincipal:c.canalPrincipal||"WhatsApp",messenger:c.messenger||"",email:c.email||"",notaRecontacto:c.notaRecontacto||""}); setModalCliente(true); }
-  function eliminarCliente(id){ setClientes(clientes.filter(function(c){ return c.id!==id; })); setCotizaciones(cotizaciones.filter(function(c){ return c.clienteId!==id; })); }
+  function eliminarCliente(id){
+    try{
+      var _tombsAct=lsGet("cleo_tombstones",[]);
+      var _cotTombs=cotizaciones.filter(function(c){return c.clienteId===id;}).map(function(c){return {tipo:"cotizacion",cleoId:c.id};});
+      writeGuard.write("cleo_tombstones",JSON.stringify(_tombsAct.concat([{tipo:"cliente",cleoId:id}],_cotTombs)));
+    }catch(e){}
+    setClientes(clientes.filter(function(c){ return c.id!==id; }));
+    setCotizaciones(cotizaciones.filter(function(c){ return c.clienteId!==id; }));
+    if(props.forzarSync){ props.forzarSync(); }
+  }
         function coachingCliente(c,prioridad){
           var cid=Number(c.id);
           // En Servicios, el coaching describe la oportunidad ACTIVA , solo
