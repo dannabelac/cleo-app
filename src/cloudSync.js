@@ -527,7 +527,9 @@ export async function pullUserData(userId) {
   // caso (error, schema_no_dual, función no disponible) seguimos en blob mode.
   var schemaVerDetectado = 'blob';
   try {
+    console.log('[CLEO-DBG] pullUserData: llamando cleo_dual_read...');
     var rpcDual = await supabase.rpc('cleo_dual_read');
+    console.log('[CLEO-DBG] cleo_dual_read resultado:', JSON.stringify({ error: rpcDual.error, estado: rpcDual.data && rpcDual.data.estado }));
     if (!rpcDual.error && rpcDual.data && rpcDual.data.estado === 'ok') {
       schemaVerDetectado = 'dual';
       fila = {
@@ -536,7 +538,9 @@ export async function pullUserData(userId) {
         updated_at:  rpcDual.data.updated_at,
       };
     }
-  } catch (e) {}
+  } catch (e) {
+    console.log('[CLEO-DBG] cleo_dual_read excepcion:', e && e.message);
+  }
 
   var remoto = snapshotRemoto(fila);
   var local = leerSnapshotLocalStorage();
@@ -716,10 +720,12 @@ export function startCloudSync(userId, onEstadoCambia, baselineInicial) {
 
     // ── DUAL MODE ─────────────────────────────────────────────────────────────
     if (schemaVer === 'dual') {
+      var _tp = tipoPerfilActual();
+      console.log('[CLEO-DBG] intentarGuardar dual: llamando cleo_dual_flush, tipo_perfil=' + _tp + ' updated_at=' + ultimoUpdatedAt);
       return supabase
         .rpc('cleo_dual_flush', {
           p_data:              snap,
-          p_tipo_perfil:       tipoPerfilActual(),
+          p_tipo_perfil:       _tp,
           p_ultimo_updated_at: ultimoUpdatedAt || null,
         })
         .then(async function (res) {
@@ -731,6 +737,7 @@ export function startCloudSync(userId, onEstadoCambia, baselineInicial) {
             return { estado: 'error' };
           }
           var result = res.data;
+          console.log('[CLEO-DBG] cleo_dual_flush resultado:', JSON.stringify({ estado: result && result.estado, codigo: result && result.codigo }));
           if (result.estado === 'conflicto') {
             conflictoPendiente = { snapshot: snap, fecha: nuevaFecha, userId: userId, estado: 'pendiente' };
             try { localStorage.setItem(CONFLICT_BACKUP_KEY, JSON.stringify(conflictoPendiente)); } catch (e) {}
