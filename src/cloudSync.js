@@ -27,6 +27,8 @@ export var CLEO_KEYS = [
   "cleo_data_version",
   "cleo_streak_accion_prod",
   "cleo_streak_accion_serv",
+  "cleo_oportunidades",
+  "cleo_tombstones",
 ];
 
 // Claves locales/temporales de CLEO — nunca se sincronizan a Supabase, pero sí
@@ -520,6 +522,22 @@ export async function pullUserData(userId) {
     return { tieneDatos: false, updatedAt: null, snapshot: {} };
   }
 
+  // En modo dual la fuente canónica son las tablas relacionales.
+  // cleo_dual_read() devuelve ok solo si schema_ver='dual'; en cualquier otro
+  // caso (error, schema_no_dual, función no disponible) seguimos en blob mode.
+  var schemaVerDetectado = 'blob';
+  try {
+    var rpcDual = await supabase.rpc('cleo_dual_read');
+    if (!rpcDual.error && rpcDual.data && rpcDual.data.estado === 'ok') {
+      schemaVerDetectado = 'dual';
+      fila = {
+        data:        rpcDual.data.data,
+        tipo_perfil: fila.tipo_perfil,
+        updated_at:  rpcDual.data.updated_at,
+      };
+    }
+  } catch (e) {}
+
   var remoto = snapshotRemoto(fila);
   var local = leerSnapshotLocalStorage();
   // El demo se restaura siempre desde la nube al salir, nunca se ofrece
@@ -557,7 +575,7 @@ export async function pullUserData(userId) {
   registrarSyncExitoso(
     Object.assign({ durationMs: Date.now() - _tInicioPull }, metricasSnapshot(snapshotPulled))
   );
-  return { tieneDatos: true, updatedAt: fila.updated_at, snapshot: snapshotPulled };
+  return { tieneDatos: true, updatedAt: fila.updated_at, snapshot: snapshotPulled, schemaVer: schemaVerDetectado };
 }
 
 // ── PUSH ──────────────────────────────────────────────────────────────────
@@ -591,6 +609,7 @@ export function startCloudSync(userId, onEstadoCambia, baselineInicial) {
   // cuenta) cambió algo mientras tanto, antes de arriesgarnos a sobrescribirlo.
   var ultimoUpdatedAt = null;
   var baselineLista = false;
+  var schemaVer = (baselineInicial && baselineInicial.schemaVer) || 'blob';
 
   // Si nos pasaron una baseline ya lista (ver comentario de arriba), se usa
   // tal cual y se marca baselineLista=true de una vez , snapshot debe ser
@@ -694,6 +713,59 @@ export function startCloudSync(userId, onEstadoCambia, baselineInicial) {
     // set_updated_at_user_data) y se relee con .select("updated_at") lo que
     // el servidor realmente guardó.
     var nuevaFecha = new Date().toISOString();
+
+    // ── DUAL MODE ─────────────────────────────────────────────────────────────
+    if (schemaVer === 'dual') {
+      return supabase
+        .rpc('cleo_dual_flush', {
+          p_data:              snap,
+          p_tipo_perfil:       tipoPerfilActual(),
+          p_ultimo_updated_at: ultimoUpdatedAt || null,
+        })
+        .then(async function (res) {
+          if (res.error) {
+            console.error('cloudSync dual: error en cleo_dual_flush', res.error);
+            avisar('error');
+            reportarErrorSync('intentarGuardar', 'dual_flush_error',
+              Object.assign({ durationMs: Date.now() - _tInicioGuardar }, _metricasGuardado));
+            return { estado: 'error' };
+          }
+          var result = res.data;
+          if (result.estado === 'conflicto') {
+            conflictoPendiente = { snapshot: snap, fecha: nuevaFecha, userId: userId, estado: 'pendiente' };
+            try { localStorage.setItem(CONFLICT_BACKUP_KEY, JSON.stringify(conflictoPendiente)); } catch (e) {}
+            avisar('conflicto');
+            reportarConflictoVersion('intentarGuardar',
+              Object.assign({ durationMs: Date.now() - _tInicioGuardar }, _metricasGuardado), 'dual');
+            return { estado: 'conflicto' };
+          }
+          if (result.estado !== 'ok') {
+            console.error('cloudSync dual: cleo_dual_flush estado inesperado', result);
+            avisar('error');
+            reportarErrorSync('intentarGuardar', 'dual_flush_estado',
+              Object.assign({ durationMs: Date.now() - _tInicioGuardar }, _metricasGuardado));
+            return { estado: 'error' };
+          }
+          if (result.historial_conflictos && result.historial_conflictos.length > 0) {
+            console.warn('cloudSync dual: historial_contactos no sobrescrito:', result.historial_conflictos);
+          }
+          await recordarConfirmado(userId, snap);
+          ultimoEnviado = serializado;
+          ultimoUpdatedAt = result.updated_at;
+          avisar('ok');
+          registrarSyncExitoso(Object.assign({ durationMs: Date.now() - _tInicioGuardar }, _metricasGuardado));
+          return { estado: 'ok' };
+        })
+        .catch(function (err) {
+          console.error('cloudSync dual: excepción en cleo_dual_flush', err);
+          avisar('error');
+          reportarErrorSync('intentarGuardar', 'dual_flush_excepcion',
+            Object.assign({ durationMs: Date.now() - _tInicioGuardar }, _metricasGuardado));
+          return { estado: 'error' };
+        });
+    }
+
+    // ── BLOB MODE ─────────────────────────────────────────────────────────────
     var payload = {
       data: snap,
       tipo_perfil: tipoPerfilActual(),
@@ -853,6 +925,49 @@ export function startCloudSync(userId, onEstadoCambia, baselineInicial) {
       resolviendoConflicto = false;
       return Promise.resolve({ estado: "conflicto" });
     }
+    // ── DUAL MODE ─────────────────────────────────────────────────────────────
+    if (schemaVer === 'dual') {
+      return supabase.rpc('cleo_dual_read')
+        .then(async function (rpcRes) {
+          if (rpcRes.error || !rpcRes.data || rpcRes.data.estado !== 'ok') {
+            throw new Error('dual_read_fallo');
+          }
+          if (!versionLocalSigueIgual()) return { estado: 'conflicto' };
+          var flushRes = await supabase.rpc('cleo_dual_flush', {
+            p_data:              snapshotAConservar,
+            p_tipo_perfil:       snapshotAConservar.cleo_perfil
+                                   ? snapshotAConservar.cleo_perfil.tipoPerfil || null
+                                   : null,
+            p_ultimo_updated_at: rpcRes.data.updated_at,
+          });
+          if (flushRes.error) throw flushRes.error;
+          var result = flushRes.data;
+          if (result.estado === 'conflicto') {
+            reportarConflictoVersion('resolverConflictoConservarLocal', metricasSnapshot(snapshotAConservar));
+            return { estado: 'conflicto' };
+          }
+          if (result.estado !== 'ok') throw new Error('dual_flush_fallo');
+          if (!versionLocalSigueIgual()) return { estado: 'conflicto' };
+          await recordarConfirmado(userId, snapshotAConservar);
+          ultimoEnviado = JSON.stringify(snapshotAConservar);
+          ultimoUpdatedAt = result.updated_at;
+          conflictoPendiente = null;
+          try { localStorage.removeItem(CONFLICT_BACKUP_KEY); } catch (e) {}
+          avisar('ok');
+          return { estado: 'ok' };
+        })
+        .catch(function (err) {
+          console.error('cloudSync dual: error en resolverConflictoConservarLocal', err);
+          reportarErrorSync('resolverConflictoConservarLocal', 'dual_error', {});
+          return { estado: 'error' };
+        })
+        .then(function (resultado) {
+          resolviendoConflicto = false;
+          return resultado;
+        });
+    }
+
+    // ── BLOB MODE ─────────────────────────────────────────────────────────────
     return supabase
       .from("user_data")
       .select("updated_at")
@@ -929,6 +1044,46 @@ export function startCloudSync(userId, onEstadoCambia, baselineInicial) {
     if (!conflictoPendiente) return Promise.resolve({ estado: "ok" });
     var localAntesDeResolver = serializarSnapshot(leerSnapshotLocalStorage());
     resolviendoConflicto = true;
+    // ── DUAL MODE ─────────────────────────────────────────────────────────────
+    if (schemaVer === 'dual') {
+      return supabase.rpc('cleo_dual_read')
+        .then(async function (rpcRes) {
+          if (rpcRes.error || !rpcRes.data || rpcRes.data.estado !== 'ok') {
+            throw new Error('dual_read_fallo');
+          }
+          if (localStorage.getItem(CACHE_OWNER_KEY) !== userId ||
+              serializarSnapshot(leerSnapshotLocalStorage()) !== localAntesDeResolver) {
+            return { estado: 'conflicto' };
+          }
+          var remoto = snapshotRemoto({ data: rpcRes.data.data, tipo_perfil: null });
+          escribirSnapshotLocalStorage(remoto, userId);
+          await recordarConfirmado(userId, remoto);
+          ultimoEnviado = JSON.stringify(leerSnapshotLocalStorage());
+          ultimoUpdatedAt = rpcRes.data.updated_at;
+          conflictoPendiente = null;
+          try {
+            var respaldoRaw = localStorage.getItem(CONFLICT_BACKUP_KEY);
+            if (respaldoRaw) {
+              var respaldo = JSON.parse(respaldoRaw);
+              respaldo.estado = 'resuelto';
+              localStorage.setItem(CONFLICT_BACKUP_KEY, JSON.stringify(respaldo));
+            }
+          } catch (e) {}
+          avisar('ok');
+          return { estado: 'ok' };
+        })
+        .catch(function (err) {
+          console.error('cloudSync dual: error en resolverConflictoUsarRemoto', err);
+          reportarErrorSync('resolverConflictoUsarRemoto', 'dual_read_error', {});
+          return { estado: 'error' };
+        })
+        .then(function (resultado) {
+          resolviendoConflicto = false;
+          return resultado;
+        });
+    }
+
+    // ── BLOB MODE ─────────────────────────────────────────────────────────────
     return supabase
       .from("user_data")
       .select("data, tipo_perfil, updated_at")

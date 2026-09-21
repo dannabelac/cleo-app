@@ -5,6 +5,7 @@ export const BUSINESS_KEYS = [
   "cleo_clientes", "cleo_cots", "cleo_ventas", "cleo_servicios",
   "cleo_pedidos", "cleo_productos", "cleo_productos_cat", "cleo_perfil",
   "cleo_cache_owner_user_id",
+  "cleo_oportunidades", "cleo_tombstones",
 ];
 
 export const STALE_TAB_MESSAGE = "Hay cambios en otra pestaña. No guardamos este cambio para evitar sobrescribirlos. Tu formulario sigue abierto. Copia lo que escribiste antes de recargar esta pestaña.";

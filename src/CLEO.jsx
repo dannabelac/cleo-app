@@ -4273,7 +4273,52 @@ function Alertas(props){
 // Todas las claves que CLEO guarda en localStorage , misma lista que usa
 // cloudSync.js (CLEO_KEYS) para no desincronizarse entre ambos módulos, solo
 // que aquí se usa exclusivamente para ESTIMAR el tamaño total del snapshot.
-var CLEO_STORAGE_KEYS=["cleo_clientes","cleo_cots","cleo_ventas","cleo_servicios","cleo_pedidos","cleo_productos","cleo_productos_cat","cleo_perfil","cleo_tipo_perfil","cleo_alertas_cerradas","cleo_etapas_vistas","cleo_data_version","cleo_streak_accion_prod","cleo_streak_accion_serv"];
+// Convierte el array de clientes al formato cleo_oportunidades (blob dual).
+// Una entrada por cliente; los campos son los que espera cleo_dual_flush.
+// Debe llamarse cada vez que clientes cambia para mantener la clave en sync.
+function clientesAOportunidades(clientes, tipoPerfil) {
+  var esProd = tipoPerfil !== 'servicios';
+  return (clientes || []).map(function(c) {
+    var estatus, etapa;
+    if (c.archivado) {
+      estatus = 'perdida'; etapa = 'perdido';
+    } else if (esProd) {
+      if (c.estadoProspecto === 'Convertido')         { estatus = 'ganada';  etapa = 'convertido'; }
+      else if (c.estadoProspecto === 'Perdido')       { estatus = 'perdida'; etapa = 'perdido'; }
+      else {
+        estatus = 'activa';
+        if (c.estadoProspecto === 'En seguimiento')   etapa = 'en_seguimiento';
+        else if (c.estadoProspecto === 'Sin respuesta') etapa = 'sin_respuesta';
+        else                                          etapa = 'nueva';
+      }
+    } else {
+      if (c.etapa === 'Ganado')                       { estatus = 'ganada';  etapa = 'ganado'; }
+      else if (c.etapa === 'Perdido')                 { estatus = 'perdida'; etapa = 'perdido'; }
+      else {
+        estatus = 'activa';
+        if (c.etapa === 'Cotizacion enviada')         etapa = 'cotizacion_enviada';
+        else if (c.etapa === 'Negociacion')           etapa = 'negociacion';
+        else                                          etapa = 'nuevo_contacto';
+      }
+    }
+    return {
+      id: 'op_cli_' + c.id,
+      clienteId: c.id,
+      modo: esProd ? 'productos' : 'servicios',
+      titulo: (esProd ? c.productoInteres : c.servicioInteres) || '',
+      estatus: estatus,
+      etapa: etapa,
+      precioInteres: c.precioInteres || '',
+      motivoCierre: c.motivoPerdida || null,
+      fecha: c.fecha || null,
+      fechaEtapa: c.fechaEtapa || null,
+      ultimoContacto: c.ultimoContacto || null,
+      origenMigracion: 'blob'
+    };
+  });
+}
+
+var CLEO_STORAGE_KEYS=["cleo_clientes","cleo_cots","cleo_ventas","cleo_servicios","cleo_pedidos","cleo_productos","cleo_productos_cat","cleo_perfil","cleo_tipo_perfil","cleo_alertas_cerradas","cleo_etapas_vistas","cleo_data_version","cleo_streak_accion_prod","cleo_streak_accion_serv","cleo_oportunidades","cleo_tombstones"];
 // Umbral de AVISO , no bloquea nada, solo informa con margen antes de que el
 // guardado empiece a fallar de verdad (el límite práctico de localStorage
 // suele rondar 5-10MB según el navegador). El único bloqueo real ocurre más
@@ -4466,7 +4511,21 @@ function crearSetterPersistente(setRawFn,storageKey,writeGuard){
 
 export default function CLEO(props){
   var e=eSeguro;
-  var writeGuard=useState(function(){ return createLocalWriteGuard(localStorage); })[0];
+  var writeGuard=useState(function(){
+    // Inicializar cleo_oportunidades y cleo_tombstones ANTES de que el guard
+    // tome su snapshot. El initializer de useState corre una sola vez al montar.
+    if(typeof localStorage!=="undefined"){
+      function _lsg(k,fb){try{var v=localStorage.getItem(k);return v?JSON.parse(v):fb;}catch(e){return fb;}}
+      try{
+        localStorage.setItem("cleo_oportunidades",
+          JSON.stringify(clientesAOportunidades(_lsg("cleo_clientes",[]),_lsg("cleo_tipo_perfil",null))));
+      }catch(e){}
+      if(!localStorage.getItem("cleo_tombstones")){
+        try{localStorage.setItem("cleo_tombstones","[]");}catch(e){}
+      }
+    }
+    return createLocalWriteGuard(localStorage);
+  })[0];
 
   // Estados principales , forzar datos frescos si version cambio
   var DATA_VERSION="v4";
@@ -6484,7 +6543,16 @@ export default function CLEO(props){
   // Estado filtros Ventas (modo productos)
   var sVPFiltro=useState({periodo:"mes",origen:"todos",busqueda:""}); var filtroVP=sVPFiltro[0]; var setFiltroVP=sVPFiltro[1];
 
-  function setClientes(v){ crearSetterPersistente(setClientesRaw,"cleo_clientes",writeGuard)(v); }
+  function setClientes(v){
+    crearSetterPersistente(setClientesRaw,"cleo_clientes",writeGuard)(v);
+    // Mantener cleo_oportunidades sincronizado. Si la escritura anterior falló
+    // (pestaña stale, cuota), el guard vuelve a rechazar esta también — el
+    // error se silencia porque la alerta ya se mostró arriba.
+    try{
+      writeGuard.write("cleo_oportunidades",
+        JSON.stringify(clientesAOportunidades(lsGet("cleo_clientes",[]),lsGet("cleo_tipo_perfil",null))));
+    }catch(e){}
+  }
   // Migración idempotente: limpia recordatorios de pipeline que quedaron
   // obsoletos en datos YA GUARDADOS de antes de que existiera esta
   // corrección (clientes que ya estaban Ganado/Perdido/Convertido con un
