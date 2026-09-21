@@ -4275,9 +4275,13 @@ function Alertas(props){
 // que aquí se usa exclusivamente para ESTIMAR el tamaño total del snapshot.
 // Convierte el array de clientes al formato cleo_oportunidades (blob dual).
 // Una entrada por cliente; los campos son los que espera cleo_dual_flush.
+// opActuales: array de oportunidades ya guardadas en localStorage/DB —
+//   se preserva su origenMigracion para no pisar el valor canónico del servidor.
 // Debe llamarse cada vez que clientes cambia para mantener la clave en sync.
-function clientesAOportunidades(clientes, tipoPerfil) {
+function clientesAOportunidades(clientes, tipoPerfil, opActuales) {
   var esProd = tipoPerfil !== 'servicios';
+  var opPorId = {};
+  (opActuales || []).forEach(function(op) { if (op && op.id) opPorId[op.id] = op; });
   return (clientes || []).map(function(c) {
     var estatus, etapa;
     if (c.archivado) {
@@ -4301,8 +4305,10 @@ function clientesAOportunidades(clientes, tipoPerfil) {
         else                                          etapa = 'nuevo_contacto';
       }
     }
+    var opId = 'op_cli_' + c.id;
+    var opExistente = opPorId[opId];
     return {
-      id: 'op_cli_' + c.id,
+      id: opId,
       clienteId: c.id,
       modo: esProd ? 'productos' : 'servicios',
       titulo: (esProd ? c.productoInteres : c.servicioInteres) || '',
@@ -4313,7 +4319,7 @@ function clientesAOportunidades(clientes, tipoPerfil) {
       fecha: c.fecha || null,
       fechaEtapa: c.fechaEtapa || null,
       ultimoContacto: c.ultimoContacto || null,
-      origenMigracion: 'blob'
+      origenMigracion: (opExistente && opExistente.origenMigracion) || (esProd ? 'migrada_producto' : 'migrada_cotindep')
     };
   });
 }
@@ -4516,10 +4522,12 @@ export default function CLEO(props){
     // tome su snapshot. El initializer de useState corre una sola vez al montar.
     if(typeof localStorage!=="undefined"){
       function _lsg(k,fb){try{var v=localStorage.getItem(k);return v?JSON.parse(v):fb;}catch(e){return fb;}}
-      try{
-        localStorage.setItem("cleo_oportunidades",
-          JSON.stringify(clientesAOportunidades(_lsg("cleo_clientes",[]),_lsg("cleo_tipo_perfil",null))));
-      }catch(e){}
+      if(!localStorage.getItem("cleo_oportunidades")){
+        try{
+          localStorage.setItem("cleo_oportunidades",
+            JSON.stringify(clientesAOportunidades(_lsg("cleo_clientes",[]),_lsg("cleo_tipo_perfil",null))));
+        }catch(e){}
+      }
       if(!localStorage.getItem("cleo_tombstones")){
         try{localStorage.setItem("cleo_tombstones","[]");}catch(e){}
       }
@@ -6550,7 +6558,7 @@ export default function CLEO(props){
     // error se silencia porque la alerta ya se mostró arriba.
     try{
       writeGuard.write("cleo_oportunidades",
-        JSON.stringify(clientesAOportunidades(lsGet("cleo_clientes",[]),lsGet("cleo_tipo_perfil",null))));
+        JSON.stringify(clientesAOportunidades(lsGet("cleo_clientes",[]),lsGet("cleo_tipo_perfil",null),lsGet("cleo_oportunidades",[]))));
     }catch(e){}
   }
   // Migración idempotente: limpia recordatorios de pipeline que quedaron
