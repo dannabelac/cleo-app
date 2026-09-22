@@ -3390,7 +3390,9 @@ function construirEventosHistorialCliente(c,cotCliente,ventasCliente,pedidosClie
       return;
     }
     if(h.tipo==="cotizacion_eliminada"){
-      eventos.push({fecha:h.fecha,fechaHora:h.fechaHora,tipo:"cotizacion_eliminada",titulo:"Cotización eliminada",desc:h.resultado||"",color:C.red,orden:2});
+      eventos.push({fecha:h.fecha,fechaHora:h.fechaHora,tipo:"cotizacion",titulo:esProductos?"Cotización generada":"Cotización enviada",desc:(h.resumen?h.resumen+" · ":"")+"$"+formatoDinero(Number(h.monto||0)),color:C.amber,orden:2});
+      var _dElim=h.resultado?h.resultado.split("T")[0]:h.fecha;
+      eventos.push({fecha:_dElim,fechaHora:h.resultado||h.fechaHora,tipo:"cotizacion_eliminada",titulo:"Cotización eliminada",desc:"$"+formatoDinero(Number(h.monto||0)),color:C.red,orden:2});
       return;
     }
     var isRecup=h.resultado&&(h.resultado.includes("recuperad")||h.resultado.includes("Recuperad")||h.resultado.includes("reactivad"));
@@ -10432,7 +10434,7 @@ export default function CLEO(props){
                           // Perdido: solo servicio + seguimiento si hay
                           if(esPerdidoG){
                             var cotPerd=cotAcep||cotPend||cotizaciones.find(function(q){ return Number(q.clienteId)===Number(c.id)&&(esProductos||cotizacionVinculadaOportunidad(q)); });
-                            var concepto=cotPerd?cotPerd.concepto:null;
+                            var concepto=cotPerd?(cotPerd.concepto||resumenItemsCotizacion(obtenerItemsCotizacion(cotPerd),esProductos?"producto":"servicio")||null):null;
                             return e("div",{style:{fontSize:10,lineHeight:"22px",height:22,padding:"0 7px",borderRadius:6,flexShrink:0,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis",color:C.textMuted,background:"#F8FAFC",border:"0.5px solid "+C.border}},
                               concepto?concepto.slice(0,22)+(concepto.length>22?"...":""):"Sin cotización"
                             );
@@ -10440,7 +10442,7 @@ export default function CLEO(props){
                           // Ganado: solo servicio
                           if(esGanadoG){
                             var cot2=cotAcep||cotPend;
-                            var concepto2=cot2?cot2.concepto:null;
+                            var concepto2=cot2?(cot2.concepto||resumenItemsCotizacion(obtenerItemsCotizacion(cot2),esProductos?"producto":"servicio")||null):null;
                             return e("div",{style:{fontSize:10,lineHeight:"22px",height:22,padding:"0 7px",borderRadius:6,flexShrink:0,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis",color:C.green,background:C.green+"08",border:"0.5px solid "+C.green+"30"}},
                               concepto2?concepto2.slice(0,22)+(concepto2.length>22?"...":""):"Venta cerrada"
                             );
@@ -10452,7 +10454,7 @@ export default function CLEO(props){
                           var umbral=c.etapa==="Nuevo contacto"?5:3;
                           var diasRojo=dias>=umbral;
                           var cot3=cotAcep||cotPend;
-                          var concepto3=cot3?cot3.concepto:null;
+                          var concepto3=cot3?(cot3.concepto||resumenItemsCotizacion(obtenerItemsCotizacion(cot3),esProductos?"producto":"servicio")||null):null;
                           var texto=dias+"d"+(concepto3?" · "+concepto3.slice(0,16)+(concepto3.length>16?"...":""):"");
                           return e("div",{style:{fontSize:10,lineHeight:"22px",height:22,padding:"0 7px",borderRadius:6,flexShrink:0,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis",color:diasRojo?C.red:C.textMuted,background:diasRojo?C.red+"08":"#F8FAFC",border:"0.5px solid "+(diasRojo?C.red+"30":C.border)}},texto);
                         })(),
@@ -17920,14 +17922,15 @@ export default function CLEO(props){
               style:{cursor:"pointer",padding:"8px 14px",borderRadius:10,border:"none",background:"transparent",fontSize:12,color:C.textDim,display:"inline-flex",alignItems:"center",gap:4,marginLeft:"auto"},
               onClick:function(){
                 if(window.confirm("¿Eliminar esta cotización de "+c.nombre+"? La tarjeta también se quitará del pipeline.")){
-                  var evElim={tipo:"cotizacion_eliminada",fecha:FECHA_HOY,fechaHora:new Date().toISOString(),resultado:"$"+formatoDinero(Number(cot.monto||0))};
+                  var _cotRes=resumenItemsCotizacion(obtenerItemsCotizacion(cot),esProductos?"producto":"servicio");
+                  var evElim={tipo:"cotizacion_eliminada",fecha:cot.fecha,fechaHora:cot.fechaHoraCreacion||null,resultado:new Date().toISOString(),monto:Number(cot.monto||0),resumen:_cotRes||""};
                   try{
                     var _t=lsGet("cleo_tombstones",[]);
                     writeGuard.write("cleo_tombstones",JSON.stringify(_t.concat([{tipo:"cotizacion",cleoId:cot.id}])));
                   }catch(e2){}
                   setClientes(clientes.map(function(x){
                     if(x.id!==c.id) return x;
-                    return Object.assign({},x,{estadoProspecto:"",historialContactos:(x.historialContactos||[]).concat([evElim])});
+                    return Object.assign({},x,{etapa:"",estadoProspecto:"",historialContactos:(x.historialContactos||[]).concat([evElim])});
                   }));
                   setCotizaciones(cotizaciones.filter(function(x){ return x.id!==cot.id; }));
                   setCotRapidaId(null);
