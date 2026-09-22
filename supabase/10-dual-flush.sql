@@ -385,6 +385,11 @@ begin
             'tipoPago',    vt.tipo_pago,
             'entregado',   vt.entregado,
             'fechaEntrega',vt.fecha_entrega,
+            'configPostVenta', case
+              when vt.postv_pago is not null or vt.postv_seguimiento is not null
+              then jsonb_build_object('pago', vt.postv_pago,
+                     'seguimiento', case when vt.postv_seguimiento='ok' then 'resuelto' else vt.postv_seguimiento end)
+              else null end,
             'pagos',
               coalesce(
                 (select jsonb_agg(jsonb_build_object(
@@ -421,6 +426,11 @@ begin
             'anticipoConservado',  pd.anticipo_conservado,
             'motivoCancelacion',   pd.motivo_cancelacion,
             'motivoCancelacionLado', pd.motivo_cancelacion_lado,
+            'configPostVenta', case
+              when pd.postv_pago is not null or pd.postv_seguimiento is not null
+              then jsonb_build_object('pago', pd.postv_pago,
+                     'seguimiento', case when pd.postv_seguimiento='ok' then 'resuelto' else pd.postv_seguimiento end)
+              else null end,
             'pagos',
               coalesce(
                 (select jsonb_agg(jsonb_build_object(
