@@ -128,6 +128,23 @@ $$;
 revoke all on function public.cleo_guard_cotizacion_delete() from public;
 
 
+-- ── C. historial_contactos: ampliar check de tipo ────────────────────────────
+-- Agrega 'cotizacion_eliminada' a la lista de tipos válidos.
+-- El DROP + ADD es idempotente — se puede re-ejecutar sin riesgo.
+alter table public.historial_contactos
+  drop constraint if exists historial_contactos_tipo_check;
+
+alter table public.historial_contactos
+  add constraint historial_contactos_tipo_check
+  check (tipo in (
+    'precio_enviado',
+    'consulta_registrada',
+    'consulta_actualizada',
+    'contacto',
+    'cotizacion_eliminada'
+  ));
+
+
 -- ── Verificación ──────────────────────────────────────────────────────────────
 select
   p.proname                                          as funcion,
@@ -136,3 +153,8 @@ from pg_proc p
 join pg_namespace n on n.oid = p.pronamespace
 where n.nspname = 'public'
   and p.proname in ('cleo_guard_cotizacion_origen','cleo_guard_cotizacion_delete');
+
+select conname, pg_get_constraintdef(oid) as definicion
+  from pg_constraint
+ where conrelid = 'public.historial_contactos'::regclass
+   and conname  = 'historial_contactos_tipo_check';
