@@ -17,11 +17,18 @@ alter table public.clientes
   add column if not exists seguimiento_fecha             date,
   add column if not exists mensaje_seguimiento_postventa text;
 
--- ventas: P1-P3
+-- ventas: P1-P3 + postv (pueden ya existir si se ejecutó 03-schema-relacional.sql)
 alter table public.ventas
-  add column if not exists tipo_pago    text check (tipo_pago in ('completo','anticipo')),
-  add column if not exists entregado    boolean not null default false,
-  add column if not exists fecha_entrega date;
+  add column if not exists tipo_pago          text check (tipo_pago in ('completo','anticipo')),
+  add column if not exists entregado          boolean not null default false,
+  add column if not exists fecha_entrega      date,
+  add column if not exists postv_pago         text check (postv_pago in ('pendiente','resuelto')),
+  add column if not exists postv_seguimiento  text check (postv_seguimiento in ('pendiente','ok'));
+
+-- pedidos: postv (pueden ya existir si se ejecutó 03-schema-relacional.sql)
+alter table public.pedidos
+  add column if not exists postv_pago         text check (postv_pago in ('pendiente','resuelto')),
+  add column if not exists postv_seguimiento  text check (postv_seguimiento in ('pendiente','ok'));
 
 -- cotizaciones: P6-P7 + entregado/fechaEntrega no listadas antes pero presentes en blob
 alter table public.cotizaciones
