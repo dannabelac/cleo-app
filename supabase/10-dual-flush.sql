@@ -595,6 +595,10 @@ begin
   -- Orden: primero entidades hoja, luego entidades padre.
   -- FK ON DELETE CASCADE/SET NULL del schema hace el resto.
 
+  -- Habilita bypass en triggers de cotizaciones para tombstones autorizados.
+  -- local=true: se resetea al final de la TX — no afecta otras operaciones.
+  perform set_config('cleo.procesando_tombstones', 'true', true);
+
   -- Adjuntos (no hay cleo_id; se usa storage_path como identificador)
   if array_length(v_del_adjuntos, 1) > 0 then
     delete from public.archivo_adjuntos
