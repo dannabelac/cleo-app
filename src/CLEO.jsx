@@ -17912,13 +17912,17 @@ export default function CLEO(props){
               ),
               "PDF"
             ),
-            e("button",{
+            cot&&e("button",{
               style:{cursor:"pointer",padding:"8px 14px",borderRadius:10,border:"none",background:"transparent",fontSize:12,color:C.textDim,display:"inline-flex",alignItems:"center",gap:4,marginLeft:"auto"},
               onClick:function(){
-                if(window.confirm("¿Eliminar a "+c.nombre+"? Se borrarán también sus cotizaciones.")){
-                  var idBorrar=c.id;
+                if(window.confirm("¿Eliminar esta cotización de "+c.nombre+"?")){
+                  try{
+                    var _t=lsGet("cleo_tombstones",[]);
+                    writeGuard.write("cleo_tombstones",JSON.stringify(_t.concat([{tipo:"cotizacion",cleoId:cot.id}])));
+                  }catch(e2){}
+                  setCotizaciones(cotizaciones.filter(function(x){ return x.id!==cot.id; }));
                   setCotRapidaId(null);
-                  setTimeout(function(){ eliminarCliente(idBorrar); },100);
+                  if(props.forzarSync){ props.forzarSync(); }
                 }
               }
             },

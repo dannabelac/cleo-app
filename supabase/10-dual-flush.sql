@@ -618,7 +618,13 @@ begin
   end if;
 
   -- Cotizaciones: pagos → CASCADE; historial.cotizacion_id → SET NULL; adjuntos → CASCADE
+  -- Desvinculamos de oportunidad ANTES de borrar para evitar trg_cotizaciones_delete,
+  -- que bloquea el DELETE cuando oportunidad_id IS NOT NULL.
   if array_length(v_del_cotizaciones, 1) > 0 then
+    update public.cotizaciones
+       set oportunidad_id = null, oportunidad_vinculada = false
+     where negocio_id = v_neg_id
+       and cleo_id    = any(v_del_cotizaciones);
     delete from public.cotizaciones
      where negocio_id = v_neg_id
        and cleo_id    = any(v_del_cotizaciones);
