@@ -873,8 +873,8 @@ begin
         nullif(v_it ->> 'fechaRechazo','')::date,
         nullif(v_it ->> 'fechaHoraRechazo','')::timestamptz,
         v_it -> 'itemsAceptacion', (v_it ->> 'montoAceptacion')::numeric,
-        (v_it -> 'configPostVenta') ->> 'pago',
-        (v_it -> 'configPostVenta') ->> 'seguimiento',
+        nullif((v_it -> 'configPostVenta') ->> 'pago', ''),
+        nullif((v_it -> 'configPostVenta') ->> 'seguimiento', ''),
         nullif(v_it ->> 'seguimientoFecha','')::date,
         v_it ->> 'motivoPerdida',
         coalesce((v_it ->> 'entregado')::boolean, false),
@@ -949,8 +949,8 @@ begin
         nullif(v_it ->> 'fechaRechazo','')::date,
         nullif(v_it ->> 'fechaHoraRechazo','')::timestamptz,
         v_it -> 'itemsAceptacion', (v_it ->> 'montoAceptacion')::numeric,
-        (v_it -> 'configPostVenta') ->> 'pago',
-        (v_it -> 'configPostVenta') ->> 'seguimiento',
+        nullif((v_it -> 'configPostVenta') ->> 'pago', ''),
+        nullif((v_it -> 'configPostVenta') ->> 'seguimiento', ''),
         nullif(v_it ->> 'seguimientoFecha','')::date,
         v_it ->> 'motivoPerdida',
         coalesce((v_it ->> 'entregado')::boolean, false),
@@ -1009,8 +1009,8 @@ begin
       v_it ->> 'tipoPago',
       coalesce((v_it ->> 'entregado')::boolean, false),
       nullif(v_it ->> 'fechaEntrega','')::date,
-      (v_it -> 'configPostVenta') ->> 'pago',
-      (v_it -> 'configPostVenta') ->> 'seguimiento'
+      nullif((v_it -> 'configPostVenta') ->> 'pago', ''),
+      nullif((v_it -> 'configPostVenta') ->> 'seguimiento', '')
     )
     on conflict (negocio_id, cleo_id) do update set
       cliente_id        = excluded.cliente_id,
@@ -1093,8 +1093,8 @@ begin
              then v_it ->> 'motivoCancelacionLado' else null end,
         v_it -> 'itemsConfirmacion',
         (v_it ->> 'montoConfirmacion')::numeric,
-        (v_it -> 'configPostVenta') ->> 'pago',
-        (v_it -> 'configPostVenta') ->> 'seguimiento'
+        nullif((v_it -> 'configPostVenta') ->> 'pago', ''),
+        nullif((v_it -> 'configPostVenta') ->> 'seguimiento', '')
       )
       on conflict (negocio_id, cleo_id) do update set
         cliente_id               = excluded.cliente_id,
