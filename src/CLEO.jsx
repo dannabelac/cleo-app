@@ -3940,7 +3940,7 @@ function ModalVenta(props){
         (formVenta._buscaCli||"").length>0&&e("div",{style:{position:"absolute",top:"calc(100% - 2px)",left:0,right:0,background:C.surface,border:"1px solid "+C.border,borderRadius:10,zIndex:50,maxHeight:180,overflowY:"auto",boxShadow:"0 8px 24px rgba(0,0,0,0.1)"}},
           (function(){
             var q=formVenta._buscaCli==="*"?"":formVenta._buscaCli;
-            var filtrados=clientes.filter(function(c){ return !q||c.nombre.toLowerCase().includes(q.toLowerCase()); });
+            var filtrados=clientes.filter(function(c){ return !q||(c.nombre||"").toLowerCase().includes(q.toLowerCase()); });
             return e("div",null,
               filtrados.map(function(c){
                 return e("div",{key:c.id,
@@ -7523,7 +7523,7 @@ export default function CLEO(props){
   function alertaCerrada(key){ return alertasCerradas.indexOf(key)>=0; }
   function cerrarAlerta(key){ setAlertasCerradas(function(prev){ var n=prev.concat([key]); try{ localStorage.setItem("cleo_alertas_cerradas",JSON.stringify(n)); }catch(e){} return n; }); }
 
-  var clientesFiltrados=[...clientes].filter(function(c){ return c.nombre.toLowerCase().includes(busqueda.toLowerCase())||c.negocio.toLowerCase().includes(busqueda.toLowerCase()); }).sort(function(a,b){ return a.nombre.localeCompare(b.nombre,"es"); });
+  var clientesFiltrados=[...clientes].filter(function(c){ return (c.nombre||"").toLowerCase().includes(busqueda.toLowerCase())||(c.negocio||"").toLowerCase().includes(busqueda.toLowerCase()); }).sort(function(a,b){ return (a.nombre||"").localeCompare((b.nombre||""),"es"); });
 
   // Auto-sync: si una cotizacion esta Aceptada y el cliente no esta en Ganado, moverlo
   React.useEffect(function(){
@@ -8647,7 +8647,7 @@ export default function CLEO(props){
     // Una cotización se encuentra por CUALQUIERA de los nombres de sus
     // items , no solo por el resumen corto.
     var bq=filtroCot.busqueda.toLowerCase();
-    var mb=!filtroCot.busqueda||obtenerItemsCotizacion(cot).some(function(it){ return (it.nombre||"").toLowerCase().includes(bq); })||(cl&&cl.nombre.toLowerCase().includes(bq));
+    var mb=!filtroCot.busqueda||obtenerItemsCotizacion(cot).some(function(it){ return (it.nombre||"").toLowerCase().includes(bq); })||(cl&&(cl.nombre||"").toLowerCase().includes(bq));
     var me=!filtroCot.estatus||cot.estatus===filtroCot.estatus;
     var mf=enPeriodo(cot.fecha,filtroCot.periodo);
     // Las aceptadas viven en Trabajos , Cotizaciones solo muestra Pendientes y Rechazadas
@@ -11067,7 +11067,7 @@ export default function CLEO(props){
         var ingFiltrados=ingresos.filter(function(ing){
           if(!enPeriodo(ing.fecha,filtroVP.periodo)) return false;
           if(filtroVP.origen!=="todos"&&ing.origen!==filtroVP.origen) return false;
-          if(filtroVP.busqueda&&!ing.clienteNombre.toLowerCase().includes(filtroVP.busqueda.toLowerCase())&&!ing.concepto.toLowerCase().includes(filtroVP.busqueda.toLowerCase())) return false;
+          if(filtroVP.busqueda&&!(ing.clienteNombre||"").toLowerCase().includes(filtroVP.busqueda.toLowerCase())&&!(ing.concepto||"").toLowerCase().includes(filtroVP.busqueda.toLowerCase())) return false;
           return true;
         });
 
@@ -11684,7 +11684,7 @@ export default function CLEO(props){
                   ),
                   buscaCliOpo.length>0&&e("div",{style:{position:"absolute",top:"100%",left:0,right:0,background:C.surface,border:"1px solid "+C.border,borderRadius:10,zIndex:50,maxHeight:180,overflowY:"auto",boxShadow:"0 8px 24px rgba(0,0,0,0.1)"}},
                     (function(){
-                      var filtrados=clientes.filter(function(c){ return buscaCliOpo==="*"||c.nombre.toLowerCase().includes(buscaCliOpo.toLowerCase()); }).sort(function(a,b){ return a.nombre.localeCompare(b.nombre,"es"); });
+                      var filtrados=clientes.filter(function(c){ return buscaCliOpo==="*"||(c.nombre||"").toLowerCase().includes(buscaCliOpo.toLowerCase()); }).sort(function(a,b){ return (a.nombre||"").localeCompare((b.nombre||""),"es"); });
                       return e("div",null,
                         filtrados.map(function(c){
                           return e("div",{key:c.id,
@@ -12543,7 +12543,7 @@ export default function CLEO(props){
                   ),
                   buscaCliPed.length>0&&e("div",{style:{position:"absolute",top:"100%",left:0,right:0,background:C.surface,border:"1px solid "+C.border,borderRadius:10,zIndex:50,maxHeight:160,overflowY:"auto",boxShadow:"0 8px 24px rgba(0,0,0,0.1)"}},
                     (function(){
-                      var filtrados=clientes.filter(function(c){ return buscaCliPed==="*"||c.nombre.toLowerCase().includes(buscaCliPed.toLowerCase()); });
+                      var filtrados=clientes.filter(function(c){ return buscaCliPed==="*"||(c.nombre||"").toLowerCase().includes(buscaCliPed.toLowerCase()); });
                       return e("div",null,
                         filtrados.map(function(c){
                           return e("div",{key:c.id,style:{padding:"10px 14px",cursor:"pointer",fontSize:13,color:C.text,borderBottom:"0.5px solid "+C.border},
@@ -13539,7 +13539,7 @@ export default function CLEO(props){
         var ingFiltrados=ingresos.filter(function(ing){
           if(!enPeriodo(ing.fecha,filtroVP.periodo)) return false;
           if(filtroVP.origen!=="todos"&&ing.origen!==filtroVP.origen) return false;
-          if(filtroVP.busqueda&&!ing.clienteNombre.toLowerCase().includes(filtroVP.busqueda.toLowerCase())&&!ing.concepto.toLowerCase().includes(filtroVP.busqueda.toLowerCase())) return false;
+          if(filtroVP.busqueda&&!(ing.clienteNombre||"").toLowerCase().includes(filtroVP.busqueda.toLowerCase())&&!(ing.concepto||"").toLowerCase().includes(filtroVP.busqueda.toLowerCase())) return false;
           return true;
         });
 
@@ -15353,7 +15353,7 @@ export default function CLEO(props){
       // Identidad), que SÍ detiene el flujo con el modal único "¿Es este
       // cliente?" en vez de una nota que se podía ignorar.
       var coincidenciasNombre1=pasoPregunto===1&&fp.nombre.trim().length>0&&!fp.clienteExistenteId
-        ?clientes.filter(function(c){ return c.nombre.toLowerCase().indexOf(fp.nombre.trim().toLowerCase())===0; }).slice(0,5)
+        ?clientes.filter(function(c){ return (c.nombre||"").toLowerCase().indexOf(fp.nombre.trim().toLowerCase())===0; }).slice(0,5)
         :[];
       function elegirClienteExistente1(c){
         var itemsExistentes1=obtenerItemsInteres(c);
@@ -15575,7 +15575,7 @@ export default function CLEO(props){
       var canalElegido=!!fp.canal;
       var paso2Completo=canalElegido&&(fp.canal!=="WhatsApp"||!fp.contacto||fp.contacto.length===10);
       var coincidenciasNombre1P=fp.nombre.trim().length>0&&!fp.clienteExistenteId
-        ?clientes.filter(function(c){ return c.nombre.toLowerCase().indexOf(fp.nombre.trim().toLowerCase())===0; }).slice(0,5)
+        ?clientes.filter(function(c){ return (c.nombre||"").toLowerCase().indexOf(fp.nombre.trim().toLowerCase())===0; }).slice(0,5)
         :[];
       function elegirClienteExistente1P(c){
         var itemsExistentes=obtenerItemsInteres(c);
@@ -16014,7 +16014,7 @@ export default function CLEO(props){
     modalEnvieP&&!modalOportunidadActivaP&&!modalCombinarOpo&&!modalIdentidadCliente&&(function(){
       var fe=formEnvieP;
       var coincidencias=fe.busqueda.trim().length>0&&!fe.clienteId
-        ?clientes.filter(function(c){ return c.nombre.toLowerCase().indexOf(fe.busqueda.trim().toLowerCase())===0; }).slice(0,5)
+        ?clientes.filter(function(c){ return (c.nombre||"").toLowerCase().indexOf(fe.busqueda.trim().toLowerCase())===0; }).slice(0,5)
         :[];
       var listo=fe.busqueda.trim().length>0&&(fe.items||[]).some(function(it){ return it.nombre.trim(); });
 
@@ -16109,7 +16109,7 @@ export default function CLEO(props){
     modalCerre&&!modalIdentidadCliente&&(function(){
       var fc=formCerre;
       var coincidencias=fc.busqueda.trim().length>0&&!fc.clienteId
-        ?clientes.filter(function(c){ return c.nombre.toLowerCase().indexOf(fc.busqueda.trim().toLowerCase())===0; }).slice(0,5)
+        ?clientes.filter(function(c){ return (c.nombre||"").toLowerCase().indexOf(fc.busqueda.trim().toLowerCase())===0; }).slice(0,5)
         :[];
       // Solo ofrecer confirmar una cotización Pendiente vinculada a la
       // oportunidad activa , una cotización "diferente" no debe adelantarse
@@ -16224,7 +16224,7 @@ export default function CLEO(props){
     modalCerreP&&!modalIdentidadCliente&&(function(){
       var fc=formCerreP;
       var coincidencias=fc.busqueda.trim().length>0&&!fc.clienteId
-        ?clientes.filter(function(c){ return c.nombre.toLowerCase().indexOf(fc.busqueda.trim().toLowerCase())===0; }).slice(0,5)
+        ?clientes.filter(function(c){ return (c.nombre||"").toLowerCase().indexOf(fc.busqueda.trim().toLowerCase())===0; }).slice(0,5)
         :[];
       // tieneOportunidadActivaProductos: ÚNICA fuente de verdad
       // (estadoProspecto) , reemplaza el chequeo anterior que además exigía
@@ -16352,7 +16352,7 @@ export default function CLEO(props){
     modalRecibi&&(function(){
       var cobrosTodosR=obtenerCobrosPendientesHoy(cotizaciones,ventas,clientes,null,true);
       var filtrados=busquedaRecibi.trim().length>0
-        ?cobrosTodosR.filter(function(x){ return x.cliente.nombre.toLowerCase().indexOf(busquedaRecibi.trim().toLowerCase())===0; })
+        ?cobrosTodosR.filter(function(x){ return (x.cliente.nombre||"").toLowerCase().indexOf(busquedaRecibi.trim().toLowerCase())===0; })
         :cobrosTodosR;
       return e("div",{style:st.ov,onClick:cerrarRecibi},
         e("div",{style:Object.assign({},st.modal,{maxWidth:420}),onClick:function(ev){ ev.stopPropagation(); }},
@@ -16392,7 +16392,7 @@ export default function CLEO(props){
     modalRecibiP&&(function(){
       var pedidosTodosR=obtenerPedidosConSaldo();
       var filtradosP=busquedaRecibiP.trim().length>0
-        ?pedidosTodosR.filter(function(x){ return x.cliente.nombre.toLowerCase().indexOf(busquedaRecibiP.trim().toLowerCase())===0; })
+        ?pedidosTodosR.filter(function(x){ return (x.cliente.nombre||"").toLowerCase().indexOf(busquedaRecibiP.trim().toLowerCase())===0; })
         :pedidosTodosR;
       return e("div",{style:st.ov,onClick:cerrarRecibiP},
         e("div",{style:Object.assign({},st.modal,{maxWidth:420}),onClick:function(ev){ ev.stopPropagation(); }},
@@ -18898,9 +18898,9 @@ export default function CLEO(props){
             // Lista de servicios existentes
             catActivo.length===0?e("div",{style:{textAlign:"center",padding:"24px 0",color:C.textDim,fontSize:13}},"Aún no tienes "+(esProductos?"productos":"servicios")+". Agrega el primero abajo."):
             e("div",{style:{maxHeight:280,overflowY:"auto",display:"flex",flexDirection:"column",gap:6,paddingRight:2}},
-              catActivo.filter(function(sv){ return !buscaSv||sv.nombre.toLowerCase().includes(buscaSv.toLowerCase()); }).length===0?
+              catActivo.filter(function(sv){ return !buscaSv||(sv.nombre||"").toLowerCase().includes(buscaSv.toLowerCase()); }).length===0?
                 e("div",{style:{textAlign:"center",padding:"16px 0",color:C.textDim,fontSize:13}},"Sin resultados para \""+buscaSv+"\""):
-              catActivo.filter(function(sv){ return !buscaSv||sv.nombre.toLowerCase().includes(buscaSv.toLowerCase()); }).map(function(sv){
+              catActivo.filter(function(sv){ return !buscaSv||(sv.nombre||"").toLowerCase().includes(buscaSv.toLowerCase()); }).map(function(sv){
                 var abierto=svDetalleId===sv.id;
                 return e("div",{key:sv.id,style:{borderRadius:12,border:"1.5px solid "+(abierto?C.purple:C.border),background:abierto?C.purplePale:C.surface,overflow:"hidden",transition:"all 0.15s",flexShrink:0}},
                   // Fila principal (siempre visible)
@@ -19415,7 +19415,7 @@ export default function CLEO(props){
             ),
             (buscaCli.length>0)&&e("div",{style:{position:"absolute",top:"100%",left:0,right:0,background:C.surface,border:"1px solid "+C.border,borderRadius:10,zIndex:50,maxHeight:220,overflowY:"auto",boxShadow:"0 8px 24px rgba(0,0,0,0.1)"}},
               [...clientes]
-                .filter(function(c){ return buscaCli==="*"||c.nombre.toLowerCase().includes(buscaCli.toLowerCase())||c.negocio.toLowerCase().includes(buscaCli.toLowerCase()); })
+                .filter(function(c){ return buscaCli==="*"||(c.nombre||"").toLowerCase().includes(buscaCli.toLowerCase())||(c.negocio||"").toLowerCase().includes(buscaCli.toLowerCase()); })
                 .sort(function(a,b){ return a.nombre.localeCompare(b.nombre,"es"); })
                 .map(function(c){
                   return e("div",{key:c.id,
