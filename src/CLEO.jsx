@@ -3389,6 +3389,10 @@ function construirEventosHistorialCliente(c,cotCliente,ventasCliente,pedidosClie
       eventos.push({fecha:h.fecha,fechaHora:h.fechaHora,tipo:"consulta_actualizada",titulo:"Consulta actualizada",desc:"También preguntó por "+descCA,color:C.textMuted,orden:2});
       return;
     }
+    if(h.tipo==="cotizacion_eliminada"){
+      eventos.push({fecha:h.fecha,fechaHora:h.fechaHora,tipo:"cotizacion_eliminada",titulo:"Cotización eliminada",desc:h.resultado||"",color:C.red,orden:2});
+      return;
+    }
     var isRecup=h.resultado&&(h.resultado.includes("recuperad")||h.resultado.includes("Recuperad")||h.resultado.includes("reactivad"));
     eventos.push({fecha:h.fecha,fechaHora:h.fechaHora,tipo:"contacto",titulo:"Contacto registrado",desc:h.resultado||"Sin detalle",color:isRecup?C.green:h.resultado&&h.resultado.includes("interés")||h.resultado&&h.resultado.includes("interes")?C.amber:C.textMuted,orden:1});
   });
@@ -17915,11 +17919,16 @@ export default function CLEO(props){
             cot&&e("button",{
               style:{cursor:"pointer",padding:"8px 14px",borderRadius:10,border:"none",background:"transparent",fontSize:12,color:C.textDim,display:"inline-flex",alignItems:"center",gap:4,marginLeft:"auto"},
               onClick:function(){
-                if(window.confirm("¿Eliminar esta cotización de "+c.nombre+"?")){
+                if(window.confirm("¿Eliminar esta cotización de "+c.nombre+"? La tarjeta también se quitará del pipeline.")){
+                  var evElim={tipo:"cotizacion_eliminada",fecha:FECHA_HOY,fechaHora:new Date().toISOString(),resultado:"$"+formatoDinero(Number(cot.monto||0))};
                   try{
                     var _t=lsGet("cleo_tombstones",[]);
                     writeGuard.write("cleo_tombstones",JSON.stringify(_t.concat([{tipo:"cotizacion",cleoId:cot.id}])));
                   }catch(e2){}
+                  setClientes(clientes.map(function(x){
+                    if(x.id!==c.id) return x;
+                    return Object.assign({},x,{estadoProspecto:"",historialContactos:(x.historialContactos||[]).concat([evElim])});
+                  }));
                   setCotizaciones(cotizaciones.filter(function(x){ return x.id!==cot.id; }));
                   setCotRapidaId(null);
                   if(props.forzarSync){ props.forzarSync(); }
