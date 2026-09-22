@@ -343,7 +343,8 @@ begin
             'montoAceptacion',        ct.monto_aceptacion,
             'configPostVenta',        case
               when ct.postv_pago is not null or ct.postv_seguimiento is not null
-              then jsonb_build_object('pago', ct.postv_pago, 'seguimiento', ct.postv_seguimiento)
+              then jsonb_build_object('pago', ct.postv_pago,
+                     'seguimiento', case when ct.postv_seguimiento='ok' then 'resuelto' else ct.postv_seguimiento end)
               else null end,
             'seguimientoFecha',       ct.seguimiento_fecha,
             'motivoPerdida',          ct.motivo_perdida,
@@ -873,8 +874,11 @@ begin
         nullif(v_it ->> 'fechaRechazo','')::date,
         nullif(v_it ->> 'fechaHoraRechazo','')::timestamptz,
         v_it -> 'itemsAceptacion', (v_it ->> 'montoAceptacion')::numeric,
-        nullif((v_it -> 'configPostVenta') ->> 'pago', ''),
-        nullif((v_it -> 'configPostVenta') ->> 'seguimiento', ''),
+        case when (v_it -> 'configPostVenta') ->> 'pago' in ('pendiente','resuelto')
+             then (v_it -> 'configPostVenta') ->> 'pago' else null end,
+        case when (v_it -> 'configPostVenta') ->> 'seguimiento' = 'pendiente' then 'pendiente'
+             when (v_it -> 'configPostVenta') ->> 'seguimiento' in ('ok','resuelto') then 'ok'
+             else null end,
         nullif(v_it ->> 'seguimientoFecha','')::date,
         v_it ->> 'motivoPerdida',
         coalesce((v_it ->> 'entregado')::boolean, false),
@@ -949,8 +953,11 @@ begin
         nullif(v_it ->> 'fechaRechazo','')::date,
         nullif(v_it ->> 'fechaHoraRechazo','')::timestamptz,
         v_it -> 'itemsAceptacion', (v_it ->> 'montoAceptacion')::numeric,
-        nullif((v_it -> 'configPostVenta') ->> 'pago', ''),
-        nullif((v_it -> 'configPostVenta') ->> 'seguimiento', ''),
+        case when (v_it -> 'configPostVenta') ->> 'pago' in ('pendiente','resuelto')
+             then (v_it -> 'configPostVenta') ->> 'pago' else null end,
+        case when (v_it -> 'configPostVenta') ->> 'seguimiento' = 'pendiente' then 'pendiente'
+             when (v_it -> 'configPostVenta') ->> 'seguimiento' in ('ok','resuelto') then 'ok'
+             else null end,
         nullif(v_it ->> 'seguimientoFecha','')::date,
         v_it ->> 'motivoPerdida',
         coalesce((v_it ->> 'entregado')::boolean, false),
@@ -1009,8 +1016,11 @@ begin
       v_it ->> 'tipoPago',
       coalesce((v_it ->> 'entregado')::boolean, false),
       nullif(v_it ->> 'fechaEntrega','')::date,
-      nullif((v_it -> 'configPostVenta') ->> 'pago', ''),
-      nullif((v_it -> 'configPostVenta') ->> 'seguimiento', '')
+      case when (v_it -> 'configPostVenta') ->> 'pago' in ('pendiente','resuelto')
+           then (v_it -> 'configPostVenta') ->> 'pago' else null end,
+      case when (v_it -> 'configPostVenta') ->> 'seguimiento' = 'pendiente' then 'pendiente'
+           when (v_it -> 'configPostVenta') ->> 'seguimiento' in ('ok','resuelto') then 'ok'
+           else null end
     )
     on conflict (negocio_id, cleo_id) do update set
       cliente_id        = excluded.cliente_id,
@@ -1093,8 +1103,11 @@ begin
              then v_it ->> 'motivoCancelacionLado' else null end,
         v_it -> 'itemsConfirmacion',
         (v_it ->> 'montoConfirmacion')::numeric,
-        nullif((v_it -> 'configPostVenta') ->> 'pago', ''),
-        nullif((v_it -> 'configPostVenta') ->> 'seguimiento', '')
+        case when (v_it -> 'configPostVenta') ->> 'pago' in ('pendiente','resuelto')
+             then (v_it -> 'configPostVenta') ->> 'pago' else null end,
+        case when (v_it -> 'configPostVenta') ->> 'seguimiento' = 'pendiente' then 'pendiente'
+             when (v_it -> 'configPostVenta') ->> 'seguimiento' in ('ok','resuelto') then 'ok'
+             else null end
       )
       on conflict (negocio_id, cleo_id) do update set
         cliente_id               = excluded.cliente_id,
