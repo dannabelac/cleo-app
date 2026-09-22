@@ -3392,7 +3392,7 @@ function construirEventosHistorialCliente(c,cotCliente,ventasCliente,pedidosClie
     if(h.tipo==="cotizacion_eliminada"){
       eventos.push({fecha:h.fecha,fechaHora:h.fechaHora,tipo:"cotizacion",titulo:esProductos?"Cotización generada":"Cotización enviada",desc:(h.resumen?h.resumen+" · ":"")+"$"+formatoDinero(Number(h.monto||0)),color:C.amber,orden:2});
       var _dElim=h.resultado?h.resultado.split("T")[0]:h.fecha;
-      eventos.push({fecha:_dElim,fechaHora:h.resultado||h.fechaHora,tipo:"cotizacion_eliminada",titulo:"Cotización eliminada",desc:"$"+formatoDinero(Number(h.monto||0)),color:C.red,orden:2});
+      eventos.push({fecha:_dElim,fechaHora:h.resultado||h.fechaHora,tipo:"cotizacion_eliminada",titulo:"Cotización eliminada",desc:(h.resumen?h.resumen+" · ":"")+"$"+formatoDinero(Number(h.monto||0)),color:C.red,orden:2});
       return;
     }
     var isRecup=h.resultado&&(h.resultado.includes("recuperad")||h.resultado.includes("Recuperad")||h.resultado.includes("reactivad"));
