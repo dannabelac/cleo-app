@@ -3396,7 +3396,8 @@ function construirEventosHistorialCliente(c,cotCliente,ventasCliente,pedidosClie
       return;
     }
     var isRecup=h.resultado&&(h.resultado.includes("recuperad")||h.resultado.includes("Recuperad")||h.resultado.includes("reactivad"));
-    eventos.push({fecha:h.fecha,fechaHora:h.fechaHora,tipo:"contacto",titulo:"Contacto registrado",desc:h.resultado||"Sin detalle",color:isRecup?C.green:h.resultado&&h.resultado.includes("interés")||h.resultado&&h.resultado.includes("interes")?C.amber:C.textMuted,orden:1});
+    var isRecordatorioAtendido=h.resultado&&(h.resultado.startsWith('Recordatorio atendido:')||h.resultado==="Recordatorio personalizado atendido");
+    eventos.push({fecha:h.fecha,fechaHora:h.fechaHora,tipo:"contacto",titulo:isRecordatorioAtendido?"Recordatorio atendido":"Contacto registrado",desc:h.resultado||"Sin detalle",color:isRecup?C.green:h.resultado&&h.resultado.includes("interés")||h.resultado&&h.resultado.includes("interes")?C.amber:C.textMuted,orden:1});
   });
 
   cotCliente.forEach(function(cot){
@@ -3489,7 +3490,7 @@ function construirEventosHistorialCliente(c,cotCliente,ventasCliente,pedidosClie
     var horaMs=tieneHora?new Date(ev.fechaHora).getTime():0;
     if(isNaN(horaMs)) { tieneHora=false; horaMs=0; }
     var ordenSem=ev.orden||0;
-    return [tierGrupo,-diaMs,tieneHora?0:1,tieneHora?-horaMs:-ordenSem,-ordenSem,ev.idx||0];
+    return [tierGrupo,-diaMs,tieneHora?0:1,tieneHora?-horaMs:-ordenSem,-ordenSem,-(ev.idx||0)];
   }
   eventos.forEach(function(ev,i){ ev.idx=i; });
   eventos.sort(function(a,b){
@@ -5635,7 +5636,15 @@ export default function CLEO(props){
     if(!r) return {ok:false}; // sin coincidencia exacta , no se elimina nada
     if(!(r.categoria==="manual"||r.esPersonalizada===true)) return {ok:false}; // protección: solo recordatorios realmente manuales/personalizados
     var listaSinEsa=recordatoriosDe(cliente).filter(function(rr){ return (rr.id||rr.fecha)!==recordatorioId; });
-    var evAtendido={fecha:FECHA_HOY,fechaHora:new Date().toISOString(),resultado:r.nota?'Recordatorio atendido: "'+r.nota+'"':"Recordatorio personalizado atendido"};
+    var evAtendido={tipo:"contacto",fecha:FECHA_HOY,fechaHora:new Date().toISOString(),resultado:r.nota?'Recordatorio atendido: "'+r.nota+'"':"Recordatorio personalizado atendido"};
+    if(r.id){
+      try{
+        var _tombs=lsGet("cleo_tombstones",[]);
+        if(!_tombs.some(function(t){ return t.tipo==="recordatorio"&&t.cleoId===r.id; })){
+          writeGuard.write("cleo_tombstones",JSON.stringify(_tombs.concat([{tipo:"recordatorio",cleoId:r.id}])));
+        }
+      }catch(e){}
+    }
     setClientes(clientes.map(function(x){
       if(x.id!==clienteId) return x;
       var base=Object.assign({},x,{ultimoContacto:FECHA_HOY,historialContactos:[...(x.historialContactos||[]),evAtendido]});
@@ -6227,7 +6236,7 @@ export default function CLEO(props){
   var s25=useState(null); var consejoMotivo=s25[0]; var setConsejoMotivo=s25[1];
   var s26=useState(false); var showSeguimientoLost=s26[0]; var setShowSeguimientoLost=s26[1];
   var s26b=useState(null); var clientePerdidoId=s26b[0]; var setClientePerdidoId=s26b[1];
-  var s27=useState({dias:"",custom:"",nota:""}); var seguimientoLost=s27[0]; var setSeguimientoLost=s27[1];
+  var s27=useState({fecha:"",nota:""}); var seguimientoLost=s27[0]; var setSeguimientoLost=s27[1];
   var s28=useState(""); var motivoLibre=s28[0]; var setMotivoLibre=s28[1];
   var s29=useState(false); var showMotivoLibre=s29[0]; var setShowMotivoLibre=s29[1];
 
@@ -6412,15 +6421,13 @@ export default function CLEO(props){
     setSeguimientoCotDifFechaCustom("");
     setModalSeguimientoCotDif({fcCotBase:modal.fcCotBase,modalVincularOriginal:modal});
   }
-  // "¿Cuándo quieres preguntarle si pudo revisarla?" , las 3 salidas que
-  // SÍ guardan (elegir un plazo/fecha, o "Sin seguimiento") son las ÚNICAS
-  // que fijan _seguimientoFechaElegida antes de reanudar guardarCot. Elegir
-  // un plazo/fecha guarda esa fecha exacta; "Sin seguimiento" guarda ""
-  // explícito , en ambos casos la cotización YA se guarda como
-  // independiente (eso ya se decidió en el paso anterior), esta pregunta es
-  // puramente sobre el seguimiento. Cerrar con "×" o pulsar fuera del modal
-  // NO es una cuarta salida que guarda: cancela este paso por completo
-  // (cancelarSeguimientoCotDif) sin llamar a guardarCot ni crear B.
+  // "¿Cuándo quieres preguntarle si pudo revisarla?", las 3 salidas que
+  // SÍ guardan (elegir un plazo/fecha, o "Sin seguimiento") reanudan
+  // guardarCot. Ruta "diferente" (_esNuevaOportunidad:true): la fecha
+  // va al recordatorio de pipeline del cliente (_seguimientoPipelineFecha),
+  // igual que la ruta "misma oportunidad" (modoVinculada:true). Cerrar con
+  // "×" o pulsar fuera NO es una cuarta salida que guarda: cancela este
+  // paso por completo (cancelarSeguimientoCotDif) sin llamar a guardarCot.
   function elegirSeguimientoCotDifDias(dias){
     if(resolviendoVincularOportunidadRef.current) return;
     var modal=modalSeguimientoCotDif;
@@ -6429,16 +6436,14 @@ export default function CLEO(props){
     setTimeout(function(){ resolviendoVincularOportunidadRef.current=false; },300);
     var f=new Date(HOY); f.setDate(f.getDate()+Number(dias));
     setModalSeguimientoCotDif(null);
-    // modoVinculada (ver confirmarVincularOportunidadCotSi) , la fecha va al
-    // recordatorio de pipeline del cliente (_seguimientoPipelineFecha), no
-    // al seguimientoFecha propio de una cotización independiente , esta
-    // rama NUNCA marca _vinculadaOportunidadActual:false (fcCotBase ya trae
-    // true), esa marca es exclusiva del camino "cotización diferente".
+    // modoVinculada (ver confirmarVincularOportunidadCotSi): la fecha va al
+    // recordatorio de pipeline del cliente. Lo mismo ocurre en la ruta
+    // "diferente" (_esNuevaOportunidad:true), ambas pasan por aquí.
     if(modal.modoVinculada){
       guardarCot(Object.assign({},modal.fcCotBase,{_seguimientoPipelineFecha:fmtFechaLocal(f)}));
       return;
     }
-    guardarCot(Object.assign({},modal.fcCotBase,{_vinculadaOportunidadActual:false,_seguimientoFechaElegida:fmtFechaLocal(f)}));
+    guardarCot(Object.assign({},modal.fcCotBase,{_esNuevaOportunidad:true,_vinculadaOportunidadActual:true,_seguimientoPipelineFecha:fmtFechaLocal(f)}));
   }
   function elegirSeguimientoCotDifFechaCustom(){
     if(resolviendoVincularOportunidadRef.current) return;
@@ -6453,12 +6458,12 @@ export default function CLEO(props){
       guardarCot(Object.assign({},modal.fcCotBase,{_seguimientoPipelineFecha:fechaElegida}));
       return;
     }
-    guardarCot(Object.assign({},modal.fcCotBase,{_vinculadaOportunidadActual:false,_seguimientoFechaElegida:fechaElegida}));
+    guardarCot(Object.assign({},modal.fcCotBase,{_esNuevaOportunidad:true,_vinculadaOportunidadActual:true,_seguimientoPipelineFecha:fechaElegida}));
   }
   // "Sin seguimiento": ÚNICA salida que guarda B con
-  // _seguimientoFechaElegida:"" explícito (seguimiento explícitamente
-  // omitido). Distinta de cancelar , aquí SÍ se confirma que la cotización
-  // es independiente y SÍ se guarda, solo que sin fecha de seguimiento.
+  // _seguimientoPipelineFecha:"" explícito (seguimiento explícitamente
+  // omitido). Distinta de cancelar, aquí SÍ se confirma que es
+  // nueva oportunidad y SÍ se guarda, solo que sin fecha de seguimiento.
   function omitirSeguimientoCotDif(){
     if(resolviendoVincularOportunidadRef.current) return;
     var modal=modalSeguimientoCotDif;
@@ -6475,7 +6480,7 @@ export default function CLEO(props){
       guardarCot(Object.assign({},modal.fcCotBase,{_seguimientoPipelineFecha:""}));
       return;
     }
-    guardarCot(Object.assign({},modal.fcCotBase,{_vinculadaOportunidadActual:false,_seguimientoFechaElegida:""}));
+    guardarCot(Object.assign({},modal.fcCotBase,{_esNuevaOportunidad:true,_vinculadaOportunidadActual:true,_seguimientoPipelineFecha:""}));
   }
   // "×" / click fuera del modal: cancela ÚNICAMENTE este paso de la
   // pregunta de seguimiento , no equivale a "Sin seguimiento", no llama a
@@ -7853,7 +7858,7 @@ export default function CLEO(props){
       setEstatusAnteriorCot(null);
     }
     setMotivoPipelineId(null); setConsejoMotivo(null); setShowSeguimientoLost(false);
-    setSeguimientoLost({dias:"",custom:"",nota:""}); setMotivoLibre(""); setShowMotivoLibre(false);
+    setSeguimientoLost({fecha:"",nota:""}); setMotivoLibre(""); setShowMotivoLibre(false);
     setEtapaAnteriorPipeline(null);
   }
   // Default de "+ Más opciones" dentro de modalCot (ver s11b/modalCotAvanzadoOverride).
@@ -7917,6 +7922,15 @@ export default function CLEO(props){
         });
         return;
       }
+    }
+    // Flujo "Ya se lo envié" desde Hoy: la pregunta de seguimiento se hace
+    // DESPUÉS de llenar la cotización. Se intercepta aquí (identidad ya
+    // resuelta) para mostrar el mismo modal de seguimiento que usa la ruta
+    // "misma oportunidad", reutilizando toda su lógica.
+    if(fcCot._pedirSeguimientoAlGuardar&&fcCot._seguimientoPipelineFecha===undefined){
+      setSeguimientoCotDifFechaCustom("");
+      setModalSeguimientoCotDif({fcCotBase:fcCot,modoVinculada:true});
+      return;
     }
     // Protección de varias cotizaciones por cliente (Servicios, beta) , ver
     // tieneOportunidadActivaServicios/modalVincularOportunidadCot. Se
@@ -8035,18 +8049,29 @@ export default function CLEO(props){
       subtotal:totales.subtotal,descuento:totales.descuento,tipoDescuento:totales.tipoDescuento,monto:monto,items:itemsFinal,
       concepto:resumenFinal,cantidad:cantidadResumen,precioUnit:cantidadResumen>0?monto/cantidadResumen:(itemsFinal[0]?itemsFinal[0].precioUnitario:0)
     };
+    // "Sí, misma oportunidad" sin id de edición explícito: reutilizar la
+    // cotización Pendiente existente vinculada a esta oportunidad en lugar
+    // de crear una nueva. Evita acumular dos cotizaciones para la misma
+    // oportunidad cuando el usuario confirma que es la misma.
+    var _effectiveEditCotId=editCotId;
+    if(!_effectiveEditCotId&&fcCot._vinculadaOportunidadActual===true&&fcCot.clienteId){
+      var _cotMismaOp=cotizaciones.filter(function(c){
+        return String(c.clienteId)===String(fcCot.clienteId)&&c.estatus==="Pendiente"&&cotizacionVinculadaOportunidad(c);
+      }).sort(function(a,b){ return new Date(b.fecha)-new Date(a.fecha); })[0];
+      if(_cotMismaOp) _effectiveEditCotId=_cotMismaOp.id;
+    }
     var cotIdFinal;
-    if(editCotId){
-      cotIdFinal=editCotId;
-      setCotizaciones(cotizaciones.map(function(c){ return c.id===editCotId?Object.assign({},c,{clienteId:Number(fcCot.clienteId),estatus:fcCot.estatus,vigencia:fcCot.vigencia,vigenciaDias:fcCot.vigenciaDias,notas:fcCot.notas,svCondiciones:fcCot.svCondiciones||"",svCondicionesHtml:fcCot.svCondicionesHtml||"",condicionesPago:condicionesPagoFinal},datosFinancieros):c; }));
+    if(_effectiveEditCotId){
+      cotIdFinal=_effectiveEditCotId;
+      setCotizaciones(cotizaciones.map(function(c){ return c.id===_effectiveEditCotId?Object.assign({},c,{clienteId:Number(fcCot.clienteId),estatus:fcCot.estatus,vigencia:fcCot.vigencia,vigenciaDias:fcCot.vigenciaDias,notas:fcCot.notas,svCondiciones:fcCot.svCondiciones||"",svCondicionesHtml:fcCot.svCondicionesHtml||"",condicionesPago:condicionesPagoFinal},datosFinancieros):c; }));
       // Vincular por cotizacionId explícito primero , solo si un pedido
       // legacy todavía no tiene cotizacionId se cae al clienteId de hoy
       // (dato viejo, no se rompe nada existente). Nunca se adivina entre
       // varios pedidos del mismo cliente por accidente.
-      var pedVinculado=pedidos.find(function(p){ return p.cotizacionId===editCotId; })
+      var pedVinculado=pedidos.find(function(p){ return p.cotizacionId===_effectiveEditCotId; })
         ||pedidos.find(function(p){ return !p.cotizacionId&&String(p.clienteId)===String(fcCot.clienteId); });
       if(pedVinculado&&monto>0){
-        setPedidos(pedidos.map(function(p){ return p.id===pedVinculado.id?Object.assign({},p,{total:monto,productos:resumenFinal,cotizacionId:editCotId,items:itemsFinal.map(function(it){ return Object.assign({},it,{id:"it_"+Date.now()+"_"+Math.random().toString(36).slice(2,6)}); })}):p; }));
+        setPedidos(pedidos.map(function(p){ return p.id===pedVinculado.id?Object.assign({},p,{total:monto,productos:resumenFinal,cotizacionId:_effectiveEditCotId,items:itemsFinal.map(function(it){ return Object.assign({},it,{id:"it_"+Date.now()+"_"+Math.random().toString(36).slice(2,6)}); })}):p; }));
       }
       // Sincronizar items/precioInteres/productoInteres del cliente para que la ficha refleje el desglose real de la cotización ,
       // pero SOLO si esta cotización representa la oportunidad activa. En
@@ -8054,11 +8079,28 @@ export default function CLEO(props){
       // (vinculadaOportunidadActual:false) nunca debe tocar la ficha de una
       // oportunidad activa distinta. Se consulta la función central , nunca
       // se duplica esta condición a mano.
-      var cotEditadaActual=cotizaciones.find(function(c){ return c.id===editCotId; });
+      var cotEditadaActual=cotizaciones.find(function(c){ return c.id===_effectiveEditCotId; });
       if(esProductos||cotizacionVinculadaOportunidad(cotEditadaActual)){
-        setClientes(clientes.map(function(c){ return c.id===Number(fcCot.clienteId)?Object.assign({},c,{items:itemsFinal,precioInteres:String(monto),productoInteres:resumenFinal||c.productoInteres}):c; }));
+        setClientes(clientes.map(function(c){
+          if(c.id!==Number(fcCot.clienteId)) return c;
+          var upd=Object.assign({},c,{items:itemsFinal,precioInteres:String(monto),productoInteres:resumenFinal||c.productoInteres});
+          // Cuando venimos de "misma oportunidad" (no edición explícita): también
+          // avanzar etapa y aplicar recordatorio de seguimiento, igual que la ruta
+          // de creación.
+          if(_effectiveEditCotId!==editCotId){
+            if(!esProductos&&c.etapa!=="Ganado"&&c.etapa!=="Perdido"&&c.etapa!=="Negociacion") upd=Object.assign(upd,{etapa:"Cotizacion enviada",fechaEtapa:FECHA_HOY});
+            if(esProductos&&c.estadoProspecto!=="Convertido"&&c.estadoProspecto!=="Perdido") upd=Object.assign(upd,{estadoProspecto:"En seguimiento"});
+            if(!esProductos&&fcCot._seguimientoPipelineFecha!==undefined){
+              var _recsSinPipeline=recordatoriosDe(upd).filter(function(r){ return !(r&&r.categoria==="pipeline"&&r.origen==="cleo")&&!(fcCot._recordatorioDisparadorId&&(r.id||r.fecha)===fcCot._recordatorioDisparadorId); });
+              upd=fcCot._seguimientoPipelineFecha
+                ?conRecordatoriosActualizados(upd,_recsSinPipeline.concat([{id:"r_"+Date.now(),fecha:fcCot._seguimientoPipelineFecha,nota:"Le enviaste el precio de "+(resumenFinal||"tus servicios")+". Pregúntale si pudo revisarlo.",esPersonalizada:false,origen:"cleo",categoria:"pipeline"}]))
+                :conRecordatoriosActualizados(upd,_recsSinPipeline);
+            }
+          }
+          return upd;
+        }));
       }
-      setEditCotId(null);
+      if(editCotId) setEditCotId(null);
     } else {
       cotIdFinal=Date.now();
       // fechaHoraCreacion: se fija UNA sola vez, exclusivamente aquí (rama
@@ -8129,11 +8171,17 @@ export default function CLEO(props){
       setClientes(function(prev){
         return prev.map(function(c){
           if(c.id!==Number(fcCot.clienteId)) return c;
-          // Cotización "diferente" (no vinculada a la oportunidad activa):
-          // nunca debe tocar items/precioInteres/productoInteres/etapa del
-          // cliente. Esa oportunidad activa sigue intacta.
-          if(!esProductos&&fcCot._vinculadaOportunidadActual===false) return c;
+          // Nueva oportunidad ("diferente"): no toca items/etapa de la
+          // oportunidad activa, pero sí agrega recordatorio de pipeline
+          // propio para la nueva cotización (sin quitar el existente).
+          if(!esProductos&&fcCot._esNuevaOportunidad){
+            if(fcCot._seguimientoPipelineFecha){
+              return conRecordatoriosActualizados(c,recordatoriosDe(c).concat([{id:"r_"+Date.now(),fecha:fcCot._seguimientoPipelineFecha,nota:"Le enviaste el precio de "+(resumenFinal||"tus servicios")+". Pregúntale si pudo revisarlo.",esPersonalizada:false,origen:"cleo",categoria:"pipeline"}]));
+            }
+            return c;
+          }
           var upd=Object.assign({},c,{items:itemsFinal,precioInteres:String(monto),productoInteres:resumenFinal||c.productoInteres});
+          if(fcCot._ultimoContactoAlGuardar) upd=Object.assign(upd,{ultimoContacto:fcCot._ultimoContactoAlGuardar});
           if(c.etapa!=="Ganado"&&c.etapa!=="Perdido"&&c.etapa!=="Negociacion") upd=Object.assign(upd,{etapa:"Cotizacion enviada",fechaEtapa:FECHA_HOY});
           // Espejo para Productos: el tablero de Oportunidades y las
           // tarjetas de Hoy leen estadoProspecto, no etapa , sin esto, una
@@ -8158,7 +8206,7 @@ export default function CLEO(props){
           // guarda sin ninguna oportunidad activa que proteger (el modal
           // nunca se mostró) no debe tocar recordatorios.
           if(!esProductos&&fcCot._seguimientoPipelineFecha!==undefined){
-            var recordatoriosSinPipelineAnteriorCot=recordatoriosDe(upd).filter(function(r){ return !(r&&r.categoria==="pipeline"&&r.origen==="cleo"); });
+            var recordatoriosSinPipelineAnteriorCot=recordatoriosDe(upd).filter(function(r){ return !(r&&r.categoria==="pipeline"&&r.origen==="cleo")&&!(fcCot._recordatorioDisparadorId&&(r.id||r.fecha)===fcCot._recordatorioDisparadorId); });
             upd=fcCot._seguimientoPipelineFecha
               ?conRecordatoriosActualizados(upd,recordatoriosSinPipelineAnteriorCot.concat([{id:"r_"+Date.now(),fecha:fcCot._seguimientoPipelineFecha,nota:"Le enviaste el precio de "+(resumenFinal||"tus servicios")+". Pregúntale si pudo revisarlo.",esPersonalizada:false,origen:"cleo",categoria:"pipeline"}]))
               :conRecordatoriosActualizados(upd,recordatoriosSinPipelineAnteriorCot);
@@ -8172,7 +8220,7 @@ export default function CLEO(props){
     // persona eligió "No, es una cotización diferente", esta cotización no
     // debe forzar el avance de etapa de la oportunidad activa.
     if(etapaPendiente&&Number(fcCot.clienteId)===etapaPendiente.clienteId){
-      if(fcCot._vinculadaOportunidadActual!==false){
+      if(fcCot._vinculadaOportunidadActual!==false&&!fcCot._esNuevaOportunidad){
         setClientes(clientes.map(function(c){ return c.id===etapaPendiente.clienteId?Object.assign({},c,{etapa:etapaPendiente.etapa,fechaEtapa:FECHA_HOY}):c; }));
       }
       setEtapaPendiente(null);
@@ -8314,7 +8362,8 @@ export default function CLEO(props){
       // cancelarSeguimientoComercialCotizacion, no-op para una vinculada).
       // Nunca toca cliente.recordatorios ni ninguna otra cotización , usa
       // exclusivamente el objeto `c` que ya llegó filtrado por c.id===cotId.
-      return entraAceptada?cancelarSeguimientoComercialCotizacion(marcarCotizacionAceptada(base)):base;
+      var entraRechazada=v==="Rechazada"&&c.estatus!=="Rechazada";
+      return entraAceptada?cancelarSeguimientoComercialCotizacion(marcarCotizacionAceptada(base)):entraRechazada?cancelarSeguimientoComercialCotizacion(base):base;
     }));
     if(v==="Aceptada"){
       var cot=cotizaciones.find(function(c){ return c.id===cotId; });
@@ -8404,16 +8453,14 @@ export default function CLEO(props){
   }
   function guardarSeguimientoLost(){
     if(sinConexionParaGuardar()){ alert(MSG_SIN_CONEXION_GUARDADO); return; }
-    var dias=seguimientoLost.dias==="custom"?Number(seguimientoLost.custom):Number(seguimientoLost.dias);
-    if(!dias) return;
-    var fecha=new Date(); fecha.setDate(fecha.getDate()+dias);
+    if(!seguimientoLost.fecha) return;
     var targetId=clientePerdidoId||motivoPipelineId;
     var notaReactivacion=(seguimientoLost.nota&&seguimientoLost.nota.trim())||"Retomar contacto con esta oportunidad perdida.";
     setClientes(clientes.map(function(c){
       if(c.id!==targetId) return c;
-      return conRecordatoriosActualizados(c,recordatoriosDe(c).concat([{id:"r_"+Date.now(),fecha:fmtFechaLocal(fecha),nota:notaReactivacion,esPersonalizada:!!(seguimientoLost.nota&&seguimientoLost.nota.trim()),origen:"cleo",categoria:"reactivacion"}]));
+      return conRecordatoriosActualizados(c,recordatoriosDe(c).concat([{id:"r_"+Date.now(),fecha:seguimientoLost.fecha,nota:notaReactivacion,esPersonalizada:!!(seguimientoLost.nota&&seguimientoLost.nota.trim()),origen:"cleo",categoria:"reactivacion"}]));
     }));
-    setShowSeguimientoLost(false); setConsejoMotivo(null); setSeguimientoLost({dias:"",custom:"",nota:""});
+    setShowSeguimientoLost(false); setConsejoMotivo(null); setSeguimientoLost({fecha:"",nota:""});
     setMotivoLibre(""); setShowMotivoLibre(false); setClientePerdidoId(null);
   }
 
@@ -10910,7 +10957,19 @@ export default function CLEO(props){
                     if(["manual","pipeline","postventa","reactivacion"].indexOf(origenAtendidoR)!==-1){
                       registrarEvento("recordatorio_atendido",{tipo_perfil:perfil.tipoPerfil||"",origen:origenAtendidoR,dispositivo:dispositivoActual()});
                     }
+                    // Tombstone para que cleo_dual_flush elimine la fila de la
+                    // tabla recordatorios. Sin esto el flush solo hace upsert
+                    // y la fila sobrevive; en el siguiente pull vuelve a aparecer.
+                    if(r.id){
+                      try{
+                        var _tombs=lsGet("cleo_tombstones",[]);
+                        if(!_tombs.some(function(t){ return t.tipo==="recordatorio"&&t.cleoId===r.id; })){
+                          writeGuard.write("cleo_tombstones",JSON.stringify(_tombs.concat([{tipo:"recordatorio",cleoId:r.id}])));
+                        }
+                      }catch(e){}
+                    }
                     setClientes(clientes.map(function(x){ if(x.id!==c.id) return x; return conRecordatoriosActualizados(x,recordatoriosDe(x).filter(function(rr){ return (rr.id||rr.fecha)!==(r.id||r.fecha); })); }));
+                    if(props.forzarSync){ props.forzarSync(); }
                   }
                   return lista.map(function(r,i){
                     var esProximo=i===0;
@@ -11054,6 +11113,7 @@ export default function CLEO(props){
                 clienteId:v.clienteId,
                 clienteNombre:cl?cl.nombre:(v.etiqueta||"Cliente general"),
                 origen:"venta_rapida",
+                origenLugar:v.etiqueta||"",
                 monto:Number(pago.monto),
                 fecha:pago.fecha||v.fecha,
                 concepto:(pago.concepto||"Pago")+(v.concepto?" · "+v.concepto:""),
@@ -11157,7 +11217,7 @@ export default function CLEO(props){
                   e("div",{style:{textAlign:"right",flexShrink:0}},
                     e("div",{style:{fontSize:15,fontWeight:700,color:C.green}},"$"+formatoDinero(ing.monto)),
                     e("div",{style:{fontSize:10,color:C.textDim,marginTop:1}},fmtFecha(ing.fecha)),
-                    e("div",{style:{fontSize:9,color:esCot?C.purple:C.amber,fontWeight:600,textTransform:"uppercase",letterSpacing:"0.3px"}},esCot?"Cotización":"Venta directa")
+                    e("div",{style:{fontSize:9,color:esCot?C.purple:C.amber,fontWeight:600,textTransform:"uppercase",letterSpacing:"0.3px"}},esCot?"Cotización":("Venta directa"+(ing.origenLugar?" · "+ing.origenLugar:"")))
                   )
                 );
               }),
@@ -12822,7 +12882,8 @@ export default function CLEO(props){
         e("style",null,".cot-adjunto-btn-wrap button,.cot-adjunto-btn-wrap a{height:100% !important;box-sizing:border-box !important;padding-top:0 !important;padding-bottom:0 !important;margin:0 !important;display:inline-flex !important;align-items:center !important;}"),
         cotsFiltradas.map(function(cot){
           var cl=clientes.find(function(c){ return c.id===cot.clienteId; });
-          var waUrl=cl&&cl.contacto?crearUrlWhatsApp(cl.contacto,"Hola "+(cl.nombre?cl.nombre.split(" ")[0]:"")+",\n\nTe comparto tu cotización:\n"+cot.concepto+"\nTotal: $"+formatoDinero(Number(cot.monto))+" MXN"+(cot.vigencia?"\nVigencia: "+cot.vigencia:"")+"\n\n"+perfil.mensaje):null;
+          var _cotConcepto=cot.concepto||resumenItemsCotizacion(obtenerItemsCotizacion(cot),esProductos?"producto":"servicio")||"tu cotización";
+          var waUrl=cl&&cl.contacto?crearUrlWhatsApp(cl.contacto,"Hola "+(cl.nombre?cl.nombre.split(" ")[0]:"")+",\n\nTe comparto tu cotización:\n"+_cotConcepto+"\nTotal: $"+formatoDinero(Number(cot.monto))+" MXN"+(cot.vigencia?"\nVigencia: "+cot.vigencia:"")+"\n\n"+perfil.mensaje):null;
           var saldo=saldoPendienteDe(cot,cot.monto);
           // Formatear fechas legibles
           var fmtFecha=function(f){ if(!f) return ""; var p=f.split("-"); return p[2]+"/"+p[1]+"/"+p[0].slice(2); };
@@ -12835,7 +12896,7 @@ export default function CLEO(props){
             // HEADER,info + monto
             e("div",{style:{display:"flex",alignItems:"flex-start",justifyContent:"space-between",gap:8,marginBottom:8}},
               e("div",{style:{flex:1,minWidth:0}},
-                e("div",{style:{fontWeight:600,fontSize:14,color:C.text,marginBottom:3,lineHeight:1.3,wordBreak:"break-word"}},cot.concepto||"Cotizacion"),
+                e("div",{style:{fontWeight:600,fontSize:14,color:C.text,marginBottom:3,lineHeight:1.3,wordBreak:"break-word"}},cot.concepto||resumenItemsCotizacion(obtenerItemsCotizacion(cot),esProductos?"producto":"servicio")||"Cotización"),
                 e("div",{style:{fontSize:12,color:C.textMuted,marginBottom:4}},cl?(cl.nombre+(cl.negocio?" · "+cl.negocio:"")):"--"),
                 e("div",{style:{display:"flex",gap:8,flexWrap:"wrap",alignItems:"center"}},
                   e("span",{style:{fontSize:11,color:C.textDim}},"Enviada: "+fmtFecha(cot.fecha)),
@@ -13016,7 +13077,9 @@ export default function CLEO(props){
                   var nivel=nivelUrgenciaT(t);
 
                   var fechaColor=C.textMuted,fechaTexto;
-                  if(!t.fechaEntrega){ fechaTexto="Sin fecha de entrega"; }
+                  if(t.entregado&&t.fechaEntrega){
+                    fechaTexto="Completado: "+formatearFechaLarga(t.fechaEntrega); fechaColor=C.green;
+                  } else if(!t.fechaEntrega){ fechaTexto="Sin fecha de entrega"; }
                   else {
                     var diasF=Math.round((new Date(t.fechaEntrega+"T00:00:00")-new Date(new Date().setHours(0,0,0,0)))/86400000);
                     if(diasF<0){ fechaTexto=diasF===-1?"Debía entregarse ayer":"Debía entregarse el "+formatearFechaLarga(t.fechaEntrega); fechaColor="#EF4444"; }
@@ -13229,6 +13292,9 @@ export default function CLEO(props){
                       e("div",{style:{width:40,height:40,borderRadius:"50%",background:ac+"22",display:"flex",alignItems:"center",justifyContent:"center",fontSize:13,fontWeight:700,color:ac,flexShrink:0}},iniciales(c.nombre)),
                       e("div",{style:{flex:1,minWidth:isMobile?0:200}},
                         e("div",{style:{fontSize:15,fontWeight:700,color:C.text,marginBottom:2}},c.nombre),
+                        c.etapa==="Perdido"&&e("span",{style:{display:"inline-block",fontSize:10,fontWeight:600,padding:"2px 7px",borderRadius:10,background:"#FEE2E2",color:"#991B1B",marginBottom:4}},
+                          "Perdido"+(c.motivoPerdida?" · "+c.motivoPerdida:"")
+                        ),
                         e("div",{style:{fontSize:12,color:C.textMuted,lineHeight:1.4}},u.desc),
                         u.mensajeSugerido&&e("div",{style:{fontSize:11,color:C.purple,fontStyle:"italic",lineHeight:1.4,marginTop:4}},'💬 "'+u.mensajeSugerido+'"'),
                         u.recordatorioEsManualOPersonalizado&&u.recordatorioNota&&e("div",{style:{fontSize:11,color:C.purple,fontStyle:"italic",lineHeight:1.4,marginTop:4}},'💬 "'+u.recordatorioNota+'"')
@@ -13334,6 +13400,9 @@ export default function CLEO(props){
                       e("div",{style:{width:40,height:40,borderRadius:"50%",background:ac+"22",display:"flex",alignItems:"center",justifyContent:"center",fontSize:13,fontWeight:700,color:ac,flexShrink:0}},iniciales(c.nombre)),
                       e("div",{style:{flex:1,minWidth:isMobile?0:200}},
                         e("div",{style:{fontSize:15,fontWeight:700,color:C.text,marginBottom:2}},c.nombre),
+                        c.etapa==="Perdido"&&e("span",{style:{display:"inline-block",fontSize:10,fontWeight:600,padding:"2px 7px",borderRadius:10,background:"#FEE2E2",color:"#991B1B",marginBottom:4}},
+                          "Perdido"+(c.motivoPerdida?" · "+c.motivoPerdida:"")
+                        ),
                         e("div",{style:{fontSize:12,color:C.textMuted,lineHeight:1.4}},u.razon),
                         u.mensajeSugerido&&e("div",{style:{fontSize:11,color:C.purple,fontStyle:"italic",lineHeight:1.4,marginTop:4}},'💬 "'+u.mensajeSugerido+'"'),
                         u.recordatorioEsManualOPersonalizado&&u.recordatorioNota&&e("div",{style:{fontSize:11,color:C.purple,fontStyle:"italic",lineHeight:1.4,marginTop:4}},'💬 "'+u.recordatorioNota+'"')
@@ -14945,6 +15014,7 @@ export default function CLEO(props){
             });
           }
           marcarSeguimientoResuelto();
+          if(props.forzarSync){ props.forzarSync(); }
         };
         var resolverSeguimientoSinRecordatorio=function(){
           if(resolviendoPostVentaRef.current) return;
@@ -14952,6 +15022,7 @@ export default function CLEO(props){
           setTimeout(function(){ resolviendoPostVentaRef.current=false; },300);
           guardarRazonYLimpiarPipeline();
           marcarSeguimientoResuelto();
+          if(props.forzarSync){ props.forzarSync(); }
         };
 
         return e("div",{style:st.ov},
@@ -16604,7 +16675,7 @@ export default function CLEO(props){
               e("div",{style:{borderRadius:12,border:"1px solid "+C.red+"44",overflow:"hidden",cursor:"pointer"},
                 onClick:function(){
                   if(!window.confirm("¿Marcar a "+nombre+" como inactivo?")) return;
-                  var ev={fecha:FECHA_HOY,fechaHora:new Date().toISOString(),resultado:"Marcado como inactivo tras recontacto"};
+                  var ev={tipo:"contacto",fecha:FECHA_HOY,fechaHora:new Date().toISOString(),resultado:"Marcado como inactivo tras recontacto"};
                   // Productos lee estadoProspecto, no etapa , sin este campo
                   // el cliente se quedaría "Convertido" para siempre aunque
                   // ya esté archivado (mismo bug de fondo que esGanadoC).
@@ -16691,20 +16762,21 @@ export default function CLEO(props){
         // cotización real detrás. Si por alguna razón cl nunca tuvo ningún
         // item, se sintetiza uno con el interés legacy disponible , nunca
         // se pierde el dato de origen.
-        function abrirCotDesdeNC(dias){
-          if(!dias) return;
-          var f=new Date(HOY); f.setDate(f.getDate()+dias);
+        function abrirCotDesdeNC(){
           var itemsNC=obtenerItemsInteres(cl);
           if(itemsNC.length===0&&interesDefaultNC){
             itemsNC=[{id:"it_"+Date.now(),catalogoId:null,nombre:interesDefaultNC,cantidad:1,precioUnitario:cl.precioInteres||"",total:redondearDinero(interpretarImporte(cl.precioInteres))}];
           }
-          setClientes(clientes.map(function(x){
-            if(x.id!==cl.id) return x;
-            var b=Object.assign({},sinRecordatorioDisparadorNC(x),{ultimoContacto:FECHA_HOY});
-            return conRecordatoriosActualizados(b,recordatoriosDe(b).concat([{id:"r_"+Date.now(),fecha:fmtFechaLocal(f),nota:"Ya le enviaste la cotización. Dijiste que le darías seguimiento.",esPersonalizada:false,origen:"cleo",categoria:"pipeline"}]));
-          }));
+          // NO modifica el cliente aquí — el cambio de recordatorio,
+          // ultimoContacto y seguimiento se aplican solo cuando guardarCot
+          // confirma el guardado real. _pedirSeguimientoAlGuardar:true indica
+          // que la pregunta "¿cuándo le das seguimiento?" se hace DESPUÉS de
+          // llenar la cotización (interceptada en guardarCot via
+          // modalSeguimientoCotDif). _recordatorioDisparadorId: se captura
+          // ANTES de cerrar() porque cerrar() llama setContactadoRecordatorioId(null).
+          var _disparadorId=contactadoRecordatorioId;
           cerrar();
-          setFormCot(Object.assign({},cotVacio,{clienteId:String(cl.id),items:itemsNC}));
+          setFormCot(Object.assign({},cotVacio,{clienteId:String(cl.id),items:itemsNC,_vinculadaOportunidadActual:true,_pedirSeguimientoAlGuardar:true,_ultimoContactoAlGuardar:FECHA_HOY,_recordatorioDisparadorId:_disparadorId||null}));
           setModalCot(true);
         }
         function reprogramarEnvioNC(dias){
@@ -16764,17 +16836,13 @@ export default function CLEO(props){
                   // solo concepto , el seguimiento se programa antes de abrirla.
                   e("div",{style:{borderRadius:12,border:"1px solid "+(contactadoOpcion==="expand_ya_envie_nc"?C.purple+"44":C.border),overflow:"hidden"}},
                     e("div",{style:{padding:"12px 14px",display:"flex",justifyContent:"space-between",alignItems:"center",cursor:"pointer"},
-                      onClick:function(){ setContactadoOpcion(contactadoOpcion==="expand_ya_envie_nc"?null:"expand_ya_envie_nc"); }
+                      onClick:abrirCotDesdeNC
                     },
                       e("div",null,
                         e("div",{style:{fontSize:14,fontWeight:500,color:C.purple}},"Ya se lo envié"),
-                        e("div",{style:{fontSize:12,color:C.textMuted,marginTop:1}},"Programar seguimiento y abrir la cotización")
+                        e("div",{style:{fontSize:12,color:C.textMuted,marginTop:1}},"Registrar cotización y programar seguimiento")
                       ),
-                      e("span",{style:{fontSize:16,color:C.textDim}},contactadoOpcion==="expand_ya_envie_nc"?"▲":"▼")
-                    ),
-                    contactadoOpcion==="expand_ya_envie_nc"&&e("div",{style:{borderTop:"1px solid "+C.border,padding:"12px 14px"}},
-                      e("div",{style:{fontSize:13,color:C.text,marginBottom:10}},"¿En cuántos días le das seguimiento a "+nombre+"?"),
-                      selectorDias("dias-ya-envie-nc",[1,3,5,7],C.purple,abrirCotDesdeNC)
+                      e("span",{style:{fontSize:16,color:C.textDim}},"→")
                     )
                   ),
 
@@ -17055,8 +17123,9 @@ export default function CLEO(props){
             e("div",{style:{display:"flex",flexDirection:"column",gap:8}},
               e("button",{style:st.btnP,onClick:function(){
                 setCotizaciones(cotizaciones.map(function(c){ return c.id===cot.id?Object.assign({},c,{estatus:"Pendiente"}):c; }));
-                var evRecup={fecha:FECHA_HOY,fechaHora:new Date().toISOString(),resultado:"Oportunidad recuperada — se restauró: "+(cot.concepto||"Cotización")+" $"+(cot.monto?formatoDinero(Number(cot.monto)):"--")};
+                var evRecup={tipo:"contacto",fecha:FECHA_HOY,fechaHora:new Date().toISOString(),resultado:"Oportunidad recuperada — se restauró: "+(cot.concepto||"Cotización")+" $"+(cot.monto?formatoDinero(Number(cot.monto)):"--")};
                 if(huboReactivacionQueAtender()) registrarEvento("recordatorio_atendido",{tipo_perfil:perfil.tipoPerfil||"",origen:"reactivacion",dispositivo:dispositivoActual()});
+                if(contactadoRecordatorioId){try{var _tombsR1=lsGet("cleo_tombstones",[]);if(!_tombsR1.some(function(t){return t.tipo==="recordatorio"&&t.cleoId===contactadoRecordatorioId;})){writeGuard.write("cleo_tombstones",JSON.stringify(_tombsR1.concat([{tipo:"recordatorio",cleoId:contactadoRecordatorioId}])));}}catch(e){}}
                 setClientes(clientes.map(function(x){
                   if(x.id!==cl.id) return x;
                   // Productos lee estadoProspecto, no etapa , "En seguimiento"
@@ -17137,9 +17206,10 @@ export default function CLEO(props){
             setContactadoResult(null);
             window._cotPreviaTemp={id:cotPrevia.id,concepto:cotPrevia.concepto,monto:cotPrevia.monto};
           } else {
-            var evReactiv={fecha:FECHA_HOY,fechaHora:new Date().toISOString(),resultado:"Cliente reactivado — regresó como nuevo contacto"};
+            var evReactiv={tipo:"contacto",fecha:FECHA_HOY,fechaHora:new Date().toISOString(),resultado:"Cliente reactivado — regresó como nuevo contacto"};
             setContactadoResult({titulo:"Oportunidad reactivada",desc:nombre+" regresó al inicio del proceso, como nuevo contacto."});
             if(huboReactivacionQueAtender()) registrarEvento("recordatorio_atendido",{tipo_perfil:perfil.tipoPerfil||"",origen:"reactivacion",dispositivo:dispositivoActual()});
+            if(contactadoRecordatorioId){try{var _tombsR2=lsGet("cleo_tombstones",[]);if(!_tombsR2.some(function(t){return t.tipo==="recordatorio"&&t.cleoId===contactadoRecordatorioId;})){writeGuard.write("cleo_tombstones",JSON.stringify(_tombsR2.concat([{tipo:"recordatorio",cleoId:contactadoRecordatorioId}])));}}catch(e){}}
             setClientes(clientes.map(function(x){
               if(x.id!==cl.id) return x;
               // Productos lee estadoProspecto, no etapa , mismo criterio que
@@ -17156,8 +17226,9 @@ export default function CLEO(props){
         }
 
         if(key==="perdido"){
-          var contactoEvento={fecha:FECHA_HOY,fechaHora:new Date().toISOString(),resultado:"Sin interés — confirmado tras recontacto"};
+          var contactoEvento={tipo:"contacto",fecha:FECHA_HOY,fechaHora:new Date().toISOString(),resultado:"Sin interés — confirmado tras recontacto"};
           if(huboReactivacionQueAtender()) registrarEvento("recordatorio_atendido",{tipo_perfil:perfil.tipoPerfil||"",origen:"reactivacion",dispositivo:dispositivoActual()});
+          if(contactadoRecordatorioId){try{var _tombsR3=lsGet("cleo_tombstones",[]);if(!_tombsR3.some(function(t){return t.tipo==="recordatorio"&&t.cleoId===contactadoRecordatorioId;})){writeGuard.write("cleo_tombstones",JSON.stringify(_tombsR3.concat([{tipo:"recordatorio",cleoId:contactadoRecordatorioId}])));}}catch(e){}}
           setClientes(clientes.map(function(x){
             if(x.id!==cl.id) return x;
             var cambiosPerdido=esProductos?{estadoProspecto:"Perdido",ultimoContacto:FECHA_HOY,archivado:true,historialContactos:[...(x.historialContactos||[]),contactoEvento]}:{etapa:"Perdido",ultimoContacto:FECHA_HOY,archivado:true,historialContactos:[...(x.historialContactos||[]),contactoEvento]};
@@ -17185,9 +17256,10 @@ export default function CLEO(props){
 
       function diasExpandido(key,dias,color){
         function agregarRecordatorioReactivacion(f){
+          if(contactadoRecordatorioId){try{var _tombsExp=lsGet("cleo_tombstones",[]);if(!_tombsExp.some(function(t){return t.tipo==="recordatorio"&&t.cleoId===contactadoRecordatorioId;})){writeGuard.write("cleo_tombstones",JSON.stringify(_tombsExp.concat([{tipo:"recordatorio",cleoId:contactadoRecordatorioId}])));}}catch(e){}}
           setClientes(clientes.map(function(x){
             if(x.id!==cl.id) return x;
-            var b=Object.assign({},x,{ultimoContacto:FECHA_HOY});
+            var b=atenderRecordatorioReactivacion(Object.assign({},x,{ultimoContacto:FECHA_HOY}),contactadoRecordatorioId);
             return conRecordatoriosActualizados(b,recordatoriosDe(b).concat([{id:"r_"+Date.now(),fecha:fmtFechaLocal(f),nota:"Retomar contacto con esta oportunidad perdida.",esPersonalizada:false,origen:"cleo",categoria:"reactivacion"}]));
           }));
         }
@@ -17488,7 +17560,7 @@ export default function CLEO(props){
         {key:"Precio alto",   icono:"💸",label:"Le pareció caro",    msg:"Un no por precio casi siempre significa que no vio suficiente valor todavía. En unos meses su situación puede cambiar , o tú puedes tener un argumento mejor.",    seg:"60", sugerencia:"Hola [nombre], terminé un proyecto similar y quedó muy bien. Si en algún momento quieres ver cómo quedó, con gusto te lo muestro."},
         {key:"Eligio a otro", icono:"🤝",label:"Eligió a otro",       msg:"El que eligió hoy puede decepcionar mañana. Muchos clientes regresan después de probar a la competencia. Vale la pena quedarse en su radar.",                        seg:"90", sugerencia:"Hola [nombre], ¿cómo te fue con el proyecto? Solo quería saber si resultó como esperabas."},
         {key:"Sin presupuesto",icono:"📆",label:"Sin presupuesto",        msg:"Sin presupuesto hoy no significa sin presupuesto siempre. En unos meses puede tener los recursos que hoy no tiene.",                                                              seg:"90", sugerencia:"Hola [nombre], estoy abriendo agenda para el próximo trimestre. Si quieres que lo tengamos en mente, con gusto."},
-        {key:"No respondio",  icono:"💬",label:"Dejó de responder",   msg:"El silencio no es un no definitivo. A veces la gente se pierde en el día a día. Un mensaje en el momento correcto puede reabrir todo.",                              seg:"30", sugerencia:"Escríbele algo ligero, sin mencionar la cotización. Si responde, ahí retomas la conversación."},
+        {key:"No respondio",  icono:"💬",label:"Dejó de responder",   msg:"El silencio no es un no definitivo. A veces la gente se pierde en el día a día. Un mensaje en el momento correcto puede reabrir todo.",                              seg:"30", sugerencia:"Hola [nombre], acabo de terminar algo parecido a lo que platicamos y quedó muy bien. ¿Te lo comparto?"},
         {key:"Otro",          icono:"📝",label:"Otro motivo",             msg:"Un no de hoy puede ser un sí en 3 meses. Dejar la puerta abierta no cuesta nada y a veces trae la mejor venta.",                                                          seg:"30", sugerencia:"Hola [nombre], ¿cómo has estado? Por aquí si en algún momento surge algo en lo que pueda ayudarte."}
       ];
 
@@ -17506,7 +17578,7 @@ export default function CLEO(props){
         setMotivoPipelineId(null); setConsejoMotivo(null);
         setMotivoLibre(""); setShowMotivoLibre(false);
         setEtapaAnteriorPipeline(null); setShowSeguimientoLost(false);
-        setSeguimientoLost({dias:"",custom:"",nota:""});
+        setSeguimientoLost({fecha:"",nota:""});
       }
 
       return e("div",{style:st.ov,onClick:consejoMotivo?null:cerrarPerdida},
@@ -17562,17 +17634,8 @@ export default function CLEO(props){
           consejoMotivo&&e("div",{style:{marginBottom:16,paddingTop:14,borderTop:"1px solid "+C.border}},
             e("div",{style:{fontSize:13,fontWeight:600,color:C.text,marginBottom:2}},"¿Cuándo volver a escribirle?"),
             e("div",{style:{fontSize:11,color:C.textDim,marginBottom:10}},"Dejar la puerta abierta no cuesta nada."),
-            e("div",{style:{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:6,marginBottom:8}},
-              ["15","30","60","90"].map(function(d){
-                var activo=seguimientoLost.dias===d;
-                return e("button",{key:d,style:{cursor:"pointer",padding:"8px 4px",borderRadius:10,textAlign:"center",background:activo?"#EEF2FF":"transparent",border:"1px solid "+(activo?"#5B5CF6":C.border),fontSize:12,fontWeight:activo?600:400,color:activo?"#5B5CF6":C.text},onClick:function(){ setSeguimientoLost(Object.assign({},seguimientoLost,{dias:d,custom:""})); }},d+" días");
-              })
-            ),
-            e("div",{style:{position:"relative"}},
-              e("input",{type:"number",min:"1",value:["15","30","60","90"].includes(seguimientoLost.dias)?"":seguimientoLost.dias,onChange:function(ev){ setSeguimientoLost(Object.assign({},seguimientoLost,{dias:ev.target.value,custom:""})); },placeholder:"Otro plazo...",style:Object.assign({},st.inp,{paddingRight:44})}),
-              e("span",{style:{position:"absolute",right:12,top:"50%",transform:"translateY(-50%)",fontSize:11,color:C.textDim,pointerEvents:"none"}},"días")
-            ),
-            e("div",{style:{marginTop:10}},
+            e("input",{type:"date",value:seguimientoLost.fecha||"",min:FECHA_HOY,onChange:function(ev){ setSeguimientoLost(Object.assign({},seguimientoLost,{fecha:ev.target.value})); },style:Object.assign({},st.inp,{width:"100%",marginBottom:10,boxSizing:"border-box"})}),
+            e("div",{style:{marginTop:2}},
               e("div",{style:{fontSize:12,fontWeight:600,color:C.text,marginBottom:6}},"Nota personal (opcional)"),
               e("textarea",{value:seguimientoLost.nota||"",onChange:function(ev){ setSeguimientoLost(Object.assign({},seguimientoLost,{nota:ev.target.value})); },placeholder:"Ej. Dijo que en junio tendría más presupuesto.",style:Object.assign({},st.inp,{minHeight:56,resize:"vertical"})})
             )
@@ -17581,15 +17644,14 @@ export default function CLEO(props){
           consejoMotivo?e("div",{style:{display:"flex",flexDirection:"column",gap:8}},
             e("button",{style:{cursor:"pointer",padding:"11px",borderRadius:14,border:"none",background:"#5B5CF6",fontSize:13,color:"#fff",fontWeight:600,width:"100%"},
               onClick:function(){
-                var dias=Number(seguimientoLost.dias)||Number(motivoData.seg)||30;
-                var fecha=new Date(); fecha.setDate(fecha.getDate()+dias);
+                var fechaFinal=seguimientoLost.fecha||(function(){ var f=new Date(); f.setDate(f.getDate()+(Number(motivoData&&motivoData.seg)||30)); return fmtFechaLocal(f); })();
                 var targetId=motivoPipelineId;
                 var mensajeSugeridoPerdida=(seguimientoLost.nota&&seguimientoLost.nota.trim())||(motivoData?motivoData.sugerencia.replace("[nombre]",cl?cl.nombre.split(" ")[0]:"[nombre]"):"");
                 if(esOpoProductos){
                   setClientes(clientes.map(function(c){
                     if(c.id!==targetId) return c;
                     var base=marcarOportunidadPerdidaProductos(c,consejoMotivo==="Otro"?motivoLibre:consejoMotivo);
-                    return conRecordatoriosActualizados(base,recordatoriosDe(base).concat([{id:"r_"+Date.now(),fecha:fmtFechaLocal(fecha),nota:mensajeSugeridoPerdida,esPersonalizada:!!(seguimientoLost.nota&&seguimientoLost.nota.trim()),origen:"cleo",categoria:"reactivacion"}]));
+                    return conRecordatoriosActualizados(base,recordatoriosDe(base).concat([{id:"r_"+Date.now(),fecha:fechaFinal,nota:mensajeSugeridoPerdida,esPersonalizada:!!(seguimientoLost.nota&&seguimientoLost.nota.trim()),origen:"cleo",categoria:"reactivacion"}]));
                   }));
                 } else {
                   // Solo la cotización vinculada a la oportunidad activa se
@@ -17605,14 +17667,14 @@ export default function CLEO(props){
                   setClientes(clientes.map(function(c){
                     if(c.id!==targetId) return c;
                     var limpio=cancelarRecordatoriosPipeline(c);
-                    return conRecordatoriosActualizados(limpio,recordatoriosDe(limpio).concat([{id:"r_"+Date.now(),fecha:fmtFechaLocal(fecha),nota:mensajeSugeridoPerdida,esPersonalizada:!!(seguimientoLost.nota&&seguimientoLost.nota.trim()),origen:"cleo",categoria:"reactivacion"}]));
+                    return conRecordatoriosActualizados(limpio,recordatoriosDe(limpio).concat([{id:"r_"+Date.now(),fecha:fechaFinal,nota:mensajeSugeridoPerdida,esPersonalizada:!!(seguimientoLost.nota&&seguimientoLost.nota.trim()),origen:"cleo",categoria:"reactivacion"}]));
                   }));
                 }
                 setMotivoPipelineId(null); setConsejoMotivo(null); setMotivoLibre("");
-                setEtapaAnteriorPipeline(null); setSeguimientoLost({dias:"",custom:"",nota:""}); setEstatusAnteriorCot(null);
+                setEtapaAnteriorPipeline(null); setSeguimientoLost({fecha:"",nota:""}); setEstatusAnteriorCot(null);
                 if(cl&&!cl.origen) setOrigenPromptId(targetId);
               }
-            },seguimientoLost.dias?"Programar en "+seguimientoLost.dias+" días":"Recuérdamelo en "+(motivoData?motivoData.seg:"30")+" días"),
+            },seguimientoLost.fecha?"Programar seguimiento":"Recuérdamelo después"),
             e("button",{style:{cursor:"pointer",padding:"8px",borderRadius:14,border:"none",background:"transparent",fontSize:12,color:C.textDim,width:"100%"},
               onClick:function(){
                 var diasAuto=Number(motivoData?motivoData.seg:30)||30;
@@ -17638,7 +17700,7 @@ export default function CLEO(props){
                   }));
                 }
                 setMotivoPipelineId(null); setConsejoMotivo(null); setMotivoLibre("");
-                setEtapaAnteriorPipeline(null); setSeguimientoLost({dias:"",custom:"",nota:""}); setEstatusAnteriorCot(null);
+                setEtapaAnteriorPipeline(null); setSeguimientoLost({fecha:"",nota:""}); setEstatusAnteriorCot(null);
                 if(cl&&!cl.origen) setOrigenPromptId(targetId);
               }
             },"Por ahora no")
@@ -17665,7 +17727,7 @@ export default function CLEO(props){
 
       function cerrarPaso2(){
         setShowSeguimientoLost(false); setConsejoMotivo(null);
-        setSeguimientoLost({dias:"",custom:"",nota:""}); setClientePerdidoId(null);
+        setSeguimientoLost({fecha:"",nota:""}); setClientePerdidoId(null);
       }
 
       function programarRapido(){
@@ -17685,30 +17747,12 @@ export default function CLEO(props){
           ),
           e("div",{style:{fontSize:13,color:C.textMuted,marginBottom:16}},nombre),
           e("div",{style:{fontSize:13,color:"#312E81",lineHeight:1.65,marginBottom:20,padding:"12px 14px",background:"#EEF2FF",borderRadius:12,border:"1px solid #C7D2FE"}},msgMotivo),
-          e("div",{style:{display:"grid",gridTemplateColumns:"repeat(2,1fr)",gap:8,marginBottom:12}},
-            [["15","15 días"],["30","30 días"],["60","60 días"],["90","90 días"]].map(function(op){
-              var activo=seguimientoLost.dias===op[0];
-              return e("button",{key:op[0],
-                style:{cursor:"pointer",padding:"10px 14px",borderRadius:12,textAlign:"center",
-                  background:activo?"#EEF2FF":"transparent",
-                  border:"1px solid "+(activo?"#5B5CF6":C.border),
-                  fontSize:13,fontWeight:activo?600:400,color:activo?"#5B5CF6":C.text},
-                onClick:function(){ setSeguimientoLost({dias:op[0],custom:""}); }
-              },op[1]);
-            })
-          ),
-          e("div",{style:{marginBottom:20}},
-            e("div",{style:{position:"relative"}},
-              e("input",{type:"number",min:"1",value:["15","30","60","90"].includes(seguimientoLost.dias)?"":seguimientoLost.dias,onChange:function(ev){ setSeguimientoLost({dias:ev.target.value,custom:""}); },placeholder:"Otro plazo en días",style:Object.assign({},st.inp,{paddingRight:50})}),
-              e("span",{style:{position:"absolute",right:12,top:"50%",transform:"translateY(-50%)",fontSize:12,color:C.textDim,pointerEvents:"none"}},"días")
-            )
-          ),
+          e("input",{type:"date",value:seguimientoLost.fecha||"",min:FECHA_HOY,onChange:function(ev){ setSeguimientoLost(Object.assign({},seguimientoLost,{fecha:ev.target.value})); },style:Object.assign({},st.inp,{width:"100%",marginBottom:16,boxSizing:"border-box"})}),
           e("div",{style:{display:"flex",flexDirection:"column",gap:8}},
             e("button",{style:{cursor:"pointer",padding:"11px",borderRadius:14,border:"none",background:"#5B5CF6",fontSize:13,color:"#fff",fontWeight:600,width:"100%"},onClick:function(){
-              if(seguimientoLost.dias) guardarSeguimientoLost();
+              if(seguimientoLost.fecha) guardarSeguimientoLost();
               else programarRapido();
-            }},seguimientoLost.dias?"Programar seguimiento":"Recuérdamelo en 30 días"),
-            !seguimientoLost.dias&&e("button",{style:{cursor:"pointer",padding:"11px",borderRadius:14,border:"1px solid "+C.border,background:"transparent",fontSize:13,color:C.textMuted,fontWeight:500,width:"100%"},onClick:programarRapido},"Recuérdamelo en 30 días"),
+            }},seguimientoLost.fecha?"Programar seguimiento":"Recuérdamelo en 30 días"),
             e("button",{style:{cursor:"pointer",padding:"8px",borderRadius:14,border:"none",background:"transparent",fontSize:12,color:C.textDim,width:"100%"},onClick:cerrarPaso2},"Por ahora no")
           )
         )
@@ -17923,7 +17967,7 @@ export default function CLEO(props){
               onClick:function(){
                 if(window.confirm("¿Eliminar esta cotización de "+c.nombre+"? La tarjeta también se quitará del pipeline.")){
                   var _cotRes=resumenItemsCotizacion(obtenerItemsCotizacion(cot),esProductos?"producto":"servicio");
-                  var evElim={tipo:"cotizacion_eliminada",fecha:cot.fecha,fechaHora:cot.fechaHoraCreacion||null,resultado:new Date().toISOString(),monto:Number(cot.monto||0),resumen:_cotRes||""};
+                  var evElim={id:cot.id+"_elim",tipo:"cotizacion_eliminada",fecha:cot.fecha,fechaHora:cot.fechaHoraCreacion||null,resultado:new Date().toISOString(),monto:Number(cot.monto||0),resumen:_cotRes||""};
                   try{
                     var _t=lsGet("cleo_tombstones",[]);
                     writeGuard.write("cleo_tombstones",JSON.stringify(_t.concat([{tipo:"cotizacion",cleoId:cot.id}])));
