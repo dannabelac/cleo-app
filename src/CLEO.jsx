@@ -5114,11 +5114,30 @@ export default function CLEO(props){
   // uso interno (nunca se muestra "Venta directa" en ninguna pantalla).
   // yaEntregado: true si el pedido nace ya entregado (ej. venta rápida,
   // o el usuario confirmó "ya lo entregué" al cerrar la venta).
+
+  // Agrega invApartado/invPendiente/invEntregado a los items de un pedido
+  // nuevo que va a estado "preparando". Calcula disponibles restando los
+  // apartados de pedidos existentes. No toca items sin catalogoId ni
+  // productos sin inventario activo.
+  function calcularInvItemsParaNuevoPedido(items){
+    return items.map(function(it){
+      if(!it.catalogoId) return it;
+      var prod=productosCat.find(function(p){ return p.id===it.catalogoId; });
+      if(!prod||!prod.inventarioActivo||prod.stock==null) return it;
+      var apartadosExistentes=(pedidos||[]).filter(function(p){ return p.estadoPedido==="preparando"; }).reduce(function(sum,p){ return sum+(p.items||[]).reduce(function(s,pi){ return pi.catalogoId===it.catalogoId?s+((pi.invApartado||0)-(pi.invEntregado||0)):s; },0); },0);
+      var disponibles=Math.max(0,prod.stock-apartadosExistentes);
+      var invApartado=Math.min(Number(it.cantidad)||0,disponibles);
+      var invPendiente=Math.max(0,(Number(it.cantidad)||0)-invApartado);
+      return Object.assign({},it,{invApartado:invApartado,invPendiente:invPendiente,invEntregado:0});
+    });
+  }
+
   function crearPedidoDesdeVenta(clienteId,items,tipoPago,anticipo,origenVenta,yaEntregado){
     var totalItems=items.reduce(function(s,it){ return s+it.total; },0);
+    var itemsConInv=yaEntregado?items:calcularInvItemsParaNuevoPedido(items);
     var nuevoPedBase={
       id:"ped_"+Date.now(),clienteId:clienteId,
-      items:items,productos:resumenItemsCotizacion(items,"producto"),
+      items:itemsConInv,productos:resumenItemsCotizacion(items,"producto"),
       // itemsConfirmacion/montoConfirmacion: snapshot INMUTABLE de los items
       // y el total EXACTOS en el momento en que este pedido se confirma , el
       // historial (construirEventosHistorialCliente) los usa para "Pedido
@@ -5379,10 +5398,11 @@ export default function CLEO(props){
     // Crear pedido , items[] es SIEMPRE la fuente de verdad;
     // productos/cantidad/total quedan como compatibilidad
     // derivada para pantallas que aún no leen items.
+    var itemsFinalPedConInv=calcularInvItemsParaNuevoPedido(itemsFinalPed);
     var nuevoPedBase={
       id:"ped_"+Date.now(),
       clienteId:clienteIdFinal,
-      items:itemsFinalPed,
+      items:itemsFinalPedConInv,
       productos:resumenPed,
       // itemsConfirmacion/montoConfirmacion: snapshot inmutable al momento
       // de confirmar , ver el mismo comentario en crearPedidoDesdeVenta.
@@ -11970,6 +11990,20 @@ export default function CLEO(props){
             if(pedidoAntesEstado&&pedidoAntesEstado.estadoPedido!==cambios.estadoPedido){
               if(cambios.estadoPedido==="entregado") registrarEvento("pedido_entregado",{tipo_perfil:perfil.tipoPerfil||"",dispositivo:dispositivoActual()});
               if(cambios.estadoPedido==="cancelado") registrarEvento("pedido_cancelado",{tipo_perfil:perfil.tipoPerfil||"",dispositivo:dispositivoActual()});
+              // Inventario: entrega total descuenta stock físico
+              if(cambios.estadoPedido==="entregado"&&pedidoAntesEstado.estadoPedido==="preparando"){
+                var itemsInvEntrega=(pedidoAntesEstado.items||[]).filter(function(it){
+                  if(!it.catalogoId) return false;
+                  var p=productosCat.find(function(x){ return x.id===it.catalogoId; });
+                  return p&&p.inventarioActivo&&p.stock!=null;
+                });
+                if(itemsInvEntrega.length>0){
+                  setProductosCat(function(prev){ return prev.map(function(p){
+                    var it=itemsInvEntrega.find(function(x){ return x.catalogoId===p.id; });
+                    return it?Object.assign({},p,{stock:Math.max(0,(p.stock||0)-it.cantidad)}):p;
+                  }); });
+                }
+              }
             }
           }
           setPedidos(pedidos.map(function(p){ return p.id===id?Object.assign({},p,conCambiosEstadoPedido(p,cambios)):p; }));
@@ -18959,6 +18993,8 @@ export default function CLEO(props){
                 e("div",{style:{textAlign:"center",padding:"16px 0",color:C.textDim,fontSize:13}},"Sin resultados para \""+buscaSv+"\""):
               catActivo.filter(function(sv){ return !buscaSv||(sv.nombre||"").toLowerCase().includes(buscaSv.toLowerCase()); }).map(function(sv){
                 var abierto=svDetalleId===sv.id;
+                var svApartados=sv.inventarioActivo&&sv.stock!=null?(pedidos||[]).filter(function(p){ return p.estadoPedido==="preparando"; }).reduce(function(sum,p){ return sum+(p.items||[]).reduce(function(s,pi){ return pi.catalogoId===sv.id?s+((pi.invApartado||0)-(pi.invEntregado||0)):s; },0); },0):0;
+                var svDisponibles=sv.inventarioActivo&&sv.stock!=null?Math.max(0,sv.stock-svApartados):null;
                 return e("div",{key:sv.id,style:{borderRadius:12,border:"1.5px solid "+(abierto?C.purple:C.border),background:abierto?C.purplePale:C.surface,overflow:"hidden",transition:"all 0.15s",flexShrink:0}},
                   // Fila principal (siempre visible)
                   e("div",{style:{display:"flex",alignItems:"center",gap:10,padding:"10px 12px",cursor:"pointer"},onClick:function(){ setSvDetalleId(abierto?null:sv.id); }},
@@ -18967,7 +19003,10 @@ export default function CLEO(props){
                     ),
                     e("div",{style:{flex:1,minWidth:0}},
                       e("div",{style:{fontWeight:600,fontSize:13,color:abierto?C.purple:C.text,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}},sv.nombre),
-                      e("div",{style:{fontSize:11,color:abierto?C.purple:C.textMuted,marginTop:1,opacity:0.8}},"$"+formatoDinero(Number(sv.precio))+(sv.descripcion?" · desc.":"")+(sv.condiciones?" · cond.":""))
+                      e("div",{style:{display:"flex",alignItems:"center",gap:6,flexWrap:"wrap",marginTop:1}},
+                        e("span",{style:{fontSize:11,color:abierto?C.purple:C.textMuted,opacity:0.8}},"$"+formatoDinero(Number(sv.precio))+(sv.descripcion?" · desc.":"")+(sv.condiciones?" · cond.":"")),
+                        svDisponibles!=null&&e("span",{style:{fontSize:10,fontWeight:700,padding:"1px 7px",borderRadius:20,background:svDisponibles===0?C.redBg:sv.stockMinimo!=null&&svDisponibles<=sv.stockMinimo?C.amberBg:C.greenBg,color:svDisponibles===0?C.red:sv.stockMinimo!=null&&svDisponibles<=sv.stockMinimo?C.amber:C.green}},svDisponibles+" disp."+(svApartados>0?" · "+svApartados+" apart.":""))
+                      )
                     ),
                     e("svg",{width:13,height:13,viewBox:"0 0 24 24",fill:"none",style:{flexShrink:0,transition:"transform 0.2s",transform:abierto?"rotate(180deg)":"rotate(0deg)"}},
                       e("path",{d:"M19 9l-7 7-7-7",stroke:C.textDim,strokeWidth:2,strokeLinecap:"round",strokeLinejoin:"round"})
@@ -18989,10 +19028,40 @@ export default function CLEO(props){
                           e("label",{style:Object.assign({},st.lbl,{fontSize:11})},"Condiciones"),
                           e(RichEditor,{key:"sv-cond-"+editSv.id,value:editSv.condiciones||"",onChange:function(v){ setEditSv(Object.assign({},editSv,{condiciones:v})); },placeholder:"Condiciones (opcional)",minHeight:50})
                         ),
-                        e("div",{style:{display:"flex",gap:8,justifyContent:"flex-end"}},
+                        esProductos&&e("div",{style:{marginTop:4,paddingTop:10,borderTop:"1px solid "+C.border}},
+                          e("div",{style:{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:editSv.inventarioActivo?10:0}},
+                            e("div",null,
+                              e("div",{style:{fontSize:12,fontWeight:600,color:C.text}},"Controlar existencias"),
+                              e("div",{style:{fontSize:11,color:C.textDim,marginTop:1}},"Aparta piezas al crear pedidos")
+                            ),
+                            e("button",{type:"button",style:{width:36,height:20,borderRadius:10,background:editSv.inventarioActivo?C.green:C.border,border:"none",cursor:"pointer",position:"relative",transition:"background 0.15s",flexShrink:0},onClick:function(){ setEditSv(Object.assign({},editSv,{inventarioActivo:!editSv.inventarioActivo})); }},
+                              e("span",{style:{position:"absolute",top:2,left:editSv.inventarioActivo?16:2,width:16,height:16,borderRadius:8,background:"#fff",transition:"left 0.15s",display:"block"}})
+                            )
+                          ),
+                          editSv.inventarioActivo&&e("div",null,
+                            e("div",{style:{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,marginBottom:6}},
+                              e("div",null,
+                                e("label",{style:Object.assign({},st.lbl,{fontSize:11})},"Total físico ahora"),
+                                e("input",{type:"number",min:"0",value:editSv.stock,onChange:function(ev){ setEditSv(Object.assign({},editSv,{stock:ev.target.value})); },placeholder:"ej. 10",style:Object.assign({},st.inp,{marginBottom:0})})
+                              ),
+                              e("div",null,
+                                e("label",{style:Object.assign({},st.lbl,{fontSize:11})},"Avisar si quedan menos de"),
+                                e("input",{type:"number",min:"0",value:editSv.stockMinimo,onChange:function(ev){ setEditSv(Object.assign({},editSv,{stockMinimo:ev.target.value})); },placeholder:"Opcional",style:Object.assign({},st.inp,{marginBottom:0})})
+                              )
+                            ),
+                            e("div",{style:{fontSize:11,color:C.textDim,lineHeight:1.5}},"Incluye las que ya tienes guardadas para pedidos activos.")
+                          )
+                        ),
+                        e("div",{style:{display:"flex",gap:8,justifyContent:"flex-end",marginTop:10}},
                           e("button",{style:{cursor:"pointer",padding:"5px 12px",borderRadius:8,border:"1px solid "+C.border,background:"transparent",fontSize:12,color:C.textMuted},onClick:function(){ setEditSv(null); }},"Cancelar"),
                           e("button",{style:{cursor:"pointer",padding:"5px 12px",borderRadius:8,border:"none",background:C.purple,fontSize:12,color:"#fff",fontWeight:600},onClick:function(){
-                            setCatActivo(catActivo.map(function(x){ return x.id===editSv.id?Object.assign({},x,{nombre:editSv.nombre,precio:redondearDinero(interpretarImporte(editSv.precio)),descripcion:editSv.descripcion,condiciones:editSv.condiciones}):x; }));
+                            var base={nombre:editSv.nombre,precio:redondearDinero(interpretarImporte(editSv.precio)),descripcion:editSv.descripcion,condiciones:editSv.condiciones};
+                            if(esProductos){
+                              base.inventarioActivo=editSv.inventarioActivo||false;
+                              base.stock=editSv.inventarioActivo&&editSv.stock!==""?Number(editSv.stock):null;
+                              base.stockMinimo=editSv.inventarioActivo&&editSv.stockMinimo!==""?Number(editSv.stockMinimo):null;
+                            }
+                            setCatActivo(catActivo.map(function(x){ return x.id===editSv.id?Object.assign({},x,base):x; }));
                             setEditSv(null);
                           }},"Guardar")
                         )
@@ -19003,8 +19072,18 @@ export default function CLEO(props){
                           e("div",{style:{fontSize:10,fontWeight:700,color:C.purple,textTransform:"uppercase",letterSpacing:"0.6px",marginBottom:4,marginTop:sv.descripcion?4:8}},"Condiciones"),
                           e("div",{style:{fontSize:12,color:C.textMuted,lineHeight:1.7,padding:"8px 10px",background:"rgba(255,255,255,0.6)",borderRadius:8},dangerouslySetInnerHTML:{__html:sanitizarHTMLRico(sv.condiciones||"")}})
                         ),
+                        sv.inventarioActivo&&e("div",{style:{marginTop:sv.descripcion||sv.condiciones?8:4,padding:"8px 10px",background:svDisponibles===0?C.redBg:sv.stockMinimo!=null&&svDisponibles!=null&&svDisponibles<=sv.stockMinimo?C.amberBg:C.greenBg,borderRadius:8,display:"flex",alignItems:"center",justifyContent:"space-between"}},
+                          e("div",null,
+                            e("div",{style:{fontSize:11,fontWeight:600,color:C.textMuted}},"Inventario activo"),
+                            svApartados>0&&e("div",{style:{fontSize:11,color:C.amber,marginTop:1}},svApartados+" apartadas en pedidos")
+                          ),
+                          e("div",null,
+                            e("span",{style:{fontSize:15,fontWeight:700,color:svDisponibles===0?C.red:sv.stockMinimo!=null&&svDisponibles!=null&&svDisponibles<=sv.stockMinimo?C.amber:C.green}},svDisponibles!=null?svDisponibles:"–"),
+                            e("span",{style:{fontSize:11,color:C.textDim,marginLeft:4}},"disponibles")
+                          )
+                        ),
                         e("div",{style:{display:"flex",gap:8,justifyContent:"flex-end",marginTop:8}},
-                          e("button",{style:{cursor:"pointer",padding:"5px 12px",borderRadius:8,border:"1px solid "+C.border,background:"transparent",fontSize:12,color:C.purple,fontWeight:500},onClick:function(){ setEditSv({id:sv.id,nombre:sv.nombre,precio:sv.precio,descripcion:sv.descripcion||"",condiciones:sv.condiciones||""}); }},"Editar"),
+                          e("button",{style:{cursor:"pointer",padding:"5px 12px",borderRadius:8,border:"1px solid "+C.border,background:"transparent",fontSize:12,color:C.purple,fontWeight:500},onClick:function(){ setEditSv({id:sv.id,nombre:sv.nombre,precio:sv.precio,descripcion:sv.descripcion||"",condiciones:sv.condiciones||"",inventarioActivo:sv.inventarioActivo||false,stock:sv.stock!=null?String(sv.stock):"",stockMinimo:sv.stockMinimo!=null?String(sv.stockMinimo):""}); }},"Editar"),
                           e("button",{style:{cursor:"pointer",padding:"5px 12px",borderRadius:8,border:"1px solid "+C.redBorder,background:C.redBg,fontSize:12,color:C.red,fontWeight:500},onClick:function(){ if(window.confirm("¿Eliminar "+sv.nombre+"?")){ eliminarServicio(sv.id); setSvDetalleId(null); } }},"Eliminar")
                         )
                       )
