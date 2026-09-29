@@ -8090,7 +8090,7 @@ export default function CLEO(props){
           if(_effectiveEditCotId!==editCotId){
             if(!esProductos&&c.etapa!=="Ganado"&&c.etapa!=="Perdido"&&c.etapa!=="Negociacion") upd=Object.assign(upd,{etapa:"Cotizacion enviada",fechaEtapa:FECHA_HOY});
             if(esProductos&&c.estadoProspecto!=="Convertido"&&c.estadoProspecto!=="Perdido") upd=Object.assign(upd,{estadoProspecto:"En seguimiento"});
-            if(!esProductos&&fcCot._seguimientoPipelineFecha!==undefined){
+            if(fcCot._seguimientoPipelineFecha!==undefined){
               var _recsSinPipeline=recordatoriosDe(upd).filter(function(r){ return !(r&&r.categoria==="pipeline"&&r.origen==="cleo")&&!(fcCot._recordatorioDisparadorId&&(r.id||r.fecha)===fcCot._recordatorioDisparadorId); });
               upd=fcCot._seguimientoPipelineFecha
                 ?conRecordatoriosActualizados(upd,_recsSinPipeline.concat([{id:"r_"+Date.now(),fecha:fcCot._seguimientoPipelineFecha,nota:"Le enviaste el precio de "+(resumenFinal||"tus servicios")+". Pregúntale si pudo revisarlo.",esPersonalizada:false,origen:"cleo",categoria:"pipeline"}]))
@@ -8205,7 +8205,7 @@ export default function CLEO(props){
           // (_seguimientoPipelineFecha!==undefined) , una cotización que se
           // guarda sin ninguna oportunidad activa que proteger (el modal
           // nunca se mostró) no debe tocar recordatorios.
-          if(!esProductos&&fcCot._seguimientoPipelineFecha!==undefined){
+          if(fcCot._seguimientoPipelineFecha!==undefined){
             var recordatoriosSinPipelineAnteriorCot=recordatoriosDe(upd).filter(function(r){ return !(r&&r.categoria==="pipeline"&&r.origen==="cleo")&&!(fcCot._recordatorioDisparadorId&&(r.id||r.fecha)===fcCot._recordatorioDisparadorId); });
             upd=fcCot._seguimientoPipelineFecha
               ?conRecordatoriosActualizados(upd,recordatoriosSinPipelineAnteriorCot.concat([{id:"r_"+Date.now(),fecha:fcCot._seguimientoPipelineFecha,nota:"Le enviaste el precio de "+(resumenFinal||"tus servicios")+". Pregúntale si pudo revisarlo.",esPersonalizada:false,origen:"cleo",categoria:"pipeline"}]))
@@ -9218,6 +9218,7 @@ export default function CLEO(props){
         overflow:"hidden",
         position:"sticky",
         top:0,
+        height:"100vh",
         zIndex:40
       }},
         // LOGO + HAMBURGER dentro del sidebar (desktop: sin logo ni leyenda, solo CLEO)
