@@ -29,6 +29,7 @@ export var CLEO_KEYS = [
   "cleo_streak_accion_serv",
   "cleo_oportunidades",
   "cleo_tombstones",
+  "cleo_materiales_cat",
 ];
 
 // Claves locales/temporales de CLEO — nunca se sincronizan a Supabase, pero sí
@@ -558,7 +559,7 @@ export async function pullUserData(userId) {
     // Si no cabe el respaldo, fallar sin tocar el caché original.
     localStorage.setItem(CONFLICT_BACKUP_KEY, texto);
     if (localStorage.getItem(CONFLICT_BACKUP_KEY) !== texto) throw new Error("No se pudo conservar el caché pendiente");
-    return { tieneDatos: true, updatedAt: null, snapshot: null };
+    return { tieneDatos: true, updatedAt: null, snapshot: null, schemaVer: schemaVerDetectado };
   }
   escribirSnapshotLocalStorage(remoto, userId);
   await recordarConfirmado(userId, remoto);
