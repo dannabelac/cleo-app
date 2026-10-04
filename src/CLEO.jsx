@@ -550,7 +550,9 @@ function contarPendientesHoy(clientes,cotizaciones,pedidos,esProductos){
 
 // Devuelve la lista real de clientes a contactar hoy (mismo criterio que la pestaña Hoy),
 // para usarse tanto en el widget de Inicio como en Hoy y que nunca se desincronicen.
-function obtenerAccionesHoy(clientes,cotizaciones,esProductos,limite){
+function obtenerAccionesHoy(clientes,cotizaciones,esProductos,limite,multiOpEnabled,oportunidades){
+  if(multiOpEnabled===undefined) multiOpEnabled=false;
+  if(oportunidades===undefined) oportunidades=[];
   if(esProductos){
     var listaP=[];
     clientes.forEach(function(c){
@@ -10074,7 +10076,7 @@ export default function CLEO(props){
 
         // Subtitulo educativo , basado en lo mismo que muestra "A quién contactar hoy"
         var subtitulo;
-        var totalAccionesHoy=obtenerAccionesHoy(clientes,cotizaciones,esProductos).length;
+        var totalAccionesHoy=obtenerAccionesHoy(clientes,cotizaciones,esProductos,undefined,multiOpEnabled,oportunidades).length;
         var cobrosPendientesCount=esProductos?0:obtenerCobrosPendientesHoy(cotizaciones,ventas,clientes).length;
         var txtConv=totalAccionesHoy+" conversaci"+(totalAccionesHoy===1?"ón":"ones");
         var txtCobro=cobrosPendientesCount+" cobro"+(cobrosPendientesCount===1?"":"s")+" pendiente"+(cobrosPendientesCount===1?"":"s");
@@ -10085,7 +10087,7 @@ export default function CLEO(props){
         else subtitulo="La herramienta que ayuda a "+empresa+" a vender mejor con cada cliente que registras.";
 
         // Top 3 EN TOTAL (conversaciones + cobros combinados), misma fuente real que usa Hoy
-        var accionesTodas=obtenerAccionesHoy(clientes,cotizaciones,esProductos);
+        var accionesTodas=obtenerAccionesHoy(clientes,cotizaciones,esProductos,undefined,multiOpEnabled,oportunidades);
         var cobrosTodosIni=esProductos?[]:obtenerCobrosPendientesHoy(cotizaciones,ventas,clientes);
         var acciones=[],cobrosPendientes=[];
         (function(){
@@ -10510,7 +10512,7 @@ export default function CLEO(props){
             var prospectosSeguimiento=clientes.filter(function(c){ return c.estadoProspecto==="En seguimiento"||c.estadoProspecto==="Sin respuesta"; });
 
             // 🔴 Urgentes: mismas acciones reales que la pestaña Hoy (recordatorios + sugerencias automáticas)
-            var urgentesTodas=obtenerAccionesHoy(clientes,cotizaciones,true);
+            var urgentesTodas=obtenerAccionesHoy(clientes,cotizaciones,true,undefined,false,[]);
 
             var calientes=clientes.filter(function(c){ return c.estadoProspecto==="En seguimiento"; });
             var totalCalientes=calientes.reduce(function(s,c){ return s+(Number(c.precioInteres)||0); },0);
@@ -13764,7 +13766,7 @@ export default function CLEO(props){
         var urgentes=[];
 
         if(!esProductos){
-        var accionesCompletas=obtenerAccionesHoy(clientes,cotizaciones,esProductos);
+        var accionesCompletas=obtenerAccionesHoy(clientes,cotizaciones,esProductos,undefined,multiOpEnabled,oportunidades);
         urgentes=accionesCompletas.map(function(a){
           return {cliente:a.cliente,razon:a.desc,prioridad:a.prioridad,mensajeSugerido:a.mensajeSugerido,monto:a.monto,recordatorioId:a.recordatorioId,recordatorioNota:a.recordatorioNota,recordatorioEsManualOPersonalizado:a.recordatorioEsManualOPersonalizado,accionId:a.accionId,cotizacionId:a.cotizacionId,origenAccion:a.origenAccion};
         });
@@ -13822,7 +13824,7 @@ export default function CLEO(props){
           // HOY EN MODO PRODUCTOS
           esProductos?(function(){
             // 1. Oportunidades por retomar (sin contacto >=2 días, no Convertido salvo seguimiento vencido, no Perdido)
-            var opsRetomar=obtenerAccionesHoy(clientes,cotizaciones,true);
+            var opsRetomar=obtenerAccionesHoy(clientes,cotizaciones,true,undefined,false,[]);
 
             // 2. Pedidos que requieren acción
             var pedidosAccion=[];
