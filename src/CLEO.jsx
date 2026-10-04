@@ -723,7 +723,7 @@ function obtenerAccionesHoy(clientes,cotizaciones,esProductos,limite){
   // personalizados , todos coexisten, ninguno reemplaza ni oculta a otro.
   clientes.forEach(function(c){
     if(c.archivado) return;
-    var vencidosDeHoy=recordatoriosDe(c).filter(function(r){ return esFechaHoyOVencida(r.fecha); });
+    var vencidosDeHoy=recordatoriosDe(c).filter(function(r){ return esFechaHoyOVencida(r.fecha)&&!(multiOpEnabled&&!esProductos&&r.opId&&r.categoria==="pipeline"); });
     if(vencidosDeHoy.length===0) return;
     var cotP=cotPendienteDe(c.id);
     var servicio=cotP?cotP.concepto:nombreServicioCorto(c);
@@ -782,6 +782,27 @@ function obtenerAccionesHoy(clientes,cotizaciones,esProductos,limite){
         r.id||r.fecha,r.nota||null,false);
     });
   });
+
+  // NIVEL 1B — seguimientos de pipeline independientes por oportunidad
+  if(multiOpEnabled&&!esProductos){
+    oportunidades.filter(function(op){ return op.estatus==='activa'; }).forEach(function(op){
+      var c=clientes.find(function(x){ return x.id===op.clienteId; });
+      if(!c||c.archivado) return;
+      var vencidosOp=recordatoriosDe(c).filter(function(r){ return esFechaHoyOVencida(r.fecha)&&r.categoria==='pipeline'&&r.opId===op.id; });
+      if(vencidosOp.length===0) return;
+      var cotOp=cotizaciones.find(function(cot){ return String(cot.id)===String(op.cotizacionId); });
+      var servicioOp=cotOp?cotOp.concepto:nombreServicioCorto(c);
+      vencidosOp.forEach(function(r){
+        var descOp=r.nota||(cotOp?"Le enviaste el precio de "+servicioOp+". Hoy habías programado preguntarle si pudo revisarlo.":"Hoy habías programado retomar esta conversación.");
+        var montoOp=cotOp?Number(cotOp.monto):0;
+        lista.push({cliente:c,tipo:"Seguimiento programado",desc:descOp,prioridad:"alta",
+          dias:diasSinContacto(c),ordenReal:1,monto:montoOp,mensajeSugerido:"",
+          estancado:false,recordatorioId:r.id||r.fecha,recordatorioNota:r.nota||null,
+          recordatorioEsManualOPersonalizado:false,accionId:"oportunidad:"+op.id+":"+(r.id||r.fecha),
+          oportunidadId:op.id});
+      });
+    });
+  }
 
   // NIVEL 2 , en negociación (absorbe lo que antes era "en seguimiento")
   clientes.filter(function(c){ return c.etapa==="Negociacion"&&!tieneRecordatorioAutomaticoVigente(c)&&diasSinContacto(c)>=2; }).forEach(function(c){
@@ -4452,7 +4473,12 @@ function migrarOportunidadesV1(clientes, cotizaciones, opActuales) {
   (opActuales||[]).forEach(function(op){ if(op&&op.id) opPorId[op.id]=op; });
   var resultado = [];
   var excepcionesDobles = [];
-  (clientes||[]).forEach(function(c){
+  var clientesModificados = false;
+  // Copia de clientes con opId inyectado en sus recordatorios pipeline.
+  // Solo se popula cuando hay recordatorios sin opId que necesitan etiqueta.
+  var clientesActualizados = (clientes||[]).map(function(c){ return c; }); // copia superficial
+
+  (clientes||[]).forEach(function(c, cIdx){
     var opId = 'op_cli_'+c.id;
     var opExistente = opPorId[opId];
     if(opExistente && 'cotizacionId' in opExistente){ resultado.push(opExistente); return; }
@@ -4488,6 +4514,18 @@ function migrarOportunidadesV1(clientes, cotizaciones, opActuales) {
       origen: 'migrada',
       origenMigracion: (opExistente&&opExistente.origenMigracion)||'migrada_vinculada'
     });
+    // Inyectar opId en los recordatorios pipeline del cliente para que Hoy
+    // pueda mostrar seguimientos independientes por oportunidad.
+    var recsCliente = (c.recordatorios||[]);
+    var necesitaTag = recsCliente.some(function(r){ return r&&r.categoria==='pipeline'&&!r.opId; });
+    if(necesitaTag){
+      clientesModificados = true;
+      clientesActualizados[cIdx] = Object.assign({},c,{
+        recordatorios: recsCliente.map(function(r){
+          return (r&&r.categoria==='pipeline'&&!r.opId)?Object.assign({},r,{opId:opId}):r;
+        })
+      });
+    }
   });
   // Preservar oportunidades nuevas (multi) de clientes no encontrados en el array base
   (opActuales||[]).forEach(function(op){
@@ -4495,7 +4533,11 @@ function migrarOportunidadesV1(clientes, cotizaciones, opActuales) {
     var yaIncluido = resultado.some(function(r){ return r.id===op.id; });
     if(!yaIncluido && 'cotizacionId' in op) resultado.push(op);
   });
-  return {oportunidades: resultado, excepcionesDobles: excepcionesDobles};
+  return {
+    oportunidades: resultado,
+    excepcionesDobles: excepcionesDobles,
+    clientesActualizados: clientesModificados ? clientesActualizados : null
+  };
 }
 
 var CLEO_STORAGE_KEYS=["cleo_clientes","cleo_cots","cleo_ventas","cleo_servicios","cleo_pedidos","cleo_productos","cleo_productos_cat","cleo_perfil","cleo_tipo_perfil","cleo_alertas_cerradas","cleo_etapas_vistas","cleo_data_version","cleo_streak_accion_prod","cleo_streak_accion_serv","cleo_oportunidades","cleo_tombstones","cleo_materiales_cat"];
@@ -6446,6 +6488,8 @@ export default function CLEO(props){
   // Estados de motivo perdida pipeline
   var s24=useState(null); var motivoPipelineId=s24[0]; var setMotivoPipelineId=s24[1];
   var s24b=useState(null); var etapaAnteriorPipeline=s24b[0]; var setEtapaAnteriorPipeline=s24b[1];
+  // opId específico cuando el Perdido viene de moverEtapaOp (multi-op)
+  var s24e=useState(null); var motivoPipelineOpId=s24e[0]; var setMotivoPipelineOpId=s24e[1];
   var s24c=useState(null); var etapaAnteriorGanado=s24c[0]; var setEtapaAnteriorGanado=s24c[1];
   var s24d=useState(null); var modalVentaRapidaPipeline=s24d[0]; var setModalVentaRapidaPipeline=s24d[1];
   // Copia inmutable de los campos EXACTOS que se modifican provisionalmente
@@ -6831,7 +6875,43 @@ export default function CLEO(props){
         setOportunidadesRaw(res.oportunidades);
       }catch(e){ console.error("[CLEO multiOp] Error al guardar migración:", e); }
     }
+    // Si multi-op está activo y la migración detectó recordatorios pipeline sin opId,
+    // actualizar cleo_clientes para etiquetarlos (necesario para seguimientos independientes en Hoy).
+    if(multiOpEnabled && res.clientesActualizados){
+      try{
+        writeGuard.write("cleo_clientes", JSON.stringify(res.clientesActualizados));
+        setClientesRaw(res.clientesActualizados);
+      }catch(e){ console.error("[CLEO multiOp] Error al etiquetar recordatorios:", e); }
+    }
   },[]);
+
+  // Protección contra sesiones antiguas: si otra pestaña con una versión vieja de CLEO
+  // sobreescribe cleo_oportunidades con el formato pre-multi-op (sin cotizacionId),
+  // esta pestaña restaura inmediatamente sus datos en localStorage y en estado.
+  useEffect(function(){
+    if(esProductos) return;
+    function onStorageOps(ev){
+      if(ev.storageArea!==localStorage) return;
+      if(ev.key!=="cleo_oportunidades") return;
+      if(!ev.newValue) return;
+      try{
+        var parsed=JSON.parse(ev.newValue);
+        var esTodosNuevos=Array.isArray(parsed)&&parsed.length>0&&parsed.every(function(op){ return op&&'cotizacionId' in op; });
+        var esVacio=Array.isArray(parsed)&&parsed.length===0;
+        if(!esTodosNuevos&&!esVacio){
+          // Otra pestaña escribió formato antiguo (sin cotizacionId) — restaurar
+          var opsActuales=oportunidades;
+          try{
+            localStorage.setItem("cleo_oportunidades",JSON.stringify(opsActuales));
+          }catch(e){}
+          console.warn("[CLEO multiOp] Sesión antigua sobrescribió cleo_oportunidades; restaurado.");
+        }
+      }catch(e){}
+    }
+    window.addEventListener("storage",onStorageOps);
+    return function(){ window.removeEventListener("storage",onStorageOps); };
+  },[oportunidades,esProductos]);
+
   function setCotizaciones(v){ crearSetterPersistente(setCotizacionesRaw,"cleo_cots",writeGuard)(v); }
   // Actualiza SOLO el metadato ligero de archivoAdjunto de una cotización
   // (nunca contenido binario) , usada por ArchivoAdjunto tanto desde la
@@ -8062,6 +8142,9 @@ export default function CLEO(props){
       // Los flujos de modal (abrirConfiguracionPostVenta / guardarMotivoPipeline)
       // actualizan la oportunidad; no hacemos setOportunidades aquí para evitar
       // que una copia estale (sin functional updater) pise la actualización del modal.
+      // Para Perdido: guardar el opId específico antes de que moverEtapa abra el modal,
+      // para que guardarMotivoPipeline sepa qué oportunidad cerrar (no todas las activas del cliente).
+      if(nueva==="Perdido") setMotivoPipelineOpId(opId);
       moverEtapa(clienteId, nueva);
       return;
     }
@@ -8140,7 +8223,7 @@ export default function CLEO(props){
     }
     setMotivoPipelineId(null); setConsejoMotivo(null); setShowSeguimientoLost(false);
     setSeguimientoLost({fecha:"",nota:""}); setMotivoLibre(""); setShowMotivoLibre(false);
-    setEtapaAnteriorPipeline(null);
+    setEtapaAnteriorPipeline(null); setMotivoPipelineOpId(null);
   }
   // Default de "+ Más opciones" dentro de modalCot (ver s11b/modalCotAvanzadoOverride).
   // Colapsado por default para que "Envié un precio" y "+Nueva cotización"
@@ -8376,9 +8459,16 @@ export default function CLEO(props){
             if(esProductos&&c.estadoProspecto!=="Convertido"&&c.estadoProspecto!=="Perdido") upd=Object.assign(upd,{estadoProspecto:"En seguimiento"});
             if(fcCot._seguimientoPipelineFecha!==undefined){
               var _recsSinPipeline=recordatoriosDe(upd).filter(function(r){ return !(r&&r.categoria==="pipeline"&&r.origen==="cleo")&&!(fcCot._recordatorioDisparadorId&&(r.id||r.fecha)===fcCot._recordatorioDisparadorId); });
-              upd=fcCot._seguimientoPipelineFecha
-                ?conRecordatoriosActualizados(upd,_recsSinPipeline.concat([{id:"r_"+Date.now(),fecha:fcCot._seguimientoPipelineFecha,nota:"Le enviaste el precio de "+(resumenFinal||"tus servicios")+". Pregúntale si pudo revisarlo.",esPersonalizada:false,origen:"cleo",categoria:"pipeline"}]))
-                :conRecordatoriosActualizados(upd,_recsSinPipeline);
+              if(fcCot._seguimientoPipelineFecha){
+                var _opIdEdit=null;
+                if(multiOpEnabled&&!esProductos){
+                  var _opEdit=oportunidades.find(function(o){ return String(o.clienteId)===String(fcCot.clienteId)&&o.estatus==='activa'&&(String(o.cotizacionId)===String(_effectiveEditCotId)||String(o.cotizacionId)===String(cotIdFinal)); });
+                  if(_opEdit) _opIdEdit=_opEdit.id;
+                }
+                upd=conRecordatoriosActualizados(upd,_recsSinPipeline.concat([Object.assign({id:"r_"+Date.now(),fecha:fcCot._seguimientoPipelineFecha,nota:"Le enviaste el precio de "+(resumenFinal||"tus servicios")+". Pregúntale si pudo revisarlo.",esPersonalizada:false,origen:"cleo",categoria:"pipeline"},_opIdEdit?{opId:_opIdEdit}:{})]));
+              } else {
+                upd=conRecordatoriosActualizados(upd,_recsSinPipeline);
+              }
             }
           }
           return upd;
@@ -8483,7 +8573,7 @@ export default function CLEO(props){
           // propio para la nueva cotización (sin quitar el existente).
           if(!esProductos&&fcCot._esNuevaOportunidad){
             if(fcCot._seguimientoPipelineFecha){
-              return conRecordatoriosActualizados(c,recordatoriosDe(c).concat([{id:"r_"+Date.now(),fecha:fcCot._seguimientoPipelineFecha,nota:"Le enviaste el precio de "+(resumenFinal||"tus servicios")+". Pregúntale si pudo revisarlo.",esPersonalizada:false,origen:"cleo",categoria:"pipeline"}]));
+              return conRecordatoriosActualizados(c,recordatoriosDe(c).concat([Object.assign({id:"r_"+Date.now(),fecha:fcCot._seguimientoPipelineFecha,nota:"Le enviaste el precio de "+(resumenFinal||"tus servicios")+". Pregúntale si pudo revisarlo.",esPersonalizada:false,origen:"cleo",categoria:"pipeline"},multiOpEnabled&&_nuevaOpId?{opId:_nuevaOpId}:{})]));
             }
             return c;
           }
@@ -8514,9 +8604,16 @@ export default function CLEO(props){
           // nunca se mostró) no debe tocar recordatorios.
           if(fcCot._seguimientoPipelineFecha!==undefined){
             var recordatoriosSinPipelineAnteriorCot=recordatoriosDe(upd).filter(function(r){ return !(r&&r.categoria==="pipeline"&&r.origen==="cleo")&&!(fcCot._recordatorioDisparadorId&&(r.id||r.fecha)===fcCot._recordatorioDisparadorId); });
-            upd=fcCot._seguimientoPipelineFecha
-              ?conRecordatoriosActualizados(upd,recordatoriosSinPipelineAnteriorCot.concat([{id:"r_"+Date.now(),fecha:fcCot._seguimientoPipelineFecha,nota:"Le enviaste el precio de "+(resumenFinal||"tus servicios")+". Pregúntale si pudo revisarlo.",esPersonalizada:false,origen:"cleo",categoria:"pipeline"}]))
-              :conRecordatoriosActualizados(upd,recordatoriosSinPipelineAnteriorCot);
+            if(fcCot._seguimientoPipelineFecha){
+              var _opIdCreate=null;
+              if(multiOpEnabled&&!esProductos){
+                var _opCreate=oportunidades.find(function(o){ return String(o.clienteId)===String(fcCot.clienteId)&&o.estatus==='activa'&&(o.cotizacionId===null||String(o.cotizacionId)===String(_effectiveEditCotId||cotIdFinal)); });
+                if(_opCreate) _opIdCreate=_opCreate.id;
+              }
+              upd=conRecordatoriosActualizados(upd,recordatoriosSinPipelineAnteriorCot.concat([Object.assign({id:"r_"+Date.now(),fecha:fcCot._seguimientoPipelineFecha,nota:"Le enviaste el precio de "+(resumenFinal||"tus servicios")+". Pregúntale si pudo revisarlo.",esPersonalizada:false,origen:"cleo",categoria:"pipeline"},_opIdCreate?{opId:_opIdCreate}:{})]));
+            } else {
+              upd=conRecordatoriosActualizados(upd,recordatoriosSinPipelineAnteriorCot);
+            }
           }
           return upd;
         });
@@ -8778,12 +8875,16 @@ export default function CLEO(props){
     setClientes(clientes.map(function(c){ return c.id===motivoPipelineId?cancelarRecordatoriosPipeline(Object.assign({},c,{motivoPerdida:motivo,etapa:"Perdido",fechaEtapa:FECHA_HOY})):c; }));
     if(multiOpEnabled){
       var _mpId=motivoPipelineId;
+      var _mpOpId=motivoPipelineOpId;
       setOportunidades(function(prevOps){
         return prevOps.map(function(o){
-          return String(o.clienteId)===String(_mpId)&&o.estatus==='activa'
-            ?Object.assign({},o,{etapa:'Perdido',estatus:'perdida',motivoCierre:motivo,fechaCierre:FECHA_HOY}):o;
+          // Si viene de moverEtapaOp, cerrar solo esa oportunidad específica.
+          // Si viene de otro flujo (pipeline card sin opId), cerrar todas las activas del cliente.
+          var coincide=_mpOpId?o.id===_mpOpId:(String(o.clienteId)===String(_mpId)&&o.estatus==='activa');
+          return coincide?Object.assign({},o,{etapa:'Perdido',estatus:'perdida',motivoCierre:motivo,fechaCierre:FECHA_HOY}):o;
         });
       });
+      setMotivoPipelineOpId(null);
     }
     var cotPerdida=cotizaciones.find(function(c){ return c.clienteId===motivoPipelineId&&(c.estatus==="Pendiente"||c.estatus==="Aceptada")&&cotizacionVinculadaOportunidad(c); });
     if(cotPerdida&&cotPerdida.estatus!=="Rechazada"){
