@@ -8063,28 +8063,28 @@ export default function CLEO(props){
     // fuera la cotización de esta oportunidad. cotizacionVinculadaOportunidad
     // ya trata Productos y cotizaciones antiguas (campo undefined) como
     // vinculadas, así que este cambio no altera su comportamiento.
-    var tieneCot=cotizaciones.some(function(c){ return c.clienteId===id&&(c.estatus==="Pendiente"||c.estatus==="Aceptada")&&cotizacionVinculadaOportunidad(c); });
+    var tieneCot=cotizaciones.some(function(c){ return Number(c.clienteId)===Number(id)&&(c.estatus==="Pendiente"||c.estatus==="Aceptada")&&cotizacionVinculadaOportunidad(c); });
     var yaVio=etapasVistas.indexOf(nueva)>=0;
     if(nueva==="Perdido"){
-      var clienteActual=clientes.find(function(c){ return c.id===id; });
+      var clienteActual=clientes.find(function(c){ return Number(c.id)===Number(id); });
       setEtapaAnteriorPipeline(clienteActual?clienteActual.etapa:null);
       setMotivoPipelineId(id);
-      setClientes(clientes.map(function(c){ return c.id===id?Object.assign({},c,{etapa:nueva,fechaEtapa:FECHA_HOY}):c; }));
+      setClientes(clientes.map(function(c){ return Number(c.id)===Number(id)?Object.assign({},c,{etapa:nueva,fechaEtapa:FECHA_HOY}):c; }));
       // Marcar cotizaciones pendientes como Rechazadas , solo las que
       // representan la oportunidad activa , una cotización "diferente"
       // (vinculadaOportunidadActual:false) nunca debe marcarse Rechazada
       // como efecto colateral de perder ESTA oportunidad.
-      var cotsPendP=cotizaciones.filter(function(c){ return c.clienteId===id&&c.estatus==="Pendiente"&&cotizacionVinculadaOportunidad(c); });
+      var cotsPendP=cotizaciones.filter(function(c){ return Number(c.clienteId)===Number(id)&&c.estatus==="Pendiente"&&cotizacionVinculadaOportunidad(c); });
       if(cotsPendP.length>0){
         // cotizacion_rechazada , cotsPendP ya viene filtrada por
         // estatus==="Pendiente", transición real siempre.
         registrarEvento("cotizacion_rechazada",{tipo_perfil:perfil.tipoPerfil||"",dispositivo:dispositivoActual()});
-        setCotizaciones(cotizaciones.map(function(c){ return c.clienteId===id&&c.estatus==="Pendiente"&&cotizacionVinculadaOportunidad(c)?Object.assign({},c,{estatus:"Rechazada",fechaRechazo:FECHA_HOY,fechaHoraRechazo:new Date().toISOString()}):c; }));
+        setCotizaciones(cotizaciones.map(function(c){ return Number(c.clienteId)===Number(id)&&c.estatus==="Pendiente"&&cotizacionVinculadaOportunidad(c)?Object.assign({},c,{estatus:"Rechazada",fechaRechazo:FECHA_HOY,fechaHoraRechazo:new Date().toISOString()}):c; }));
       }
       return;
     }
     if(nueva==="Ganado"){
-      var clienteActualG=clientes.find(function(c){ return c.id===id; });
+      var clienteActualG=clientes.find(function(c){ return Number(c.id)===Number(id); });
       setEtapaAnteriorGanado(clienteActualG?clienteActualG.etapa:null);
       // Solo la cotización vinculada a la oportunidad activa puede
       // respaldar el arrastre a "Ganado" , sin fallback a una cotización
@@ -8092,8 +8092,8 @@ export default function CLEO(props){
       // con cotizaciones antiguas ya la cubre cotizacionVinculadaOportunidad
       // (campo undefined = true) , si no hay ninguna vinculada, se trata
       // como "sin cotización de esta oportunidad".
-      var cotPendienteG=cotizaciones.find(function(c){ return c.clienteId===id&&c.estatus==="Pendiente"&&cotizacionVinculadaOportunidad(c); });
-      var cotAceptadaG=cotizaciones.find(function(c){ return c.clienteId===id&&c.estatus==="Aceptada"&&cotizacionVinculadaOportunidad(c); });
+      var cotPendienteG=cotizaciones.find(function(c){ return Number(c.clienteId)===Number(id)&&c.estatus==="Pendiente"&&cotizacionVinculadaOportunidad(c); });
+      var cotAceptadaG=cotizaciones.find(function(c){ return Number(c.clienteId)===Number(id)&&c.estatus==="Aceptada"&&cotizacionVinculadaOportunidad(c); });
       // Sin cotización,preguntar si quiere registrar venta directa
       if(!cotPendienteG&&!cotAceptadaG){
         setModalVentaRapidaPipeline(id);
@@ -8106,6 +8106,15 @@ export default function CLEO(props){
         // transición real hacia Aceptada, nunca una reconfirmación.
         registrarEvento("cotizacion_aceptada",{tipo_perfil:perfil.tipoPerfil||"",dispositivo:dispositivoActual()});
         setCotizaciones(cotizaciones.map(function(c){ return c.id===cotPendienteG.id?cancelarSeguimientoComercialCotizacion(marcarCotizacionAceptada(Object.assign({},c,{estatus:"Aceptada",fechaCierre:FECHA_HOY,fechaHoraCierre:new Date().toISOString(),entregado:false,fechaEntrega:""}))):c; }));
+        if(multiOpEnabled){
+          var _cotIdDragG=cotPendienteG.id;
+          setOportunidades(function(prevOps){
+            return prevOps.map(function(o){
+              return String(o.cotizacionId)===String(_cotIdDragG)&&o.estatus==='activa'
+                ?Object.assign({},o,{etapa:'Ganado',estatus:'ganada',fechaCierre:FECHA_HOY}):o;
+            });
+          });
+        }
         // Se abre con el ID REAL de la cotización que se acaba de aceptar ,
         // nunca "ganado_"+id de cliente (eso perdía la identidad exacta si
         // el cliente llegara a tener más de una cotización Aceptada). La
@@ -8122,7 +8131,7 @@ export default function CLEO(props){
         // cotización, no el id del cliente.
         abrirConfiguracionPostVenta(cotAceptadaG.id);
       }
-      setClientes(clientes.map(function(c){ return c.id===id?Object.assign({},c,{etapa:nueva,fechaEtapa:FECHA_HOY,ultimoContacto:FECHA_HOY}):c; }));
+      setClientes(clientes.map(function(c){ return Number(c.id)===Number(id)?Object.assign({},c,{etapa:nueva,fechaEtapa:FECHA_HOY,ultimoContacto:FECHA_HOY}):c; }));
       return;
     }
     if(info&&info.requiereCot&&!tieneCot){
@@ -8131,7 +8140,7 @@ export default function CLEO(props){
       return;
     }
     if(info&&!yaVio){ var nv2=etapasVistas.concat([nueva]); setEtapasVistas(nv2); try{ localStorage.setItem("cleo_etapas_vistas",JSON.stringify(nv2)); }catch(e){} }
-    setClientes(clientes.map(function(c){ return c.id===id?Object.assign({},c,{etapa:nueva,fechaEtapa:FECHA_HOY,ultimoContacto:FECHA_HOY}):c; }));
+    setClientes(clientes.map(function(c){ return Number(c.id)===Number(id)?Object.assign({},c,{etapa:nueva,fechaEtapa:FECHA_HOY,ultimoContacto:FECHA_HOY}):c; }));
   }
   // moverEtapaOp: versión multi-oportunidad de moverEtapa. Actualiza op.etapa
   // en lugar de (o además de) c.etapa. Para Ganado/Perdido delega en moverEtapa
@@ -8216,7 +8225,7 @@ export default function CLEO(props){
   function cancelarMotivoPipeline(){
     // Revertir etapa si el usuario cierra sin seleccionar motivo
     if(motivoPipelineId&&etapaAnteriorPipeline){
-      setClientes(clientes.map(function(c){ return c.id===motivoPipelineId?Object.assign({},c,{etapa:etapaAnteriorPipeline}):c; }));
+      setClientes(clientes.map(function(c){ return Number(c.id)===Number(motivoPipelineId)?Object.assign({},c,{etapa:etapaAnteriorPipeline}):c; }));
     }
     // Revertir estatus de cotizacion
     if(estatusAnteriorCot){
@@ -8634,7 +8643,17 @@ export default function CLEO(props){
           return String(o.clienteId)===String(_clienteIdParaOp)&&o.estatus==='activa'&&
             (o.cotizacionId===null||String(o.cotizacionId)===String(_editIdParaOp||_cotIdParaOp));
         });
-        if(!op) return prevOps;
+        if(!op){
+          // Cliente nuevo sin oportunidad — crearla solo si no existe ninguna aún
+          var tieneOp=prevOps.some(function(o){ return String(o.clienteId)===String(_clienteIdParaOp); });
+          if(tieneOp) return prevOps;
+          return prevOps.concat([{
+            id:'op_cli_'+_clienteIdParaOp,clienteId:Number(_clienteIdParaOp),
+            cotizacionId:_cotIdParaOp,etapa:'Cotizacion enviada',estatus:'activa',
+            recordatorios:[],fechaCreacion:FECHA_HOY,fechaEtapa:FECHA_HOY,
+            ultimoContacto:FECHA_HOY,modo:'servicios',origen:'nueva_cot'
+          }]);
+        }
         var etapaOp=op.etapa;
         if(etapaOp!=='Ganado'&&etapaOp!=='Perdido'&&etapaOp!=='Negociacion') etapaOp='Cotizacion enviada';
         return prevOps.map(function(o){
@@ -8815,15 +8834,15 @@ export default function CLEO(props){
           if(clienteActualG&&clienteActualG.etapa!=="Ganado"){
             setEtapaAnteriorGanado(clienteActualG.etapa);
             setClientes(clientes.map(function(c){ return c.id===cot.clienteId?Object.assign({},c,{etapa:"Ganado",fechaEtapa:FECHA_HOY}):c; }));
-            if(multiOpEnabled){
-              var _cotIdGanado=cotId;
-              setOportunidades(function(prevOps){
-                return prevOps.map(function(o){
-                  return String(o.cotizacionId)===String(_cotIdGanado)&&o.estatus==='activa'
-                    ?Object.assign({},o,{etapa:'Ganado',estatus:'ganada',fechaCierre:FECHA_HOY}):o;
-                });
+          }
+          if(multiOpEnabled){
+            var _cotIdGanado=cotId;
+            setOportunidades(function(prevOps){
+              return prevOps.map(function(o){
+                return String(o.cotizacionId)===String(_cotIdGanado)&&o.estatus==='activa'
+                  ?Object.assign({},o,{etapa:'Ganado',estatus:'ganada',fechaCierre:FECHA_HOY}):o;
               });
-            }
+            });
           }
         }
         // BUG corregido: abrirConfiguracionPostVenta(cotId) vivía DENTRO
@@ -8873,31 +8892,6 @@ export default function CLEO(props){
   function onDragOver(ev,etapa){ ev.preventDefault(); setDragOver(etapa); }
   function onDrop(ev,etapa){ ev.preventDefault(); if(dragging){ if(multiOpEnabled&&String(dragging).indexOf("op_")===0) moverEtapaOp(dragging,etapa); else moverEtapa(dragging,etapa); } setDragging(null); setDragOver(null); }
   function onDragEnd(){ setDragging(null); setDragOver(null); }
-  function guardarMotivoPipeline(motivo){
-    if(sinConexionParaGuardar()){ alert(MSG_SIN_CONEXION_GUARDADO); return; }
-    setClientes(clientes.map(function(c){ return c.id===motivoPipelineId?cancelarRecordatoriosPipeline(Object.assign({},c,{motivoPerdida:motivo,etapa:"Perdido",fechaEtapa:FECHA_HOY})):c; }));
-    if(multiOpEnabled){
-      var _mpId=motivoPipelineId;
-      var _mpOpId=motivoPipelineOpId;
-      setOportunidades(function(prevOps){
-        return prevOps.map(function(o){
-          // Si viene de moverEtapaOp, cerrar solo esa oportunidad específica.
-          // Si viene de otro flujo (pipeline card sin opId), cerrar todas las activas del cliente.
-          var coincide=_mpOpId?o.id===_mpOpId:(String(o.clienteId)===String(_mpId)&&o.estatus==='activa');
-          return coincide?Object.assign({},o,{etapa:'Perdido',estatus:'perdida',motivoCierre:motivo,fechaCierre:FECHA_HOY}):o;
-        });
-      });
-      setMotivoPipelineOpId(null);
-    }
-    var cotPerdida=cotizaciones.find(function(c){ return c.clienteId===motivoPipelineId&&(c.estatus==="Pendiente"||c.estatus==="Aceptada")&&cotizacionVinculadaOportunidad(c); });
-    if(cotPerdida&&cotPerdida.estatus!=="Rechazada"){
-      registrarEvento("cotizacion_rechazada",{tipo_perfil:perfil.tipoPerfil||"",dispositivo:dispositivoActual()});
-    }
-    if(cotPerdida) setCotizaciones(cotizaciones.map(function(c){ return c.id===cotPerdida.id?Object.assign({},c,{estatus:"Rechazada",motivoPerdida:motivo,fechaRechazo:FECHA_HOY,fechaHoraRechazo:new Date().toISOString()}):c; }));
-    setEtapaAnteriorPipeline(null);
-    setEstatusAnteriorCot(null);
-    setConsejoMotivo(motivo);
-  }
   function guardarSeguimientoLost(){
     if(sinConexionParaGuardar()){ alert(MSG_SIN_CONEXION_GUARDADO); return; }
     if(!seguimientoLost.fecha) return;
@@ -10861,12 +10855,18 @@ export default function CLEO(props){
                 if(multiOpEnabled&&!esProductos){
                   // cols = array sintético de clientes desde oportunidades en esta etapa
                   var opsEnEtapa=oportunidades.filter(function(op){
-                    return op.modo==='servicios'&&op.etapa===etapa&&op.estatus==='activa'&&
-                      (etapa!=="Ganado"&&etapa!=="Perdido"||(function(){
-                        var cotAcepOp=op.cotizacionId&&cotizaciones.find(function(co){ return String(co.id)===String(op.cotizacionId)&&co.estatus==="Aceptada"; });
-                        if(cotAcepOp){ var ppO=cotAcepOp.pagos||[]; var tpO=ppO.reduce(function(s,p){ return s+Number(p.monto); },0); if(cotAcepOp.monto-tpO>0) return true; }
-                        return mostrarArchivados||diasDesde(op.fechaEtapa||op.fechaCreacion)<=7;
-                      })());
+                    if(op.modo!=='servicios'||op.etapa!==etapa) return false;
+                    if(etapa==='Ganado'){
+                      if(op.estatus!=='ganada'&&op.estatus!=='activa') return false;
+                      var cotAcepOp=op.cotizacionId&&cotizaciones.find(function(co){ return String(co.id)===String(op.cotizacionId)&&co.estatus==="Aceptada"; });
+                      if(cotAcepOp){ var ppO=cotAcepOp.pagos||[]; var tpO=ppO.reduce(function(s,p){ return s+Number(p.monto); },0); if(cotAcepOp.monto-tpO>0) return true; }
+                      return mostrarArchivados||diasDesde(op.fechaCierre||op.fechaEtapa||op.fechaCreacion)<=7;
+                    }
+                    if(etapa==='Perdido'){
+                      if(op.estatus!=='perdida'&&op.estatus!=='activa') return false;
+                      return mostrarArchivados||diasDesde(op.fechaCierre||op.fechaEtapa||op.fechaCreacion)<=7;
+                    }
+                    return op.estatus==='activa';
                   });
                   cols=opsEnEtapa.map(function(op){ return clientes.find(function(c){ return String(c.id)===String(op.clienteId); }); }).filter(Boolean);
                 } else {
@@ -10889,10 +10889,7 @@ export default function CLEO(props){
                 // Legacy: un item por cliente (o por cotización si tiene múltiples).
                 var pipelineItems=[];
                 if(multiOpEnabled&&!esProductos){
-                  var opsEnEtapaItems=oportunidades.filter(function(op){
-                    return op.modo==='servicios'&&op.etapa===etapa&&op.estatus==='activa'&&
-                      cols.some(function(c){ return String(c.id)===String(op.clienteId); });
-                  });
+                  var opsEnEtapaItems=opsEnEtapa;
                   opsEnEtapaItems.forEach(function(op){
                     var c=clientes.find(function(cl){ return String(cl.id)===String(op.clienteId); });
                     if(!c) return;
@@ -11637,6 +11634,7 @@ export default function CLEO(props){
               cotId:cot.id,
               monto:Number(pago.monto),
               fecha:pago.fecha||cot.fecha,
+              fechaHora:pago.fechaHoraPago||null,
               concepto:(pago.concepto||"Pago")+(cot.concepto?" · "+cot.concepto:""),
               productos:"",
             });
@@ -11656,6 +11654,7 @@ export default function CLEO(props){
                 origenLugar:v.etiqueta||"",
                 monto:Number(pago.monto),
                 fecha:pago.fecha||v.fecha,
+                fechaHora:pago.fechaHoraPago||null,
                 concepto:(pago.concepto||"Pago")+(v.concepto?" · "+v.concepto:""),
                 productos:"",
               });
@@ -11664,7 +11663,11 @@ export default function CLEO(props){
           }
         });
 
-        ingresos.sort(function(a,b){ return new Date(b.fecha)-new Date(a.fecha); });
+        ingresos.sort(function(a,b){
+          var ta=a.fechaHora?new Date(a.fechaHora).getTime():new Date((a.fecha||"")+"T12:00:00").getTime();
+          var tb=b.fechaHora?new Date(b.fechaHora).getTime():new Date((b.fecha||"")+"T12:00:00").getTime();
+          return tb-ta;
+        });
 
         var totalHoy=ingresos.filter(function(i){ return enPeriodo(i.fecha,"hoy"); }).reduce(function(s,i){ return s+i.monto; },0);
         var totalSemana=ingresos.filter(function(i){ return enPeriodo(i.fecha,"semana"); }).reduce(function(s,i){ return s+i.monto; },0);
@@ -19593,8 +19596,8 @@ export default function CLEO(props){
 
     // MODAL MOTIVO PERDIDA PIPELINE
     motivoPipelineId&&(function(){
-      var cl=clientes.find(function(c){ return c.id===motivoPipelineId; });
-      var cotCl=cotizaciones.filter(function(c){ return c.clienteId===motivoPipelineId; }).sort(function(a,b){ return new Date(b.fecha)-new Date(a.fecha); })[0];
+      var cl=clientes.find(function(c){ return Number(c.id)===Number(motivoPipelineId); });
+      var cotCl=cotizaciones.filter(function(c){ return Number(c.clienteId)===Number(motivoPipelineId); }).sort(function(a,b){ return new Date(b.fecha)-new Date(a.fecha); })[0];
 
       var MOTIVOS_V2=[
         {key:"Precio alto",   icono:"💸",label:"Le pareció caro",    msg:"Un no por precio casi siempre significa que no vio suficiente valor todavía. En unos meses su situación puede cambiar , o tú puedes tener un argumento mejor.",    seg:"60", sugerencia:"Hola [nombre], terminé un proyecto similar y quedó muy bien. Si en algún momento quieres ver cómo quedó, con gusto te lo muestro."},
@@ -19611,7 +19614,7 @@ export default function CLEO(props){
       function cerrarPerdida(){
         // Revertir etapa del pipeline
         if(motivoPipelineId&&etapaAnteriorPipeline){
-          setClientes(clientes.map(function(c){ return c.id===motivoPipelineId?(esOpoProductos?Object.assign({},c,{estadoProspecto:etapaAnteriorPipeline}):Object.assign({},c,{etapa:etapaAnteriorPipeline})):c; }));
+          setClientes(clientes.map(function(c){ return Number(c.id)===Number(motivoPipelineId)?(esOpoProductos?Object.assign({},c,{estadoProspecto:etapaAnteriorPipeline}):Object.assign({},c,{etapa:etapaAnteriorPipeline})):c; }));
         }
         // Revertir cotizacion
         if(estatusAnteriorCot){ setCotizaciones(cotizaciones.map(function(c){ return c.id===estatusAnteriorCot.cotId?Object.assign({},c,{estatus:estatusAnteriorCot.estatus}):c; })); setEstatusAnteriorCot(null); }
@@ -19686,29 +19689,40 @@ export default function CLEO(props){
               onClick:function(){
                 var fechaFinal=seguimientoLost.fecha||(function(){ var f=new Date(); f.setDate(f.getDate()+(Number(motivoData&&motivoData.seg)||30)); return fmtFechaLocal(f); })();
                 var targetId=motivoPipelineId;
+                var _lostOpId=motivoPipelineOpId;
+                var _motivoCierre=consejoMotivo==="Otro"?motivoLibre:consejoMotivo;
                 var mensajeSugeridoPerdida=(seguimientoLost.nota&&seguimientoLost.nota.trim())||(motivoData?motivoData.sugerencia.replace("[nombre]",cl?cl.nombre.split(" ")[0]:"[nombre]"):"");
                 if(esOpoProductos){
                   setClientes(clientes.map(function(c){
-                    if(c.id!==targetId) return c;
-                    var base=marcarOportunidadPerdidaProductos(c,consejoMotivo==="Otro"?motivoLibre:consejoMotivo);
+                    if(Number(c.id)!==Number(targetId)) return c;
+                    var base=marcarOportunidadPerdidaProductos(c,_motivoCierre);
                     return conRecordatoriosActualizados(base,recordatoriosDe(base).concat([{id:"r_"+Date.now(),fecha:fechaFinal,nota:mensajeSugeridoPerdida,esPersonalizada:!!(seguimientoLost.nota&&seguimientoLost.nota.trim()),origen:"cleo",categoria:"reactivacion"}]));
                   }));
                 } else {
                   // Solo la cotización vinculada a la oportunidad activa se
                   // rechaza aquí , una cotización "diferente" no debe
                   // marcarse Rechazada por perder ESTA oportunidad.
-                  var cotP=cotizaciones.find(function(c){ return c.clienteId===targetId&&(c.estatus==="Pendiente"||c.estatus==="Aceptada")&&cotizacionVinculadaOportunidad(c); });
+                  var cotP=cotizaciones.find(function(c){ return Number(c.clienteId)===Number(targetId)&&(c.estatus==="Pendiente"||c.estatus==="Aceptada")&&cotizacionVinculadaOportunidad(c); });
                   // cotizacion_rechazada , solo si esta cotización todavía
                   // NO estaba Rechazada (mismo criterio que
                   // guardarMotivoPipeline, evita contar dos veces el mismo
                   // rechazo si ya se marcó antes en este mismo viaje).
                   if(cotP&&cotP.estatus!=="Rechazada") registrarEvento("cotizacion_rechazada",{tipo_perfil:perfil.tipoPerfil||"",dispositivo:dispositivoActual()});
-                  if(cotP) setCotizaciones(cotizaciones.map(function(c){ return c.id===cotP.id?Object.assign({},c,{estatus:"Rechazada",motivoPerdida:consejoMotivo,fechaRechazo:FECHA_HOY,fechaHoraRechazo:new Date().toISOString()}):c; }));
+                  if(cotP) setCotizaciones(cotizaciones.map(function(c){ return c.id===cotP.id?Object.assign({},c,{estatus:"Rechazada",motivoPerdida:_motivoCierre,fechaRechazo:FECHA_HOY,fechaHoraRechazo:new Date().toISOString()}):c; }));
                   setClientes(clientes.map(function(c){
-                    if(c.id!==targetId) return c;
+                    if(Number(c.id)!==Number(targetId)) return c;
                     var limpio=cancelarRecordatoriosPipeline(c);
                     return conRecordatoriosActualizados(limpio,recordatoriosDe(limpio).concat([{id:"r_"+Date.now(),fecha:fechaFinal,nota:mensajeSugeridoPerdida,esPersonalizada:!!(seguimientoLost.nota&&seguimientoLost.nota.trim()),origen:"cleo",categoria:"reactivacion"}]));
                   }));
+                  if(multiOpEnabled){
+                    setOportunidades(function(prevOps){
+                      return prevOps.map(function(o){
+                        var coincide=_lostOpId?o.id===_lostOpId:(String(o.clienteId)===String(targetId)&&o.estatus==='activa');
+                        return coincide?Object.assign({},o,{etapa:'Perdido',estatus:'perdida',motivoCierre:_motivoCierre,fechaCierre:FECHA_HOY}):o;
+                      });
+                    });
+                    setMotivoPipelineOpId(null);
+                  }
                 }
                 setMotivoPipelineId(null); setConsejoMotivo(null); setMotivoLibre("");
                 setEtapaAnteriorPipeline(null); setSeguimientoLost({fecha:"",nota:""}); setEstatusAnteriorCot(null);
@@ -19720,24 +19734,35 @@ export default function CLEO(props){
                 var diasAuto=Number(motivoData?motivoData.seg:30)||30;
                 var fecha=new Date(); fecha.setDate(fecha.getDate()+diasAuto);
                 var targetId=motivoPipelineId;
+                var _lostOpId2=motivoPipelineOpId;
+                var _motivoCierre2=consejoMotivo==="Otro"?motivoLibre:consejoMotivo;
                 var mensajeSugeridoPerdida2=(seguimientoLost.nota&&seguimientoLost.nota.trim())||(motivoData?motivoData.sugerencia.replace("[nombre]",cl?cl.nombre.split(" ")[0]:"[nombre]"):"");
                 if(esOpoProductos){
                   setClientes(clientes.map(function(c){
-                    if(c.id!==targetId) return c;
-                    var base2=marcarOportunidadPerdidaProductos(c,consejoMotivo==="Otro"?motivoLibre:consejoMotivo);
+                    if(Number(c.id)!==Number(targetId)) return c;
+                    var base2=marcarOportunidadPerdidaProductos(c,_motivoCierre2);
                     return conRecordatoriosActualizados(base2,recordatoriosDe(base2).concat([{id:"r_"+Date.now(),fecha:fmtFechaLocal(fecha),nota:mensajeSugeridoPerdida2,esPersonalizada:!!(seguimientoLost.nota&&seguimientoLost.nota.trim()),origen:"cleo",categoria:"reactivacion"}]));
                   }));
                 } else {
-                  var cotP2=cotizaciones.find(function(c){ return c.clienteId===targetId&&(c.estatus==="Pendiente"||c.estatus==="Aceptada")&&cotizacionVinculadaOportunidad(c); });
+                  var cotP2=cotizaciones.find(function(c){ return Number(c.clienteId)===Number(targetId)&&(c.estatus==="Pendiente"||c.estatus==="Aceptada")&&cotizacionVinculadaOportunidad(c); });
                   // cotizacion_rechazada , mismo criterio exacto que el
                   // botón anterior ("Programar en X días").
                   if(cotP2&&cotP2.estatus!=="Rechazada") registrarEvento("cotizacion_rechazada",{tipo_perfil:perfil.tipoPerfil||"",dispositivo:dispositivoActual()});
-                  if(cotP2) setCotizaciones(cotizaciones.map(function(c){ return c.id===cotP2.id?Object.assign({},c,{estatus:"Rechazada",motivoPerdida:consejoMotivo,fechaRechazo:FECHA_HOY,fechaHoraRechazo:new Date().toISOString()}):c; }));
+                  if(cotP2) setCotizaciones(cotizaciones.map(function(c){ return c.id===cotP2.id?Object.assign({},c,{estatus:"Rechazada",motivoPerdida:_motivoCierre2,fechaRechazo:FECHA_HOY,fechaHoraRechazo:new Date().toISOString()}):c; }));
                   setClientes(clientes.map(function(c){
-                    if(c.id!==targetId) return c;
+                    if(Number(c.id)!==Number(targetId)) return c;
                     var limpio2=cancelarRecordatoriosPipeline(c);
                     return conRecordatoriosActualizados(limpio2,recordatoriosDe(limpio2).concat([{id:"r_"+Date.now(),fecha:fmtFechaLocal(fecha),nota:mensajeSugeridoPerdida2,esPersonalizada:!!(seguimientoLost.nota&&seguimientoLost.nota.trim()),origen:"cleo",categoria:"reactivacion"}]));
                   }));
+                  if(multiOpEnabled){
+                    setOportunidades(function(prevOps){
+                      return prevOps.map(function(o){
+                        var coincide=_lostOpId2?o.id===_lostOpId2:(String(o.clienteId)===String(targetId)&&o.estatus==='activa');
+                        return coincide?Object.assign({},o,{etapa:'Perdido',estatus:'perdida',motivoCierre:_motivoCierre2,fechaCierre:FECHA_HOY}):o;
+                      });
+                    });
+                    setMotivoPipelineOpId(null);
+                  }
                 }
                 setMotivoPipelineId(null); setConsejoMotivo(null); setMotivoLibre("");
                 setEtapaAnteriorPipeline(null); setSeguimientoLost({fecha:"",nota:""}); setEstatusAnteriorCot(null);
