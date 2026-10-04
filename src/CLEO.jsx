@@ -4440,6 +4440,64 @@ function clientesAOportunidades(clientes, tipoPerfil, opActuales) {
   });
 }
 
+// Transforma cleo_oportunidades al formato multi-oportunidad (agrega cotizacionId,
+// recordatorios, origen). Idempotente: una op con cotizacionId ya migradu se preserva.
+// Reglas de migración:
+//  - Cliente sin etapa ni cotización → no se crea oportunidad (no era comercial)
+//  - Cliente con cotizaciones múltiples activas → se reporta como excepción sin adivinar
+//  - Para clientes con etapaPendiente o solo etapa histórica → op sin cotizacionId
+// Retorna { oportunidades, excepcionesDobles }
+function migrarOportunidadesV1(clientes, cotizaciones, opActuales) {
+  var opPorId = {};
+  (opActuales||[]).forEach(function(op){ if(op&&op.id) opPorId[op.id]=op; });
+  var resultado = [];
+  var excepcionesDobles = [];
+  (clientes||[]).forEach(function(c){
+    var opId = 'op_cli_'+c.id;
+    var opExistente = opPorId[opId];
+    if(opExistente && 'cotizacionId' in opExistente){ resultado.push(opExistente); return; }
+    var tieneEtapa = !!(c.etapa&&c.etapa!=='');
+    var todasLasCots = (cotizaciones||[]).filter(function(cot){ return String(cot.clienteId)===String(c.id); });
+    if(!tieneEtapa && todasLasCots.length===0) return;
+    var cotsActivas = todasLasCots.filter(function(cot){
+      return cot.estatus==='Pendiente'||cot.estatus==='Aceptada';
+    }).sort(function(a,b){ return new Date(b.fecha)-new Date(a.fecha); });
+    if(cotsActivas.length>1){
+      excepcionesDobles.push({clienteId:c.id,nombre:c.nombre,count:cotsActivas.length,ids:cotsActivas.map(function(co){ return co.id; })});
+    }
+    var estatus, etapa;
+    if(c.archivado){ estatus='perdida'; etapa='Perdido'; }
+    else if(c.etapa==='Ganado'){ estatus='ganada'; etapa='Ganado'; }
+    else if(c.etapa==='Perdido'){ estatus='perdida'; etapa='Perdido'; }
+    else { estatus='activa'; etapa=c.etapa||'Nuevo contacto'; }
+    var recsPipeline=(c.recordatorios||[]).filter(function(r){ return r&&r.categoria==='pipeline'; });
+    resultado.push({
+      id: opId,
+      clienteId: c.id,
+      cotizacionId: cotsActivas[0]?cotsActivas[0].id:null,
+      etapa: etapa,
+      estatus: estatus,
+      recordatorios: recsPipeline,
+      fechaCreacion: c.fecha||null,
+      fechaEtapa: c.fechaEtapa||null,
+      ultimoContacto: c.ultimoContacto||null,
+      fechaCierre: (estatus==='ganada'||estatus==='perdida')?(c.fechaEtapa||null):null,
+      motivoCierre: c.motivoPerdida||null,
+      titulo: c.servicioInteres||'',
+      modo: 'servicios',
+      origen: 'migrada',
+      origenMigracion: (opExistente&&opExistente.origenMigracion)||'migrada_vinculada'
+    });
+  });
+  // Preservar oportunidades nuevas (multi) de clientes no encontrados en el array base
+  (opActuales||[]).forEach(function(op){
+    if(!op||!op.id) return;
+    var yaIncluido = resultado.some(function(r){ return r.id===op.id; });
+    if(!yaIncluido && 'cotizacionId' in op) resultado.push(op);
+  });
+  return {oportunidades: resultado, excepcionesDobles: excepcionesDobles};
+}
+
 var CLEO_STORAGE_KEYS=["cleo_clientes","cleo_cots","cleo_ventas","cleo_servicios","cleo_pedidos","cleo_productos","cleo_productos_cat","cleo_perfil","cleo_tipo_perfil","cleo_alertas_cerradas","cleo_etapas_vistas","cleo_data_version","cleo_streak_accion_prod","cleo_streak_accion_serv","cleo_oportunidades","cleo_tombstones","cleo_materiales_cat"];
 // Umbral de AVISO , no bloquea nada, solo informa con margen antes de que el
 // guardado empiece a fallar de verdad (el límite práctico de localStorage
@@ -4659,6 +4717,8 @@ export default function CLEO(props){
   }
   function lsGet(key,fallback){ try{ var v=localStorage.getItem(key); return v?JSON.parse(v):fallback; }catch(e){ return fallback; } }
   var s1=useState(function(){ return lsGet("cleo_clientes",[]); }); var clientes=s1[0]; var setClientesRaw=s1[1];
+  var sOps=useState(function(){ return lsGet("cleo_oportunidades",[]); }); var oportunidades=sOps[0]; var setOportunidadesRaw=sOps[1];
+  var sMultiOp=useState(function(){ try{ return localStorage.getItem("cleo_multiop_enabled")==="true"; }catch(e){ return false; } }); var multiOpEnabled=sMultiOp[0]; var setMultiOpEnabledState=sMultiOp[1];
   var s2=useState(function(){ return lsGet("cleo_cots",[]); }); var cotizaciones=s2[0]; var setCotizacionesRaw=s2[1];
   var s3=useState(function(){ return lsGet("cleo_perfil",perfilDemo); }); var perfil=s3[0]; var setPerfilRaw=s3[1];
   var s4=useState(function(){ return lsGet("cleo_servicios",[]); }); var servicios=s4[0]; var setServiciosRaw=s4[1];
@@ -6579,14 +6639,10 @@ export default function CLEO(props){
     resolviendoVincularOportunidadRef.current=true;
     setTimeout(function(){ resolviendoVincularOportunidadRef.current=false; },300);
     setModalVincularOportunidadCot(null);
-    // Antes de guardar, se pregunta explícitamente si esta cotización
-    // independiente necesita su propio seguimiento , nunca se infiere de
-    // vigencia (ver guardarCot: solo lee fcCot._seguimientoFechaElegida).
-    // Se conserva el modal original completo (modalVincularOriginal) para
-    // poder restaurarlo tal cual si la persona cancela este paso (ver
-    // cancelarSeguimientoCotDif) , nada de lo ya capturado se descarta.
-    setSeguimientoCotDifFechaCustom("");
-    setModalSeguimientoCotDif({fcCotBase:modal.fcCotBase,modalVincularOriginal:modal});
+    // "No, es diferente": crea una oportunidad nueva con flujo normal (sin
+    // pedir seguimiento extra — la primera cotización tampoco lo pide).
+    // _esNuevaOportunidad indica a guardarCot que cree una op separada.
+    guardarCot(Object.assign({},modal.fcCotBase,{_esNuevaOportunidad:true,_vinculadaOportunidadActual:true}));
   }
   // "¿Cuándo quieres preguntarle si pudo revisarla?", las 3 salidas que
   // SÍ guardan (elegir un plazo/fecha, o "Sin seguimiento") reanudan
@@ -6731,22 +6787,21 @@ export default function CLEO(props){
 
   function setClientes(v){
     crearSetterPersistente(setClientesRaw,"cleo_clientes",writeGuard)(v);
-    // Mantener cleo_oportunidades sincronizado. Si la escritura anterior falló
-    // (pestaña stale, cuota), el guard vuelve a rechazar esta también — el
-    // error se silencia porque la alerta ya se mostró arriba.
-    try{
-      writeGuard.write("cleo_oportunidades",
-        JSON.stringify(clientesAOportunidades(lsGet("cleo_clientes",[]),lsGet("cleo_tipo_perfil",null),lsGet("cleo_oportunidades",[]))));
-    }catch(e){}
+    // Cuando multiOp está activo, oportunidades se gestionan de forma independiente.
+    // Solo regenerar la clave si el flag está desactivado (comportamiento legacy).
+    if(!multiOpEnabled){
+      try{
+        writeGuard.write("cleo_oportunidades",
+          JSON.stringify(clientesAOportunidades(lsGet("cleo_clientes",[]),lsGet("cleo_tipo_perfil",null),lsGet("cleo_oportunidades",[]))));
+      }catch(e){}
+    }
   }
-  // Migración idempotente: limpia recordatorios de pipeline que quedaron
-  // obsoletos en datos YA GUARDADOS de antes de que existiera esta
-  // corrección (clientes que ya estaban Ganado/Perdido/Convertido con un
-  // recordatorio automático de una etapa anterior). Se ejecuta una sola vez
-  // al montar , si ningún cliente tenía nada que limpiar, nunca se llama
-  // setClientes (cancelarRecordatoriosPipeline devuelve el MISMO objeto sin
-  // cambios cuando no hay nada que quitar, así que la comparación de
-  // referencia detecta con precisión si hubo un cambio real).
+  function setOportunidades(v){ crearSetterPersistente(setOportunidadesRaw,"cleo_oportunidades",writeGuard)(v); }
+  function activarMultiOp(enabled){
+    try{ localStorage.setItem("cleo_multiop_enabled",enabled?"true":"false"); }catch(e){}
+    setMultiOpEnabledState(enabled);
+  }
+  // Migración idempotente: limpia recordatorios de pipeline obsoletos
   useEffect(function(){
     var huboCambioReal=false;
     var clientesLimpios=clientes.map(function(c){
@@ -6755,6 +6810,27 @@ export default function CLEO(props){
       return limpio;
     });
     if(huboCambioReal) setClientes(clientesLimpios);
+  },[]);
+  // Migración a multi-oportunidad: transforma cleo_oportunidades al nuevo formato.
+  // Se ejecuta al montar (después de que pullUserData ya escribió en localStorage).
+  // Idempotente: ops con cotizacionId se preservan intactas. No toca c.recordatorios
+  // hasta que el flag esté confirmado activo. Reporta excepciones sin adivinar vínculos.
+  useEffect(function(){
+    if(esProductos) return;
+    var opsActuales = lsGet("cleo_oportunidades",[]);
+    var todasMigradas = opsActuales.length>0 && opsActuales.every(function(op){ return op && 'cotizacionId' in op; });
+    var clientesActuales = lsGet("cleo_clientes",[]);
+    var cotsActuales = lsGet("cleo_cots",[]);
+    var res = migrarOportunidadesV1(clientesActuales, cotsActuales, opsActuales);
+    if(res.excepcionesDobles.length>0){
+      console.warn("[CLEO multiOp] Clientes con múltiples cotizaciones activas (no esperado en producción):", res.excepcionesDobles);
+    }
+    if(!todasMigradas || res.oportunidades.length!==opsActuales.length){
+      try{
+        writeGuard.write("cleo_oportunidades", JSON.stringify(res.oportunidades));
+        setOportunidadesRaw(res.oportunidades);
+      }catch(e){ console.error("[CLEO multiOp] Error al guardar migración:", e); }
+    }
   },[]);
   function setCotizaciones(v){ crearSetterPersistente(setCotizacionesRaw,"cleo_cots",writeGuard)(v); }
   // Actualiza SOLO el metadato ligero de archivoAdjunto de una cotización
@@ -7975,6 +8051,35 @@ export default function CLEO(props){
     if(info&&!yaVio){ var nv2=etapasVistas.concat([nueva]); setEtapasVistas(nv2); try{ localStorage.setItem("cleo_etapas_vistas",JSON.stringify(nv2)); }catch(e){} }
     setClientes(clientes.map(function(c){ return c.id===id?Object.assign({},c,{etapa:nueva,fechaEtapa:FECHA_HOY,ultimoContacto:FECHA_HOY}):c; }));
   }
+  // moverEtapaOp: versión multi-oportunidad de moverEtapa. Actualiza op.etapa
+  // en lugar de (o además de) c.etapa. Para Ganado/Perdido delega en moverEtapa
+  // para manejar los modales existentes y además actualiza la op.
+  function moverEtapaOp(opId, nueva){
+    var op = oportunidades.find(function(o){ return o.id===opId; });
+    if(!op) return;
+    var clienteId = op.clienteId;
+    if(nueva==="Ganado"||nueva==="Perdido"){
+      moverEtapa(clienteId, nueva);
+      setOportunidades(oportunidades.map(function(o){
+        return o.id===opId?Object.assign({},o,{etapa:nueva,fechaEtapa:FECHA_HOY}):o;
+      }));
+      return;
+    }
+    var info=ETAPA_INFO[nueva];
+    var tieneCot=op.cotizacionId&&cotizaciones.some(function(c){
+      return String(c.id)===String(op.cotizacionId)&&(c.estatus==="Pendiente"||c.estatus==="Aceptada");
+    });
+    var yaVio=etapasVistas.indexOf(nueva)>=0;
+    if(info&&info.requiereCot&&!tieneCot){
+      if(!yaVio){ var nv=etapasVistas.concat([nueva]); setEtapasVistas(nv); try{ localStorage.setItem("cleo_etapas_vistas",JSON.stringify(nv)); }catch(e){} }
+      setModalEtapa({clienteId:clienteId,etapa:nueva,info:info,esPrimeraVez:!yaVio});
+      return;
+    }
+    if(info&&!yaVio){ var nv2=etapasVistas.concat([nueva]); setEtapasVistas(nv2); try{ localStorage.setItem("cleo_etapas_vistas",JSON.stringify(nv2)); }catch(e){} }
+    setOportunidades(oportunidades.map(function(o){
+      return o.id===opId?Object.assign({},o,{etapa:nueva,fechaEtapa:FECHA_HOY,ultimoContacto:FECHA_HOY}):o;
+    }));
+  }
   function cancelarGanado(){
     var clienteId2=cotAceptadaId&&String(cotAceptadaId).startsWith("ganado_")?Number(String(cotAceptadaId).replace("ganado_","")):null;
     // Revertir etapa del pipeline
@@ -8221,7 +8326,9 @@ export default function CLEO(props){
     // de crear una nueva. Evita acumular dos cotizaciones para la misma
     // oportunidad cuando el usuario confirma que es la misma.
     var _effectiveEditCotId=editCotId;
-    if(!_effectiveEditCotId&&fcCot._vinculadaOportunidadActual===true&&fcCot.clienteId){
+    // _esNuevaOportunidad indica que se crea una cotización para una NUEVA
+    // oportunidad separada — nunca se reutiliza la pendiente existente.
+    if(!_effectiveEditCotId&&fcCot._vinculadaOportunidadActual===true&&!fcCot._esNuevaOportunidad&&fcCot.clienteId){
       var _cotMismaOp=cotizaciones.filter(function(c){
         return String(c.clienteId)===String(fcCot.clienteId)&&c.estatus==="Pendiente"&&cotizacionVinculadaOportunidad(c);
       }).sort(function(a,b){ return new Date(b.fecha)-new Date(a.fecha); })[0];
@@ -8329,6 +8436,29 @@ export default function CLEO(props){
       if(!esProductos&&esClienteGenuinoNuevoCot){
         registrarEvento("oportunidad_creada",{tipo_perfil:perfil.tipoPerfil||"",origen:"cliente_nuevo",dispositivo:dispositivoActual()});
       }
+      // Nueva oportunidad independiente (diferente): crear entrada en oportunidades
+      // con la cotización recién creada. Solo en Servicios con multiOp activo.
+      if(!esProductos&&fcCot._esNuevaOportunidad&&multiOpEnabled&&fcCot.clienteId){
+        var _nuevaOpId='op_'+Date.now();
+        var _nuevaOpEntry={
+          id: _nuevaOpId,
+          clienteId: Number(fcCot.clienteId),
+          cotizacionId: cotIdFinal,
+          etapa: 'Cotizacion enviada',
+          estatus: 'activa',
+          recordatorios: [],
+          fechaCreacion: FECHA_HOY,
+          fechaEtapa: FECHA_HOY,
+          ultimoContacto: FECHA_HOY,
+          fechaCierre: null,
+          motivoCierre: null,
+          titulo: resumenFinal||'',
+          modo: 'servicios',
+          origen: 'nueva',
+          origenMigracion: 'nueva'
+        };
+        setOportunidades(function(prevOps){ return prevOps.concat([_nuevaOpEntry]); });
+      }
       // Si esta cotización nace desde el botón "Cotización" de una tarjeta
       // de pedido (pedido sin cotización vinculada todavía), se estampa el
       // vínculo explícito en ese pedido apenas se crea la cotización nueva.
@@ -8383,13 +8513,39 @@ export default function CLEO(props){
         });
       });
     }
-    // Aplicar etapa pendiente solo si se guardo la cotizacion , y solo si
-    // esa cotización sí quedó vinculada a la oportunidad activa. Si la
-    // persona eligió "No, es una cotización diferente", esta cotización no
-    // debe forzar el avance de etapa de la oportunidad activa.
+    // Sincronizar oportunidad principal cuando se crea/edita una cotización
+    // vinculada (no nueva oportunidad separada). Usa updater funcional para
+    // no sobrescribir cambios del bloque de etapaPendiente si ambos corren.
+    if(multiOpEnabled&&!esProductos&&!fcCot._esNuevaOportunidad&&fcCot.clienteId){
+      var _cotIdParaOp=cotIdFinal;
+      var _editIdParaOp=_effectiveEditCotId;
+      var _clienteIdParaOp=fcCot.clienteId;
+      setOportunidades(function(prevOps){
+        var op=prevOps.find(function(o){
+          return String(o.clienteId)===String(_clienteIdParaOp)&&o.estatus==='activa'&&
+            (o.cotizacionId===null||String(o.cotizacionId)===String(_editIdParaOp||_cotIdParaOp));
+        });
+        if(!op) return prevOps;
+        var etapaOp=op.etapa;
+        if(etapaOp!=='Ganado'&&etapaOp!=='Perdido'&&etapaOp!=='Negociacion') etapaOp='Cotizacion enviada';
+        return prevOps.map(function(o){
+          return o.id===op.id?Object.assign({},o,{cotizacionId:_cotIdParaOp,etapa:etapaOp,fechaEtapa:FECHA_HOY}):o;
+        });
+      });
+    }
+    // Aplicar etapa pendiente solo si se guardó la cotización y estaba vinculada.
     if(etapaPendiente&&Number(fcCot.clienteId)===etapaPendiente.clienteId){
       if(fcCot._vinculadaOportunidadActual!==false&&!fcCot._esNuevaOportunidad){
         setClientes(clientes.map(function(c){ return c.id===etapaPendiente.clienteId?Object.assign({},c,{etapa:etapaPendiente.etapa,fechaEtapa:FECHA_HOY}):c; }));
+        if(multiOpEnabled){
+          var _epCliId=etapaPendiente.clienteId; var _epEtapa=etapaPendiente.etapa;
+          setOportunidades(function(prevOps){
+            return prevOps.map(function(o){
+              return String(o.clienteId)===String(_epCliId)&&o.estatus==='activa'
+                ?Object.assign({},o,{etapa:_epEtapa,fechaEtapa:FECHA_HOY}):o;
+            });
+          });
+        }
       }
       setEtapaPendiente(null);
     }
@@ -8597,7 +8753,7 @@ export default function CLEO(props){
   function eliminarServicio(id){ setCatActivo(catActivo.filter(function(s){ return s.id!==id; })); }
   function onDragStart(ev,id){ setDragging(id); ev.dataTransfer.effectAllowed="move"; }
   function onDragOver(ev,etapa){ ev.preventDefault(); setDragOver(etapa); }
-  function onDrop(ev,etapa){ ev.preventDefault(); if(dragging) moverEtapa(dragging,etapa); setDragging(null); setDragOver(null); }
+  function onDrop(ev,etapa){ ev.preventDefault(); if(dragging){ if(multiOpEnabled&&String(dragging).indexOf("op_")===0) moverEtapaOp(dragging,etapa); else moverEtapa(dragging,etapa); } setDragging(null); setDragOver(null); }
   function onDragEnd(){ setDragging(null); setDragOver(null); }
   function guardarMotivoPipeline(motivo){
     if(sinConexionParaGuardar()){ alert(MSG_SIN_CONEXION_GUARDADO); return; }
@@ -10576,38 +10732,64 @@ export default function CLEO(props){
           e("div",{style:{overflowX:"auto",paddingBottom:8,marginLeft:isMobile?-16:0,marginRight:isMobile?-16:0}},
             e("div",{style:{display:"flex",gap:12,minWidth:isMobile?"unset":"max-content",width:"100%"}},
               ETAPAS.map(function(etapa){
-                var cols=clientesFiltrados.filter(function(c){
-                  if(c.etapa!==etapa) return false;
-                  if(etapa!=="Ganado"&&etapa!=="Perdido") return true;
-                  if(mostrarArchivados) return true;
-                  // Solo la cotización vinculada a la oportunidad activa
-                  // (o cualquiera en Productos, que no usa este campo)
-                  // decide si la tarjeta se mantiene visible en Ganado/Perdido.
-                  var cotC=cotizaciones.find(function(cot){ return Number(cot.clienteId)===Number(c.id)&&cot.estatus==="Aceptada"&&(esProductos||cotizacionVinculadaOportunidad(cot)); });
-                  if(cotC){
-                    var pagosC=cotC.pagos||[];
-                    var totalPagadoC=pagosC.reduce(function(s,p){ return s+Number(p.monto); },0);
-                    if(cotC.monto-totalPagadoC>0) return true;
-                  }
-                  return diasDesde(c.fechaEtapa||c.fecha)<=7;
-                });
+                // Con multiOp activo (Servicios): cols y pipelineItems vienen
+                // de oportunidades, no de c.etapa. Sin él: comportamiento legacy.
+                var cols;
+                if(multiOpEnabled&&!esProductos){
+                  // cols = array sintético de clientes desde oportunidades en esta etapa
+                  var opsEnEtapa=oportunidades.filter(function(op){
+                    return op.modo==='servicios'&&op.etapa===etapa&&op.estatus==='activa'&&
+                      (etapa!=="Ganado"&&etapa!=="Perdido"||(function(){
+                        var cotAcepOp=op.cotizacionId&&cotizaciones.find(function(co){ return String(co.id)===String(op.cotizacionId)&&co.estatus==="Aceptada"; });
+                        if(cotAcepOp){ var ppO=cotAcepOp.pagos||[]; var tpO=ppO.reduce(function(s,p){ return s+Number(p.monto); },0); if(cotAcepOp.monto-tpO>0) return true; }
+                        return mostrarArchivados||diasDesde(op.fechaEtapa||op.fechaCreacion)<=7;
+                      })());
+                  });
+                  cols=opsEnEtapa.map(function(op){ return clientes.find(function(c){ return String(c.id)===String(op.clienteId); }); }).filter(Boolean);
+                } else {
+                  cols=clientesFiltrados.filter(function(c){
+                    if(c.etapa!==etapa) return false;
+                    if(etapa!=="Ganado"&&etapa!=="Perdido") return true;
+                    if(mostrarArchivados) return true;
+                    var cotC=cotizaciones.find(function(cot){ return Number(cot.clienteId)===Number(c.id)&&cot.estatus==="Aceptada"&&(esProductos||cotizacionVinculadaOportunidad(cot)); });
+                    if(cotC){
+                      var pagosC=cotC.pagos||[];
+                      var totalPagadoC=pagosC.reduce(function(s,p){ return s+Number(p.monto); },0);
+                      if(cotC.monto-totalPagadoC>0) return true;
+                    }
+                    return diasDesde(c.fechaEtapa||c.fecha)<=7;
+                  });
+                }
                 var ec=ETAPA_COLOR[etapa]||C.purple;
                 var isDragOver=dragOver===etapa;
-                // Para Servicios, expandir clientes con múltiples cotizaciones
-                // activas en ítems separados (un item por cotización).
+                // Con multiOp: un item por oportunidad (usa op.id como key y drag id).
+                // Legacy: un item por cliente (o por cotización si tiene múltiples).
                 var pipelineItems=[];
-                cols.forEach(function(c){
-                  if(!esProductos){
-                    var cotsActivas=cotizaciones.filter(function(cot){
-                      return Number(cot.clienteId)===Number(c.id)&&(cot.estatus==="Pendiente"||cot.estatus==="Aceptada");
-                    }).sort(function(a,b){ return new Date(b.fecha)-new Date(a.fecha); });
-                    if(cotsActivas.length>1){
-                      cotsActivas.forEach(function(cot){ pipelineItems.push({c:c,cotFija:cot,key:String(c.id)+"_cot_"+String(cot.id)}); });
-                      return;
+                if(multiOpEnabled&&!esProductos){
+                  var opsEnEtapaItems=oportunidades.filter(function(op){
+                    return op.modo==='servicios'&&op.etapa===etapa&&op.estatus==='activa'&&
+                      cols.some(function(c){ return String(c.id)===String(op.clienteId); });
+                  });
+                  opsEnEtapaItems.forEach(function(op){
+                    var c=clientes.find(function(cl){ return String(cl.id)===String(op.clienteId); });
+                    if(!c) return;
+                    var cotFija=op.cotizacionId?cotizaciones.find(function(co){ return String(co.id)===String(op.cotizacionId); }):null;
+                    pipelineItems.push({c:c,cotFija:cotFija||null,opId:op.id,key:op.id});
+                  });
+                } else {
+                  cols.forEach(function(c){
+                    if(!esProductos){
+                      var cotsActivas=cotizaciones.filter(function(cot){
+                        return Number(cot.clienteId)===Number(c.id)&&(cot.estatus==="Pendiente"||cot.estatus==="Aceptada");
+                      }).sort(function(a,b){ return new Date(b.fecha)-new Date(a.fecha); });
+                      if(cotsActivas.length>1){
+                        cotsActivas.forEach(function(cot){ pipelineItems.push({c:c,cotFija:cot,opId:'op_cli_'+c.id,key:String(c.id)+"_cot_"+String(cot.id)}); });
+                        return;
+                      }
                     }
-                  }
-                  pipelineItems.push({c:c,cotFija:null,key:String(c.id)});
-                });
+                    pipelineItems.push({c:c,cotFija:null,opId:'op_cli_'+c.id,key:String(c.id)});
+                  });
+                }
                 var totalCol=pipelineItems.reduce(function(s,item){
                   var cot=item.cotFija||cotizaciones.find(function(q){ return Number(q.clienteId)===Number(item.c.id)&&(q.estatus==="Pendiente"||q.estatus==="Aceptada")&&(esProductos||cotizacionVinculadaOportunidad(q)); });
                   return s+(cot?cot.monto:0);
@@ -10670,16 +10852,17 @@ export default function CLEO(props){
                       var saldoReal=cot?cot.monto-totalPagado:0;
                       var urlContactar=contactUrl(c,"Hola "+c.nombre.split(" ")[0]+", quería darle seguimiento"+(cotPend?" a la cotización de "+cotPend.concepto:"")+".");
                       var borderColor=esUrgente?C.red:ec;
+                      var _dragId=multiOpEnabled&&!esProductos?item.opId:c.id;
                       return e("div",{key:item.key,
                         draggable:true,
-                        onDragStart:function(ev){ onDragStart(ev,c.id); },
+                        onDragStart:function(ev){ onDragStart(ev,_dragId); },
                         onDragEnd:onDragEnd,
                         style:{
                           background:C.surface,
                           borderRadius:12,
                           padding:"12px 14px",
                           cursor:"grab",
-                          opacity:dragging===c.id?0.4:1,
+                          opacity:dragging===_dragId?0.4:1,
                           border:"1.5px solid "+(esUrgente?C.red:ec)+"45",
                           boxShadow:"0 1px 4px rgba(0,0,0,0.05)",
                           boxSizing:"border-box",minHeight:135,
