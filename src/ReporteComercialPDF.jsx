@@ -343,26 +343,21 @@ function DocumentoReporteComercial({ datos }) {
 
   // "Productos más vendidos en este periodo" , SOLO Productos (s6 viene
   // undefined en Servicios, nunca se renderiza nada de esta sección ahí).
-  // Se muestran TODAS las filas (sin límite de 5 ni "Y X productos más") ,
-  // ya vienen ordenadas desc por unidades (empate: monto) desde
-  // obtenerProductosMasVendidos/construirDatosReporteComercial. Para que la
-  // tabla pueda continuar en páginas siguientes sin cortar una fila a la
-  // mitad y repitiendo el encabezado de columnas, se divide en bloques de
-  // FILAS_PROD_POR_BLOQUE filas , cada bloque (encabezado + sus filas) es
-  // un único View con wrap={false}: si no cabe en el espacio restante de la
-  // página actual, react-pdf lo mueve completo a la siguiente página (nunca
-  // lo parte), lo que en la práctica repite el encabezado cada vez que la
-  // tabla salta de página. El número de filas por bloque es una estimación
-  // conservadora (fila ~24pt, encabezado ~20pt) con margen amplio frente al
-  // alto útil de una página carta (~680pt), para no arriesgar overflow ni
-  // siquiera con nombres de producto que ocupen dos líneas.
-  var FILAS_PROD_POR_BLOQUE = 20;
+  // Se muestran TODAS las filas sin límite, ya vienen ordenadas desc por
+  // unidades (empate: monto). Estrategia de paginación:
+  //   · El bloque ancla (título + encabezado de tabla + primeras ANCHOR_ROWS
+  //     filas) es un único View wrap={false}: viaja junto para que el título
+  //     nunca quede huérfano en la página anterior mientras la tabla salta.
+  //   · El resto de las filas se renderizan individualmente con wrap={false}:
+  //     cada fila no se parte a la mitad, pero no fuerzan saltos innecesarios.
+  //   · No hay chunks con encabezado repetido: cuando la tabla ocupa varias
+  //     páginas las filas continúan sin repetir el header, lo cual es más
+  //     limpio visualmente que un header duplicado mid-page.
+  var ANCHOR_ROWS = 3;
   var filasProdTodas = esProd && s6 ? s6.filas : [];
   var hayVentasProdTop = filasProdTodas.length > 0;
-  var chunksProdTop = [];
-  for (var _i = 0; _i < filasProdTodas.length; _i += FILAS_PROD_POR_BLOQUE) {
-    chunksProdTop.push(filasProdTodas.slice(_i, _i + FILAS_PROD_POR_BLOQUE));
-  }
+  var filasProdAncla = filasProdTodas.slice(0, ANCHOR_ROWS);
+  var filasProdResto = filasProdTodas.slice(ANCHOR_ROWS);
 
   return (
     <Document>
@@ -564,38 +559,57 @@ function DocumentoReporteComercial({ datos }) {
 
         {/* ── Sección 6: "Productos más vendidos en este periodo" ── SOLO
              Productos. En Servicios, esProd es false y este bloque entero
-             no se monta , el reporte de Servicios queda exactamente igual
-             que antes. */}
+             no se monta. Ver notas de paginación en filasProdAncla/Resto. */}
         {esProd ? (
           <View style={s.seccionBlock}>
-            <View style={s.seccionTituloFila} wrap={false}>
-              <Text style={s.seccionTitulo}>Productos vendidos en este periodo</Text>
-              <View style={s.seccionRegla} />
-            </View>
             {!hayVentasProdTop ? (
-              <Text style={s.prodVacioTexto}>Aún no registraste productos vendidos en este periodo.</Text>
+              <View wrap={false}>
+                <View style={s.seccionTituloFila}>
+                  <Text style={s.seccionTitulo}>Productos vendidos en este periodo</Text>
+                  <View style={s.seccionRegla} />
+                </View>
+                <Text style={s.prodVacioTexto}>Aún no registraste productos vendidos en este periodo.</Text>
+              </View>
             ) : (
-              chunksProdTop.map(function (chunk, ci) {
-                return (
-                  <View key={ci} wrap={false}>
-                    <View style={s.prodTablaHead}>
-                      <Text style={[s.prodTablaHeadTxt, { flex: 2.2 }]}>Producto</Text>
-                      <Text style={[s.prodTablaHeadTxt, { flex: 1, textAlign: "center" }]}>Unidades vendidas</Text>
-                      <Text style={[s.prodTablaHeadTxt, { flex: 1, textAlign: "right" }]}>Monto vendido</Text>
-                    </View>
-                    {chunk.map(function (p, i) {
-                      var esUltimaGlobal = ci === chunksProdTop.length - 1 && i === chunk.length - 1;
-                      return (
-                        <View style={esUltimaGlobal ? s.prodRowUltima : s.prodRow} key={i} wrap={false}>
-                          <Text style={[s.prodColNombre, p.sinDesglose ? s.prodColNombreSinDesglose : null]}>{p.nombre}</Text>
-                          <Text style={s.prodColUnidades}>{p.sinDesglose ? "—" : p.unidades}</Text>
-                          <Text style={s.prodColMonto}>{formatearMonto(p.monto)}</Text>
-                        </View>
-                      );
-                    })}
+              <>
+                {/* Bloque ancla: título + encabezado + primeras ANCHOR_ROWS filas
+                    juntos en un wrap={false} — ninguna de estas partes queda
+                    huérfana en la página anterior. */}
+                <View wrap={false}>
+                  <View style={s.seccionTituloFila}>
+                    <Text style={s.seccionTitulo}>Productos vendidos en este periodo</Text>
+                    <View style={s.seccionRegla} />
                   </View>
-                );
-              })
+                  <View style={s.prodTablaHead}>
+                    <Text style={[s.prodTablaHeadTxt, { flex: 2.2 }]}>Producto</Text>
+                    <Text style={[s.prodTablaHeadTxt, { flex: 1, textAlign: "center" }]}>Unidades vendidas</Text>
+                    <Text style={[s.prodTablaHeadTxt, { flex: 1, textAlign: "right" }]}>Monto vendido</Text>
+                  </View>
+                  {filasProdAncla.map(function (p, i) {
+                    var esUltima = filasProdResto.length === 0 && i === filasProdAncla.length - 1;
+                    return (
+                      <View style={esUltima ? s.prodRowUltima : s.prodRow} key={i} wrap={false}>
+                        <Text style={[s.prodColNombre, p.sinDesglose ? s.prodColNombreSinDesglose : null]}>{p.nombre}</Text>
+                        <Text style={s.prodColUnidades}>{p.sinDesglose ? "—" : p.unidades}</Text>
+                        <Text style={s.prodColMonto}>{formatearMonto(p.monto)}</Text>
+                      </View>
+                    );
+                  })}
+                </View>
+                {/* Filas restantes: cada una es su propio wrap={false} para no
+                    partirse a la mitad en un salto de página, pero no fuerzan
+                    un salto de página completo ni repiten el encabezado. */}
+                {filasProdResto.map(function (p, i) {
+                  var esUltima = i === filasProdResto.length - 1;
+                  return (
+                    <View style={esUltima ? s.prodRowUltima : s.prodRow} key={i} wrap={false}>
+                      <Text style={[s.prodColNombre, p.sinDesglose ? s.prodColNombreSinDesglose : null]}>{p.nombre}</Text>
+                      <Text style={s.prodColUnidades}>{p.sinDesglose ? "—" : p.unidades}</Text>
+                      <Text style={s.prodColMonto}>{formatearMonto(p.monto)}</Text>
+                    </View>
+                  );
+                })}
+              </>
             )}
           </View>
         ) : null}

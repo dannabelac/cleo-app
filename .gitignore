@@ -25,3 +25,13 @@ pnpm-debug.log*
 # Sistema
 .DS_Store
 Thumbs.db
+
+# Herramientas de desarrollo (no son parte del proyecto)
+.claude/
+.agents/
+.codex/
+.impeccable/
+
+# Supabase CLI temporales y certificados de conexión
+supabase/.temp/
+supabase/certs/
