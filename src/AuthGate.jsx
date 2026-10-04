@@ -24,7 +24,7 @@ var C = {
 };
 
 var FONT =
-  "'Plus Jakarta Sans','Segoe UI',-apple-system,BlinkMacSystemFont,Arial,sans-serif";
+  "-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif";
 
 var st = {
   page: {
@@ -39,25 +39,26 @@ var st = {
   },
   shell: {
     width: "100%",
-    maxWidth: 980,
+    maxWidth: 940,
     margin: "auto",
     display: "flex",
-    minHeight: 560,
-    borderRadius: 24,
+    minHeight: 580,
+    borderRadius: 20,
     overflow: "hidden",
-    boxShadow: "0 24px 60px rgba(26,20,64,0.10)",
+    boxShadow: "0 32px 80px rgba(11,16,32,0.22), 0 2px 8px rgba(11,16,32,0.08)",
     background: C.surface,
     flexWrap: "wrap",
   },
   brandPanel: {
     flex: "1 1 340px",
-    background: "linear-gradient(160deg," + C.purpleInk + " 0%," + C.purpleDeep + " 55%," + C.purple + " 100%)",
+    background: "radial-gradient(ellipse at 15% 85%, rgba(75,94,252,0.38) 0%, transparent 52%), radial-gradient(ellipse at 85% 15%, rgba(43,59,200,0.22) 0%, transparent 48%), #0B1020",
     color: "#fff",
     display: "flex",
     flexDirection: "column",
     justifyContent: "space-between",
     position: "relative",
     minHeight: 280,
+    overflow: "hidden",
   },
   formPanel: {
     flex: "1 1 380px",
@@ -571,7 +572,7 @@ export default function AuthGate() {
           new Promise(function (resolve) {
             setTimeout(function () {
               resolve("timeout");
-            }, 15000);
+            }, 30000);
           }),
         ]);
       } catch (e) {
@@ -2203,9 +2204,10 @@ export default function AuthGate() {
     React.createElement(
       "style",
       null,
-      "@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');" +
-        ".cleo-auth-brand{padding:44px 40px}" +
+      ".cleo-auth-brand{padding:44px 40px}" +
         ".cleo-auth-form{padding:44px 48px}" +
+        ".cleo-btn-google:hover:not(:disabled){box-shadow:0 4px 16px rgba(11,16,32,0.15),0 1px 4px rgba(11,16,32,0.08)!important}" +
+        ".cleo-btn-email:hover:not(:disabled){background:rgba(75,94,252,0.07)!important}" +
         "@media(max-width:640px){" +
         ".cleo-auth-page{padding:0!important}" +
         ".cleo-auth-shell{border-radius:0!important;min-height:100vh!important;box-shadow:none!important}" +
@@ -2222,11 +2224,22 @@ export default function AuthGate() {
         "div",
         { style: st.brandPanel, className: "cleo-auth-brand" },
         React.createElement(
+          "svg",
+          {
+            "aria-hidden": "true",
+            style: { position: "absolute", bottom: -60, right: -60, opacity: 0.08, pointerEvents: "none" },
+            width: 340, height: 340, viewBox: "0 0 340 340", fill: "none",
+          },
+          React.createElement("circle", { cx: 170, cy: 170, r: 160, stroke: "#4B5EFC", strokeWidth: 1.5 }),
+          React.createElement("circle", { cx: 170, cy: 170, r: 120, stroke: "#4B5EFC", strokeWidth: 1 }),
+          React.createElement("circle", { cx: 170, cy: 170, r: 80, stroke: "#4B5EFC", strokeWidth: 0.75 })
+        ),
+        React.createElement(
           "div",
           { style: { position: "relative", zIndex: 1, marginBottom: 28 } },
           React.createElement(
             "div",
-            { style: { fontSize: 15, fontWeight: 700, color: "#fff", letterSpacing: "1px" } },
+            { style: { fontSize: 13, fontWeight: 700, color: "rgba(255,255,255,0.9)", letterSpacing: "2px", textTransform: "uppercase" } },
             "CLEO"
           )
         ),
@@ -2249,29 +2262,42 @@ export default function AuthGate() {
               className: "cleo-auth-greeting",
               style: {
                 fontFamily: FONT,
-                fontSize: 40,
-                fontWeight: 800,
+                fontSize: 38,
+                fontWeight: 700,
                 color: "#fff",
-                lineHeight: 1.12,
-                letterSpacing: "-0.5px",
-                marginBottom: 16,
-                maxWidth: 340,
+                lineHeight: 1.15,
+                letterSpacing: "-0.3px",
+                marginBottom: 18,
+                maxWidth: 320,
               },
             },
-            "Vender ya implica recordar demasiado"
+            "Tu negocio ya es un negocio."
           ),
           React.createElement(
             "div",
             {
               style: {
-                fontSize: 14,
+                fontSize: 15,
                 lineHeight: 1.6,
-                color: "rgba(255,255,255,0.82)",
-                maxWidth: 340,
-                marginBottom: 22,
+                color: "rgba(255,255,255,0.78)",
+                maxWidth: 300,
+                marginBottom: 20,
               },
             },
-            "Con CLEO, sabes a quién contactar, qué necesita seguimiento y qué falta cobrar."
+            "Todo lo que pasa en él, organizado en un lugar que sí se siente hecho para ti."
+          ),
+          React.createElement(
+            "div",
+            {
+              style: {
+                fontSize: 12.5,
+                color: "rgba(255,255,255,0.42)",
+                lineHeight: 1.6,
+                letterSpacing: "0.01em",
+                maxWidth: 280,
+              },
+            },
+            "Pedidos, cotizaciones, inventario y cobros sin complicarte."
           )
         )
       ),
@@ -2473,6 +2499,45 @@ export default function AuthGate() {
             modo === "login"
               ? "Inicia sesión para continuar donde lo dejaste."
               : "Regístrate para empezar a organizar tu negocio."
+          ),
+
+          React.createElement(
+            "button",
+            {
+              type: "button",
+              disabled: iniciandoGoogle,
+              "aria-label": "Continuar con Google",
+              className: "cleo-btn-google",
+              onClick: iniciarConGoogle,
+              style: {
+                width: "100%",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                gap: 10,
+                padding: "14px",
+                borderRadius: 12,
+                border: "1.5px solid " + C.border,
+                background: "#fff",
+                color: "#1F2937",
+                fontSize: 14.5,
+                fontWeight: 700,
+                cursor: iniciandoGoogle ? "default" : "pointer",
+                opacity: iniciandoGoogle ? 0.65 : 1,
+                boxShadow: "0 2px 8px rgba(11,16,32,0.10), 0 1px 2px rgba(11,16,32,0.06)",
+                transition: "box-shadow 0.15s, opacity 0.15s",
+              },
+            },
+            !iniciandoGoogle && iconoGoogleSvg(),
+            iniciandoGoogle ? "Conectando con Google…" : "Continuar con Google"
+          ),
+
+          React.createElement(
+            "div",
+            { style: { display: "flex", alignItems: "center", gap: 10, margin: "18px 0" } },
+            React.createElement("div", { style: { flex: 1, height: 1, background: C.border } }),
+            React.createElement("span", { style: { fontSize: 12, color: C.textDim } }, "o"),
+            React.createElement("div", { style: { flex: 1, height: 1, background: C.border } })
           ),
 
           React.createElement(
@@ -2708,8 +2773,14 @@ export default function AuthGate() {
               {
                 type: "submit",
                 disabled: cargandoForm,
+                className: "cleo-btn-email",
                 style: Object.assign({}, st.btnPrimary, {
                   opacity: cargandoForm ? 0.65 : 1,
+                  background: "transparent",
+                  border: "1.5px solid " + C.purple,
+                  color: C.purple,
+                  boxShadow: "none",
+                  transition: "opacity 0.15s, background 0.15s",
                 }),
               },
               cargandoForm
@@ -2720,40 +2791,6 @@ export default function AuthGate() {
             )
           ),
 
-          React.createElement(
-            "div",
-            { style: { display: "flex", alignItems: "center", gap: 10, margin: "18px 0" } },
-            React.createElement("div", { style: { flex: 1, height: 1, background: C.border } }),
-            React.createElement("span", { style: { fontSize: 12, color: C.textDim } }, "o"),
-            React.createElement("div", { style: { flex: 1, height: 1, background: C.border } })
-          ),
-          React.createElement(
-            "button",
-            {
-              type: "button",
-              disabled: iniciandoGoogle,
-              "aria-label": "Continuar con Google",
-              onClick: iniciarConGoogle,
-              style: {
-                width: "100%",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                gap: 10,
-                padding: "13px",
-                borderRadius: 12,
-                border: "1px solid " + C.border,
-                background: "#fff",
-                color: "#1F2937",
-                fontSize: 14.5,
-                fontWeight: 600,
-                cursor: iniciandoGoogle ? "default" : "pointer",
-                opacity: iniciandoGoogle ? 0.65 : 1,
-              },
-            },
-            !iniciandoGoogle && iconoGoogleSvg(),
-            iniciandoGoogle ? "Conectando con Google…" : "Continuar con Google"
-          ),
 
           React.createElement(
             "div",

@@ -30,6 +30,7 @@ export var CLEO_KEYS = [
   "cleo_oportunidades",
   "cleo_tombstones",
   "cleo_materiales_cat",
+  "cleo_eventos_inventario",
 ];
 
 // Claves locales/temporales de CLEO — nunca se sincronizan a Supabase, pero sí
@@ -353,13 +354,15 @@ async function huellaSnapshot(snap) {
   var hash = await crypto.subtle.digest("SHA-256", bytes);
   return Array.from(new Uint8Array(hash)).map(function (n) { return n.toString(16).padStart(2, "0"); }).join("");
 }
-async function recordarConfirmado(userId, snap) {
+async function recordarConfirmado(userId, snap, updatedAt) {
   // Guardar solo una huella: no duplicar todos los datos en localStorage.
   // Si no puede guardarse, la próxima apertura conserva las diferencias
   // como conflicto en lugar de asumir que ya llegaron al servidor.
+  // updatedAt: el timestamp del servidor al momento de confirmar (para detectar
+  // si el remoto cambió vs. si solo el local tiene datos nuevos pendientes de subir).
   try {
     var huella = await huellaSnapshot(snap);
-    localStorage.setItem("cleo_sync_confirmado", JSON.stringify({ userId: userId, huella: huella }));
+    localStorage.setItem("cleo_sync_confirmado", JSON.stringify({ userId: userId, huella: huella, updatedAt: updatedAt || null }));
   } catch (e) {}
 }
 async function cacheConfirmado(userId, snap) {
@@ -367,6 +370,12 @@ async function cacheConfirmado(userId, snap) {
     var base = JSON.parse(localStorage.getItem("cleo_sync_confirmado"));
     return !!base && base.userId === userId && base.huella === await huellaSnapshot(snap);
   } catch (e) { return false; }
+}
+function updatedAtConfirmado() {
+  try {
+    var base = JSON.parse(localStorage.getItem("cleo_sync_confirmado"));
+    return (base && base.updatedAt) || null;
+  } catch (e) { return null; }
 }
 function snapshotRemoto(fila) {
   if (!fila.data || typeof fila.data !== "object" || Array.isArray(fila.data)) {
@@ -545,6 +554,20 @@ export async function pullUserData(userId) {
   // como información real pendiente de subir.
   var esDemo = local.cleo_perfil && local.cleo_perfil.modoDemo === true;
   var confirmado = await cacheConfirmado(userId, local);
+  // Detectar si el remoto cambió desde la última sincronización confirmada.
+  // Si el updated_at del servidor coincide con el guardado en cleo_sync_confirmado,
+  // el remoto no cambió — solo local tiene cambios nuevos pendientes de subir.
+  // Esto evita mostrar un modal de "conflicto" cuando simplemente hay datos
+  // locales nuevos que aún no se han sincronizado (p.ej. al recargar justo
+  // después de crear un evento antes de que el ciclo de sync de 5s corra).
+  // remotoCambio: el servidor tiene una versión diferente a la última que confirmamos.
+  // - Si el servidor no tiene timestamp: conservador, trata como conflicto.
+  // - Si el cliente no tiene timestamp guardado (_updConf null, código anterior
+  //   al fix o primera carga post-limpieza): preservar el local en vez de
+  //   mostrar un modal de conflicto que el usuario podría resolver erróneamente
+  //   eligiendo "Usar la nube" y perder datos locales.
+  var _updConf = updatedAtConfirmado();
+  var remotoCambio = !fila.updated_at || (!!_updConf && fila.updated_at !== _updConf);
   // Calcular la huella es asíncrono. Otra pestaña puede haber editado el
   // caché mientras tanto: no reemplazar una versión que ya cambió.
   var propietarioAntesDeEscribir = localStorage.getItem(CACHE_OWNER_KEY);
@@ -554,15 +577,26 @@ export async function pullUserData(userId) {
   }
   if (duenioActual === userId && !esDemo && Object.keys(local).length > 0 &&
       serializarSnapshot(local) !== serializarSnapshot(remoto) && !confirmado) {
-    var respaldo = { userId: userId, snapshot: local, fecha: new Date().toISOString(), estado: "pendiente" };
-    var texto = JSON.stringify(respaldo);
-    // Si no cabe el respaldo, fallar sin tocar el caché original.
-    localStorage.setItem(CONFLICT_BACKUP_KEY, texto);
-    if (localStorage.getItem(CONFLICT_BACKUP_KEY) !== texto) throw new Error("No se pudo conservar el caché pendiente");
-    return { tieneDatos: true, updatedAt: null, snapshot: null, schemaVer: schemaVerDetectado };
+    if (remotoCambio) {
+      // Conflicto real: ambos lados cambiaron. Guardar respaldo y esperar
+      // a que el usuario elija qué versión conservar.
+      var respaldo = { userId: userId, snapshot: local, fecha: new Date().toISOString(), estado: "pendiente" };
+      var texto = JSON.stringify(respaldo);
+      localStorage.setItem(CONFLICT_BACKUP_KEY, texto);
+      if (localStorage.getItem(CONFLICT_BACKUP_KEY) !== texto) throw new Error("No se pudo conservar el caché pendiente");
+      return { tieneDatos: true, updatedAt: null, snapshot: null, schemaVer: schemaVerDetectado };
+    } else {
+      // Local adelantado: solo el local tiene cambios nuevos, el remoto no cambió
+      // desde la última sincronización confirmada. No se sobreescribe el local —
+      // el ciclo de sync lo subirá en los próximos segundos.
+      // Se usa remoto como baseline del sync para que detecte la diferencia
+      // con el local actual y lo suba automáticamente.
+      try { localStorage.setItem(CACHE_OWNER_KEY, userId); } catch (e) {}
+      return { tieneDatos: true, updatedAt: fila.updated_at, snapshot: remoto, schemaVer: schemaVerDetectado };
+    }
   }
   escribirSnapshotLocalStorage(remoto, userId);
-  await recordarConfirmado(userId, remoto);
+  await recordarConfirmado(userId, remoto, fila.updated_at);
 
   // snapshot se recalcula leyendo localStorage recién escrito (en vez de
   // devolver fila.data tal cual) para que quede en el mismo orden de
@@ -750,7 +784,7 @@ export function startCloudSync(userId, onEstadoCambia, baselineInicial) {
           if (result.historial_conflictos && result.historial_conflictos.length > 0) {
             console.warn('cloudSync dual: historial_contactos no sobrescrito:', result.historial_conflictos);
           }
-          await recordarConfirmado(userId, snap);
+          await recordarConfirmado(userId, snap, result.updated_at);
           ultimoEnviado = serializado;
           ultimoUpdatedAt = result.updated_at;
           avisar('ok');
@@ -813,7 +847,7 @@ export function startCloudSync(userId, onEstadoCambia, baselineInicial) {
             reportarConflictoVersion("intentarGuardar", Object.assign({ durationMs: Date.now() - _tInicioGuardar }, _metricasGuardado), "23505");
             return { estado: "conflicto" };
           }
-          console.error("cloudSync: error al guardar user_data", res.error);
+          console.error("cloudSync: error al guardar user_data — code:", res.error.code, "| message:", res.error.message, "| details:", res.error.details, "| hint:", res.error.hint);
           avisar("error");
           reportarErrorSync("intentarGuardar", "write_error", Object.assign({ durationMs: Date.now() - _tInicioGuardar }, _metricasGuardado));
           return { estado: "error" };
@@ -830,9 +864,10 @@ export function startCloudSync(userId, onEstadoCambia, baselineInicial) {
           reportarConflictoVersion("intentarGuardar", Object.assign({ durationMs: Date.now() - _tInicioGuardar }, _metricasGuardado), "0_filas");
           return { estado: "conflicto" };
         }
-        await recordarConfirmado(userId, snap);
+        var _updAt = res.data && res.data[0] ? res.data[0].updated_at : nuevaFecha;
+        await recordarConfirmado(userId, snap, _updAt);
         ultimoEnviado = serializado;
-        ultimoUpdatedAt = res.data && res.data[0] ? res.data[0].updated_at : nuevaFecha;
+        ultimoUpdatedAt = _updAt;
         avisar("ok");
         // Breadcrumb de guardado exitoso , solo métricas, nunca un evento
         // independiente (ver sentry.js).
@@ -949,7 +984,7 @@ export function startCloudSync(userId, onEstadoCambia, baselineInicial) {
           }
           if (result.estado !== 'ok') throw new Error('dual_flush_fallo');
           if (!versionLocalSigueIgual()) return { estado: 'conflicto' };
-          await recordarConfirmado(userId, snapshotAConservar);
+          await recordarConfirmado(userId, snapshotAConservar, result.updated_at);
           ultimoEnviado = JSON.stringify(snapshotAConservar);
           ultimoUpdatedAt = result.updated_at;
           conflictoPendiente = null;
@@ -1009,10 +1044,10 @@ export function startCloudSync(userId, onEstadoCambia, baselineInicial) {
             return { estado: "conflicto" };
           }
           // Escritura confirmada , solo ahora se actualizan estos valores.
-          await recordarConfirmado(userId, snapshotAConservar);
+          var _updAtLocal = resEscritura.data && resEscritura.data[0] ? resEscritura.data[0].updated_at : nuevaFecha;
+          await recordarConfirmado(userId, snapshotAConservar, _updAtLocal);
           ultimoEnviado = JSON.stringify(snapshotAConservar);
-          ultimoUpdatedAt =
-            resEscritura.data && resEscritura.data[0] ? resEscritura.data[0].updated_at : nuevaFecha;
+          ultimoUpdatedAt = _updAtLocal;
           conflictoPendiente = null;
           // Se elimina el respaldo persistido , ya se resolvió, no debe seguir
           // bloqueando ni reabriendo el modal en una futura recarga.
@@ -1058,7 +1093,7 @@ export function startCloudSync(userId, onEstadoCambia, baselineInicial) {
           }
           var remoto = snapshotRemoto({ data: rpcRes.data.data, tipo_perfil: null });
           escribirSnapshotLocalStorage(remoto, userId);
-          await recordarConfirmado(userId, remoto);
+          await recordarConfirmado(userId, remoto, rpcRes.data.updated_at);
           ultimoEnviado = JSON.stringify(leerSnapshotLocalStorage());
           ultimoUpdatedAt = rpcRes.data.updated_at;
           conflictoPendiente = null;
@@ -1101,7 +1136,7 @@ export function startCloudSync(userId, onEstadoCambia, baselineInicial) {
         }
         var remoto = snapshotRemoto(fila);
         escribirSnapshotLocalStorage(remoto, userId);
-        await recordarConfirmado(userId, remoto);
+        await recordarConfirmado(userId, remoto, fila.updated_at);
 
         ultimoEnviado = JSON.stringify(leerSnapshotLocalStorage());
         ultimoUpdatedAt = fila.updated_at;
