@@ -8314,7 +8314,8 @@ export default function CLEO(props){
     // debe volver a preguntarse.
     if(!esProductos&&!editCotId&&fcCot.clienteId&&fcCot._vinculadaOportunidadActual===undefined){
       var clienteActualCot=clientes.find(function(c){ return String(c.id)===String(fcCot.clienteId); });
-      if(clienteActualCot&&tieneOportunidadActivaServicios(clienteActualCot)){
+      var tieneOpActiva=tieneOportunidadActivaServicios(clienteActualCot)||(multiOpEnabled&&oportunidades.some(function(o){ return String(o.clienteId)===String(clienteActualCot.id)&&o.estatus==='activa'; }));
+      if(clienteActualCot&&tieneOpActiva){
         // Origen EXPLÍCITO: esta cotización se abrió desde la tarjeta de
         // ESTA oportunidad específica ("Hacer/Crear cotización" dentro del
         // modal cotRapidaId del pipeline) , el id real transportado en
