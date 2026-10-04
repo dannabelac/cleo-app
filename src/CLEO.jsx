@@ -8059,10 +8059,10 @@ export default function CLEO(props){
     if(!op) return;
     var clienteId = op.clienteId;
     if(nueva==="Ganado"||nueva==="Perdido"){
+      // Los flujos de modal (abrirConfiguracionPostVenta / guardarMotivoPipeline)
+      // actualizan la oportunidad; no hacemos setOportunidades aquí para evitar
+      // que una copia estale (sin functional updater) pise la actualización del modal.
       moverEtapa(clienteId, nueva);
-      setOportunidades(oportunidades.map(function(o){
-        return o.id===opId?Object.assign({},o,{etapa:nueva,fechaEtapa:FECHA_HOY}):o;
-      }));
       return;
     }
     var info=ETAPA_INFO[nueva];
@@ -8095,6 +8095,15 @@ export default function CLEO(props){
     // Revertir estatus de cotizacion si se cancela en paso 1
     if(estatusAnteriorCot&&pasoGanado===1){
       setCotizaciones(cotizaciones.map(function(c){ return c.id===estatusAnteriorCot.cotId?Object.assign({},c,{estatus:estatusAnteriorCot.estatus}):c; }));
+      if(multiOpEnabled){
+        var _cotIdRevertir=estatusAnteriorCot.cotId;
+        setOportunidades(function(prevOps){
+          return prevOps.map(function(o){
+            return String(o.cotizacionId)===String(_cotIdRevertir)&&(o.estatus==='ganada'||o.etapa==='Ganado')
+              ?Object.assign({},o,{etapa:etapaAnteriorGanado||'Cotizacion enviada',estatus:'activa',fechaCierre:null}):o;
+          });
+        });
+      }
     }
     setCotAceptadaId(null); setDiasPostVenta("30"); setSeguimientoManualPV(false); setEtapaAnteriorGanado(null);
     setPasoGanado(1); setPagoGanado({tipo:"",monto:"",fecha:FECHA_HOY}); setRazonCierre([]);
@@ -8706,6 +8715,15 @@ export default function CLEO(props){
           if(clienteActualG&&clienteActualG.etapa!=="Ganado"){
             setEtapaAnteriorGanado(clienteActualG.etapa);
             setClientes(clientes.map(function(c){ return c.id===cot.clienteId?Object.assign({},c,{etapa:"Ganado",fechaEtapa:FECHA_HOY}):c; }));
+            if(multiOpEnabled){
+              var _cotIdGanado=cotId;
+              setOportunidades(function(prevOps){
+                return prevOps.map(function(o){
+                  return String(o.cotizacionId)===String(_cotIdGanado)&&o.estatus==='activa'
+                    ?Object.assign({},o,{etapa:'Ganado',estatus:'ganada',fechaCierre:FECHA_HOY}):o;
+                });
+              });
+            }
           }
         }
         // BUG corregido: abrirConfiguracionPostVenta(cotId) vivía DENTRO
@@ -8757,22 +8775,23 @@ export default function CLEO(props){
   function onDragEnd(){ setDragging(null); setDragOver(null); }
   function guardarMotivoPipeline(motivo){
     if(sinConexionParaGuardar()){ alert(MSG_SIN_CONEXION_GUARDADO); return; }
-    // Guardar motivo en cliente
     setClientes(clientes.map(function(c){ return c.id===motivoPipelineId?cancelarRecordatoriosPipeline(Object.assign({},c,{motivoPerdida:motivo,etapa:"Perdido",fechaEtapa:FECHA_HOY})):c; }));
-    // Marcar cotizacion como Rechazada
+    if(multiOpEnabled){
+      var _mpId=motivoPipelineId;
+      setOportunidades(function(prevOps){
+        return prevOps.map(function(o){
+          return String(o.clienteId)===String(_mpId)&&o.estatus==='activa'
+            ?Object.assign({},o,{etapa:'Perdido',estatus:'perdida',motivoCierre:motivo,fechaCierre:FECHA_HOY}):o;
+        });
+      });
+    }
     var cotPerdida=cotizaciones.find(function(c){ return c.clienteId===motivoPipelineId&&(c.estatus==="Pendiente"||c.estatus==="Aceptada")&&cotizacionVinculadaOportunidad(c); });
-    // cotizacion_rechazada , solo si esta cotización todavía NO estaba
-    // Rechazada (moverEtapa ya la marcó y registró el evento si venía de
-    // Pendiente al arrastrar a "Perdido") , evita contar dos veces el mismo
-    // rechazo cuando el drag y este guardado de motivo son el mismo viaje.
     if(cotPerdida&&cotPerdida.estatus!=="Rechazada"){
       registrarEvento("cotizacion_rechazada",{tipo_perfil:perfil.tipoPerfil||"",dispositivo:dispositivoActual()});
     }
     if(cotPerdida) setCotizaciones(cotizaciones.map(function(c){ return c.id===cotPerdida.id?Object.assign({},c,{estatus:"Rechazada",motivoPerdida:motivo,fechaRechazo:FECHA_HOY,fechaHoraRechazo:new Date().toISOString()}):c; }));
-    // Limpiar etapaAnterior , ya confirmó
     setEtapaAnteriorPipeline(null);
     setEstatusAnteriorCot(null);
-    // Mostrar mensaje educativo y seguimiento inline
     setConsejoMotivo(motivo);
   }
   function guardarSeguimientoLost(){
