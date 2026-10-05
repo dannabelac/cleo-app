@@ -1,80 +1,18 @@
--- produccion-funciones.sql
--- Funciones dual mode para produccion (tablas ya creadas por produccion-schema-completo.sql)
--- Ejecutar en Supabase produccion (gpvpvkeqfcgypuoxvjne)
+-- 37-precio-cantidad-interes-clientes.sql
+-- PRODUCCIÓN (gpvpvkeqfcgypuoxvjne)
 --
--- Contiene (version final con multi-op + mapeo etapa):
---   cleo_id_to_json, cleo_etapa_to_ui, cleo_etapa_to_db,
---   cleo_dual_read, cleo_dual_flush
--- Todas son CREATE OR REPLACE — idempotentes, sin guards que bloqueen.
--- ══════════════════════════════════════════════════════════════════════════════
+-- precioInteres y cantidadInteres del cliente no tenían columna en la tabla
+-- clientes, por lo que se perdían al recargar. Agrega las columnas y actualiza
+-- cleo_dual_flush / cleo_dual_read.
+-- ════════════════════════════════════════════════════════════════════════════════
 
--- ── FUNCIÓN AUXILIAR: serializar cleo_id a número JSON si es numérico ────────
-
-create or replace function public.cleo_id_to_json(p text)
-returns jsonb
-language sql
-immutable
-set search_path = ''
-as $$
-  select case when p ~ '^[0-9]+$' then to_jsonb(p::bigint) else to_jsonb(p) end;
-$$;
-
-revoke execute on function public.cleo_id_to_json(text) from public;
+-- 1. Columnas nuevas (idempotentes)
+alter table public.clientes
+  add column if not exists precio_interes   text,
+  add column if not exists cantidad_interes text;
 
 
--- ── Helpers de mapeo ─────────────────────────────────────────────────────────
-
--- DB snake_case → UI title-case (para cleo_dual_read)
-create or replace function public.cleo_etapa_to_ui(etapa text)
-returns text
-language sql immutable
-set search_path = ''
-as $$
-  select case etapa
-    when 'nuevo_contacto'     then 'Nuevo contacto'
-    when 'cotizacion_enviada' then 'Cotizacion enviada'
-    when 'negociacion'        then 'Negociacion'
-    when 'ganado'             then 'Ganado'
-    when 'perdido'            then 'Perdido'
-    else etapa
-  end;
-$$;
-
--- UI title-case → DB snake_case (para cleo_dual_flush)
-create or replace function public.cleo_etapa_to_db(etapa text)
-returns text
-language sql immutable
-set search_path = ''
-as $$
-  select case etapa
-    when 'Nuevo contacto'     then 'nuevo_contacto'
-    when 'Cotizacion enviada' then 'cotizacion_enviada'
-    when 'Negociacion'        then 'negociacion'
-    when 'Ganado'             then 'ganado'
-    when 'Perdido'            then 'perdido'
-    -- pass-through: ya está en snake_case (datos migrados o productos)
-    when 'nuevo_contacto'     then 'nuevo_contacto'
-    when 'cotizacion_enviada' then 'cotizacion_enviada'
-    when 'negociacion'        then 'negociacion'
-    when 'ganado'             then 'ganado'
-    when 'perdido'            then 'perdido'
-    -- productos (no requieren mapeo, son snake_case en UI y DB)
-    when 'nueva'              then 'nueva'
-    when 'en_seguimiento'     then 'en_seguimiento'
-    when 'sin_respuesta'      then 'sin_respuesta'
-    when 'convertido'         then 'convertido'
-    else coalesce(etapa, 'nuevo_contacto')
-  end;
-$$;
-
-revoke execute on function public.cleo_etapa_to_ui(text) from public;
-revoke execute on function public.cleo_etapa_to_db(text) from public;
-grant  execute on function public.cleo_etapa_to_ui(text) to authenticated;
-grant  execute on function public.cleo_etapa_to_db(text) to authenticated;
-
-
--- ── 1. cleo_dual_read — con mapeo snake_case → title-case en etapa ───────────
-
+-- 2. Actualizar cleo_dual_read
 create or replace function public.cleo_dual_read()
 returns jsonb
 language plpgsql
@@ -457,7 +395,8 @@ revoke execute on function public.cleo_dual_read() from public;
 grant  execute on function public.cleo_dual_read() to authenticated;
 
 
--- ── 2. cleo_dual_flush — con mapeo title-case → snake_case en etapa ──────────
+
+-- 3. Actualizar cleo_dual_flush
 -- CAMBIO 32: usa cleo_etapa_to_db() en el upsert de oportunidades
 
 create or replace function public.cleo_dual_flush(
@@ -1397,26 +1336,11 @@ begin
   );
 
 exception when others then
-  raise;
-
-end;
-$func$;
-revoke execute on function public.cleo_dual_flush(jsonb, text, timestamptz) from public;
-grant  execute on function public.cleo_dual_flush(jsonb, text, timestamptz) to authenticated;
 
 
--- ── Verificación ──────────────────────────────────────────────────────────────
-select
-  proname as funcion,
-  pg_get_functiondef(oid) like '%cleo_etapa_to_ui%' as tiene_mapeo_read,
-  pg_get_functiondef(oid) like '%cleo_etapa_to_db%' as tiene_mapeo_flush
-from pg_proc
-where pronamespace = 'public'::regnamespace
-  and proname in ('cleo_dual_read','cleo_dual_flush','cleo_etapa_to_ui','cleo_etapa_to_db')
-order by proname;
-
--- Resultado esperado:
---   cleo_dual_flush  | false | true
---   cleo_dual_read   | true  | false
---   cleo_etapa_to_db | false | false  (función helper)
---   cleo_etapa_to_ui | false | false  (función helper)
+-- ── Verificación ─────────────────────────────────────────────────────────────
+select column_name from information_schema.columns
+where table_schema = 'public' and table_name = 'clientes'
+  and column_name in ('precio_interes','cantidad_interes')
+order by column_name;
+-- Debe retornar 2 filas
