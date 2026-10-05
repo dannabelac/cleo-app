@@ -15009,36 +15009,38 @@ export default function CLEO(props){
                   },"Terminar evento")
                 ),
                 evtAddProdOpen&&evActual.estado==="abierto"&&(function(){
-                  var addProdsDisp=productosConInv.filter(function(p){ return !(evActual.productos||[]).find(function(ep){ return ep.catalogoId===p.id; }); });
-                  var addProdsSin=(productosSinControl||[]).filter(function(p){ return !(evActual.productos||[]).find(function(ep){ return ep.catalogoId===p.id; }); });
-                  var addTodos=addProdsDisp.map(function(p){ return {id:p.id,nombre:p.nombre,tieneInventario:true,disp:p._disponibles}; }).concat(addProdsSin.map(function(p){ return {id:p.id,nombre:p.nombre,tieneInventario:false,disp:null}; }));
+                  var addTodos=productosConInv.map(function(p){ return {id:p.id,nombre:p.nombre,tieneInventario:true,disp:p._disponibles}; }).concat((productosSinControl||[]).map(function(p){ return {id:p.id,nombre:p.nombre,tieneInventario:false,disp:null}; }));
                   var selProd=evtAddProdForm.catalogoId?addTodos.find(function(p){ return p.id===evtAddProdForm.catalogoId; }):null;
                   var cant=Number(evtAddProdForm.cantidadLlevada)||0;
-                  function stepCant(d){ var max=selProd&&selProd.tieneInventario?selProd.disp:999; var next=Math.max(1,Math.min(max,cant+d)); setEvtAddProdForm(Object.assign({},evtAddProdForm,{cantidadLlevada:String(next)})); }
+                  var yaEnEvento=selProd?(evActual.productos||[]).find(function(ep){ return ep.catalogoId===selProd.id; }):null;
+                  var dispMax=selProd&&selProd.tieneInventario?(selProd.disp+(yaEnEvento?Number(yaEnEvento.cantidadLlevada)||0:0)):999;
+                  function stepCant(d){ var next=Math.max(1,Math.min(dispMax,cant+d)); setEvtAddProdForm(Object.assign({},evtAddProdForm,{cantidadLlevada:String(next)})); }
                   return e("div",{style:{position:"fixed",top:0,left:0,right:0,bottom:0,background:"rgba(0,0,0,0.5)",zIndex:200,display:"flex",alignItems:"flex-end",justifyContent:"center"},onClick:function(){ setEvtAddProdOpen(false); }},
                     e("div",{style:{background:C.surface,borderRadius:"20px 20px 0 0",width:"100%",maxWidth:560,display:"flex",flexDirection:"column",maxHeight:"80vh"},onClick:function(ev){ ev.stopPropagation(); }},
                       // Handle + header
                       e("div",{style:{padding:"12px 20px 0",flexShrink:0}},
                         e("div",{style:{width:36,height:4,borderRadius:2,background:C.border,margin:"0 auto 16px"}}),
-                        e("div",{style:{fontSize:17,fontWeight:700,color:C.text,marginBottom:4}},"¿Qué más llevas?"),
-                        e("div",{style:{fontSize:12,color:C.textMuted,marginBottom:16}},"Elige un producto para agregar al evento")
+                        e("div",{style:{fontSize:17,fontWeight:700,color:C.text,marginBottom:4}},"Productos del evento"),
+                        e("div",{style:{fontSize:12,color:C.textMuted,marginBottom:16}},"Selecciona para agregar o ajustar cantidad")
                       ),
                       // Product list — scrollable
                       addTodos.length===0
-                        ?e("div",{style:{padding:"24px 20px",textAlign:"center",color:C.textMuted,fontSize:13}},"Todos tus productos ya están en este evento.")
+                        ?e("div",{style:{padding:"24px 20px",textAlign:"center",color:C.textMuted,fontSize:13}},"No tienes productos en tu catálogo.")
                         :e("div",{style:{overflowY:"auto",flex:1,padding:"0 12px"}},
                           addTodos.map(function(p,idx){
                             var sel=evtAddProdForm.catalogoId===p.id;
-                            var agotado=p.tieneInventario&&p.disp===0;
+                            var enEvento=(evActual.productos||[]).find(function(ep){ return ep.catalogoId===p.id; });
+                            var agotado=p.tieneInventario&&p.disp===0&&!enEvento;
                             return e("button",{key:p.id,type:"button",disabled:agotado,
-                              style:{display:"flex",alignItems:"center",width:"100%",padding:"11px 10px",margin:"0 0 2px",borderRadius:12,border:"1.5px solid "+(sel?C_TEAL:C.border),background:sel?"rgba(13,148,136,0.07)":C.surface,cursor:agotado?"default":"pointer",textAlign:"left",transition:"border-color 0.15s,background 0.15s",opacity:agotado?0.45:1},
+                              style:{display:"flex",alignItems:"center",width:"100%",padding:"11px 10px",margin:"0 0 2px",borderRadius:12,border:"1.5px solid "+(sel?C_TEAL:enEvento?"rgba(13,148,136,0.3)":C.border),background:sel?"rgba(13,148,136,0.07)":enEvento?"rgba(13,148,136,0.03)":C.surface,cursor:agotado?"default":"pointer",textAlign:"left",transition:"border-color 0.15s,background 0.15s",opacity:agotado?0.45:1},
                               onClick:function(){
                                 if(agotado) return;
                                 if(sel){ setEvtAddProdForm(Object.assign({},evtAddProdForm,{catalogoId:"",nombre:"",tieneInventario:true,cantidadLlevada:""})); }
-                                else{ setEvtAddProdForm({catalogoId:p.id,nombre:p.nombre,tieneInventario:p.tieneInventario,cantidadLlevada:p.tieneInventario&&p.disp===1?"1":"1"}); }
+                                else{ setEvtAddProdForm({catalogoId:p.id,nombre:p.nombre,tieneInventario:p.tieneInventario,cantidadLlevada:enEvento?String(enEvento.cantidadLlevada):"1"}); }
                               }},
                               e("div",{style:{flex:1,minWidth:0}},
-                                e("div",{style:{fontSize:13,fontWeight:sel?600:500,color:sel?C_TEAL:C.text,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}},p.nombre)
+                                e("div",{style:{fontSize:13,fontWeight:sel?600:500,color:sel?C_TEAL:C.text,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}},p.nombre),
+                                enEvento&&e("div",{style:{fontSize:11,color:C_TEAL,marginTop:1}},enEvento.cantidadLlevada+" en evento")
                               ),
                               p.tieneInventario
                                 ?e("span",{style:{fontSize:11,fontWeight:600,padding:"2px 8px",borderRadius:20,background:p.disp===0?"rgba(239,68,68,0.1)":p.disp<=3?"rgba(245,158,11,0.1)":"rgba(16,185,129,0.1)",color:p.disp===0?"#DC2626":p.disp<=3?"#92400E":"#065F46",marginLeft:8,flexShrink:0}},p.disp+" disp.")
@@ -15051,13 +15053,13 @@ export default function CLEO(props){
                       selProd&&e("div",{style:{borderTop:"1px solid "+C.border,padding:"14px 20px 28px",flexShrink:0}},
                         e("div",{style:{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:14}},
                           e("div",null,
-                            e("div",{style:{fontSize:12,fontWeight:700,textTransform:"uppercase",letterSpacing:"0.5px",color:C.textDim,marginBottom:2}},"Cuántas llevas"),
-                            selProd.tieneInventario&&e("div",{style:{fontSize:11,color:C.textMuted}},"Máx. "+selProd.disp+" disponibles")
+                            e("div",{style:{fontSize:12,fontWeight:700,textTransform:"uppercase",letterSpacing:"0.5px",color:C.textDim,marginBottom:2}},yaEnEvento?"Ajustar cantidad":"Cuántas llevas"),
+                            selProd.tieneInventario&&e("div",{style:{fontSize:11,color:C.textMuted}},"Máx. "+dispMax+" disponibles")
                           ),
                           e("div",{style:{display:"flex",alignItems:"center",gap:0,border:"1.5px solid "+C.border,borderRadius:12,overflow:"hidden",background:C.surfaceUp}},
                             e("button",{type:"button",style:{width:40,height:40,border:"none",background:"transparent",cursor:cant<=1?"default":"pointer",fontSize:18,color:cant<=1?C.textDim:C.text,display:"flex",alignItems:"center",justifyContent:"center"},onClick:function(){ stepCant(-1); },disabled:cant<=1},"−"),
                             e("div",{style:{width:44,textAlign:"center",fontSize:15,fontWeight:700,fontVariantNumeric:"tabular-nums",color:C.text}},cant||"—"),
-                            e("button",{type:"button",style:{width:40,height:40,border:"none",background:"transparent",cursor:(selProd.tieneInventario&&cant>=selProd.disp)?"default":"pointer",fontSize:18,color:(selProd.tieneInventario&&cant>=selProd.disp)?C.textDim:C.text,display:"flex",alignItems:"center",justifyContent:"center"},onClick:function(){ stepCant(1); },disabled:selProd.tieneInventario&&cant>=selProd.disp},"+")
+                            e("button",{type:"button",style:{width:40,height:40,border:"none",background:"transparent",cursor:(selProd.tieneInventario&&cant>=dispMax)?"default":"pointer",fontSize:18,color:(selProd.tieneInventario&&cant>=dispMax)?C.textDim:C.text,display:"flex",alignItems:"center",justifyContent:"center"},onClick:function(){ stepCant(1); },disabled:selProd.tieneInventario&&cant>=dispMax},"+")
                           )
                         ),
                         e("button",{type:"button",
@@ -15065,12 +15067,18 @@ export default function CLEO(props){
                           style:{width:"100%",padding:"13px",borderRadius:12,border:"none",background:cant?C_TEAL:"rgba(13,148,136,0.3)",color:"#fff",fontSize:14,fontWeight:700,cursor:cant?"pointer":"default",letterSpacing:"0.01em"},
                           onClick:function(){
                             if(!cant) return;
-                            var nuevoProd={catalogoId:selProd.id,nombre:selProd.nombre,tieneInventario:selProd.tieneInventario,cantidadLlevada:cant,cantidadVendida:0,cantidadRegresada:null};
-                            setEventosInv((eventosInv||[]).map(function(ev){ return ev.id===evActual.id?Object.assign({},ev,{productos:(ev.productos||[]).concat([nuevoProd])}):ev; }));
+                            setEventosInv((eventosInv||[]).map(function(ev){
+                              if(ev.id!==evActual.id) return ev;
+                              var existe=(ev.productos||[]).find(function(ep){ return ep.catalogoId===selProd.id; });
+                              var nuevosProds=existe
+                                ?(ev.productos||[]).map(function(ep){ return ep.catalogoId===selProd.id?Object.assign({},ep,{cantidadLlevada:cant}):ep; })
+                                :(ev.productos||[]).concat([{catalogoId:selProd.id,nombre:selProd.nombre,tieneInventario:selProd.tieneInventario,cantidadLlevada:cant,cantidadVendida:0,cantidadRegresada:null}]);
+                              return Object.assign({},ev,{productos:nuevosProds});
+                            }));
                             setEvtAddProdOpen(false);
                             setEvtAddProdForm({catalogoId:"",nombre:"",tieneInventario:true,cantidadLlevada:""});
                           }
-                        },"Agregar al evento")
+                        },yaEnEvento?"Actualizar cantidad":"Agregar al evento")
                       ),
                       !selProd&&e("div",{style:{padding:"0 20px 28px",flexShrink:0}},
                         e("button",{type:"button",style:Object.assign({},st.btn,{width:"100%",textAlign:"center",justifyContent:"center"}),onClick:function(){ setEvtAddProdOpen(false); }},"Cancelar")
