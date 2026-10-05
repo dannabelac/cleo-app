@@ -11,7 +11,6 @@ alter table public.clientes
   add column if not exists precio_interes   text,
   add column if not exists cantidad_interes text;
 
-
 -- 2. Actualizar cleo_dual_read
 create or replace function public.cleo_dual_read()
 returns jsonb
@@ -393,8 +392,6 @@ end;
 $func$;
 revoke execute on function public.cleo_dual_read() from public;
 grant  execute on function public.cleo_dual_read() to authenticated;
-
-
 
 -- 3. Actualizar cleo_dual_flush
 -- CAMBIO 32: usa cleo_etapa_to_db() en el upsert de oportunidades
@@ -1336,6 +1333,12 @@ begin
   );
 
 exception when others then
+  raise;
+
+end;
+$func$;
+revoke execute on function public.cleo_dual_flush(jsonb, text, timestamptz) from public;
+grant  execute on function public.cleo_dual_flush(jsonb, text, timestamptz) to authenticated;
 
 
 -- ── Verificación ─────────────────────────────────────────────────────────────
