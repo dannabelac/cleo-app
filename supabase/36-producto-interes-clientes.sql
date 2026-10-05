@@ -12,6 +12,9 @@ alter table public.clientes
 
 
 -- 2. Actualizar cleo_dual_read para devolver productoInteres
+create or replace function public.cleo_dual_read()
+returns jsonb
+language plpgsql
 security definer
 set search_path = ''
 as $func$
@@ -388,11 +391,11 @@ $func$;
 revoke execute on function public.cleo_dual_read() from public;
 grant  execute on function public.cleo_dual_read() to authenticated;
 
--- 3. Actualizar cleo_dual_flush para escribir productoInteres
 
 -- ── 2. cleo_dual_flush — con mapeo title-case → snake_case en etapa ──────────
 -- CAMBIO 32: usa cleo_etapa_to_db() en el upsert de oportunidades
 
+-- 3. Actualizar cleo_dual_flush para escribir productoInteres
 create or replace function public.cleo_dual_flush(
   p_data              jsonb,
   p_tipo_perfil       text,
@@ -1334,27 +1337,15 @@ revoke execute on function public.cleo_dual_flush(jsonb, text, timestamptz) from
 grant  execute on function public.cleo_dual_flush(jsonb, text, timestamptz) to authenticated;
 
 
--- ── Verificación ──────────────────────────────────────────────────────────────
-select
-  proname as funcion,
-  pg_get_functiondef(oid) like '%cleo_etapa_to_ui%' as tiene_mapeo_read,
-  pg_get_functiondef(oid) like '%cleo_etapa_to_db%' as tiene_mapeo_flush
-from pg_proc
-where pronamespace = 'public'::regnamespace
-  and proname in ('cleo_dual_read','cleo_dual_flush','cleo_etapa_to_ui','cleo_etapa_to_db')
-
-
 -- ── Verificación ─────────────────────────────────────────────────────────────
-select
-  column_name, data_type
+select column_name, data_type
 from information_schema.columns
 where table_schema = 'public'
   and table_name   = 'clientes'
   and column_name  = 'producto_interes';
 -- Debe retornar: producto_interes | text
 
-select
-  pg_get_functiondef(oid) like '%producto_interes%' as tiene_producto_interes
+select pg_get_functiondef(oid) like '%producto_interes%' as tiene_producto_interes
 from pg_proc
 where pronamespace = 'public'::regnamespace
   and proname = 'cleo_dual_flush';
