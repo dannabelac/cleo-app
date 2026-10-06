@@ -5370,15 +5370,19 @@ export default function CLEO(props){
   // productos sin inventario activo.
   function calcularInvItemsParaNuevoPedido(items){
     return items.map(function(it){
-      if(!it.catalogoId) return it;
-      var prod=productosCat.find(function(p){ return p.id===it.catalogoId; });
+      var catId=it.catalogoId;
+      var prod=catId
+        ?productosCat.find(function(p){ return p.id===catId; })
+        :productosCat.find(function(p){ return p.inventarioActivo&&(p.nombre||"").trim().toLowerCase()===(it.nombre||"").trim().toLowerCase(); });
       if(!prod||!prod.inventarioActivo||prod.stock==null) return it;
-      var apartadosExistentes=(pedidos||[]).filter(function(p){ return p.estadoPedido==="preparando"; }).reduce(function(sum,p){ return sum+(p.items||[]).reduce(function(s,pi){ return pi.catalogoId===it.catalogoId?s+((pi.invApartado||0)-(pi.invEntregado||0)):s; },0); },0);
-      var apartadosEvtExist=(eventosInv||[]).filter(function(ev){ return ev.estado==="abierto"; }).reduce(function(sum,ev){ var ep=(ev.productos||[]).find(function(x){ return x.catalogoId===it.catalogoId&&x.tieneInventario; }); return sum+(ep?Math.max(0,(ep.cantidadLlevada||0)-(ep.cantidadVendida||0)):0); },0);
+      var prodId=prod.id;
+      var itBase=catId?it:Object.assign({},it,{catalogoId:prodId});
+      var apartadosExistentes=(pedidos||[]).filter(function(p){ return p.estadoPedido==="preparando"; }).reduce(function(sum,p){ return sum+(p.items||[]).reduce(function(s,pi){ return (pi.catalogoId===prodId)?s+((pi.invApartado||0)-(pi.invEntregado||0)):s; },0); },0);
+      var apartadosEvtExist=(eventosInv||[]).filter(function(ev){ return ev.estado==="abierto"; }).reduce(function(sum,ev){ var ep=(ev.productos||[]).find(function(x){ return x.catalogoId===prodId&&x.tieneInventario; }); return sum+(ep?Math.max(0,(ep.cantidadLlevada||0)-(ep.cantidadVendida||0)):0); },0);
       var disponibles=Math.max(0,prod.stock-apartadosExistentes-apartadosEvtExist);
-      var invApartado=Math.min(Number(it.cantidad)||0,disponibles);
-      var invPendiente=Math.max(0,(Number(it.cantidad)||0)-invApartado);
-      return Object.assign({},it,{invApartado:invApartado,invPendiente:invPendiente,invEntregado:0});
+      var invApartado=Math.min(Number(itBase.cantidad)||0,disponibles);
+      var invPendiente=Math.max(0,(Number(itBase.cantidad)||0)-invApartado);
+      return Object.assign({},itBase,{invApartado:invApartado,invPendiente:invPendiente,invEntregado:0});
     });
   }
 
@@ -12242,7 +12246,7 @@ export default function CLEO(props){
                         // Copia TODOS los items de interés al pedido nuevo (no solo
                         // uno) , productos/cantidad/total quedan como compatibilidad
                         // derivada, igual que en el resto de creadores de pedido.
-                        var itemsPedOpo=obtenerItemsInteres(c);
+                        var itemsPedOpo=calcularInvItemsParaNuevoPedido(obtenerItemsInteres(c));
                         var compatPedOpo=buildItemsCompat(itemsPedOpo,"producto");
                         // itemsConfirmacion/montoConfirmacion: snapshot inmutable al confirmar , ver crearPedidoDesdeVenta.
                         var nuevoPedido={id:"ped_"+Date.now(),clienteId:c.id,items:itemsPedOpo,productos:compatPedOpo.resumen||c.productoInteres||"",itemsConfirmacion:itemsPedOpo,montoConfirmacion:compatPedOpo.total||Number(c.precioInteres)||0,cantidad:compatPedOpo.cantidad||1,total:compatPedOpo.total||Number(c.precioInteres)||0,pagos:[],estadoPedido:"preparando",notas:c.notasProspecto||"",fecha:FECHA_HOY,fechaCreado:ahora};
@@ -13875,7 +13879,15 @@ export default function CLEO(props){
               if(totalPendiente>0) alertasStock.push({prod:prod,faltantes:totalPendiente});
             });
 
-            var sinNada=opsRetomar.length===0&&pedidosAccion.length===0&&alertasStock.length===0;
+            // Productos con pocas existencias (disponible <= stockMinimo)
+            var pocasExistencias=[];
+            productosCat.filter(function(p){ return p.inventarioActivo&&p.stock!=null&&p.stockMinimo!=null; }).forEach(function(prod){
+              var apt=pedidosPrep.reduce(function(s,ped){ return s+(ped.items||[]).reduce(function(a,it){ return it.catalogoId===prod.id?a+Math.max(0,(it.invApartado||0)-(it.invEntregado||0)):a; },0); },0);
+              var disp=Math.max(0,prod.stock-apt);
+              if(disp<=prod.stockMinimo) pocasExistencias.push({prod:prod,disp:disp});
+            });
+
+            var sinNada=opsRetomar.length===0&&pedidosAccion.length===0&&alertasStock.length===0&&pocasExistencias.length===0;
 
             return e("div",{style:{display:"flex",flexDirection:"column",gap:20}},
 
@@ -13942,6 +13954,31 @@ export default function CLEO(props){
                         e("div",{style:{fontSize:15,fontWeight:700,color:C.text,marginBottom:2}},item.prod.nombre),
                         e("div",{style:{fontSize:12,color:C.textMuted,lineHeight:1.4}},
                           "Te faltan "+item.faltantes+" unidad"+(item.faltantes===1?"":"es")+" para completar tus pedidos"
+                        )
+                      ),
+                      e("button",{style:{cursor:"pointer",padding:"8px 16px",borderRadius:50,border:"1.5px solid "+C.borderStrong,background:C.surfaceUp,fontSize:12,color:C.textMuted,fontWeight:500,whiteSpace:"nowrap",flexShrink:0},
+                        onClick:function(){ setVista("inventario"); }
+                      },"Ver inventario →")
+                    );
+                  })
+                )
+              ),
+
+              // SECCIÓN 2b: Pocas existencias (stock <= stockMinimo)
+              pocasExistencias.length>0&&e("div",null,
+                e("div",{style:{fontSize:11,fontWeight:700,color:C.amber,textTransform:"uppercase",letterSpacing:"0.5px",marginBottom:10,display:"flex",alignItems:"center",gap:8}},
+                  "📦 POCAS EXISTENCIAS",
+                  e("span",{style:{fontSize:11,padding:"2px 8px",borderRadius:10,background:C.amber+"22",color:C.amber,fontWeight:700}},pocasExistencias.length)
+                ),
+                e("div",{style:{display:"flex",flexDirection:"column",gap:10}},
+                  pocasExistencias.map(function(item){
+                    return e("div",{key:item.prod.id,style:{display:"flex",alignItems:"center",gap:12,padding:"14px 16px",background:C.surface,borderLeft:"4px solid "+C.amber,borderRadius:16,flexWrap:isMobile?"wrap":"nowrap",boxShadow:C.shadowAction}},
+                      e("div",{style:{flex:1,minWidth:0}},
+                        e("div",{style:{fontSize:15,fontWeight:700,color:C.text,marginBottom:2}},item.prod.nombre),
+                        e("div",{style:{fontSize:12,color:C.textMuted,lineHeight:1.4}},
+                          item.disp===0
+                            ?"Sin existencias disponibles — llegaste al mínimo que configuraste"
+                            :"Quedan "+item.disp+" unidad"+(item.disp===1?"":"es")+" — llegaste al mínimo que configuraste"
                         )
                       ),
                       e("button",{style:{cursor:"pointer",padding:"8px 16px",borderRadius:50,border:"1.5px solid "+C.borderStrong,background:C.surfaceUp,fontSize:12,color:C.textMuted,fontWeight:500,whiteSpace:"nowrap",flexShrink:0},
@@ -14386,7 +14423,10 @@ export default function CLEO(props){
           var pedidosConApart=pedidosEnPrep.filter(function(pd){
             return (pd.items||[]).some(function(it){ return it.catalogoId===p.id&&((it.invApartado||0)-(it.invEntregado||0))>0; });
           });
-          return Object.assign({},p,{_apartados:apartados+apartadosEvt,_apartadosPed:apartados,_apartadosEvt:apartadosEvt,_disponibles:disponibles,_pendientes:pendientes,_pedidosConApart:pedidosConApart});
+          var pedidosPendiente=pedidosEnPrep.filter(function(pd){
+            return (pd.items||[]).some(function(it){ return it.catalogoId===p.id&&(it.invPendiente||0)>0&&(it.invApartado||0)===0; });
+          });
+          return Object.assign({},p,{_apartados:apartados+apartadosEvt,_apartadosPed:apartados,_apartadosEvt:apartadosEvt,_disponibles:disponibles,_pendientes:pendientes,_pedidosConApart:pedidosConApart,_pedidosPendiente:pedidosPendiente});
         });
 
         function guardarCantidad(prodId,nuevoStock,nuevoMin,stockAntes){
@@ -14395,22 +14435,26 @@ export default function CLEO(props){
           setProductosCat(productosCat.map(function(x){
             return x.id===prodId?Object.assign({},x,{inventarioActivo:true,stock:nuevoStock,stockMinimo:nuevoMin,movimientos:(x.movimientos||[]).concat([mov])}):x;
           }));
-          var stockRest=nuevoStock;
-          var pedidosUpd=(pedidos||[]).map(function(pd){
-            if(pd.estadoPedido!=="preparando") return pd;
-            if(!(pd.items||[]).some(function(it){ return it.catalogoId===prodId; })) return pd;
-            var itemsUpd=(pd.items||[]).map(function(it){
-              if(it.catalogoId!==prodId) return it;
-              if((it.invApartado||0)>0) return it;
-              var cant=Number(it.cantidad)||0;
-              var aparta=Math.min(cant,Math.max(0,stockRest));
-              stockRest-=aparta;
-              return Object.assign({},it,{invApartado:aparta,invPendiente:Math.max(0,cant-aparta),invEntregado:0});
+          var prodNombreNorm=(function(){ var px=productosCat.find(function(x){ return x.id===prodId; }); return px?(px.nombre||"").trim().toLowerCase():""; })();
+          setPedidos(function(pedidosActuales){
+            var stockRest=nuevoStock;
+            function itemMatchProd(it){ return it.catalogoId===prodId||(it.catalogoId==null&&prodNombreNorm.length>0&&(it.nombre||"").trim().toLowerCase()===prodNombreNorm); }
+            var upd=(pedidosActuales||[]).map(function(pd){
+              if(pd.estadoPedido!=="preparando") return pd;
+              if(!(pd.items||[]).some(itemMatchProd)) return pd;
+              var itemsUpd=(pd.items||[]).map(function(it){
+                if(!itemMatchProd(it)) return it;
+                var itBase=it.catalogoId==null?Object.assign({},it,{catalogoId:prodId}):it;
+                if((itBase.invApartado||0)>0) return itBase;
+                var cant=Number(itBase.cantidad)||0;
+                var aparta=Math.min(cant,Math.max(0,stockRest));
+                stockRest-=aparta;
+                return Object.assign({},itBase,{invApartado:aparta,invPendiente:Math.max(0,cant-aparta),invEntregado:0});
+              });
+              return Object.assign({},pd,{items:itemsUpd});
             });
-            return Object.assign({},pd,{items:itemsUpd});
+            return upd;
           });
-          var tuvoCambiosPed=pedidosUpd.some(function(pd,i){ return pd!==(pedidos||[])[i]; });
-          if(tuvoCambiosPed) setPedidos(pedidosUpd);
           setInvEditId(null);
         }
 
@@ -14577,10 +14621,10 @@ export default function CLEO(props){
 
                 // ── Detalle (separados + historial)
                 detalleAbierto&&e("div",{style:{background:C.surfaceUp,borderTop:"1px solid "+C.border,padding:"10px "+(isMobile?"12px":"16px")}},
-                  p._pedidosConApart.length===0&&(p.movimientos||[]).length===0&&e("div",{style:{fontSize:12,color:C.textMuted,textAlign:"center",padding:"4px 0"}},"Sin pedidos apartados ni movimientos registrados"),
+                  p._pedidosConApart.length===0&&p._pedidosPendiente.length===0&&(p.movimientos||[]).length===0&&e("div",{style:{fontSize:12,color:C.textMuted,textAlign:"center",padding:"4px 0"}},"Sin pedidos apartados ni movimientos registrados"),
                   p._pedidosConApart.length>0&&e("div",null,
                     e("div",{style:{fontSize:11,fontWeight:700,color:C.textDim,textTransform:"uppercase",letterSpacing:"0.6px",marginBottom:8}},"Separados para pedidos"),
-                    e("div",{style:{display:"flex",flexDirection:"column",gap:4,marginBottom:(p.movimientos||[]).length>0?10:0}},
+                    e("div",{style:{display:"flex",flexDirection:"column",gap:4,marginBottom:(p._pedidosPendiente.length>0||(p.movimientos||[]).length>0)?10:0}},
                       p._pedidosConApart.map(function(pd){
                         var cl=clientes.find(function(c){ return c.id===pd.clienteId; });
                         var it=(pd.items||[]).find(function(it){ return it.catalogoId===p.id; });
@@ -14595,11 +14639,36 @@ export default function CLEO(props){
                       })
                     )
                   ),
-                  (p.movimientos||[]).length>0&&e("div",{style:{borderTop:p._pedidosConApart.length>0?"1px solid "+C.border:"none",paddingTop:p._pedidosConApart.length>0?8:0}},
+                  p._pedidosPendiente.length>0&&e("div",{style:{marginBottom:(p.movimientos||[]).length>0?10:0}},
+                    e("div",{style:{fontSize:11,fontWeight:700,color:"#92400E",textTransform:"uppercase",letterSpacing:"0.6px",marginBottom:8}},"Sin stock suficiente"),
+                    e("div",{style:{display:"flex",flexDirection:"column",gap:4}},
+                      p._pedidosPendiente.map(function(pd){
+                        var cl=clientes.find(function(c){ return c.id===pd.clienteId; });
+                        var it=(pd.items||[]).find(function(it){ return it.catalogoId===p.id; });
+                        var falt=it?(it.invPendiente||0):0;
+                        return e("div",{key:pd.id,style:{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"6px 8px",background:"#FFFBEB",border:"1px solid #FCD34D",borderRadius:8}},
+                          e("div",null,
+                            e("span",{style:{fontSize:13,fontWeight:600,color:C.text}},cl?cl.nombre:"Cliente"),
+                            pd.fechaEntrega&&e("span",{style:{fontSize:11,color:C.textMuted,marginLeft:6}},"· "+pd.fechaEntrega)
+                          ),
+                          e("span",{style:{fontSize:12,fontWeight:700,color:"#B45309",flexShrink:0}},"faltan "+falt)
+                        );
+                      })
+                    )
+                  ),
+                  (p.movimientos||[]).length>0&&e("div",{style:{borderTop:(p._pedidosConApart.length>0||p._pedidosPendiente.length>0)?"1px solid "+C.border:"none",paddingTop:(p._pedidosConApart.length>0||p._pedidosPendiente.length>0)?8:0}},
                     e("div",{style:{fontSize:11,fontWeight:700,color:C.textDim,textTransform:"uppercase",letterSpacing:"0.6px",marginBottom:6}},"Últimos cambios"),
                     (p.movimientos||[]).slice().reverse().slice(0,10).map(function(mv){
+                      var cantLabel=(function(){
+                        if(mv.tipo!=="ajuste_cantidad") return null;
+                        if(mv.cantAntes==null) return String(mv.cantDespues||0)+" pzas";
+                        var delta=(mv.cantDespues||0)-(mv.cantAntes||0);
+                        return (delta>=0?"+":"")+delta+" pzas";
+                      })();
                       return e("div",{key:mv.id,style:{fontSize:12,color:C.textMuted,paddingBottom:3}},
-                        mv.nota
+                        mv.nota&&cantLabel
+                          ? e("span",null,mv.nota,": ",e("b",{style:{color:C.text}},cantLabel)," · ",mv.fecha)
+                          : mv.nota
                           ? e("span",null,mv.nota," · ",mv.fecha)
                           : e("span",null,"De ",e("b",{style:{color:C.text}},mv.cantAntes)," a ",e("b",{style:{color:C.text}},mv.cantDespues)," · ",mv.fecha)
                       );
@@ -14840,7 +14909,7 @@ export default function CLEO(props){
                         onClick:function(){ setEvtTerminarConfirmId(null); }},"Cancelar"),
                       e("button",{type:"button",style:{cursor:"pointer",padding:"10px 20px",borderRadius:10,border:"none",background:"#EF4444",color:"#fff",fontSize:13,fontWeight:700,flex:1,minHeight:44},
                         onClick:function(){
-                          setEvtTerminarForm((evActual.productos||[]).map(function(ep){ return {catalogoId:ep.catalogoId,cantidadRegresada:"",motivo:""}; }));
+                          setEvtTerminarForm((evActual.productos||[]).map(function(ep){ var esp=Math.max(0,(ep.cantidadLlevada||0)-(ep.cantidadVendida||0)); return {catalogoId:ep.catalogoId,cantidadRegresada:String(esp),motivo:""}; }));
                           setEvtTerminarId(evActual.id);
                           setEvtTerminarConfirmId(null);
                         }},"Sí, cerrar evento")
@@ -14984,6 +15053,41 @@ export default function CLEO(props){
                     );
                   })
                 ),
+                // ── Ventas por día ───────────────────────────────────────────
+                (function(){
+                  var pedEvt=(evActual.pedidosIds||[]).map(function(pid){ return (pedidos||[]).find(function(p){ return String(p.id)===String(pid)&&p.estadoPedido!=="cancelado"; }); }).filter(Boolean);
+                  var inicioEvt=evActual.fecha||FECHA_HOY;
+                  var finEvt=evActual.estado==="abierto"?FECHA_HOY:(evActual.fechaFin||evActual.fecha||FECHA_HOY);
+                  var diasEvt=[];
+                  var cur=new Date(inicioEvt+"T12:00:00"); var fin=new Date(finEvt+"T12:00:00");
+                  while(cur<=fin){ diasEvt.push(cur.toISOString().slice(0,10)); cur=new Date(cur); cur.setDate(cur.getDate()+1); }
+                  var porDia={}; diasEvt.forEach(function(d){ porDia[d]={total:0,n:0}; });
+                  pedEvt.forEach(function(ped){ var d=ped.fecha||FECHA_HOY; if(porDia[d]){ porDia[d].total+=Number(ped.total||0); porDia[d].n++; } });
+                  var maxTotal=diasEvt.reduce(function(m,d){ return Math.max(m,porDia[d].total); },0);
+                  var DIAS=["Dom","Lun","Mar","Mié","Jue","Vie","Sáb"]; var MESES=["ene","feb","mar","abr","may","jun","jul","ago","sep","oct","nov","dic"];
+                  function fmtDia(s){ var f=new Date(s+"T12:00:00"); return DIAS[f.getDay()]+" "+f.getDate()+" "+MESES[f.getMonth()]; }
+                  return e("div",{style:{marginBottom:12}},
+                    e("div",{style:{fontSize:11,fontWeight:700,color:C.textDim,textTransform:"uppercase",letterSpacing:"0.6px",marginBottom:8}},"Ventas por día"),
+                    pedEvt.length===0
+                      ? e("div",{style:{fontSize:12,color:C.textDim,padding:"2px 0 8px"}},"Registra ventas durante el evento para ver el desglose por día.")
+                      : e("div",{style:{borderRadius:12,border:"1px solid "+C.border,overflow:"hidden"}},
+                          diasEvt.map(function(d,idx){
+                            var dat=porDia[d]; var esMejor=maxTotal>0&&dat.total===maxTotal; var esHoy=d===FECHA_HOY&&evActual.estado==="abierto";
+                            return e("div",{key:d,style:{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"10px 14px",borderBottom:idx<diasEvt.length-1?"1px solid "+C.border:"none",background:esHoy?"rgba(75,94,252,0.04)":esMejor?C_TEAL_PALE:C.surface,borderLeft:"3px solid "+(esHoy?C.purple:esMejor?C_TEAL:"transparent")}},
+                              e("div",null,
+                                e("div",{style:{display:"flex",alignItems:"center",gap:6}},
+                                  e("span",{style:{fontSize:13,fontWeight:600,color:dat.total>0?C.text:C.textDim}},fmtDia(d)),
+                                  esHoy&&e("span",{style:{fontSize:10,fontWeight:700,padding:"1px 7px",borderRadius:20,background:"rgba(75,94,252,0.12)",color:C.purple}},"HOY"),
+                                  esMejor&&!esHoy&&e("span",{style:{fontSize:10,fontWeight:700,padding:"1px 7px",borderRadius:20,background:C_TEAL_PALE,color:C_TEAL,border:"1px solid "+C_TEAL_BORDER}},"mejor día")
+                                ),
+                                dat.n>0&&e("div",{style:{fontSize:11,color:C.textMuted,marginTop:1}},dat.n+" venta"+(dat.n===1?"":"s"))
+                              ),
+                              e("span",{style:{fontSize:dat.total>0?16:13,fontWeight:700,color:dat.total>0?(esHoy?C.purple:esMejor?C_TEAL:C.text):C.textDim}},dat.total>0?"$"+formatoDinero(dat.total):"—")
+                            );
+                          })
+                        )
+                  );
+                })(),
                 evActual.estado==="abierto"&&e("div",{style:{display:"flex",flexDirection:"column",gap:8,marginTop:4}},
                   // Fila 1: acciones principales — misma altura, mismo ancho
                   e("div",{style:{display:"flex",gap:8}},
@@ -15136,17 +15240,21 @@ export default function CLEO(props){
                   var tLl=(ev.productos||[]).reduce(function(s,ep){ return s+(ep.cantidadLlevada||0); },0);
                   var tVd=(ev.productos||[]).reduce(function(s,ep){ return s+(ep.cantidadVendida||0); },0);
                   var tReg=(ev.productos||[]).reduce(function(s,ep){ return s+(ep.cantidadRegresada||0); },0);
+                  var totalEvt=(ev.pedidosIds||[]).reduce(function(sum,pid){ var ped=(pedidos||[]).find(function(p){ return String(p.id)===String(pid); }); if(!ped||ped.estadoPedido==="cancelado") return sum; return sum+(Number(ped.total)||0); },0);
                   return e("div",{key:ev.id,style:{background:C.surface,border:"1px solid "+C.border,borderRadius:12,padding:"12px 14px",marginBottom:8,cursor:"pointer"},onClick:function(){ setEvtFichaId(ev.id); }},
                     e("div",{style:{display:"flex",justifyContent:"space-between",alignItems:"flex-start",gap:8,marginBottom:5}},
                       e("div",null,
                         e("div",{style:{fontSize:13,fontWeight:600,color:C.textMuted}},ev.nombre),
                         e("div",{style:{fontSize:11,color:C.textDim}},rangoFecha(ev))
                       ),
-                      e("span",{style:{fontSize:10,fontWeight:700,padding:"2px 8px",borderRadius:20,background:C.surfaceUp,color:C.textDim,border:"1px solid "+C.border}},"CERRADO")
+                      e("div",{style:{display:"flex",alignItems:"center",gap:8}},
+                        totalEvt>0&&e("span",{style:{fontSize:13,fontWeight:700,color:C.green}},"$"+formatoDinero(totalEvt)),
+                        e("span",{style:{fontSize:10,fontWeight:700,padding:"2px 8px",borderRadius:20,background:C.surfaceUp,color:C.textDim,border:"1px solid "+C.border}},"CERRADO")
+                      )
                     ),
                     e("div",{style:{display:"flex",gap:16,fontSize:11,color:C.textMuted}},
                       e("span",{},"Llevaste: "+tLl),
-                      e("span",{style:{color:C.green}},"Vendidas: "+tVd),
+                      e("span",{style:{color:tVd>0?C.green:C.textMuted}},"Vendidas: "+tVd),
                       e("span",{},"Regresaron: "+tReg)
                     )
                   );
@@ -15936,12 +16044,7 @@ export default function CLEO(props){
           "Cada pedido registrado es información valiosa. Los patrones aparecen cuando más datos tienes.";
 
         // ── Ganancia estimada del período ────────────────────────────────
-        // Solo se muestra si al menos un ítem del período tiene costo
-        // configurado. Se recorre cada pedido no cancelado del período,
-        // se busca el producto por catalogoId y se calcula el costo
-        // unitario con calcularCostoUnitario(prod.costoConfig, materialesCat).
-        // Si un ítem no tiene producto o el costo está incompleto se cuenta
-        // como "sin costo" y se avisa al usuario (badge "Parcial").
+        function fp(n){ return "$"+(Math.round((n||0)*100)/100).toFixed(2); }
         var ganVentasBrutas=0; var ganCostos=0;
         var ganItemsConCosto=0; var ganItemsSinCosto=0;
         pedidosPer.filter(function(p){ return p.estadoPedido!=="cancelado"; }).forEach(function(ped){
@@ -16016,7 +16119,8 @@ export default function CLEO(props){
             e("div",{style:{display:"grid",gridTemplateColumns:isMobile?"1fr 1fr":"1fr 1fr 1fr",gap:10}},
               e("div",{style:{background:C.bg,borderRadius:12,padding:"12px 14px"}},
                 e("div",{style:{fontSize:9,fontWeight:700,color:C.textDim,textTransform:"uppercase",letterSpacing:"0.8px",marginBottom:4}},"Ventas del período"),
-                e("div",{style:{fontSize:18,fontWeight:700,color:C.text,lineHeight:1}},fp(ganVentasBrutas))
+                e("div",{style:{fontSize:18,fontWeight:700,color:C.text,lineHeight:1}},fp(ganVentasBrutas)),
+                e("div",{style:{fontSize:10,color:C.textDim,marginTop:3}},"Incluye pedidos por cobrar")
               ),
               e("div",{style:{background:C.bg,borderRadius:12,padding:"12px 14px"}},
                 e("div",{style:{fontSize:9,fontWeight:700,color:C.textDim,textTransform:"uppercase",letterSpacing:"0.8px",marginBottom:4}},"Costos estimados"),
