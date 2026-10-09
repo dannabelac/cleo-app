@@ -4854,6 +4854,10 @@ export default function CLEO(props){
   var sEvtTerminarConfirmId=useState(null); var evtTerminarConfirmId=sEvtTerminarConfirmId[0]; var setEvtTerminarConfirmId=sEvtTerminarConfirmId[1];
   var sEvtAddProdOpen=useState(false); var evtAddProdOpen=sEvtAddProdOpen[0]; var setEvtAddProdOpen=sEvtAddProdOpen[1];
   var sEvtAddProdForm=useState({catalogoId:"",nombre:"",tieneInventario:true,cantidadLlevada:""}); var evtAddProdForm=sEvtAddProdForm[0]; var setEvtAddProdForm=sEvtAddProdForm[1];
+  var sEvtGastoFormOpen=useState(false); var evtGastoFormOpen=sEvtGastoFormOpen[0]; var setEvtGastoFormOpen=sEvtGastoFormOpen[1];
+  var sEvtGastoForm=useState({concepto:"",monto:"",fecha:FECHA_HOY}); var evtGastoForm=sEvtGastoForm[0]; var setEvtGastoForm=sEvtGastoForm[1];
+  var sEvtGastoEditId=useState(null); var evtGastoEditId=sEvtGastoEditId[0]; var setEvtGastoEditId=sEvtGastoEditId[1];
+  var sEvtGastoDelId=useState(null); var evtGastoDelId=sEvtGastoDelId[0]; var setEvtGastoDelId=sEvtGastoDelId[1];
   // ── Costos state
   var s12e15=useState("inventario"); var cosTabAct=s12e15[0]; var setCosTabAct=s12e15[1];
   var s12e16=useState(null); var cosProductoId=s12e16[0]; var setCosProductoId=s12e16[1];
@@ -15053,6 +15057,21 @@ export default function CLEO(props){
                     );
                   })
                 ),
+                evActual.estado==="abierto"&&e("div",{style:{display:"flex",gap:8,marginBottom:12}},
+                  e("button",{type:"button",style:{flex:1,cursor:"pointer",padding:"11px 0",borderRadius:10,border:"1.5px solid "+C_TEAL,background:C_TEAL_PALE,color:C_TEAL,fontSize:13,fontWeight:600,textAlign:"center"},
+                    onClick:function(){
+                      setEvtAddProdForm({catalogoId:"",nombre:"",tieneInventario:true,cantidadLlevada:""});
+                      setEvtAddProdOpen(true);
+                    }
+                  },"+ Agregar producto"),
+                  e("button",{type:"button",style:{flex:1,cursor:"pointer",padding:"11px 0",borderRadius:10,border:"none",background:"#F59E0B",color:"#fff",fontSize:13,fontWeight:700,textAlign:"center"},
+                    onClick:function(){
+                      setFormVenta(Object.assign({},ventaVacia,{tipo:"generico",eventoId:evActual.id,etiqueta:evActual.nombre}));
+                      setPasoVenta("form");
+                      setModalVenta(true);
+                    }
+                  },"+ Venta rápida")
+                ),
                 // ── Ventas por día ───────────────────────────────────────────
                 (function(){
                   var pedEvt=(evActual.pedidosIds||[]).map(function(pid){ return (pedidos||[]).find(function(p){ return String(p.id)===String(pid)&&p.estadoPedido!=="cancelado"; }); }).filter(Boolean);
@@ -15088,30 +15107,157 @@ export default function CLEO(props){
                         )
                   );
                 })(),
-                evActual.estado==="abierto"&&e("div",{style:{display:"flex",flexDirection:"column",gap:8,marginTop:4}},
-                  // Fila 1: acciones principales — misma altura, mismo ancho
-                  e("div",{style:{display:"flex",gap:8}},
-                    e("button",{type:"button",style:{flex:1,cursor:"pointer",padding:"10px 0",borderRadius:10,border:"none",background:"#F59E0B",color:"#fff",fontSize:13,fontWeight:700,textAlign:"center"},
-                      onClick:function(){
-                        setFormVenta(Object.assign({},ventaVacia,{tipo:"generico",eventoId:evActual.id,etiqueta:evActual.nombre}));
-                        setPasoVenta("form");
-                        setModalVenta(true);
-                      }
-                    },"+ Venta rápida"),
-                    e("button",{type:"button",style:{flex:1,cursor:"pointer",padding:"10px 0",borderRadius:10,border:"1.5px solid "+C_TEAL,background:C_TEAL_PALE,color:C_TEAL,fontSize:13,fontWeight:600,textAlign:"center"},
-                      onClick:function(){
-                        setEvtAddProdForm({catalogoId:"",nombre:"",tieneInventario:true,cantidadLlevada:""});
-                        setEvtAddProdOpen(true);
-                      }
-                    },"+ Agregar producto")
-                  ),
-                  // Fila 2: acción destructiva — separada visualmente, más discreta
-                  e("button",{type:"button",style:{width:"100%",cursor:"pointer",padding:"9px 0",borderRadius:10,border:"1px solid rgba(239,68,68,0.25)",background:"rgba(239,68,68,0.04)",color:"#DC2626",fontSize:13,fontWeight:600,textAlign:"center"},
-                    onClick:function(){
-                      setEvtTerminarConfirmId(evActual.id);
+                // ── Gastos del evento ─────────────────────────────────────────
+                (function(){
+                  var gastos=evActual.gastos||[];
+                  var DIAS_G=["Dom","Lun","Mar","Mié","Jue","Vie","Sáb"]; var MESES_G=["ene","feb","mar","abr","may","jun","jul","ago","sep","oct","nov","dic"];
+                  function fmtFechaG(s){ var f=new Date(s+"T12:00:00"); return DIAS_G[f.getDay()]+" "+f.getDate()+" "+MESES_G[f.getMonth()]; }
+                  var fechasMap={}; gastos.forEach(function(g){ var d=g.fecha||FECHA_HOY; if(!fechasMap[d]) fechasMap[d]=[]; fechasMap[d].push(g); });
+                  var fechasOrden=Object.keys(fechasMap).sort();
+                  var totalGastosEv=gastos.reduce(function(s,g){ return s+(Number(g.monto)||0); },0);
+                  function abrirFormNuevo(){ setEvtGastoEditId(null); setEvtGastoForm({concepto:"",monto:"",fecha:FECHA_HOY}); setEvtGastoFormOpen(true); setEvtGastoDelId(null); }
+                  function abrirFormEditar(g){ setEvtGastoEditId(g.id); setEvtGastoForm({concepto:g.concepto,monto:String(g.monto),fecha:g.fecha||FECHA_HOY}); setEvtGastoFormOpen(true); setEvtGastoDelId(null); }
+                  function guardarGasto(){
+                    var monto=Number(evtGastoForm.monto);
+                    if(!evtGastoForm.concepto.trim()||!(monto>0)) return;
+                    if(evtGastoEditId){
+                      setEventosInv(function(prev){ return (prev||[]).map(function(ev){ if(ev.id!==evActual.id) return ev; return Object.assign({},ev,{gastos:(ev.gastos||[]).map(function(g){ return g.id===evtGastoEditId?Object.assign({},g,{concepto:evtGastoForm.concepto.trim(),monto:monto,fecha:evtGastoForm.fecha}):g; })}); }); });
+                    } else {
+                      var nuevoG={id:"g_"+Date.now(),eventoId:evActual.id,concepto:evtGastoForm.concepto.trim(),monto:monto,fecha:evtGastoForm.fecha||FECHA_HOY,fechaRegistro:new Date().toISOString()};
+                      setEventosInv(function(prev){ return (prev||[]).map(function(ev){ if(ev.id!==evActual.id) return ev; return Object.assign({},ev,{gastos:(ev.gastos||[]).concat([nuevoG])}); }); });
                     }
-                  },"Terminar evento")
-                ),
+                    setEvtGastoFormOpen(false); setEvtGastoEditId(null); setEvtGastoForm({concepto:"",monto:"",fecha:FECHA_HOY});
+                  }
+                  function pedirEliminar(gId){ setEvtGastoDelId(gId); setEvtGastoFormOpen(false); }
+                  function confirmarEliminar(){ setEventosInv(function(prev){ return (prev||[]).map(function(ev){ if(ev.id!==evActual.id) return ev; return Object.assign({},ev,{gastos:(ev.gastos||[]).filter(function(g){ return g.id!==evtGastoDelId; })}); }); }); setEvtGastoDelId(null); }
+                  var canSave=evtGastoForm.concepto.trim()&&Number(evtGastoForm.monto)>0;
+                  return e("div",{style:{marginBottom:12}},
+                    e("div",{style:{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:4}},
+                      e("div",{style:{fontSize:11,fontWeight:700,color:C.textDim,textTransform:"uppercase",letterSpacing:"0.6px"}},"Gastos del evento"),
+                      e("button",{type:"button",style:{fontSize:12,fontWeight:700,color:C_TEAL,background:"rgba(13,148,136,0.08)",border:"none",borderRadius:20,padding:"4px 12px",cursor:"pointer"},onClick:abrirFormNuevo},"+ Agregar gasto")
+                    ),
+                    e("div",{style:{fontSize:11,color:C.textDim,marginBottom:8,lineHeight:1.4}},"Anota gastos que no hayas incluido en el costo de tus productos."),
+                    evtGastoFormOpen&&e("div",{style:{background:C.surface,borderRadius:12,border:"1.5px solid "+C_TEAL,padding:14,marginBottom:10,boxShadow:"0 0 0 3px rgba(13,148,136,0.06)"}},
+                      e("div",{style:{fontSize:14,fontWeight:700,marginBottom:12}},evtGastoEditId?"Editar gasto":"Nuevo gasto"),
+                      e("div",{style:{marginBottom:10}},
+                        e("div",{style:{fontSize:11,fontWeight:700,color:C.textMuted,textTransform:"uppercase",letterSpacing:"0.5px",marginBottom:4}},"¿En qué gastaste?"),
+                        e("input",{type:"text",value:evtGastoForm.concepto,placeholder:"Espacio, transporte, comida…",style:{width:"100%",padding:"9px 11px",borderRadius:9,border:"1.5px solid "+C.border,background:C.surfaceUp,color:C.text,fontSize:13,fontFamily:"inherit",boxSizing:"border-box"},onChange:function(ev){ setEvtGastoForm(function(f){ return Object.assign({},f,{concepto:ev.target.value}); }); }})
+                      ),
+                      e("div",{style:{display:"flex",gap:8,marginBottom:12}},
+                        e("div",{style:{flex:1}},
+                          e("div",{style:{fontSize:11,fontWeight:700,color:C.textMuted,textTransform:"uppercase",letterSpacing:"0.5px",marginBottom:4}},"¿Cuánto?"),
+                          e("input",{type:"number",min:"0.01",step:"0.01",value:evtGastoForm.monto,placeholder:"0",style:{width:"100%",padding:"9px 11px",borderRadius:9,border:"1.5px solid "+C.border,background:C.surfaceUp,color:C.text,fontSize:13,fontFamily:"inherit",boxSizing:"border-box"},onChange:function(ev){ setEvtGastoForm(function(f){ return Object.assign({},f,{monto:ev.target.value}); }); }})
+                        ),
+                        e("div",{style:{flex:1}},
+                          e("div",{style:{fontSize:11,fontWeight:700,color:C.textMuted,textTransform:"uppercase",letterSpacing:"0.5px",marginBottom:4}},"¿Qué día?"),
+                          e("input",{type:"date",value:evtGastoForm.fecha,style:{width:"100%",padding:"9px 11px",borderRadius:9,border:"1.5px solid "+C.border,background:C.surfaceUp,color:C.text,fontSize:13,fontFamily:"inherit",boxSizing:"border-box"},onChange:function(ev){ setEvtGastoForm(function(f){ return Object.assign({},f,{fecha:ev.target.value}); }); }})
+                        )
+                      ),
+                      e("div",{style:{display:"flex",gap:8}},
+                        e("button",{type:"button",style:{flex:1,padding:"9px 0",borderRadius:9,border:"1px solid "+C.border,background:"transparent",color:C.textMuted,fontSize:13,fontWeight:600,cursor:"pointer"},onClick:function(){ setEvtGastoFormOpen(false); setEvtGastoEditId(null); }},"Cancelar"),
+                        e("button",{type:"button",style:{flex:2,padding:"9px 0",borderRadius:9,border:"none",background:canSave?C_TEAL:"rgba(13,148,136,0.3)",color:"#fff",fontSize:13,fontWeight:700,cursor:canSave?"pointer":"default"},onClick:guardarGasto},"Guardar")
+                      )
+                    ),
+                    evtGastoDelId&&e("div",{style:{background:"rgba(220,38,38,0.04)",border:"1px solid rgba(220,38,38,0.16)",borderRadius:12,padding:"12px 14px",marginBottom:10,display:"flex",flexDirection:"column",gap:10}},
+                      e("div",null,
+                        e("div",{style:{fontSize:13,fontWeight:500,marginBottom:2}},"¿Eliminar \""+(((evActual.gastos||[]).find(function(g){ return g.id===evtGastoDelId; })||{}).concepto||"este gasto")+"\"?"),
+                        e("div",{style:{fontSize:12,color:C.textMuted}},"Esta acción no se puede deshacer.")
+                      ),
+                      e("div",{style:{display:"flex",gap:8}},
+                        e("button",{type:"button",style:{flex:1,padding:"8px 0",borderRadius:9,border:"1px solid "+C.border,background:C.surface,color:C.textMuted,fontSize:12,fontWeight:600,cursor:"pointer"},onClick:function(){ setEvtGastoDelId(null); }},"Cancelar"),
+                        e("button",{type:"button",style:{flex:1,padding:"8px 0",borderRadius:9,border:"none",background:"#DC2626",color:"#fff",fontSize:12,fontWeight:700,cursor:"pointer"},onClick:confirmarEliminar},"Eliminar")
+                      )
+                    ),
+                    gastos.length===0&&!evtGastoFormOpen&&e("div",{style:{background:C.surface,borderRadius:12,border:"1.5px dashed "+C.border,padding:"18px 14px",textAlign:"center",color:C.textMuted,fontSize:13,lineHeight:1.5}},"Aquí puedes anotar lo que gastes en espacio, transporte, comida y más."),
+                    gastos.length>0&&e("div",{style:{borderRadius:12,border:"1px solid "+C.border,overflow:"hidden"}},
+                      fechasOrden.map(function(fecha,gIdx){
+                        var items=fechasMap[fecha];
+                        var totalDia=items.reduce(function(s,g){ return s+(Number(g.monto)||0); },0);
+                        return e("div",{key:fecha},
+                          e("div",{style:{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"7px 14px",background:C.surfaceUp,borderBottom:"1px solid "+C.border,borderTop:gIdx>0?"1px solid "+C.border:"none"}},
+                            e("span",{style:{fontSize:11,fontWeight:700,color:C.textMuted,textTransform:"uppercase",letterSpacing:"0.4px"}},fmtFechaG(fecha)),
+                            e("span",{style:{fontSize:12,fontWeight:700,fontVariantNumeric:"tabular-nums"}},"$"+formatoDinero(totalDia))
+                          ),
+                          items.map(function(g,iIdx){
+                            return e("div",{key:g.id,style:{display:"flex",alignItems:"center",gap:8,padding:"10px 14px",borderBottom:iIdx<items.length-1?"1px solid "+C.border:"none",background:evtGastoDelId===g.id?"rgba(220,38,38,0.03)":C.surface}},
+                              e("div",{style:{flex:1}},e("div",{style:{fontSize:13,fontWeight:500}},g.concepto)),
+                              e("div",{style:{fontSize:13,fontWeight:700,fontVariantNumeric:"tabular-nums",minWidth:60,textAlign:"right"}},"$"+formatoDinero(Number(g.monto))),
+                              e("div",{style:{display:"flex"}},
+                                e("button",{type:"button",title:"Editar",style:{background:"none",border:"none",cursor:"pointer",color:C.textDim,padding:"4px 6px",borderRadius:7,fontSize:14},onClick:function(){ abrirFormEditar(g); }},"✏"),
+                                e("button",{type:"button",title:"Eliminar",style:{background:"none",border:"none",cursor:"pointer",color:"#DC2626",opacity:0.65,padding:"4px 6px",borderRadius:7,fontSize:14},onClick:function(){ pedirEliminar(g.id); }},"🗑")
+                              )
+                            );
+                          })
+                        );
+                      }),
+                      e("div",{style:{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"10px 14px",background:C.surfaceUp,borderTop:"1px solid "+C.border}},
+                        e("span",{style:{fontSize:12,fontWeight:600,color:C.textMuted}},"Total gastos"),
+                        e("span",{style:{fontSize:15,fontWeight:700,fontVariantNumeric:"tabular-nums"}},"$"+formatoDinero(totalGastosEv))
+                      )
+                    )
+                  );
+                })(),
+                // ── Cuánto dejó el evento ─────────────────────────────────────
+                (function(){
+                  var gastos=evActual.gastos||[];
+                  var totalGastos=gastos.reduce(function(s,g){ return s+(Number(g.monto)||0); },0);
+                  // Calcular costos de productos vendidos en el evento
+                  var costoAcc=(evActual.productos||[]).reduce(function(acc,ep){
+                    var vendidas=Number(ep.cantidadVendida)||0;
+                    if(vendidas<=0) return acc;
+                    var prodCat=(productosCat||[]).find(function(p){ return p.id===ep.catalogoId; });
+                    if(!prodCat||!prodCat.costoConfig){ acc.sinCosto+=vendidas; return acc; }
+                    var res=calcularCostoUnitario(prodCat.costoConfig,materialesCat);
+                    if(res.incompleto||res.costoTotal===null||res.costoTotal===undefined){ acc.sinCosto+=vendidas; return acc; }
+                    acc.total+=res.costoTotal*vendidas;
+                    acc.conCosto+=vendidas;
+                    return acc;
+                  },{total:0,conCosto:0,sinCosto:0});
+                  var totalProductosVendidos=(evActual.productos||[]).reduce(function(s,ep){ return s+(Number(ep.cantidadVendida)||0); },0);
+                  var tieneCostos=costoAcc.conCosto>0;
+                  var costosParciales=tieneCostos&&costoAcc.sinCosto>0;
+                  var costosCompletos=tieneCostos&&costoAcc.sinCosto===0&&totalProductosVendidos>0;
+                  var netoConGastos=cobradoEvento-totalGastos;
+                  var netoFinal=netoConGastos-costoAcc.total;
+                  return e("div",{style:{marginBottom:12}},
+                    e("div",{style:{fontSize:11,fontWeight:700,color:C.textDim,textTransform:"uppercase",letterSpacing:"0.6px",marginBottom:8}},"Cuánto dejó el evento"),
+                    e("div",{style:{borderRadius:12,border:"1px solid "+C.border,overflow:"hidden"}},
+                      e("div",{style:{display:"flex",alignItems:"baseline",justifyContent:"space-between",padding:"11px 14px",borderBottom:"1px solid "+C.border}},
+                        e("span",{style:{fontSize:13,color:C.textMuted}},"Lo que cobraste"),
+                        e("span",{style:{fontSize:14,fontWeight:700,fontVariantNumeric:"tabular-nums"}},"$"+formatoDinero(cobradoEvento))
+                      ),
+                      tieneCostos&&e("div",{style:{display:"flex",alignItems:"baseline",justifyContent:"space-between",padding:"11px 14px",borderBottom:"1px solid "+C.border}},
+                        e("span",{style:{fontSize:13,color:C.textMuted}},"Costo de productos vendidos"),
+                        e("span",{style:{fontSize:14,fontWeight:700,color:"#DC2626",fontVariantNumeric:"tabular-nums"}},"−$"+formatoDinero(costoAcc.total))
+                      ),
+                      gastos.length>0&&e("div",{style:{display:"flex",alignItems:"baseline",justifyContent:"space-between",padding:"11px 14px",borderBottom:"1px solid "+C.border}},
+                        e("span",{style:{fontSize:13,color:C.textMuted}},"Gastos del evento"),
+                        e("span",{style:{fontSize:14,fontWeight:700,color:"#DC2626",fontVariantNumeric:"tabular-nums"}},"−$"+formatoDinero(totalGastos))
+                      ),
+                      // Escenario A: sin costos registrados
+                      !tieneCostos&&e("div",{style:{padding:"14px",background:C_TEAL_PALE}},
+                        e("div",{style:{fontSize:10,fontWeight:700,color:C.textDim,textTransform:"uppercase",letterSpacing:"0.6px",marginBottom:4}},"Antes del costo de tus productos"),
+                        e("div",{style:{fontSize:22,fontWeight:700,color:C.green,fontVariantNumeric:"tabular-nums",marginBottom:4}},(netoConGastos<0?"−":"")+"$"+formatoDinero(Math.abs(netoConGastos))),
+                        e("div",{style:{fontSize:11,color:C.textDim,lineHeight:1.4}},gastos.length===0?"Agrega tus gastos y costos para ver el resultado completo.":"No incluye el costo de tus productos.")
+                      ),
+                      // Escenario B: costos parciales — faltan algunos
+                      costosParciales&&e("div",{style:{padding:"14px",background:"rgba(217,119,6,0.06)"}},
+                        e("div",{style:{fontSize:10,fontWeight:700,color:C.textDim,textTransform:"uppercase",letterSpacing:"0.6px",marginBottom:4}},"Con costos parciales"),
+                        e("div",{style:{fontSize:22,fontWeight:700,fontVariantNumeric:"tabular-nums",marginBottom:4,color:netoFinal>=0?C.amber:"#DC2626"}},(netoFinal<0?"−":"")+"$"+formatoDinero(Math.abs(netoFinal))),
+                        e("div",{style:{fontSize:11,color:"#D97706",background:"rgba(217,119,6,0.08)",borderRadius:8,padding:"6px 10px",lineHeight:1.4}},costoAcc.sinCosto+" "+(costoAcc.sinCosto===1?"producto vendido no tiene":"productos vendidos no tienen")+" costo registrado. El resultado real puede ser menor.")
+                      ),
+                      // Escenario C: costos completos
+                      costosCompletos&&e("div",{style:{padding:"14px",background:netoFinal>=0?"rgba(22,163,74,0.06)":"rgba(220,38,38,0.04)"}},
+                        e("div",{style:{fontSize:10,fontWeight:700,color:C.textDim,textTransform:"uppercase",letterSpacing:"0.6px",marginBottom:4}},"Te quedaron aproximadamente"),
+                        e("div",{style:{fontSize:22,fontWeight:700,fontVariantNumeric:"tabular-nums",marginBottom:4,color:netoFinal>=0?C.green:"#DC2626"}},(netoFinal<0?"−":"")+"$"+formatoDinero(Math.abs(netoFinal))),
+                        e("div",{style:{fontSize:11,color:C.textDim,lineHeight:1.4}},"Según costos y gastos registrados. Antes de otros gastos del negocio.")
+                      )
+                    )
+                  );
+                })(),
+                evActual.estado==="abierto"&&e("button",{type:"button",style:{width:"100%",cursor:"pointer",padding:"11px 0",borderRadius:10,border:"1px solid rgba(239,68,68,0.25)",background:"rgba(239,68,68,0.04)",color:"#DC2626",fontSize:13,fontWeight:600,textAlign:"center",marginBottom:8},
+                  onClick:function(){ setEvtTerminarConfirmId(evActual.id); }
+                },"Terminar evento"),
                 evtAddProdOpen&&evActual.estado==="abierto"&&(function(){
                   var addTodos=productosConInv.map(function(p){ return {id:p.id,nombre:p.nombre,tieneInventario:true,disp:p._disponibles}; }).concat((productosSinControl||[]).map(function(p){ return {id:p.id,nombre:p.nombre,tieneInventario:false,disp:null}; }));
                   var selProd=evtAddProdForm.catalogoId?addTodos.find(function(p){ return p.id===evtAddProdForm.catalogoId; }):null;
