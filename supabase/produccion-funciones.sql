@@ -440,8 +440,51 @@ begin
         '[]'::jsonb
       ),
     'cleo_tombstones', '[]'::jsonb,
-    'cleo_eventos_inventario', coalesce(v_ud_data -> 'cleo_eventos_inventario', '[]'::jsonb),
-    -- CAMBIO 29: propagar cleo_multiop_enabled desde el blob guardado
+    -- CAMBIO 40: eventos desde tablas relacionales (antes era blob passthrough)
+    'cleo_eventos_inventario',
+      coalesce(
+        (select jsonb_agg(jsonb_build_object(
+            'id',          public.cleo_id_to_json(ei.cleo_id),
+            'nombre',      ei.nombre,
+            'fecha',       ei.fecha,
+            'fechaFin',    ei.fecha_fin,
+            'estado',      ei.estado,
+            'fechaCierre', ei.fecha_cierre,
+            'pedidosIds',  ei.pedidos_ids,
+            'movimientos', ei.movimientos,
+            'productos',
+              coalesce(
+                (select jsonb_agg(jsonb_build_object(
+                    'catalogoId',      public.cleo_id_to_json(ep.catalogo_id),
+                    'nombre',          ep.nombre,
+                    'precio',          ep.precio,
+                    'cantidad',        ep.cantidad,
+                    'cantidadVendida', ep.cantidad_vendida,
+                    'reserva',         ep.reserva
+                  ) order by ep.created_at)
+                 from public.eventos_productos ep
+                where ep.evento_id = ei.id),
+                '[]'::jsonb
+              ),
+            'gastos',
+              coalesce(
+                (select jsonb_agg(jsonb_build_object(
+                    'id',            public.cleo_id_to_json(eg.cleo_id),
+                    'eventoId',      public.cleo_id_to_json(ei.cleo_id),
+                    'concepto',      eg.concepto,
+                    'monto',         eg.monto,
+                    'fecha',         eg.fecha,
+                    'fechaRegistro', eg.fecha_registro
+                  ) order by eg.fecha)
+                 from public.eventos_gastos eg
+                where eg.evento_id = ei.id),
+                '[]'::jsonb
+              )
+          ) order by ei.fecha desc)
+         from public.eventos_inventario ei
+        where ei.negocio_id = v_neg_id),
+        '[]'::jsonb
+      ),
     'cleo_multiop_enabled', v_ud_data -> 'cleo_multiop_enabled'
   )
   into v_blob;
@@ -485,12 +528,14 @@ declare
   v_del_pedidos        text[] := '{}';
   v_del_recordatorios  text[] := '{}';
   v_del_adjuntos       text[] := '{}';
+  v_del_eventos        text[] := '{}';   -- CAMBIO 40
 
   v_it      jsonb;
   v_sub     jsonb;
   v_uuid    uuid;
   v_uuid2   uuid;
   v_ci_id   uuid;
+  v_ev_id   uuid;                        -- CAMBIO 40
 
   v_hist_conflictos jsonb := '[]'::jsonb;
   v_hist_existente  record;
@@ -565,10 +610,12 @@ begin
     coalesce(array_agg(t ->> 'cleoId')      filter (where t ->> 'tipo' = 'venta'),        '{}'),
     coalesce(array_agg(t ->> 'cleoId')      filter (where t ->> 'tipo' = 'pedido'),       '{}'),
     coalesce(array_agg(t ->> 'cleoId')      filter (where t ->> 'tipo' = 'recordatorio'),'{}'),
-    coalesce(array_agg(t ->> 'storagePath') filter (where t ->> 'tipo' = 'adjunto'),      '{}')
+    coalesce(array_agg(t ->> 'storagePath') filter (where t ->> 'tipo' = 'adjunto'),      '{}'),
+    coalesce(array_agg(t ->> 'cleoId')      filter (where t ->> 'tipo' = 'evento'),       '{}')  -- CAMBIO 40
   into
     v_del_clientes, v_del_oportunidades, v_del_cotizaciones,
-    v_del_ventas, v_del_pedidos, v_del_recordatorios, v_del_adjuntos
+    v_del_ventas, v_del_pedidos, v_del_recordatorios, v_del_adjuntos,
+    v_del_eventos
   from jsonb_array_elements(coalesce(p_data -> 'cleo_tombstones', '[]')) t;
 
   -- ── 5. PROCESAR BORRADOS ──────────────────────────────────────────────────
@@ -618,6 +665,13 @@ begin
     delete from public.clientes
      where negocio_id = v_neg_id
        and cleo_id    = any(v_del_clientes);
+  end if;
+
+  -- CAMBIO 40: borrar eventos eliminados (cascada a productos y gastos)
+  if array_length(v_del_eventos, 1) > 0 then
+    delete from public.eventos_inventario
+     where negocio_id = v_neg_id
+       and cleo_id    = any(v_del_eventos);
   end if;
 
   -- ── 6. UPSERT CATÁLOGO SERVICIOS ─────────────────────────────────────────
@@ -701,6 +755,85 @@ begin
       do nothing;
     end loop;
   end loop;
+
+  -- ── 6c. UPSERT EVENTOS INVENTARIO + PRODUCTOS + GASTOS ──────────── CAMBIO 40
+  for v_it in
+    select value from jsonb_array_elements(coalesce(p_data -> 'cleo_eventos_inventario', '[]'))
+  loop
+    if (v_it ->> 'id') = any(v_del_eventos) then continue; end if;
+
+    insert into public.eventos_inventario (
+      negocio_id, cleo_id, nombre, fecha, fecha_fin,
+      estado, fecha_cierre, pedidos_ids, movimientos
+    )
+    values (
+      v_neg_id,
+      v_it ->> 'id',
+      coalesce(v_it ->> 'nombre', ''),
+      nullif(v_it ->> 'fecha', '')::date,
+      nullif(v_it ->> 'fechaFin', '')::date,
+      coalesce(v_it ->> 'estado', 'abierto'),
+      nullif(v_it ->> 'fechaCierre', '')::date,
+      coalesce(v_it -> 'pedidosIds', '[]'),
+      coalesce(v_it -> 'movimientos', '[]')
+    )
+    on conflict (negocio_id, cleo_id) do update set
+      nombre       = excluded.nombre,
+      fecha        = excluded.fecha,
+      fecha_fin    = excluded.fecha_fin,
+      estado       = excluded.estado,
+      fecha_cierre = excluded.fecha_cierre,
+      pedidos_ids  = excluded.pedidos_ids,
+      movimientos  = excluded.movimientos
+    returning id into v_ev_id;
+
+    delete from public.eventos_productos
+     where negocio_id = v_neg_id and evento_id = v_ev_id;
+
+    for v_sub in
+      select value from jsonb_array_elements(coalesce(v_it -> 'productos', '[]'))
+    loop
+      if (v_sub ->> 'catalogoId') is null then continue; end if;
+      insert into public.eventos_productos (
+        negocio_id, evento_id, catalogo_id,
+        nombre, precio, cantidad, cantidad_vendida, reserva
+      )
+      values (
+        v_neg_id, v_ev_id,
+        v_sub ->> 'catalogoId',
+        coalesce(v_sub ->> 'nombre', ''),
+        coalesce((v_sub ->> 'precio')::numeric, 0),
+        coalesce((v_sub ->> 'cantidad')::int, 0),
+        coalesce((v_sub ->> 'cantidadVendida')::int, 0),
+        nullif(v_sub ->> 'reserva', '')::int
+      );
+    end loop;
+
+    for v_sub in
+      select value from jsonb_array_elements(coalesce(v_it -> 'gastos', '[]'))
+    loop
+      if (v_sub ->> 'id') is null then continue; end if;
+      insert into public.eventos_gastos (
+        negocio_id, evento_id, cleo_id,
+        concepto, monto, fecha, fecha_registro
+      )
+      values (
+        v_neg_id, v_ev_id,
+        v_sub ->> 'id',
+        coalesce(v_sub ->> 'concepto', ''),
+        coalesce((v_sub ->> 'monto')::numeric, 0),
+        nullif(v_sub ->> 'fecha', '')::date,
+        nullif(v_sub ->> 'fechaRegistro', '')::timestamptz
+      )
+      on conflict (negocio_id, cleo_id) do update set
+        evento_id      = excluded.evento_id,
+        concepto       = excluded.concepto,
+        monto          = excluded.monto,
+        fecha          = excluded.fecha,
+        fecha_registro = excluded.fecha_registro;
+    end loop;
+  end loop;
+  -- ── FIN CAMBIO 40 ─────────────────────────────────────────────────────────
 
   -- ── 7. UPSERT CLIENTES ────────────────────────────────────────────────────
   for v_it in
