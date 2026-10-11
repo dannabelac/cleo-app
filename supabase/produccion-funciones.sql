@@ -458,7 +458,7 @@ begin
                     'catalogoId',      public.cleo_id_to_json(ep.catalogo_id),
                     'nombre',          ep.nombre,
                     'precio',          ep.precio,
-                    'cantidad',        ep.cantidad,
+                    'cantidadLlevada', ep.cantidad,
                     'cantidadVendida', ep.cantidad_vendida,
                     'reserva',         ep.reserva
                   ) order by ep.created_at)
@@ -803,7 +803,7 @@ begin
         v_sub ->> 'catalogoId',
         coalesce(v_sub ->> 'nombre', ''),
         coalesce((v_sub ->> 'precio')::numeric, 0),
-        coalesce((v_sub ->> 'cantidad')::int, 0),
+        coalesce((v_sub ->> 'cantidadLlevada')::int, (v_sub ->> 'cantidad')::int, 0),
         coalesce((v_sub ->> 'cantidadVendida')::int, 0),
         nullif(v_sub ->> 'reserva', '')::int
       );

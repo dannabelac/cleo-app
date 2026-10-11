@@ -130,7 +130,7 @@ select
   pr ->> 'catalogoId',
   coalesce(pr ->> 'nombre', ''),
   coalesce((pr ->> 'precio')::numeric, 0),
-  coalesce((pr ->> 'cantidad')::int, 0),
+  coalesce((pr ->> 'cantidadLlevada')::int, (pr ->> 'cantidad')::int, 0),
   coalesce((pr ->> 'cantidadVendida')::int, 0),
   nullif(pr ->> 'reserva', '')::int
 from public.user_data ud
