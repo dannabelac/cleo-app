@@ -17863,15 +17863,7 @@ export default function CLEO(props){
             );
           })(),
           e("div",{style:{display:"flex",gap:8,justifyContent:"flex-end"}},
-            e("button",{style:st.btn,onClick:function(){
-              // Antes ignoraba los días personalizados y siempre forzaba 30
-              // , ahora respeta exactamente lo que ya está seleccionado
-              // arriba (preset o personalizado), para que este botón nunca
-              // sorprenda con un valor distinto al que se ve en pantalla.
-              var diasAUsar=diasPostVenta||"30";
-              if(cl){ var f=new Date(); f.setDate(f.getDate()+Number(diasAUsar)); setClientes(clientes.map(function(x){ if(x.id!==cl.id) return x; var b=Object.assign({},x,{tipoSeguimientoPostVenta:mensajesPorDias[diasAUsar]?diasAUsar:"30"}); return conRecordatoriosActualizados(b,recordatoriosDe(b).concat([{id:"r_"+Date.now(),fecha:fmtFechaLocal(f),nota:notaPersonalPostVenta.trim()||mensajesPorDias[diasAUsar]||mensajesPorDias["30"],esPersonalizada:!!notaPersonalPostVenta.trim(),origen:"cleo",categoria:"postventa"}])); })); }
-              cerrarModal();
-            }},"Ahora no , recordame en "+(diasPostVenta||"30")+" dias"),
+            e("button",{style:st.btn,onClick:function(){ cerrarModal(); }},"Ahora no"),
             e("button",{style:st.btnP,onClick:function(){
               if(cl){ var f=new Date(); f.setDate(f.getDate()+Number(diasPostVenta)); setClientes(clientes.map(function(x){ if(x.id!==cl.id) return x; var b=Object.assign({},x,{tipoSeguimientoPostVenta:mensajesPorDias[diasPostVenta]?diasPostVenta:"30"}); return conRecordatoriosActualizados(b,recordatoriosDe(b).concat([{id:"r_"+Date.now(),fecha:fmtFechaLocal(f),nota:notaPersonalPostVenta.trim()||mensajesPorDias[diasPostVenta]||mensajesPorDias["30"],esPersonalizada:!!notaPersonalPostVenta.trim(),origen:"cleo",categoria:"postventa"}])); })); }
               cerrarModal();
