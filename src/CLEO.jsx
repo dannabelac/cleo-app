@@ -5690,7 +5690,7 @@ export default function CLEO(props){
       fechaCreado:new Date().toISOString(),
     };
     if(fp.anticipo&&Number(fp.anticipo)>0){
-      var resultadoPed=registrarPago("pedido",nuevoPedBase.id,fp.anticipo,FECHA_HOY,"Anticipo",nuevoPedBase);
+      var resultadoPed=registrarPago("pedido",nuevoPedBase.id,fp.anticipo,FECHA_HOY,"Anticipo",nuevoPedBase,fp.metodoPago||"efectivo");
       if(!resultadoPed.ok){ alert(resultadoPed.error); return; }
     } else {
       insertarSinPago("pedido",nuevoPedBase);
@@ -6837,7 +6837,7 @@ export default function CLEO(props){
   var sPedFormPagoModal=useState({monto:"",fecha:FECHA_HOY,concepto:"Anticipo",metodoPago:"efectivo"}); var formPagoPedidoModal=sPedFormPagoModal[0]; var setFormPagoPedidoModal=sPedFormPagoModal[1];
   var sPedEdit=useState(null); var pedidoEditando=sPedEdit[0]; var setPedidoEditando=sPedEdit[1];
   var sNuevoPedidoModal=useState(false); var nuevoPedidoModal=sNuevoPedidoModal[0]; var setNuevoPedidoModal=sNuevoPedidoModal[1];
-  var pedidoVacio={clienteId:"",nuevoNombre:"",items:[{id:"it_"+Date.now(),catalogoId:null,nombre:"",cantidad:1,precioUnitario:"",total:0}],anticipo:"",fechaEntrega:"",notas:"",oportunidadRespuesta:null};
+  var pedidoVacio={clienteId:"",nuevoNombre:"",items:[{id:"it_"+Date.now(),catalogoId:null,nombre:"",cantidad:1,precioUnitario:"",total:0}],anticipo:"",metodoPago:"efectivo",fechaEntrega:"",notas:"",oportunidadRespuesta:null};
   var sNuevoPedidoForm=useState(pedidoVacio); var nuevoPedidoForm=sNuevoPedidoForm[0]; var setNuevoPedidoForm=sNuevoPedidoForm[1];
   var sBuscaCliPed=useState(""); var buscaCliPed=sBuscaCliPed[0]; var setBuscaCliPed=sBuscaCliPed[1];
   var sGuardarProdOpo=useState(null); var guardarProdOpo=sGuardarProdOpo[0]; var setGuardarProdOpo=sGuardarProdOpo[1];
@@ -8984,7 +8984,8 @@ export default function CLEO(props){
           fechaCreado:new Date().toISOString(),
           fechaEntrega:formVenta.fecha||FECHA_HOY,
           notas:formVenta.notas||"",
-          etiqueta:formVenta.etiqueta||""
+          etiqueta:formVenta.etiqueta||"",
+          eventoId:(formVenta.eventoId&&formVenta.eventoId!=="otro")?formVenta.eventoId:null
         }
       : {
           id:Date.now(),
@@ -9286,6 +9287,7 @@ export default function CLEO(props){
     ventas_productos:'M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z',
     trabajos:'M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4',
     inventario:'M4 7v10c0 2.21 3.58 4 8 4s8-1.79 8-4V7M4 7c0 2.21 3.58 4 8 4s8-1.79 8-4M4 7c0-2.21 3.58-4 8-4s8 1.79 8 4m0 5c0 2.21-3.58 4-8 4s-8-1.79-8-4',
+    eventos:'M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z M4 22v-7',
   };
   var NAV_LABELS={inicio:"Inicio",pipeline:"Seguimientos",clientes:"Clientes",ventas:"Ingresos",cotizaciones:"Cotizaciones",trabajos:"Trabajos","hoy":"Hoy",resumen:"Resumen",prospectos:"Oportunidades",pedidos:"Pedidos",inventario:"Inventario y costos"};
   var NAV_LABELS_SHORT={inicio:"Inicio",pipeline:"Seguim.",clientes:"Clientes",ventas:"Ingresos",cotizaciones:"Cotiz.",trabajos:"Trabajos","hoy":"Hoy",resumen:"Resumen",prospectos:"Oportunidades",pedidos:"Pedidos",inventario:"Inv. y costos"};
@@ -13333,7 +13335,16 @@ export default function CLEO(props){
                 // ANTICIPO
                 e("div",null,
                   e("label",{style:st.lbl},"¿Ya dio anticipo?"),
-                  e(MontoInput,{placeholder:"$0 (dejar vacío si no)",value:nuevoPedidoForm.anticipo,onChange:function(ev){ setNuevoPedidoForm(Object.assign({},nuevoPedidoForm,{anticipo:ev.target.value})); },style:st.inp})
+                  e(MontoInput,{placeholder:"$0 (dejar vacío si no)",value:nuevoPedidoForm.anticipo,onChange:function(ev){ setNuevoPedidoForm(Object.assign({},nuevoPedidoForm,{anticipo:ev.target.value})); },style:st.inp}),
+                  nuevoPedidoForm.anticipo&&Number(nuevoPedidoForm.anticipo)>0&&e("div",{style:{display:"flex",gap:6,marginTop:8}},
+                    [{v:"efectivo",l:"💵 Efectivo",c:"#10B981"},{v:"transferencia",l:"📲 Transferencia",c:"#3B82F6"},{v:"tarjeta",l:"💳 Tarjeta",c:"#D97706"}].map(function(op){
+                      var activo=(nuevoPedidoForm.metodoPago||"efectivo")===op.v;
+                      return e("button",{key:op.v,type:"button",
+                        style:{cursor:"pointer",padding:"6px 12px",borderRadius:20,border:"1.5px solid "+(activo?op.c:C.border),background:activo?op.c+"22":"transparent",fontSize:12,color:activo?op.c:C.textMuted,fontWeight:activo?700:400},
+                        onClick:function(){ setNuevoPedidoForm(Object.assign({},nuevoPedidoForm,{metodoPago:op.v})); }
+                      },op.l);
+                    })
+                  )
                 ),
 
                 // FECHA DE ENTREGA
@@ -14535,9 +14546,18 @@ export default function CLEO(props){
               e("div",{style:{fontSize:14,color:C.textMuted}},
                 cosTabAct==="costos"
                   ?"Cuánto te cuesta y cuánto te queda por producto"
-                  :productosActivados.length>0
-                    ?(productosActivados.length+" producto"+(productosActivados.length===1?"":"s")+(nTerminados>0?" · "+nTerminados+" agotado"+(nTerminados===1?"":"s"):"")+(nPocos>0?" · "+nPocos+" con pocas existencias":""))
-                    :"Control de stock por producto"
+                  :cosTabAct==="eventos"
+                    ?(function(){
+                        var abiertos=(eventosInv||[]).filter(function(ev){ return ev.estado==="abierto"; }).length;
+                        var total=(eventosInv||[]).length;
+                        if(total===0) return "Registra tus ferias y eventos";
+                        return abiertos>0
+                          ?(abiertos+" abierto"+(abiertos===1?"":"s")+" · "+total+" en total")
+                          :(total+" evento"+(total===1?"":"s")+" · Ninguno abierto");
+                      })()
+                    :productosActivados.length>0
+                      ?(productosActivados.length+" producto"+(productosActivados.length===1?"":"s")+(nTerminados>0?" · "+nTerminados+" agotado"+(nTerminados===1?"":"s"):"")+(nPocos>0?" · "+nPocos+" con pocas existencias":""))
+                      :"Control de stock por producto"
               )
             ),
             cosTabAct==="inventario"&&productosActivados.length>0&&e("button",{
@@ -15126,7 +15146,8 @@ export default function CLEO(props){
                 ),
                 // ── Ventas por día (con desglose y anulación) ────────────────────
                 (function(){
-                  var pedEvt=(evActual.pedidosIds||[]).map(function(pid){ return (pedidos||[]).find(function(p){ return String(p.id)===String(pid)&&p.estadoPedido!=="cancelado"; }); }).filter(Boolean);
+                  var _pedEvtIds=[...(new Set([...(evActual.pedidosIds||[]).map(String),...(pedidos||[]).filter(function(p){ return p.eventoId&&String(p.eventoId)===String(evActual.id); }).map(function(p){ return String(p.id); })]))];
+                  var pedEvt=_pedEvtIds.map(function(pid){ return (pedidos||[]).find(function(p){ return String(p.id)===pid&&p.estadoPedido!=="cancelado"; }); }).filter(Boolean);
                   var inicioEvt=evActual.fecha||FECHA_HOY;
                   var finEvt=evActual.estado==="abierto"?FECHA_HOY:(evActual.fechaFin||evActual.fecha||FECHA_HOY);
                   var diasEvt=[];
@@ -15210,30 +15231,28 @@ export default function CLEO(props){
                                   var items=(ped.items||[]).filter(function(it){ return it.nombre||it.concepto; });
                                   var isAnulando=evtAnularId===String(ped.id);
                                   return e("div",{key:ped.id,style:{borderBottom:pidx<pedsDia.length-1?"1px solid "+C.border:"none"}},
-                                    !isAnulando&&e("div",{style:{display:"flex",alignItems:"flex-start",gap:10,padding:"9px 12px"}},
+                                    !isAnulando&&e("div",{style:{display:"flex",alignItems:"center",gap:8,padding:"8px 12px"}},
                                       e("div",{style:{flex:1,minWidth:0}},
                                         items.length>0
                                           ? items.map(function(it,ii){ return e("div",{key:ii,style:{display:"flex",alignItems:"baseline",gap:5,marginBottom:ii<items.length-1?2:0}},
                                               e("span",{style:{fontSize:11,fontWeight:700,color:C.purple,background:"rgba(75,94,252,0.08)",padding:"0 5px",borderRadius:4,flexShrink:0}},"×"+(it.cantidad||1)),
-                                              e("span",{style:{fontSize:12,color:C.text}},it.nombre||it.concepto||"")
+                                              e("span",{style:{fontSize:13,color:C.text,lineHeight:1.3}},it.nombre||it.concepto||"")
                                             ); })
-                                          : e("span",{style:{fontSize:12,color:C.textMuted}},ped.productos||"Venta")
+                                          : e("span",{style:{fontSize:13,color:C.textMuted}},ped.productos||"Venta")
                                       ),
-                                      e("div",{style:{flexShrink:0,paddingTop:1,textAlign:"right"}},
-                                        e("div",{style:{display:"flex",alignItems:"center",gap:8,justifyContent:"flex-end"}},
-                                          e("span",{style:{fontSize:13,fontWeight:700,fontVariantNumeric:"tabular-nums",color:C.text}},"$"+formatoDinero(Number(ped.total||0))),
-                                          evActual.estado==="abierto"&&e("button",{type:"button",
-                                            style:{fontSize:11,fontWeight:700,color:C.red,background:"rgba(239,68,68,0.07)",border:"1px solid rgba(239,68,68,0.18)",borderRadius:20,padding:"2px 8px",cursor:"pointer",whiteSpace:"nowrap"},
-                                            onClick:function(ev){ ev.stopPropagation(); setEvtAnularId(String(ped.id)); setEvtAnularDecision(null); }
-                                          },"Anular")
-                                        ),
+                                      e("div",{style:{display:"flex",alignItems:"center",gap:6,flexShrink:0}},
                                         (function(){
                                           var met=ped.pagos&&ped.pagos[0]&&ped.pagos[0].metodoPago;
                                           if(!met) return null;
                                           var col=met==="transferencia"?"#3B82F6":met==="tarjeta"?"#D97706":"#10B981";
-                                          var lbl=met==="transferencia"?"📲 Transferencia":met==="tarjeta"?"💳 Tarjeta":"💵 Efectivo";
-                                          return e("span",{style:{fontSize:10,fontWeight:600,padding:"1px 7px",borderRadius:10,background:col+"15",color:col,border:"1px solid "+col+"30",marginTop:3,display:"inline-block"}},lbl);
-                                        })()
+                                          var lbl=met==="transferencia"?"📲":met==="tarjeta"?"💳":"💵";
+                                          return e("span",{style:{fontSize:11,fontWeight:600,padding:"1px 6px",borderRadius:8,background:col+"14",color:col,border:"1px solid "+col+"28",lineHeight:"16px"}},lbl);
+                                        })(),
+                                        e("span",{style:{fontSize:13,fontWeight:700,fontVariantNumeric:"tabular-nums",color:C.text,whiteSpace:"nowrap"}},"$"+formatoDinero(Number(ped.total||0))),
+                                        evActual.estado==="abierto"&&e("button",{type:"button",
+                                          style:{fontSize:11,fontWeight:600,color:"#DC2626",background:"transparent",border:"none",padding:"0 2px",cursor:"pointer",whiteSpace:"nowrap",opacity:0.7},
+                                          onClick:function(ev){ ev.stopPropagation(); setEvtAnularId(String(ped.id)); setEvtAnularDecision(null); }
+                                        },"Anular")
                                       )
                                     ),
                                     isAnulando&&e("div",{style:{padding:"10px 12px",background:"rgba(239,68,68,0.04)"}},
@@ -17120,15 +17139,16 @@ export default function CLEO(props){
       mostrarMas&&e("div",{style:{position:"absolute",bottom:"100%",right:0,left:0,background:"#0B1020",border:"1px solid "+C.darkBorder,borderRadius:"14px 14px 0 0",padding:"8px"}},
         (esProductos?[
           {v:"clientes",icon:NAV_SVG["clientes"],label:"Clientes"},
-          {v:"inventario",icon:NAV_SVG["inventario"],label:"Inventario"},
+          {v:"inventario",defaultCosTab:"inventario",icon:NAV_SVG["inventario"],label:"Inventario"},
+          {v:"inventario",cosTab:"eventos",icon:NAV_SVG["eventos"],label:"Eventos"},
           {v:"resumen",icon:NAV_SVG["resumen"],label:"Resumen"},
         ]:[
           {v:"clientes",icon:NAV_SVG["clientes"],label:NAV_LABELS["clientes"]},
           {v:"ventas",icon:NAV_SVG["ventas"],label:NAV_LABELS["ventas"]},
           {v:"resumen",icon:NAV_SVG["resumen"],label:NAV_LABELS["resumen"]},
         ]).map(function(item){
-          var activo=vista===item.v;
-          return e("button",{key:item.v,style:{display:"flex",alignItems:"center",gap:10,width:"100%",padding:"12px 16px",background:activo?C.purple+"22":"none",border:"none",cursor:"pointer",borderRadius:10,marginBottom:2},onClick:function(){ setVista(item.v); setMostrarMas(false); }},
+          var activo=item.cosTab?(vista===item.v&&cosTabAct===item.cosTab):(vista===item.v&&!(item.v==="inventario"&&cosTabAct==="eventos"));
+          return e("button",{key:item.cosTab?item.v+"/"+item.cosTab:item.v,style:{display:"flex",alignItems:"center",gap:10,width:"100%",padding:"12px 16px",background:activo?C.purple+"22":"none",border:"none",cursor:"pointer",borderRadius:10,marginBottom:2},onClick:function(){ setVista(item.v); if(item.cosTab) setCosTabAct(item.cosTab); else if(item.defaultCosTab) setCosTabAct(item.defaultCosTab); setMostrarMas(false); }},
             e("svg",{width:18,height:18,viewBox:"0 0 24 24",fill:"none",stroke:activo?"#fff":"rgba(255,255,255,0.6)",strokeWidth:2,strokeLinecap:"round",strokeLinejoin:"round"},e("path",{d:item.icon||""})),
             e("span",{style:{fontSize:13,color:activo?"#fff":"rgba(255,255,255,0.7)",fontWeight:activo?600:400}},item.label)
           );
@@ -17843,15 +17863,7 @@ export default function CLEO(props){
             );
           })(),
           e("div",{style:{display:"flex",gap:8,justifyContent:"flex-end"}},
-            e("button",{style:st.btn,onClick:function(){
-              // Antes ignoraba los días personalizados y siempre forzaba 30
-              // , ahora respeta exactamente lo que ya está seleccionado
-              // arriba (preset o personalizado), para que este botón nunca
-              // sorprenda con un valor distinto al que se ve en pantalla.
-              var diasAUsar=diasPostVenta||"30";
-              if(cl){ var f=new Date(); f.setDate(f.getDate()+Number(diasAUsar)); setClientes(clientes.map(function(x){ if(x.id!==cl.id) return x; var b=Object.assign({},x,{tipoSeguimientoPostVenta:mensajesPorDias[diasAUsar]?diasAUsar:"30"}); return conRecordatoriosActualizados(b,recordatoriosDe(b).concat([{id:"r_"+Date.now(),fecha:fmtFechaLocal(f),nota:notaPersonalPostVenta.trim()||mensajesPorDias[diasAUsar]||mensajesPorDias["30"],esPersonalizada:!!notaPersonalPostVenta.trim(),origen:"cleo",categoria:"postventa"}])); })); }
-              cerrarModal();
-            }},"Ahora no , recordame en "+(diasPostVenta||"30")+" dias"),
+            e("button",{style:st.btn,onClick:function(){ cerrarModal(); }},"Ahora no"),
             e("button",{style:st.btnP,onClick:function(){
               if(cl){ var f=new Date(); f.setDate(f.getDate()+Number(diasPostVenta)); setClientes(clientes.map(function(x){ if(x.id!==cl.id) return x; var b=Object.assign({},x,{tipoSeguimientoPostVenta:mensajesPorDias[diasPostVenta]?diasPostVenta:"30"}); return conRecordatoriosActualizados(b,recordatoriosDe(b).concat([{id:"r_"+Date.now(),fecha:fmtFechaLocal(f),nota:notaPersonalPostVenta.trim()||mensajesPorDias[diasPostVenta]||mensajesPorDias["30"],esPersonalizada:!!notaPersonalPostVenta.trim(),origen:"cleo",categoria:"postventa"}])); })); }
               cerrarModal();
@@ -20741,13 +20753,13 @@ export default function CLEO(props){
         "60":"Hola "+nombre+", tengo cosas nuevas que creo que te van a gustar. ¿Te cuento?",
         "90":"Hola "+nombre+", han pasado unos meses. Solo quería saludar y saber cómo estás."
       };
-      function guardarYCerrar(diasForzados){
+      function guardarYCerrar(diasForzados, skipRecordatorio){
         if(sinConexionParaGuardar()){ alert(MSG_SIN_CONEXION_GUARDADO); return; }
         if(celebRazon.length>0&&cl){
           setClientes(clientes.map(function(c){ return c.id===cl.id?Object.assign({},c,{razonCierre:celebRazon,ultimoContacto:FECHA_HOY}):c; }));
         }
-        var diasGuardar=diasForzados||celebRecontacto||"30";
-        if(cl){
+        if(!skipRecordatorio&&cl){
+          var diasGuardar=diasForzados||celebRecontacto||"30";
           var fechaR=new Date(HOY); fechaR.setDate(fechaR.getDate()+Number(diasGuardar));
           var mensajeGuardar=notaPersonalPostVenta.trim()||msgsRecontacto[diasGuardar]||("Hola "+nombre+", ¿cómo has estado? Quería saber si necesitas algo.");
           setClientes(clientes.map(function(c){
@@ -20893,7 +20905,7 @@ export default function CLEO(props){
           ),
 
           e("div",{style:{padding:"14px 24px",borderTop:"1px solid "+C.border,display:"flex",gap:8,background:C.surfaceUp}},
-            e("button",{style:Object.assign({},st.btn,{flex:1,padding:"11px",fontSize:13}),onClick:function(){ guardarYCerrar("30"); }},"Ahora no, recordarme en 30 días"),
+            e("button",{style:Object.assign({},st.btn,{flex:1,padding:"11px",fontSize:13}),onClick:function(){ guardarYCerrar(null,true); }},"Ahora no"),
             e("button",{style:Object.assign({},st.btnP,{flex:1,padding:"11px",fontSize:13}),onClick:function(){ guardarYCerrar(); }},"Programar seguimiento")
           )
         )
