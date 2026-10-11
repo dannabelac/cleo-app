@@ -7743,6 +7743,8 @@ export default function CLEO(props){
         setProductosCat([]);
         setProductos([]);
       }
+      setEventosInv([]);
+      setOportunidades([]);
       // Estados temporales que podrían hacer que el demo herede
       // comportamiento real (alertas cerradas, etapas ya vistas,
       // celebraciones pendientes, rachas) , se limpian explícitamente en
