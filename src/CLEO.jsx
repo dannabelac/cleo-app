@@ -9628,7 +9628,8 @@ export default function CLEO(props){
 
   // ── ONBOARDING ─────────────────────────────────────────────────────────────
   var tienesDatos=clientes.length>0||cotizaciones.length>0||ventas.length>0;
-  var tipoPerfilGuardado=perfil.tipoPerfil||(function(){ 
+  var necesitaOnboarding=(function(){ try{ return localStorage.getItem('cleo_necesita_onboarding')==='1'; }catch(e){ return false; } })();
+  var tipoPerfilGuardado=perfil.tipoPerfil||(function(){
     try{ 
       var p=localStorage.getItem("cleo_perfil"); 
       var tp=p?JSON.parse(p).tipoPerfil||"":"";
@@ -9636,7 +9637,7 @@ export default function CLEO(props){
       return tp;
     }catch(e){ return ""; } 
   })();
-  if(!tipoPerfilGuardado&&!tienesDatos){
+  if((!tipoPerfilGuardado||necesitaOnboarding)&&!tienesDatos){
     return e("div",{style:{fontFamily:"Arial,sans-serif",minHeight:"100vh",background:C.bg,display:"flex",alignItems:"center",justifyContent:"center",padding:"24px"}},
       e("div",{style:{width:"100%",maxWidth:440}},
         // Logo
@@ -9658,6 +9659,7 @@ export default function CLEO(props){
               onMouseEnter:function(ev){ ev.currentTarget.style.borderColor=C.purple; },
               onMouseLeave:function(ev){ ev.currentTarget.style.borderColor=C.border; },
               onClick:function(){
+                try{ localStorage.removeItem('cleo_necesita_onboarding'); }catch(_){}
                 var nuevoPerfil=Object.assign({},perfil,{tipoPerfil:op.k});
                 setPerfil(nuevoPerfil);
                 setVista("inicio");
@@ -21011,6 +21013,8 @@ export default function CLEO(props){
                 writeGuard.remove("cleo_productos");
               }catch(e){}
               setAlertasCerradas([]); setModalCuenta(false);
+              try{ localStorage.setItem('cleo_necesita_onboarding','1'); }catch(_){}
+              window.location.reload();
             }},
               e("div",{style:{width:38,height:38,borderRadius:10,background:C.redBg,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}},
                 e("svg",{width:18,height:18,viewBox:"0 0 24 24",fill:"none",stroke:C.red,strokeWidth:1.7,strokeLinecap:"round",strokeLinejoin:"round"},

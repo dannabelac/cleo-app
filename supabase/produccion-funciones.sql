@@ -1554,7 +1554,11 @@ begin
   -- El trigger trg_user_data_schema_ver rechaza cualquier escritura a user_data
   -- cuando schema_ver='dual', así que se usa el updated_at bloqueado en el
   -- paso 3 como marca de sincronización en vez de actualizar el blob.
-  v_new_updated_at := coalesce(v_ud_updated_at, now());
+  -- Cuando user_data no existe (usuarios dual sin blob previo, o después de
+  -- cleo_dual_reset), se retorna null para que ultimoUpdatedAt permanezca null
+  -- y cada flush siguiente también pase p_ultimo_updated_at=null, evitando
+  -- el conflicto en el que user_data no existe pero se pasa un timestamp.
+  v_new_updated_at := v_ud_updated_at;
 
   -- ── 16. RETORNAR ─────────────────────────────────────────────────────────
   return jsonb_build_object(

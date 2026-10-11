@@ -1821,17 +1821,28 @@ export default function AuthGate() {
   async function onEmpezarDeCero() {
     if (demoActivoRef.current) return { estado: 'demo' };
     try {
-      // Para usuarios dual: borrar tablas relacionales antes de limpiar local
+      // Drenar cualquier sync en vuelo antes de parar: si hay una promesa activa,
+      // flush() la devuelve y esperamos a que termine. Así no hay riesgo de que
+      // una petición ya lanzada re-suba datos viejos DESPUÉS del reset.
+      if (syncRef.current) {
+        try { await syncRef.current.flush(); } catch (_) { /* no importa */ }
+        syncRef.current.stop();
+        syncRef.current = null;
+      }
+      // Ahora es seguro borrar: no hay ningún flush en vuelo que pueda re-subir datos
       if (schemaVerRef.current === 'dual') {
         var res = await supabase.rpc('cleo_dual_reset');
         if (res.error) return { estado: 'error' };
         var data = res.data;
         if (!data || (data.estado !== 'ok')) return { estado: 'error' };
       }
-      // Detener sync para que no suba estado vacío en paralelo
-      if (syncRef.current) { syncRef.current.stop(); syncRef.current = null; }
-      // Limpiar localStorage de claves de negocio
-      clearCleoLocalData();
+      // Limpiar metadatos de sync para que pullUserData no detecte conflicto al recargar
+      try {
+        localStorage.removeItem('cleo_sync_confirmado');
+        localStorage.removeItem('cleo_conflict_backup');
+      } catch (_) {}
+      // Las claves de negocio las limpia CLEO.jsx vía setters (no aquí, para no
+      // disparar el write guard que detectaría el cambio como otra pestaña)
       return { estado: 'ok' };
     } catch (e) {
       return { estado: 'error' };
