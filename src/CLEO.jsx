@@ -5397,7 +5397,7 @@ export default function CLEO(props){
       var prodId=prod.id;
       var itBase=catId?it:Object.assign({},it,{catalogoId:prodId});
       var apartadosExistentes=(pedidos||[]).filter(function(p){ return p.estadoPedido==="preparando"; }).reduce(function(sum,p){ return sum+(p.items||[]).reduce(function(s,pi){ return (pi.catalogoId===prodId)?s+((pi.invApartado||0)-(pi.invEntregado||0)):s; },0); },0);
-      var apartadosEvtExist=(eventosInv||[]).filter(function(ev){ return ev.estado==="abierto"; }).reduce(function(sum,ev){ var ep=(ev.productos||[]).find(function(x){ return x.catalogoId===prodId&&x.tieneInventario; }); return sum+(ep?Math.max(0,(ep.cantidadLlevada||0)-(ep.cantidadVendida||0)):0); },0);
+      var apartadosEvtExist=(eventosInv||[]).filter(function(ev){ return ev.estado==="abierto"; }).reduce(function(sum,ev){ var ep=(ev.productos||[]).find(function(x){ return x.catalogoId===prodId; }); return sum+(ep?Math.max(0,(ep.cantidadLlevada||0)-(ep.cantidadVendida||0)):0); },0);
       var disponibles=Math.max(0,prod.stock-apartadosExistentes-apartadosEvtExist);
       var invApartado=Math.min(Number(itBase.cantidad)||0,disponibles);
       var invPendiente=Math.max(0,(Number(itBase.cantidad)||0)-invApartado);
@@ -7743,6 +7743,8 @@ export default function CLEO(props){
         setProductosCat([]);
         setProductos([]);
       }
+      setEventosInv([]);
+      setOportunidades([]);
       // Estados temporales que podrían hacer que el demo herede
       // comportamiento real (alertas cerradas, etapas ya vistas,
       // celebraciones pendientes, rachas) , se limpian explícitamente en
@@ -9626,7 +9628,8 @@ export default function CLEO(props){
 
   // ── ONBOARDING ─────────────────────────────────────────────────────────────
   var tienesDatos=clientes.length>0||cotizaciones.length>0||ventas.length>0;
-  var tipoPerfilGuardado=perfil.tipoPerfil||(function(){ 
+  var necesitaOnboarding=(function(){ try{ return localStorage.getItem('cleo_necesita_onboarding')==='1'; }catch(e){ return false; } })();
+  var tipoPerfilGuardado=perfil.tipoPerfil||(function(){
     try{ 
       var p=localStorage.getItem("cleo_perfil"); 
       var tp=p?JSON.parse(p).tipoPerfil||"":"";
@@ -9634,7 +9637,7 @@ export default function CLEO(props){
       return tp;
     }catch(e){ return ""; } 
   })();
-  if(!tipoPerfilGuardado&&!tienesDatos){
+  if((!tipoPerfilGuardado||necesitaOnboarding)&&!tienesDatos){
     return e("div",{style:{fontFamily:"Arial,sans-serif",minHeight:"100vh",background:C.bg,display:"flex",alignItems:"center",justifyContent:"center",padding:"24px"}},
       e("div",{style:{width:"100%",maxWidth:440}},
         // Logo
@@ -9656,6 +9659,7 @@ export default function CLEO(props){
               onMouseEnter:function(ev){ ev.currentTarget.style.borderColor=C.purple; },
               onMouseLeave:function(ev){ ev.currentTarget.style.borderColor=C.border; },
               onClick:function(){
+                try{ localStorage.removeItem('cleo_necesita_onboarding'); }catch(_){}
                 var nuevoPerfil=Object.assign({},perfil,{tipoPerfil:op.k});
                 setPerfil(nuevoPerfil);
                 setVista("inicio");
@@ -14469,7 +14473,7 @@ export default function CLEO(props){
               return it.catalogoId===p.id?s+Math.max(0,(it.invApartado||0)-(it.invEntregado||0)):s;
             },0);
           },0);
-          var apartadosEvt=(eventosInv||[]).filter(function(ev){ return ev.estado==="abierto"; }).reduce(function(sum,ev){ var ep=(ev.productos||[]).find(function(x){ return x.catalogoId===p.id&&x.tieneInventario; }); return sum+(ep?Math.max(0,(ep.cantidadLlevada||0)-(ep.cantidadVendida||0)):0); },0);
+          var apartadosEvt=(eventosInv||[]).filter(function(ev){ return ev.estado==="abierto"; }).reduce(function(sum,ev){ var ep=(ev.productos||[]).find(function(x){ return x.catalogoId===p.id; }); return sum+(ep?Math.max(0,(ep.cantidadLlevada||0)-(ep.cantidadVendida||0)):0); },0);
           var disponibles=Math.max(0,p.stock-apartados-apartadosEvt);
           var pendientes=pedidosEnPrep.reduce(function(sum,pd){
             return sum+(pd.items||[]).reduce(function(s,it){
@@ -20985,24 +20989,32 @@ export default function CLEO(props){
             ),
 
             // Empezar desde cero
-            e("button",{style:{cursor:"pointer",width:"100%",textAlign:"left",padding:"14px 16px",border:"none",borderTop:"1px solid "+C.border,background:hoverCero?C.redBg:"transparent",display:"flex",alignItems:"center",gap:12,transition:"background 0.12s"},onMouseEnter:function(){ setHoverCero(true); },onMouseLeave:function(){ setHoverCero(false); },onClick:function(){
-              if(window.confirm("¿Borrar todos tus datos? Esta acción no se puede deshacer.")){
-                setClientes([]); setCotizaciones([]);
-                setVentas([]); setServicios([]);
-                setPedidos([]);
-                setProductosCat([]);
-                setProductos([]);
-                setPerfil(perfilDemo);
-                setEtapasVistas([]);
-                try{
-                  localStorage.removeItem("cleo_alertas_cerradas");
-                  localStorage.removeItem("cleo_etapas_vistas");
-                  localStorage.removeItem("cleo_tipo_perfil");
-                  localStorage.removeItem("cleo_demo_productos_loaded_v2");
-                  writeGuard.remove("cleo_productos");
-                }catch(e){}
-                setAlertasCerradas([]); setModalCuenta(false);
+            e("button",{style:{cursor:"pointer",width:"100%",textAlign:"left",padding:"14px 16px",border:"none",borderTop:"1px solid "+C.border,background:hoverCero?C.redBg:"transparent",display:"flex",alignItems:"center",gap:12,transition:"background 0.12s"},onMouseEnter:function(){ setHoverCero(true); },onMouseLeave:function(){ setHoverCero(false); },onClick:async function(){
+              if(!window.confirm("¿Borrar todos tus datos? Esta acción no se puede deshacer.")) return;
+              if(props.onEmpezarDeCero){
+                var r=await props.onEmpezarDeCero();
+                if(!r||r.estado==="error"){
+                  mostrarToast("No pudimos borrar los datos. Revisa tu conexión e intenta de nuevo.");
+                  return;
+                }
               }
+              setClientes([]); setCotizaciones([]);
+              setVentas([]); setServicios([]);
+              setPedidos([]); setEventosInv([]); setOportunidades([]);
+              setProductosCat([]);
+              setProductos([]);
+              setPerfil(perfilDemo);
+              setEtapasVistas([]);
+              try{
+                localStorage.removeItem("cleo_alertas_cerradas");
+                localStorage.removeItem("cleo_etapas_vistas");
+                localStorage.removeItem("cleo_tipo_perfil");
+                localStorage.removeItem("cleo_demo_productos_loaded_v2");
+                writeGuard.remove("cleo_productos");
+              }catch(e){}
+              setAlertasCerradas([]); setModalCuenta(false);
+              try{ localStorage.setItem('cleo_necesita_onboarding','1'); }catch(_){}
+              window.location.reload();
             }},
               e("div",{style:{width:38,height:38,borderRadius:10,background:C.redBg,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}},
                 e("svg",{width:18,height:18,viewBox:"0 0 24 24",fill:"none",stroke:C.red,strokeWidth:1.7,strokeLinecap:"round",strokeLinejoin:"round"},

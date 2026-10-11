@@ -327,6 +327,7 @@ export default function AuthGate() {
   // startCloudSync hacía su propia lectura de updated_at por separado,
   // pudiendo quedar desfasada de los datos que este pull en concreto trajo).
   var baselineSyncRef = useRef(null);
+  var schemaVerRef = useRef('blob'); // 'blob' | 'dual' — se actualiza tras pullUserData
   var procesandoRef = useRef({ userId: null, promise: null });
   var s11 = useState(false);
   var syncError = s11[0];
@@ -598,6 +599,9 @@ export default function AuthGate() {
       // efecto que arranca startCloudSync lo use como baseline exacta de
       // ESTE pull, sin volver a preguntarle a Supabase por separado.
       baselineSyncRef.current = huboExito ? resultado : null;
+      if (huboExito && resultado && resultado.schemaVer) {
+        schemaVerRef.current = resultado.schemaVer;
+      }
 
       // Sesión real (no demo) ya autenticada y con datos cargados , único
       // punto central para identificar y registrar el inicio de sesión.
@@ -1814,6 +1818,37 @@ export default function AuthGate() {
   // Se llama ANTES de que CLEO cargue cualquier dato de ejemplo. Protege los
   // datos reales en Supabase primero, y solo autoriza el demo si eso quedó
   // confirmado. Nunca modifica ningún dato si algo falla.
+  async function onEmpezarDeCero() {
+    if (demoActivoRef.current) return { estado: 'demo' };
+    try {
+      // Drenar cualquier sync en vuelo antes de parar: si hay una promesa activa,
+      // flush() la devuelve y esperamos a que termine. Así no hay riesgo de que
+      // una petición ya lanzada re-suba datos viejos DESPUÉS del reset.
+      if (syncRef.current) {
+        try { await syncRef.current.flush(); } catch (_) { /* no importa */ }
+        syncRef.current.stop();
+        syncRef.current = null;
+      }
+      // Ahora es seguro borrar: no hay ningún flush en vuelo que pueda re-subir datos
+      if (schemaVerRef.current === 'dual') {
+        var res = await supabase.rpc('cleo_dual_reset');
+        if (res.error) return { estado: 'error' };
+        var data = res.data;
+        if (!data || (data.estado !== 'ok')) return { estado: 'error' };
+      }
+      // Limpiar metadatos de sync para que pullUserData no detecte conflicto al recargar
+      try {
+        localStorage.removeItem('cleo_sync_confirmado');
+        localStorage.removeItem('cleo_conflict_backup');
+      } catch (_) {}
+      // Las claves de negocio las limpia CLEO.jsx vía setters (no aquí, para no
+      // disparar el write guard que detectaría el cambio como otra pestaña)
+      return { estado: 'ok' };
+    } catch (e) {
+      return { estado: 'error' };
+    }
+  }
+
   async function onEntrarModoDemo() {
     if (entrandoDemoRef.current) return { estado: "error" }; // bloqueo síncrono e inmediato
     entrandoDemoRef.current = true;
@@ -1954,7 +1989,7 @@ export default function AuthGate() {
     return React.createElement(
       React.Fragment,
       null,
-      React.createElement(CLEO, { onSignOut: cerrarSesion, userEmail: userEmail, userId: userId, syncError: syncError, syncConflicto: syncConflicto, forzarSync: forzarSync, onEntrarModoDemo: onEntrarModoDemo, onSalirModoDemo: onSalirModoDemo, demoActivo: demoActivo, onDeleteAccount: eliminarCuenta }),
+      React.createElement(CLEO, { onSignOut: cerrarSesion, userEmail: userEmail, userId: userId, syncError: syncError, syncConflicto: syncConflicto, forzarSync: forzarSync, onEntrarModoDemo: onEntrarModoDemo, onSalirModoDemo: onSalirModoDemo, demoActivo: demoActivo, onDeleteAccount: eliminarCuenta, onEmpezarDeCero: onEmpezarDeCero }),
       errorCierreSesion &&
         React.createElement(
           "div",
