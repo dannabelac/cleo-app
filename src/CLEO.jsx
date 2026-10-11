@@ -5397,7 +5397,7 @@ export default function CLEO(props){
       var prodId=prod.id;
       var itBase=catId?it:Object.assign({},it,{catalogoId:prodId});
       var apartadosExistentes=(pedidos||[]).filter(function(p){ return p.estadoPedido==="preparando"; }).reduce(function(sum,p){ return sum+(p.items||[]).reduce(function(s,pi){ return (pi.catalogoId===prodId)?s+((pi.invApartado||0)-(pi.invEntregado||0)):s; },0); },0);
-      var apartadosEvtExist=(eventosInv||[]).filter(function(ev){ return ev.estado==="abierto"; }).reduce(function(sum,ev){ var ep=(ev.productos||[]).find(function(x){ return x.catalogoId===prodId&&x.tieneInventario; }); return sum+(ep?Math.max(0,(ep.cantidadLlevada||0)-(ep.cantidadVendida||0)):0); },0);
+      var apartadosEvtExist=(eventosInv||[]).filter(function(ev){ return ev.estado==="abierto"; }).reduce(function(sum,ev){ var ep=(ev.productos||[]).find(function(x){ return x.catalogoId===prodId; }); return sum+(ep?Math.max(0,(ep.cantidadLlevada||0)-(ep.cantidadVendida||0)):0); },0);
       var disponibles=Math.max(0,prod.stock-apartadosExistentes-apartadosEvtExist);
       var invApartado=Math.min(Number(itBase.cantidad)||0,disponibles);
       var invPendiente=Math.max(0,(Number(itBase.cantidad)||0)-invApartado);
@@ -14473,7 +14473,7 @@ export default function CLEO(props){
               return it.catalogoId===p.id?s+Math.max(0,(it.invApartado||0)-(it.invEntregado||0)):s;
             },0);
           },0);
-          var apartadosEvt=(eventosInv||[]).filter(function(ev){ return ev.estado==="abierto"; }).reduce(function(sum,ev){ var ep=(ev.productos||[]).find(function(x){ return x.catalogoId===p.id&&x.tieneInventario; }); return sum+(ep?Math.max(0,(ep.cantidadLlevada||0)-(ep.cantidadVendida||0)):0); },0);
+          var apartadosEvt=(eventosInv||[]).filter(function(ev){ return ev.estado==="abierto"; }).reduce(function(sum,ev){ var ep=(ev.productos||[]).find(function(x){ return x.catalogoId===p.id; }); return sum+(ep?Math.max(0,(ep.cantidadLlevada||0)-(ep.cantidadVendida||0)):0); },0);
           var disponibles=Math.max(0,p.stock-apartados-apartadosEvt);
           var pendientes=pedidosEnPrep.reduce(function(sum,pd){
             return sum+(pd.items||[]).reduce(function(s,it){
