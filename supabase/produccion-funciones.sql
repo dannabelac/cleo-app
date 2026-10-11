@@ -103,7 +103,7 @@ begin
    where n.user_id = v_uid;
 
   if v_neg.id is null then
-    return jsonb_build_object('estado','error','codigo','negocio_no_encontrado');
+    return jsonb_build_object('estado','negocio_nuevo');
   end if;
   v_neg_id := v_neg.id;
   v_sv     := v_neg.schema_ver;
@@ -348,16 +348,17 @@ begin
             'pagos',
               coalesce(
                 (select jsonb_agg(jsonb_build_object(
-                    'id',       pg.cleo_id,
-                    'monto',    pg.monto,
-                    'fecha',    pg.fecha,
-                    'concepto', pg.concepto
+                    'id',         pg.cleo_id,
+                    'monto',      pg.monto,
+                    'fecha',      pg.fecha,
+                    'concepto',   pg.concepto,
+                    'metodoPago', pg.metodo_pago
                   ) order by pg.fecha)
                  from public.pagos pg
                 where pg.cotizacion_id = ct.id and pg.negocio_id = ct.negocio_id),
                 '[]'::jsonb
               )
-          ) order by ct.fecha)
+          ) order by ct.fecha desc nulls last, ct.created_at desc)
          from public.cotizaciones ct
          left join public.clientes c_ct on c_ct.id = ct.cliente_id
         where ct.negocio_id = v_neg_id),
@@ -386,13 +387,14 @@ begin
             'pagos',
               coalesce(
                 (select jsonb_agg(jsonb_build_object(
-                    'id',pg.cleo_id,'concepto',pg.concepto,'monto',pg.monto,'fecha',pg.fecha
+                    'id',pg.cleo_id,'concepto',pg.concepto,'monto',pg.monto,'fecha',pg.fecha,
+                    'metodoPago',pg.metodo_pago
                   ) order by pg.fecha)
                  from public.pagos pg
                 where pg.venta_id = vt.id and pg.negocio_id = vt.negocio_id),
                 '[]'::jsonb
               )
-          ) order by vt.fecha)
+          ) order by vt.fecha desc nulls last, vt.created_at desc)
          from public.ventas vt
          left join public.clientes c_vt on c_vt.id = vt.cliente_id
         where vt.negocio_id = v_neg_id),
@@ -423,16 +425,18 @@ begin
               then jsonb_build_object('pago', pd.postv_pago,
                      'seguimiento', case when pd.postv_seguimiento='ok' then 'resuelto' else pd.postv_seguimiento end)
               else null end,
+            'eventoId',        pd.evento_id,
             'pagos',
               coalesce(
                 (select jsonb_agg(jsonb_build_object(
-                    'id',pg.cleo_id,'monto',pg.monto,'fecha',pg.fecha,'concepto',pg.concepto
+                    'id',pg.cleo_id,'monto',pg.monto,'fecha',pg.fecha,'concepto',pg.concepto,
+                    'metodoPago',pg.metodo_pago
                   ) order by pg.fecha)
                  from public.pagos pg
                 where pg.pedido_id = pd.id and pg.negocio_id = pd.negocio_id),
                 '[]'::jsonb
               )
-          ) order by pd.fecha)
+          ) order by pd.fecha desc nulls last, pd.created_at desc)
          from public.pedidos pd
          left join public.clientes   c_pd  on c_pd.id  = pd.cliente_id
          left join public.cotizaciones ct_pd on ct_pd.id = pd.cotizacion_id
@@ -556,7 +560,14 @@ begin
    where n.user_id = v_uid;
 
   if v_neg_id is null then
-    return jsonb_build_object('estado','error','codigo','negocio_no_encontrado');
+    -- Nuevo usuario: auto-crear negocio con schema_ver='dual'.
+    -- Seguro porque cleo_dual_flush corre SECURITY DEFINER → current_user=postgres
+    -- → el trigger cleo_guard_negocios_reserved (que bloquea 'authenticated')
+    -- no aplica aquí.
+    insert into public.negocios (user_id, tipo_perfil, schema_ver)
+    values (v_uid, coalesce(nullif(p_tipo_perfil,''), 'servicios'), 'dual')
+    returning id into v_neg_id;
+    v_sv := 'dual';
   end if;
 
   if v_sv <> 'dual' then
@@ -833,6 +844,7 @@ begin
         fecha_registro = excluded.fecha_registro;
     end loop;
   end loop;
+
   -- ── FIN CAMBIO 40 ─────────────────────────────────────────────────────────
 
   -- ── 7. UPSERT CLIENTES ────────────────────────────────────────────────────
@@ -1133,17 +1145,19 @@ begin
       for v_sub in select value from jsonb_array_elements(coalesce(v_it -> 'pagos','[]'))
       loop
         if (v_sub ->> 'id') is null then continue; end if;
-        insert into public.pagos (negocio_id, cleo_id, cotizacion_id, monto, fecha, concepto)
+        insert into public.pagos (negocio_id, cleo_id, cotizacion_id, monto, fecha, concepto, metodo_pago)
         values (
           v_neg_id, v_sub ->> 'id', v_uuid,
           coalesce((v_sub ->> 'monto')::numeric,0),
           nullif(v_sub ->> 'fecha','')::date,
-          v_sub ->> 'concepto'
+          v_sub ->> 'concepto',
+          nullif(v_sub ->> 'metodoPago','')
         )
         on conflict (negocio_id, cleo_id) do update set
-          monto    = excluded.monto,
-          fecha    = excluded.fecha,
-          concepto = excluded.concepto;
+          monto       = excluded.monto,
+          fecha       = excluded.fecha,
+          concepto    = excluded.concepto,
+          metodo_pago = excluded.metodo_pago;
       end loop;
     end if;
   end loop;
@@ -1203,17 +1217,19 @@ begin
       for v_sub in select value from jsonb_array_elements(coalesce(v_it -> 'pagos','[]'))
       loop
         if (v_sub ->> 'id') is null then continue; end if;
-        insert into public.pagos (negocio_id, cleo_id, venta_id, monto, fecha, concepto)
+        insert into public.pagos (negocio_id, cleo_id, venta_id, monto, fecha, concepto, metodo_pago)
         values (
           v_neg_id, v_sub ->> 'id', v_uuid,
           coalesce((v_sub ->> 'monto')::numeric,0),
           nullif(v_sub ->> 'fecha','')::date,
-          v_sub ->> 'concepto'
+          v_sub ->> 'concepto',
+          nullif(v_sub ->> 'metodoPago','')
         )
         on conflict (negocio_id, cleo_id) do update set
-          monto    = excluded.monto,
-          fecha    = excluded.fecha,
-          concepto = excluded.concepto;
+          monto       = excluded.monto,
+          fecha       = excluded.fecha,
+          concepto    = excluded.concepto,
+          metodo_pago = excluded.metodo_pago;
       end loop;
     end if;
   end loop;
@@ -1243,7 +1259,8 @@ begin
         notas, etiqueta, estado_pedido, fecha, fecha_entrega, fecha_cancelacion,
         anticipo_conservado, motivo_cancelacion, motivo_cancelacion_lado,
         items_confirmacion, monto_confirmacion,
-        postv_pago, postv_seguimiento
+        postv_pago, postv_seguimiento,
+        evento_id
       )
       values (
         v_neg_id, v_it ->> 'id', v_cli_id, v_cot_id, v_op_id,
@@ -1266,7 +1283,8 @@ begin
              then (v_it -> 'configPostVenta') ->> 'pago' else null end,
         case when (v_it -> 'configPostVenta') ->> 'seguimiento' = 'pendiente' then 'pendiente'
              when (v_it -> 'configPostVenta') ->> 'seguimiento' in ('ok','resuelto') then 'ok'
-             else null end
+             else null end,
+        nullif(v_it ->> 'eventoId','')
       )
       on conflict (negocio_id, cleo_id) do update set
         cliente_id               = excluded.cliente_id,
@@ -1286,7 +1304,8 @@ begin
         motivo_cancelacion       = excluded.motivo_cancelacion,
         motivo_cancelacion_lado  = excluded.motivo_cancelacion_lado,
         postv_pago               = excluded.postv_pago,
-        postv_seguimiento        = excluded.postv_seguimiento;
+        postv_seguimiento        = excluded.postv_seguimiento,
+        evento_id                = excluded.evento_id;
     end;
 
     select pd.id into v_uuid
@@ -1297,20 +1316,35 @@ begin
       for v_sub in select value from jsonb_array_elements(coalesce(v_it -> 'pagos','[]'))
       loop
         if (v_sub ->> 'id') is null then continue; end if;
-        insert into public.pagos (negocio_id, cleo_id, pedido_id, monto, fecha, concepto)
+        insert into public.pagos (negocio_id, cleo_id, pedido_id, monto, fecha, concepto, metodo_pago)
         values (
           v_neg_id, v_sub ->> 'id', v_uuid,
           coalesce((v_sub ->> 'monto')::numeric,0),
           nullif(v_sub ->> 'fecha','')::date,
-          v_sub ->> 'concepto'
+          v_sub ->> 'concepto',
+          nullif(v_sub ->> 'metodoPago','')
         )
         on conflict (negocio_id, cleo_id) do update set
-          monto    = excluded.monto,
-          fecha    = excluded.fecha,
-          concepto = excluded.concepto;
+          monto       = excluded.monto,
+          fecha       = excluded.fecha,
+          concepto    = excluded.concepto,
+          metodo_pago = excluded.metodo_pago;
       end loop;
     end if;
   end loop;
+
+  -- ── 11b. BACKFILL evento_id EN PEDIDOS ────────────────────────────────────
+  -- Pedidos creados antes de que la app escribiera eventoId quedan sin
+  -- evento_id aunque el evento los lista en pedidos_ids. Este UPDATE los vincula.
+  -- Corre DESPUÉS del upsert de pedidos (paso 11) para que los rows ya existan.
+  update public.pedidos pd
+     set evento_id = ei.cleo_id
+    from public.eventos_inventario ei,
+         jsonb_array_elements_text(coalesce(ei.pedidos_ids, '[]'::jsonb)) pid
+   where ei.negocio_id = pd.negocio_id
+     and pid           = pd.cleo_id
+     and pd.evento_id  is null
+     and ei.negocio_id = v_neg_id;
 
   -- ── 12. UPSERT RECORDATORIOS ──────────────────────────────────────────────
   for v_it in

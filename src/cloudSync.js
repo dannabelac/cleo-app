@@ -496,7 +496,18 @@ export async function pullUserData(userId) {
     // seedear una baseline aquí: cuando la persona resuelva el conflicto,
     // resolverConflictoConservarLocal/UsarRemoto ya hacen su propia lectura
     // fresca de updated_at antes de escribir.
-    return { tieneDatos: false, updatedAt: null, snapshot: null };
+    // Se detecta el schema para que startCloudSync use dual si corresponde:
+    // sin esto, resolvería el conflicto intentando escribir al blob y recibiría
+    // P0002 cuando el negocio ya está en modo dual.
+    var schemaVerConflicto = 'blob';
+    try {
+      var rpcConfl = await supabase.rpc('cleo_dual_read');
+      if (!rpcConfl.error && rpcConfl.data &&
+          (rpcConfl.data.estado === 'ok' || rpcConfl.data.estado === 'negocio_nuevo')) {
+        schemaVerConflicto = 'dual';
+      }
+    } catch (e) {}
+    return { tieneDatos: false, updatedAt: null, snapshot: null, schemaVer: schemaVerConflicto };
   }
 
   // Caché sin ningún propietario registrado (nunca se le asignó
@@ -523,13 +534,38 @@ export async function pullUserData(userId) {
     try {
       localStorage.setItem(CACHE_OWNER_KEY, userId);
     } catch (e) {}
-    // updatedAt:null , todavía no existe fila, así que el primer guardado
-    // de esta cuenta no tiene nada con qué compararse (mismo criterio que
-    // ya usaba intentarGuardar antes de este cambio). snapshot:{} refleja
-    // el estado local actual (vacío, o con datos reales aún no
-    // sincronizados si duenioActual===userId) , si difiere de lo que haya
-    // en localStorage al iniciar la sincronización, se sube tal cual.
-    return { tieneDatos: false, updatedAt: null, snapshot: {} };
+    // Detectar si este nuevo usuario debe arrancar en modo dual.
+    // cleo_dual_read devuelve {'estado':'negocio_nuevo'} cuando no existe
+    // negocio aún — señal de que el servidor creará el negocio con
+    // schema_ver='dual' en el primer cleo_dual_flush.
+    var schemaVerNuevo = 'blob';
+    var datosDual = null;
+    try {
+      var rpcNuevo = await supabase.rpc('cleo_dual_read');
+      if (!rpcNuevo.error && rpcNuevo.data) {
+        if (rpcNuevo.data.estado === 'negocio_nuevo') {
+          schemaVerNuevo = 'dual';
+        } else if (rpcNuevo.data.estado === 'ok') {
+          // Negocio dual existe pero no hay fila en user_data (ej: migración que
+          // eliminó el blob, o usuario dual en dispositivo recién limpiado).
+          // Solo guardamos los datos aquí; el procesamiento va fuera del catch silencioso.
+          datosDual = {
+            data:      rpcNuevo.data.data || {},
+            updatedAt: rpcNuevo.data.updated_at || null,
+          };
+        }
+      }
+    } catch (e) {}
+    // Fuera del catch silencioso: si hay datos dual, escribir localStorage y retornar dual.
+    // Cualquier error aquí propaga normalmente (no se traga).
+    if (datosDual) {
+      var remotoDual = snapshotRemoto({ data: datosDual.data });
+      escribirSnapshotLocalStorage(remotoDual, userId);
+      try { await recordarConfirmado(userId, remotoDual, datosDual.updatedAt); } catch(e) {}
+      var snapshotDual = leerSnapshotLocalStorage();
+      return { tieneDatos: true, updatedAt: datosDual.updatedAt, snapshot: snapshotDual, schemaVer: 'dual' };
+    }
+    return { tieneDatos: false, updatedAt: null, snapshot: {}, schemaVer: schemaVerNuevo };
   }
 
   // En modo dual la fuente canónica son las tablas relacionales.
@@ -555,19 +591,9 @@ export async function pullUserData(userId) {
   var esDemo = local.cleo_perfil && local.cleo_perfil.modoDemo === true;
   var confirmado = await cacheConfirmado(userId, local);
   // Detectar si el remoto cambió desde la última sincronización confirmada.
-  // Si el updated_at del servidor coincide con el guardado en cleo_sync_confirmado,
-  // el remoto no cambió — solo local tiene cambios nuevos pendientes de subir.
-  // Esto evita mostrar un modal de "conflicto" cuando simplemente hay datos
-  // locales nuevos que aún no se han sincronizado (p.ej. al recargar justo
-  // después de crear un evento antes de que el ciclo de sync de 5s corra).
-  // remotoCambio: el servidor tiene una versión diferente a la última que confirmamos.
-  // - Si el servidor no tiene timestamp: conservador, trata como conflicto.
-  // - Si el cliente no tiene timestamp guardado (_updConf null, código anterior
-  //   al fix o primera carga post-limpieza): preservar el local en vez de
-  //   mostrar un modal de conflicto que el usuario podría resolver erróneamente
-  //   eligiendo "Usar la nube" y perder datos locales.
   var _updConf = updatedAtConfirmado();
   var remotoCambio = !fila.updated_at || (!!_updConf && fila.updated_at !== _updConf);
+
   // Calcular la huella es asíncrono. Otra pestaña puede haber editado el
   // caché mientras tanto: no reemplazar una versión que ya cambió.
   var propietarioAntesDeEscribir = localStorage.getItem(CACHE_OWNER_KEY);
@@ -578,6 +604,7 @@ export async function pullUserData(userId) {
   if (duenioActual === userId && !esDemo && Object.keys(local).length > 0 &&
       serializarSnapshot(local) !== serializarSnapshot(remoto) && !confirmado) {
     if (remotoCambio) {
+      console.warn('%c[CLEO cloudSync] → CONFLICTO: ambos lados cambiaron', 'color:orange;font-weight:700');
       // Conflicto real: ambos lados cambiaron. Guardar respaldo y esperar
       // a que el usuario elija qué versión conservar.
       var respaldo = { userId: userId, snapshot: local, fecha: new Date().toISOString(), estado: "pendiente" };
@@ -586,15 +613,15 @@ export async function pullUserData(userId) {
       if (localStorage.getItem(CONFLICT_BACKUP_KEY) !== texto) throw new Error("No se pudo conservar el caché pendiente");
       return { tieneDatos: true, updatedAt: null, snapshot: null, schemaVer: schemaVerDetectado };
     } else {
+      console.log('%c[CLEO cloudSync] → LOCAL ADELANTADO: se preserva local', 'color:green;font-weight:700');
       // Local adelantado: solo el local tiene cambios nuevos, el remoto no cambió
       // desde la última sincronización confirmada. No se sobreescribe el local —
       // el ciclo de sync lo subirá en los próximos segundos.
-      // Se usa remoto como baseline del sync para que detecte la diferencia
-      // con el local actual y lo suba automáticamente.
       try { localStorage.setItem(CACHE_OWNER_KEY, userId); } catch (e) {}
       return { tieneDatos: true, updatedAt: fila.updated_at, snapshot: remoto, schemaVer: schemaVerDetectado };
     }
   }
+  console.warn('%c[CLEO cloudSync] → SOBREESCRIBIENDO local con remoto', 'color:red;font-weight:700');
   escribirSnapshotLocalStorage(remoto, userId);
   await recordarConfirmado(userId, remoto, fila.updated_at);
 
