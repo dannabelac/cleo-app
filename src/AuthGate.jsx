@@ -327,6 +327,7 @@ export default function AuthGate() {
   // startCloudSync hacía su propia lectura de updated_at por separado,
   // pudiendo quedar desfasada de los datos que este pull en concreto trajo).
   var baselineSyncRef = useRef(null);
+  var schemaVerRef = useRef('blob'); // 'blob' | 'dual' — se actualiza tras pullUserData
   var procesandoRef = useRef({ userId: null, promise: null });
   var s11 = useState(false);
   var syncError = s11[0];
@@ -598,6 +599,9 @@ export default function AuthGate() {
       // efecto que arranca startCloudSync lo use como baseline exacta de
       // ESTE pull, sin volver a preguntarle a Supabase por separado.
       baselineSyncRef.current = huboExito ? resultado : null;
+      if (huboExito && resultado && resultado.schemaVer) {
+        schemaVerRef.current = resultado.schemaVer;
+      }
 
       // Sesión real (no demo) ya autenticada y con datos cargados , único
       // punto central para identificar y registrar el inicio de sesión.
@@ -1814,6 +1818,26 @@ export default function AuthGate() {
   // Se llama ANTES de que CLEO cargue cualquier dato de ejemplo. Protege los
   // datos reales en Supabase primero, y solo autoriza el demo si eso quedó
   // confirmado. Nunca modifica ningún dato si algo falla.
+  async function onEmpezarDeCero() {
+    if (demoActivoRef.current) return { estado: 'demo' };
+    try {
+      // Para usuarios dual: borrar tablas relacionales antes de limpiar local
+      if (schemaVerRef.current === 'dual') {
+        var res = await supabase.rpc('cleo_dual_reset');
+        if (res.error) return { estado: 'error' };
+        var data = res.data;
+        if (!data || (data.estado !== 'ok')) return { estado: 'error' };
+      }
+      // Detener sync para que no suba estado vacío en paralelo
+      if (syncRef.current) { syncRef.current.stop(); syncRef.current = null; }
+      // Limpiar localStorage de claves de negocio
+      clearCleoLocalData();
+      return { estado: 'ok' };
+    } catch (e) {
+      return { estado: 'error' };
+    }
+  }
+
   async function onEntrarModoDemo() {
     if (entrandoDemoRef.current) return { estado: "error" }; // bloqueo síncrono e inmediato
     entrandoDemoRef.current = true;
@@ -1954,7 +1978,7 @@ export default function AuthGate() {
     return React.createElement(
       React.Fragment,
       null,
-      React.createElement(CLEO, { onSignOut: cerrarSesion, userEmail: userEmail, userId: userId, syncError: syncError, syncConflicto: syncConflicto, forzarSync: forzarSync, onEntrarModoDemo: onEntrarModoDemo, onSalirModoDemo: onSalirModoDemo, demoActivo: demoActivo, onDeleteAccount: eliminarCuenta }),
+      React.createElement(CLEO, { onSignOut: cerrarSesion, userEmail: userEmail, userId: userId, syncError: syncError, syncConflicto: syncConflicto, forzarSync: forzarSync, onEntrarModoDemo: onEntrarModoDemo, onSalirModoDemo: onSalirModoDemo, demoActivo: demoActivo, onDeleteAccount: eliminarCuenta, onEmpezarDeCero: onEmpezarDeCero }),
       errorCierreSesion &&
         React.createElement(
           "div",

@@ -20987,24 +20987,30 @@ export default function CLEO(props){
             ),
 
             // Empezar desde cero
-            e("button",{style:{cursor:"pointer",width:"100%",textAlign:"left",padding:"14px 16px",border:"none",borderTop:"1px solid "+C.border,background:hoverCero?C.redBg:"transparent",display:"flex",alignItems:"center",gap:12,transition:"background 0.12s"},onMouseEnter:function(){ setHoverCero(true); },onMouseLeave:function(){ setHoverCero(false); },onClick:function(){
-              if(window.confirm("¿Borrar todos tus datos? Esta acción no se puede deshacer.")){
-                setClientes([]); setCotizaciones([]);
-                setVentas([]); setServicios([]);
-                setPedidos([]);
-                setProductosCat([]);
-                setProductos([]);
-                setPerfil(perfilDemo);
-                setEtapasVistas([]);
-                try{
-                  localStorage.removeItem("cleo_alertas_cerradas");
-                  localStorage.removeItem("cleo_etapas_vistas");
-                  localStorage.removeItem("cleo_tipo_perfil");
-                  localStorage.removeItem("cleo_demo_productos_loaded_v2");
-                  writeGuard.remove("cleo_productos");
-                }catch(e){}
-                setAlertasCerradas([]); setModalCuenta(false);
+            e("button",{style:{cursor:"pointer",width:"100%",textAlign:"left",padding:"14px 16px",border:"none",borderTop:"1px solid "+C.border,background:hoverCero?C.redBg:"transparent",display:"flex",alignItems:"center",gap:12,transition:"background 0.12s"},onMouseEnter:function(){ setHoverCero(true); },onMouseLeave:function(){ setHoverCero(false); },onClick:async function(){
+              if(!window.confirm("¿Borrar todos tus datos? Esta acción no se puede deshacer.")) return;
+              if(props.onEmpezarDeCero){
+                var r=await props.onEmpezarDeCero();
+                if(!r||r.estado==="error"){
+                  mostrarToast("No pudimos borrar los datos. Revisa tu conexión e intenta de nuevo.");
+                  return;
+                }
               }
+              setClientes([]); setCotizaciones([]);
+              setVentas([]); setServicios([]);
+              setPedidos([]); setEventosInv([]); setOportunidades([]);
+              setProductosCat([]);
+              setProductos([]);
+              setPerfil(perfilDemo);
+              setEtapasVistas([]);
+              try{
+                localStorage.removeItem("cleo_alertas_cerradas");
+                localStorage.removeItem("cleo_etapas_vistas");
+                localStorage.removeItem("cleo_tipo_perfil");
+                localStorage.removeItem("cleo_demo_productos_loaded_v2");
+                writeGuard.remove("cleo_productos");
+              }catch(e){}
+              setAlertasCerradas([]); setModalCuenta(false);
             }},
               e("div",{style:{width:38,height:38,borderRadius:10,background:C.redBg,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}},
                 e("svg",{width:18,height:18,viewBox:"0 0 24 24",fill:"none",stroke:C.red,strokeWidth:1.7,strokeLinecap:"round",strokeLinejoin:"round"},
