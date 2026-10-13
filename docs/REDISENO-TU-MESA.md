@@ -125,6 +125,17 @@ Referencias: `docs/rediseno/referencias/R7-Inicio-Desktop.html` y `R7-Movil-Inic
 - Más aire: 32px bajo el saludo y 48px entre secciones (36px en móvil). Main desktop con padding 36px 64px.
 - Riel desktop: 104px de ancho, items de 88px, letra 11px, sin cortar palabras ("Oportunidades" completa; "Inventario y costos" en dos líneas).
 
+## 4c. Ronda 8 — Clientes (aprobada)
+Referencias: `docs/rediseno/referencias/R8-Clientes.html` (desktop) y `R8-Movil-Clientes.html` (móvil). Aplica en la vista de clientes de ambos perfiles (productos y servicios; el subtítulo cambia según el perfil, como hoy).
+- Encabezado: "Tus clientes" + subtítulo actual a la izquierda; "+ Nuevo ▾" a la derecha (móvil: "+ Nuevo" solo arriba y el título debajo).
+- Buscador blanco redondo con lupa (placeholder "Buscar..."). El select de etapa pasa a pastillas: Todos · Activos · Ganados · Perdidos (mismos valores y misma lógica de filtro). Seleccionada: fondo #E4E8FF, texto ink 800.
+- Lista en un solo bloque blanco (radio 22 desktop / 24 móvil) con filas separadas por línea #EDEFF5; ya no hay tarjetas sueltas, sombras ni borde izquierdo de color.
+- Sin círculo de iniciales. En su lugar, la letra inicial del nombre en pervinca #3F4BD0 (13px, 800), solo en la primera fila de cada letra.
+- Nombre 15.5px/700. Si hay `negocio`, va debajo en 13px #6E7489 (si está vacío no se deja espacio).
+- Seguimiento: "Seguimiento hoy / mañana / en N días" con reloj, en pastilla #EEF0FF/#3F4BD0. Si es hoy, ocre (#FBF1DC/#8A5A06); si está vencido, rojo #B23A24 con alerta.
+- Canal (BtnCanal): botón neutro con contorno #E3E6EF, ícono + nombre en desktop; solo ícono de 40px en móvil. Conserva su comportamiento y el stopPropagation.
+- Chevron gris a la derecha; toda la fila abre el perfil como hoy.
+
 ## 5. Fase 3 — Pedidos (y el resto de secciones)
 
 Referencias: `R5-Pedidos.html`, `R5-Movil-Pedidos.html`.
@@ -161,6 +172,7 @@ Capturas desktop (1440) y móvil (390) de cada pantalla y modal, en ambos perfil
 - Se elimina el botón flotante del sol; se quitan títulos de grupo del riel y emojis decorativos.
 - En móvil: se quitan la "C" y "CLEO · Nunca emprendas solo"; se agrega el resumen "Hoy tienes…" (antes solo desktop).
 - Etiquetas TOTAL / PAGADO / RESTANTE pasan a mayúscula inicial.
+- Clientes R8: "Seg: En N días" pasa a "Seguimiento en N días"; filtro de etapa como pastillas; se quitan el borde de color y las iniciales.
 - Inicio R7: resumen y acceso a Hoy en una franja; idea del día al final; en pedidos con saldo, el importe a la derecha del nombre en móvil.
 
 ## 10. Pendientes por confirmar con Danna
