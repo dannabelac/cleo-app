@@ -12613,250 +12613,176 @@ export default function CLEO(props){
                                esEntregado&&restante>0?C.amber:
                                estPed.color;
                 var esHighlightPed=ped.id===highlightPedidoId;
-                return e("div",{key:ped.id,style:{background:C.surface,borderRadius:14,border:esHighlightPed?"2px solid "+C.purple:"1px solid "+C.border,padding:isMobile?"12px 14px":"16px 18px",boxShadow:esHighlightPed?"0 0 0 3px "+C.purple+"22":"0 1px 4px rgba(0,0,0,0.04)",opacity:esCancelado?0.65:1,borderLeft:"3px solid "+bordeColor,transition:"box-shadow 0.3s"},ref:function(el){ if(el&&esHighlightPed){ el.scrollIntoView({behavior:"smooth",block:"start"}); } }},
+                return isMobile ? (
 
-                  // FILA 1: avatar + info + estado discreto
-                  e("div",{style:{display:"flex",alignItems:"flex-start",gap:10,marginBottom:8}},
-                    e("div",{style:{width:36,height:36,borderRadius:9,background:cl?avatarColor(cl.id)+"18":"#F1F5F9",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,fontWeight:700,fontSize:12,color:cl?avatarColor(cl.id):"#94A3B8"}},cl?iniciales(cl.nombre):"?"),
-                    e("div",{style:{flex:1,minWidth:0}},
-                      e("div",{style:{fontWeight:700,fontSize:13,color:C.text,marginBottom:1,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}},cl?cl.nombre:"Cliente"),
-                      e("div",{style:{fontSize:11,color:C.textMuted,marginBottom:3,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}},ped.productos||"Sin producto"),
-                      // Origen de la venta rápida (ped.etiqueta) , mismo campo
-                      // que ya llena el formulario en "¿Donde fue esta venta?"
-                      // , no un campo paralelo nuevo. Solo informativo: no
-                      // toca totales/pagos/estados/filtros. Un pedido nacido
-                      // de "+ Pedido" nunca trae ped.etiqueta (pedidoVacio no
-                      // tiene ese campo), así que esta línea solo aparece en
-                      // pedidos que sí vinieron de Venta rápida con origen
-                      // capturado , sin importar si tienen cliente o no, ni
-                      // la modalidad de pago con la que se registraron.
-                      ped.etiqueta&&e("div",{style:{fontSize:10,color:C.textDim,marginBottom:3,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}},"Origen: "+ped.etiqueta),
-                      e("div",{style:{display:"flex",gap:6,flexWrap:"wrap",alignItems:"center"}},
-                        e("span",{style:{fontSize:11,padding:"2px 7px",borderRadius:8,background:ep.bg,color:ep.color,fontWeight:600}},ep.label),
-                        // Etiqueta de origen , única fuente de verdad:
-                        // ped.origenVenta==="venta_rapida" (lo escribe SOLO
-                        // avanzarVenta, para los 3 botones de "+ Venta
-                        // rápida" , con o sin cliente), nunca se infiere por
-                        // estado/pagos/cliente/nombre. Un pedido nacido de
-                        // "+ Pedido", de una oportunidad o de "Cerré una
-                        // venta" nunca trae este valor, así que nunca la
-                        // muestra , y un registro antiguo sin el campo
-                        // persistido tampoco (nunca se adivina ni se migra).
-                        // Va junto al chip de estado de pago, nunca en el
-                        // nombre/título del pedido.
-                        ped.origenVenta==="venta_rapida"&&e("span",{style:{fontSize:11,padding:"2px 7px",borderRadius:8,background:C.amber+"1A",color:C.amber,fontWeight:600}},"Venta rápida"),
-                        // Fecha de entrega en formato humano ("29 ago 2026")
-                        // , antes se mostraba ped.fechaEntrega tal cual
-                        // (ISO crudo). La acción de editar (Cambiar/Agregar)
-                        // solo aparece si el pedido sigue editable (ni
-                        // entregado ni cancelado , en esos 2 estados
-                        // fechaEntrega ya es la fecha REAL en que pasó eso,
-                        // ver conCambiosEstadoPedido, y no debe poder
-                        // tocarse desde aquí). Pedidos VIEJOS sin
-                        // fechaEntrega (creados antes de que este campo
-                        // existiera en el formulario) también deben poder
-                        // recibir una ahora , por eso la acción no depende
-                        // de que ya exista una fecha, solo de que el pedido
-                        // siga editable: "Cambiar" si ya tenía fecha,
-                        // "Agregar fecha" si nunca la tuvo. Igual que abajo
-                        // en el modal, siempre se abre y guarda por ped.id
-                        // (nunca por clienteId , dos pedidos del mismo
-                        // cliente son documentos distintos). En escritorio
-                        // queda inline junto a la fecha ("· Cambiar"); en
-                        // móvil baja como su propio renglón clickeable para
-                        // que el dedo no falle sobre un texto tan chico.
-                        ped.fechaEntrega&&!isMobile&&e("span",{style:{fontSize:10,color:C.textDim}},
-                          "Entrega: "+formatearFechaEntregaCorta(ped.fechaEntrega),
-                          !esEntregado&&!esCancelado&&e("button",{type:"button","aria-label":"Cambiar fecha de entrega",style:{cursor:"pointer",color:C.purple,fontWeight:600,marginLeft:4,background:"none",border:"none",padding:0,fontSize:10,fontFamily:"inherit"},onClick:function(ev){ ev.stopPropagation(); setModalCambiarFechaPedidoId(ped.id); setNuevaFechaPedido(ped.fechaEntrega); }}," · Cambiar")
-                        ),
-                        !ped.fechaEntrega&&!isMobile&&!esEntregado&&!esCancelado&&e("button",{type:"button","aria-label":"Agregar fecha de entrega",style:{fontSize:10,color:C.purple,fontWeight:600,cursor:"pointer",background:"none",border:"none",padding:0,fontFamily:"inherit"},onClick:function(ev){ ev.stopPropagation(); setModalCambiarFechaPedidoId(ped.id); setNuevaFechaPedido(""); }},"+ Agregar fecha de entrega"),
-                        ped.fechaEntrega&&isMobile&&e("span",{style:{fontSize:10,color:C.textDim}},"Entrega: "+formatearFechaEntregaCorta(ped.fechaEntrega)),
-                        ped.fechaEntrega&&isMobile&&!esEntregado&&!esCancelado&&e("button",{type:"button","aria-label":"Cambiar fecha de entrega",style:{fontSize:10,color:C.purple,fontWeight:600,cursor:"pointer",background:"none",border:"none",padding:0,fontFamily:"inherit",flexBasis:"100%"},onClick:function(ev){ ev.stopPropagation(); setModalCambiarFechaPedidoId(ped.id); setNuevaFechaPedido(ped.fechaEntrega); }},"Cambiar fecha"),
-                        !ped.fechaEntrega&&isMobile&&!esEntregado&&!esCancelado&&e("button",{type:"button","aria-label":"Agregar fecha de entrega",style:{fontSize:10,color:C.purple,fontWeight:600,cursor:"pointer",background:"none",border:"none",padding:0,fontFamily:"inherit",flexBasis:"100%"},onClick:function(ev){ ev.stopPropagation(); setModalCambiarFechaPedidoId(ped.id); setNuevaFechaPedido(""); }},"+ Agregar fecha de entrega"),
-                        alertaDias&&e("span",{role:"status",style:{fontSize:10,fontWeight:600,color:C.red,background:C.redBg,border:"1px solid "+C.redBorder,borderRadius:20,padding:"1px 7px"}},diasPreparando+"d preparando")
+                  // MÓVIL — tarjeta compacta con avatar
+                  e("div",{key:ped.id,style:{background:C.surface,borderRadius:14,border:esHighlightPed?"2px solid "+C.purple:"1px solid "+C.border,padding:"12px 14px",boxShadow:esHighlightPed?"0 0 0 3px "+C.purple+"22":"0 1px 4px rgba(0,0,0,0.04)",opacity:esCancelado?0.65:1,borderLeft:"3px solid "+bordeColor,transition:"box-shadow 0.3s"},ref:function(el){ if(el&&esHighlightPed){ el.scrollIntoView({behavior:"smooth",block:"start"}); } }},
+                    e("div",{style:{display:"flex",alignItems:"flex-start",gap:10,marginBottom:8}},
+                      e("div",{style:{width:36,height:36,borderRadius:9,background:cl?avatarColor(cl.id)+"18":"#F1F5F9",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,fontWeight:700,fontSize:12,color:cl?avatarColor(cl.id):"#94A3B8"}},cl?iniciales(cl.nombre):"?"),
+                      e("div",{style:{flex:1,minWidth:0}},
+                        e("div",{style:{fontWeight:700,fontSize:13,color:C.text,marginBottom:1,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}},cl?cl.nombre:"Cliente"),
+                        e("div",{style:{fontSize:11,color:C.textMuted,marginBottom:3,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}},ped.productos||"Sin producto"),
+                        ped.etiqueta&&e("div",{style:{fontSize:10,color:C.textDim,marginBottom:3,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}},"Origen: "+ped.etiqueta),
+                        e("div",{style:{display:"flex",gap:6,flexWrap:"wrap",alignItems:"center"}},
+                          e("span",{style:{fontSize:11,padding:"2px 7px",borderRadius:8,background:ep.bg,color:ep.color,fontWeight:600}},ep.label),
+                          ped.origenVenta==="venta_rapida"&&e("span",{style:{fontSize:11,padding:"2px 7px",borderRadius:8,background:C.amber+"1A",color:C.amber,fontWeight:600}},"Venta rápida"),
+                          ped.fechaEntrega&&e("span",{style:{fontSize:10,color:C.textDim}},"Entrega: "+formatearFechaEntregaCorta(ped.fechaEntrega)),
+                          ped.fechaEntrega&&!esEntregado&&!esCancelado&&e("button",{type:"button","aria-label":"Cambiar fecha de entrega",style:{fontSize:10,color:C.purple,fontWeight:600,cursor:"pointer",background:"none",border:"none",padding:0,fontFamily:"inherit",flexBasis:"100%"},onClick:function(ev){ ev.stopPropagation(); setModalCambiarFechaPedidoId(ped.id); setNuevaFechaPedido(ped.fechaEntrega); }},"Cambiar fecha"),
+                          !ped.fechaEntrega&&!esEntregado&&!esCancelado&&e("button",{type:"button","aria-label":"Agregar fecha de entrega",style:{fontSize:10,color:C.purple,fontWeight:600,cursor:"pointer",background:"none",border:"none",padding:0,fontFamily:"inherit",flexBasis:"100%"},onClick:function(ev){ ev.stopPropagation(); setModalCambiarFechaPedidoId(ped.id); setNuevaFechaPedido(""); }},"+ Agregar fecha de entrega"),
+                          alertaDias&&e("span",{role:"status",style:{fontSize:10,fontWeight:600,color:C.red,background:C.redBg,border:"1px solid "+C.redBorder,borderRadius:20,padding:"1px 7px"}},diasPreparando+"d preparando")
+                        )
+                      ),
+                      e("select",{
+                        "aria-label":"Estado del pedido"+(cl?" de "+cl.nombre:""),
+                        value:ped.estadoPedido,
+                        onChange:function(ev){
+                          var nuevoEstado=ev.target.value;
+                          if(nuevoEstado==="cancelado"){ setCancelarPedidoId(ped.id); return; }
+                          actualizarPedido(ped.id,{estadoPedido:nuevoEstado});
+                          if(nuevoEstado==="entregado"){
+                            var cl2=clientes.find(function(c){ return c.id===ped.clienteId; });
+                            setCelebEntregadoData({pedidoId:ped.id,clienteNombre:cl2?cl2.nombre:"Cliente",producto:ped.productos||"",precio:ped.total||0,clienteId:ped.clienteId});
+                            setCelebPaso(1); setCelebRazon([]); setCelebRecontacto("30");
+                          }
+                        },
+                        style:{fontSize:10,padding:"4px 4px",borderRadius:8,border:"1px solid "+C.border,background:C.surfaceUp,color:C.textMuted,cursor:"pointer",outline:"none",flexShrink:0,maxWidth:90}
+                      },
+                        ESTADOS_PEDIDO.map(function(x){ return e("option",{key:x.k,value:x.k},x.label); })
                       )
                     ),
-                    // Estado — discreto
-                    e("select",{
-                      "aria-label":"Estado del pedido"+(cl?" de "+cl.nombre:""),
-                      value:ped.estadoPedido,
-                      onChange:function(ev){
-                        var nuevoEstado=ev.target.value;
-                        if(nuevoEstado==="cancelado"){ setCancelarPedidoId(ped.id); return; }
-                        actualizarPedido(ped.id,{estadoPedido:nuevoEstado});
-                        if(nuevoEstado==="entregado"){
-                          var cl2=clientes.find(function(c){ return c.id===ped.clienteId; });
-                          setCelebEntregadoData({pedidoId:ped.id,clienteNombre:cl2?cl2.nombre:"Cliente",producto:ped.productos||"",precio:ped.total||0,clienteId:ped.clienteId});
-                          setCelebPaso(1); setCelebRazon([]); setCelebRecontacto("30");
-                        }
+                    typeof ped.notas==="string"&&ped.notas.trim()&&e("div",{style:{fontSize:12,color:C.textMuted,lineHeight:1.5,marginBottom:8,paddingLeft:46,wordBreak:"break-word",whiteSpace:"pre-line"}},ped.notas.trim()),
+                    totalPedido>0&&e("div",{style:{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",borderRadius:10,background:C.surfaceUp,marginBottom:8,overflow:"hidden"}},
+                      e("div",{style:{padding:"7px 10px",textAlign:"center",borderRight:"1px solid "+C.border}},
+                        e("div",{style:{fontSize:9,color:C.textDim,textTransform:"uppercase",letterSpacing:"0.3px",marginBottom:2}},"Total"),
+                        e("div",{style:{fontSize:13,fontWeight:700,color:C.text}},"$"+formatoDinero(totalPedido))
+                      ),
+                      e("div",{style:{padding:"7px 10px",textAlign:"center",borderRight:"1px solid "+C.border}},
+                        e("div",{style:{fontSize:9,color:C.textDim,textTransform:"uppercase",letterSpacing:"0.3px",marginBottom:2}},"Pagado"),
+                        e("div",{style:{fontSize:13,fontWeight:700,color:C.green}},"$"+formatoDinero(totalPagado))
+                      ),
+                      e("div",{style:{padding:"7px 10px",textAlign:"center"}},
+                        e("div",{style:{fontSize:9,color:C.textDim,textTransform:"uppercase",letterSpacing:"0.3px",marginBottom:2}},"Restante"),
+                        e("div",{style:{fontSize:13,fontWeight:700,color:restante>0?C.amber:C.green}},"$"+formatoDinero(restante))
+                      )
+                    ),
+                    !esCancelado&&e("div",{style:{borderTop:"1px solid "+C.border+"44",paddingTop:8,display:"flex",flexDirection:"column",gap:8,alignItems:"stretch"}},
+                      e("div",{style:{display:"flex",gap:8,alignItems:"center"}},
+                        cl&&e(BtnCanal,{cliente:cl,iconOnly:true}),
+                        e(ArchivoAdjunto,{tipoDocumento:"pedido",documento:ped,demoActivo:!!(perfil.modoDemo||props.demoActivo),onActualizarDocumento:actualizarArchivoAdjuntoPedido,borderColor:C.border+"88",textColor:C.textDim,compacto:true}),
+                        e("button",{title:"Cotización","aria-label":"Ver cotización",style:{cursor:"pointer",width:40,height:40,padding:0,borderRadius:8,border:"1px solid "+C.border+"88",background:"transparent",fontSize:13,color:C.textDim,display:"inline-flex",alignItems:"center",justifyContent:"center",flexShrink:0},
+                          onClick:function(){
+                            var cotVinculada=ped.cotizacionId?cotizaciones.find(function(cot){ return cot.id===ped.cotizacionId; }):null;
+                            if(!cotVinculada&&!ped.cotizacionId){ var cotsDelClientePed=cotizaciones.filter(function(cot){ return String(cot.clienteId)===String(ped.clienteId); }); if(cotsDelClientePed.length===1){ cotVinculada=cotsDelClientePed[0]; setPedidos(function(prevP){ return prevP.map(function(p){ return p.id===ped.id?Object.assign({},p,{cotizacionId:cotVinculada.id}):p; }); }); } }
+                            if(cotVinculada){ editarCot(cotVinculada); } else { setFormCot(Object.assign({},cotVacio,{clienteId:String(ped.clienteId),clienteNombre:cl?cl.nombre:"",items:obtenerItemsPedido(ped),_origenPedidoId:ped.id})); setModalCot(true); }
+                          }
+                        },"📄"),
+                        e("button",{title:pagosArr.length>0?"Pagos ("+pagosArr.length+")":"Ver pagos","aria-label":pagosArr.length>0?"Ver pagos ("+pagosArr.length+")":"Ver pagos",
+                          style:{cursor:"pointer",width:40,height:40,padding:0,borderRadius:8,border:"1px solid "+C.border+"88",background:"transparent",fontSize:13,color:C.textDim,display:"inline-flex",alignItems:"center",justifyContent:"center",position:"relative",flexShrink:0},
+                          onClick:function(){ setFormPagoPedidoModal({monto:"",fecha:FECHA_HOY,concepto:pagosArr.length===0?"Anticipo":"Pago"}); setPedidoPagosId(ped.id); }
+                        },"💳",restante>0&&e("span",{style:{position:"absolute",top:-4,right:-4,minWidth:14,height:14,padding:"0 3px",borderRadius:7,background:C.purple,color:"#fff",fontSize:9,fontWeight:700,display:"flex",alignItems:"center",justifyContent:"center",border:"1px solid #fff"}},pagosArr.length))
+                      ),
+                      restante>0&&totalPedido>0&&e("button",{
+                        style:{cursor:"pointer",padding:"8px 20px",borderRadius:10,border:"none",background:C.purple,fontSize:12,color:"#fff",fontWeight:600,width:"100%"},
+                        onClick:function(){ setFormPagoPedidoModal({monto:String(redondearDinero(restante)),fecha:FECHA_HOY,concepto:"Pago final"}); setPedidoPagosId(ped.id); }
+                      },"Registrar pago · $"+formatoDinero(restante)+" pendiente"),
+                      !esEntregado&&(restante<=0||totalPedido===0)&&e("button",{
+                        style:{cursor:"pointer",padding:"8px 20px",borderRadius:10,border:"none",background:C.green,fontSize:12,color:"#fff",fontWeight:600,width:"100%"},
+                        onClick:function(){ actualizarPedido(ped.id,{estadoPedido:"entregado"}); var cl2=clientes.find(function(c){ return c.id===ped.clienteId; }); setCelebEntregadoData({pedidoId:ped.id,clienteNombre:cl2?cl2.nombre:"Cliente",producto:ped.productos||"",precio:ped.total||0,clienteId:ped.clienteId}); setCelebPaso(1); setCelebRazon([]); setCelebRecontacto("30"); }
+                      },"Marcar entregado")
+                    )
+                  )
+
+                ) : (
+
+                  // DESKTOP — R5: artículo con grid 2 columnas
+                  e("article",{key:ped.id,
+                    style:{display:"grid",gridTemplateColumns:"minmax(0,1fr) 470px",columnGap:32,rowGap:18,padding:"26px 26px 20px",background:"#FFFFFF",borderRadius:28,border:esHighlightPed?"2px solid "+C.purple:"1px solid #E6E8F0",opacity:esCancelado?0.65:1,boxSizing:"border-box"},
+                    ref:function(el){ if(el&&esHighlightPed){ el.scrollIntoView({behavior:"smooth",block:"start"}); } }
+                  },
+                    // COLUMNA IZQUIERDA: nombre, producto, chips, nota
+                    e("div",null,
+                      e("div",{style:{fontSize:22,fontWeight:800,letterSpacing:"-0.02em",overflowWrap:"anywhere",color:C.ink}},cl?cl.nombre:"Cliente"),
+                      e("div",{style:{marginTop:4,fontSize:16.5,fontWeight:600,color:C.ink}},ped.productos||"Sin producto"),
+                      ped.etiqueta&&e("div",{style:{marginTop:2,fontSize:13,color:C.textMuted}},"Origen: "+ped.etiqueta),
+                      e("div",{style:{display:"flex",gap:8,flexWrap:"wrap",alignItems:"center",marginTop:12}},
+                        e("span",{style:{height:30,padding:"0 12px",display:"inline-flex",alignItems:"center",borderRadius:15,fontSize:14,fontWeight:700,background:estPed.bg,color:estPed.color}},estPed.label),
+                        e("span",{style:{height:30,padding:"0 12px",display:"inline-flex",alignItems:"center",borderRadius:15,fontSize:14,fontWeight:700,background:ep.bg,color:ep.color}},ep.label),
+                        ped.origenVenta==="venta_rapida"&&e("span",{style:{height:30,padding:"0 12px",display:"inline-flex",alignItems:"center",borderRadius:15,fontSize:14,fontWeight:700,background:C.amber+"1A",color:C.amber}},"Venta rápida"),
+                        ped.fechaEntrega&&e("span",{style:{fontSize:13,color:C.textDim}},
+                          "Entrega: "+formatearFechaEntregaCorta(ped.fechaEntrega),
+                          !esEntregado&&!esCancelado&&e("button",{type:"button",style:{cursor:"pointer",color:C.purple,fontWeight:600,marginLeft:6,background:"none",border:"none",padding:0,fontSize:13,fontFamily:"inherit"},onClick:function(ev){ ev.stopPropagation(); setModalCambiarFechaPedidoId(ped.id); setNuevaFechaPedido(ped.fechaEntrega); }},"· Cambiar")
+                        ),
+                        !ped.fechaEntrega&&!esEntregado&&!esCancelado&&e("button",{type:"button",style:{fontSize:13,color:C.purple,fontWeight:600,cursor:"pointer",background:"none",border:"none",padding:0,fontFamily:"inherit"},onClick:function(ev){ ev.stopPropagation(); setModalCambiarFechaPedidoId(ped.id); setNuevaFechaPedido(""); }},"+ Agregar fecha de entrega"),
+                        alertaDias&&e("span",{role:"status",style:{height:30,padding:"0 12px",display:"inline-flex",alignItems:"center",borderRadius:15,fontSize:14,fontWeight:700,color:C.red,background:C.redBg,border:"1px solid "+C.redBorder}},diasPreparando+"d preparando")
+                      ),
+                      typeof ped.notas==="string"&&ped.notas.trim()&&e("div",{style:{marginTop:12,fontSize:13,color:C.textMuted,lineHeight:1.5,wordBreak:"break-word",whiteSpace:"pre-line"}},ped.notas.trim())
+                    ),
+                    // COLUMNA DERECHA: selector de estado + ticket financiero
+                    e("div",null,
+                      e("select",{
+                        "aria-label":"Estado del pedido"+(cl?" de "+cl.nombre:""),
+                        value:ped.estadoPedido,
+                        onChange:function(ev){
+                          var nuevoEstado=ev.target.value;
+                          if(nuevoEstado==="cancelado"){ setCancelarPedidoId(ped.id); return; }
+                          actualizarPedido(ped.id,{estadoPedido:nuevoEstado});
+                          if(nuevoEstado==="entregado"){
+                            var cl2=clientes.find(function(c){ return c.id===ped.clienteId; });
+                            setCelebEntregadoData({pedidoId:ped.id,clienteNombre:cl2?cl2.nombre:"Cliente",producto:ped.productos||"",precio:ped.total||0,clienteId:ped.clienteId});
+                            setCelebPaso(1); setCelebRazon([]); setCelebRecontacto("30");
+                          }
+                        },
+                        style:{width:"100%",height:40,padding:"0 14px",borderRadius:10,border:"1px solid "+C.border,background:"#F4F5FA",fontSize:14.5,color:C.text,cursor:"pointer",outline:"none",fontFamily:"inherit",boxSizing:"border-box"}
                       },
-                      style:{fontSize:10,padding:"4px 4px",borderRadius:8,border:"1px solid "+C.border,background:C.surfaceUp,color:C.textMuted,cursor:"pointer",outline:"none",flexShrink:0,maxWidth:isMobile?90:120}
-                    },
-                      ESTADOS_PEDIDO.map(function(x){ return e("option",{key:x.k,value:x.k},x.label); })
-                    )
-                  ),
-
-                  // Nota del pedido — alineada con la columna de info (46 = avatar 36 + gap 10)
-                  // typeof guard: pedidos antiguos pueden traer notas:undefined o notas:null; nunca llamar .trim() sobre un no-string.
-                  typeof ped.notas==="string"&&ped.notas.trim()&&e("div",{style:{fontSize:12,color:C.textMuted,lineHeight:1.5,marginBottom:8,paddingLeft:46,wordBreak:"break-word",whiteSpace:"pre-line"}},ped.notas.trim()),
-
-                  // FILA 2: resumen financiero — 3 columnas con divisores
-                  totalPedido>0&&e("div",{style:{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",borderRadius:10,background:C.surfaceUp,marginBottom:8,overflow:"hidden"}},
-                    e("div",{style:{padding:"7px 10px",textAlign:"center",borderRight:"1px solid "+C.border}},
-                      e("div",{style:{fontSize:9,color:C.textDim,textTransform:"uppercase",letterSpacing:"0.3px",marginBottom:2}},"Total"),
-                      e("div",{style:{fontSize:13,fontWeight:700,color:C.text}},"$"+formatoDinero(totalPedido))
-                    ),
-                    e("div",{style:{padding:"7px 10px",textAlign:"center",borderRight:"1px solid "+C.border}},
-                      e("div",{style:{fontSize:9,color:C.textDim,textTransform:"uppercase",letterSpacing:"0.3px",marginBottom:2}},"Pagado"),
-                      e("div",{style:{fontSize:13,fontWeight:700,color:C.green}},"$"+formatoDinero(totalPagado))
-                    ),
-                    e("div",{style:{padding:"7px 10px",textAlign:"center"}},
-                      e("div",{style:{fontSize:9,color:C.textDim,textTransform:"uppercase",letterSpacing:"0.3px",marginBottom:2}},"Restante"),
-                      e("div",{style:{fontSize:13,fontWeight:700,color:restante>0?C.amber:C.green}},"$"+formatoDinero(restante))
-                    )
-                  ),
-
-                  // FILA 3: acciones
-                  // Nota UX: se quitó el hint 💡 que iba aquí ("Cobra el
-                  // saldo antes de entregar") porque repetía exactamente el
-                  // mismo dato que ya muestran la columna "Restante" (FILA 2)
-                  // y el botón "Registrar pago · $X pendiente" de abajo , el
-                  // mismo número aparecía 3 veces en la tarjeta sin agregar
-                  // nada nuevo.
-                  !esCancelado&&e("div",{style:{borderTop:"1px solid "+C.border+"44",paddingTop:8,display:"flex",flexDirection:isMobile?"column":"row",gap:8,alignItems:isMobile?"stretch":"center"}},
-                    // Secundarias.
-                    // Desktop: fila con texto, como antes (ahí sí hay espacio).
-                    // Móvil: fila ÚNICA de botones ícono-únicamente de 32×32 ,
-                    // antes era una cuadrícula 2×2 que se sentía forzada y
-                    // ocupaba demasiada altura para acciones secundarias. El
-                    // nombre de cada acción sigue disponible como tooltip
-                    // (title) y dentro de su propio modal , no se pierde
-                    // información, solo deja de competir en tamaño con la
-                    // acción principal. Cada botón/componente va envuelto en
-                    // su propio div porque ArchivoAdjunto devuelve un
-                    // Fragment (puede renderizar su modal como hermano del
-                    // botón).
-                    isMobile
-                      ? e("div",{style:{display:"flex",gap:8,alignItems:"center"}},
-                          cl&&e(BtnCanal,{cliente:cl,iconOnly:true}),
-                          e(ArchivoAdjunto,{tipoDocumento:"pedido",documento:ped,demoActivo:!!(perfil.modoDemo||props.demoActivo),onActualizarDocumento:actualizarArchivoAdjuntoPedido,borderColor:C.border+"88",textColor:C.textDim,compacto:true}),
-                          e("button",{
-                            title:"Cotización","aria-label":"Ver cotización",
-                            style:{cursor:"pointer",width:40,height:40,padding:0,borderRadius:8,border:"1px solid "+C.border+"88",background:"transparent",fontSize:13,color:C.textDim,display:"inline-flex",alignItems:"center",justifyContent:"center",flexShrink:0},
-                            onClick:function(){
-                              // Vínculo por cotizacionId explícito primero , nunca
-                              // se adivina por clienteId si ya sabemos exactamente
-                              // cuál es (un cliente puede tener varias cotizaciones).
-                              // La adivinanza por clienteId SOLO es segura cuando el
-                              // cliente tiene EXACTAMENTE una cotización en todo el
-                              // sistema (pedidos viejos de antes de que existiera
-                              // cotizacionId) , con 2+ pedidos del mismo cliente por
-                              // productos distintos (o 2+ cotizaciones del mismo
-                              // cliente) adivinar por clienteId puede engancharte al
-                              // pedido equivocado con la cotización de otro pedido.
-                              // Si hay ambigüedad, nunca se adivina: se arma una
-                              // cotización nueva a partir de los items reales de ESTE
-                              // pedido.
-                              var cotVinculada=ped.cotizacionId?cotizaciones.find(function(cot){ return cot.id===ped.cotizacionId; }):null;
-                              if(!cotVinculada&&!ped.cotizacionId){
-                                var cotsDelClientePed=cotizaciones.filter(function(cot){ return String(cot.clienteId)===String(ped.clienteId); });
-                                if(cotsDelClientePed.length===1){
-                                  cotVinculada=cotsDelClientePed[0];
-                                  setPedidos(function(prevP){ return prevP.map(function(p){ return p.id===ped.id?Object.assign({},p,{cotizacionId:cotVinculada.id}):p; }); });
-                                }
-                              }
-                              if(cotVinculada){ editarCot(cotVinculada); }
-                              else {
-                                setFormCot(Object.assign({},cotVacio,{
-                                  clienteId:String(ped.clienteId),clienteNombre:cl?cl.nombre:"",
-                                  // Items REALES (uno por fila), nunca un item único
-                                  // fabricado a partir de ped.productos , ese campo es
-                                  // solo el resumen corto ("Kit de jabones + 1 concepto
-                                  // más") para tarjetas/listados. obtenerItemsPedido ya
-                                  // es la función central que respeta ped.items[].
-                                  items:obtenerItemsPedido(ped),
-                                  _origenPedidoId:ped.id
-                                }));
-                                setModalCot(true);
-                              }
-                            }
-                          },"📄"),
-                          e("button",{
-                            title:pagosArr.length>0?"Pagos ("+pagosArr.length+")":"Ver pagos",
-                            "aria-label":pagosArr.length>0?"Ver pagos ("+pagosArr.length+")":"Ver pagos",
-                            style:{cursor:"pointer",width:40,height:40,padding:0,borderRadius:8,border:"1px solid "+C.border+"88",background:"transparent",fontSize:13,color:C.textDim,display:"inline-flex",alignItems:"center",justifyContent:"center",position:"relative",flexShrink:0},
-                            onClick:function(){
-                              setFormPagoPedidoModal({monto:"",fecha:FECHA_HOY,concepto:pagosArr.length===0?"Anticipo":"Pago"});
-                              setPedidoPagosId(ped.id);
-                            }
-                          },"💳",restante>0&&e("span",{style:{position:"absolute",top:-4,right:-4,minWidth:14,height:14,padding:"0 3px",borderRadius:7,background:C.purple,color:"#fff",fontSize:9,fontWeight:700,display:"flex",alignItems:"center",justifyContent:"center",border:"1px solid #fff"}},pagosArr.length))
+                        ESTADOS_PEDIDO.map(function(x){ return e("option",{key:x.k,value:x.k},x.label); })
+                      ),
+                      totalPedido>0&&e("div",{style:{display:"grid",gridTemplateColumns:"repeat(3,minmax(0,1fr))",gap:6,marginTop:12}},
+                        e("div",{style:{background:"#F4F5FA",borderRadius:16,padding:"12px 14px 13px",textAlign:"right"}},
+                          e("div",{style:{fontSize:13,fontWeight:700,color:"#4A5068"}},"Total"),
+                          e("div",{style:{fontSize:20,fontWeight:800,letterSpacing:"-0.02em",color:C.ink}},"$"+formatoDinero(totalPedido))
+                        ),
+                        e("div",{style:{background:"#F4F5FA",borderRadius:16,padding:"12px 14px 13px",textAlign:"right"}},
+                          e("div",{style:{fontSize:13,fontWeight:700,color:"#4A5068"}},"Pagado"),
+                          e("div",{style:{fontSize:20,fontWeight:800,letterSpacing:"-0.02em",color:C.ink}},"$"+formatoDinero(totalPagado))
+                        ),
+                        e("div",{style:{background:restante>0?"#FBF1DC":"#F4F5FA",borderRadius:16,padding:"12px 14px 13px",textAlign:"right"}},
+                          e("div",{style:{fontSize:13,fontWeight:700,color:restante>0?"#6E4806":"#4A5068"}},"Restante"),
+                          restante>0
+                            ? e("div",{style:{fontSize:20,fontWeight:800,letterSpacing:"-0.02em",color:"#5E3D04"}},"$"+formatoDinero(restante))
+                            : e("div",{style:{fontSize:20,fontWeight:600,color:"#7A8096"}},"$0.00")
                         )
-                      : e("div",{style:{display:"flex",gap:6,flexWrap:"wrap",alignItems:"center"}},
-                      cl&&e(BtnCanal,{cliente:cl,small:true}),
-                      e(ArchivoAdjunto,{tipoDocumento:"pedido",documento:ped,demoActivo:!!(perfil.modoDemo||props.demoActivo),onActualizarDocumento:actualizarArchivoAdjuntoPedido,borderColor:C.border+"88",textColor:C.textDim}),
-                      e("button",{
-                        style:{cursor:"pointer",padding:"6px 10px",borderRadius:8,border:"1px solid "+C.border+"88",background:"transparent",fontSize:11,color:C.textDim,whiteSpace:"nowrap"},
-                        onClick:function(){
-                          // Vínculo por cotizacionId explícito primero , nunca se
-                          // adivina por clienteId si ya sabemos exactamente cuál es
-                          // (un cliente puede tener varias cotizaciones). La
-                          // adivinanza por clienteId SOLO es segura cuando el
-                          // cliente tiene EXACTAMENTE una cotización en todo el
-                          // sistema (pedidos viejos de antes de que existiera
-                          // cotizacionId) , con 2+ pedidos del mismo cliente por
-                          // productos distintos adivinar por clienteId puede
-                          // engancharte al pedido equivocado con la cotización de
-                          // otro pedido. Si hay ambigüedad, nunca se adivina: se
-                          // arma una cotización nueva con los items reales de ESTE
-                          // pedido.
-                          var cotVinculada=ped.cotizacionId?cotizaciones.find(function(cot){ return cot.id===ped.cotizacionId; }):null;
-                          if(!cotVinculada&&!ped.cotizacionId){
-                            var cotsDelClientePed=cotizaciones.filter(function(cot){ return String(cot.clienteId)===String(ped.clienteId); });
-                            if(cotsDelClientePed.length===1){
-                              cotVinculada=cotsDelClientePed[0];
-                              setPedidos(function(prevP){ return prevP.map(function(p){ return p.id===ped.id?Object.assign({},p,{cotizacionId:cotVinculada.id}):p; }); });
-                            }
-                          }
-                          if(cotVinculada){ editarCot(cotVinculada); }
-                          else {
-                            setFormCot(Object.assign({},cotVacio,{
-                              clienteId:String(ped.clienteId),clienteNombre:cl?cl.nombre:"",
-                              // Mismo criterio que la versión mobile de este botón:
-                              // items reales del pedido, nunca el resumen colapsado.
-                              items:obtenerItemsPedido(ped),
-                              _origenPedidoId:ped.id
-                            }));
-                            setModalCot(true);
-                          }
-                        }
-                      },"Cotización"),
-                      e("button",{
-                        style:{cursor:"pointer",padding:"6px 10px",borderRadius:8,border:"1px solid "+C.border+"88",background:"transparent",fontSize:11,color:C.textDim,whiteSpace:"nowrap"},
-                        onClick:function(){
-                          setFormPagoPedidoModal({monto:"",fecha:FECHA_HOY,concepto:pagosArr.length===0?"Anticipo":"Pago"});
-                          setPedidoPagosId(ped.id);
-                        }
-                      },pagosArr.length>0?"Pagos ("+pagosArr.length+")":"Ver pagos")
+                      )
                     ),
-                    !isMobile&&e("div",{style:{flex:1}}),
-                    // Acción principal — full width en móvil, a la derecha en desktop
-                    restante>0&&totalPedido>0&&e("button",{
-                      style:{cursor:"pointer",padding:"8px 20px",borderRadius:10,border:"none",background:C.purple,fontSize:12,color:"#fff",fontWeight:600,width:isMobile?"100%":"auto"},
-                      onClick:function(){
-                        setFormPagoPedidoModal({monto:String(redondearDinero(restante)),fecha:FECHA_HOY,concepto:"Pago final"});
-                        setPedidoPagosId(ped.id);
-                      }
-                    },isMobile?"Registrar pago · $"+formatoDinero(restante)+" pendiente":"Registrar pago"),
-                    !esEntregado&&(restante<=0||totalPedido===0)&&e("button",{
-                      style:{cursor:"pointer",padding:"8px 20px",borderRadius:10,border:"none",background:C.green,fontSize:12,color:"#fff",fontWeight:600,width:isMobile?"100%":"auto"},
-                      onClick:function(){
-                        actualizarPedido(ped.id,{estadoPedido:"entregado"});
-                        var cl2=clientes.find(function(c){ return c.id===ped.clienteId; });
-                        setCelebEntregadoData({pedidoId:ped.id,clienteNombre:cl2?cl2.nombre:"Cliente",producto:ped.productos||"",precio:ped.total||0,clienteId:ped.clienteId});
-                        setCelebPaso(1); setCelebRazon([]); setCelebRecontacto("30");
-                      }
-                    },"Marcar entregado")
-                  ),
+                    // PIE: acciones secundarias izq + CTA derecha, abarca ambas columnas
+                    !esCancelado&&e("div",{style:{gridColumn:"1/-1",display:"flex",flexWrap:"wrap",alignItems:"center",justifyContent:"space-between",gap:10,paddingTop:16,borderTop:"1px solid #E6E8F0"}},
+                      e("div",{style:{display:"flex",gap:6,flexWrap:"wrap",alignItems:"center"}},
+                        cl&&e(BtnCanal,{cliente:cl,small:true}),
+                        e(ArchivoAdjunto,{tipoDocumento:"pedido",documento:ped,demoActivo:!!(perfil.modoDemo||props.demoActivo),onActualizarDocumento:actualizarArchivoAdjuntoPedido,borderColor:C.border+"88",textColor:C.textDim}),
+                        e("button",{
+                          style:{cursor:"pointer",height:44,padding:"0 16px",borderRadius:22,border:"1.5px solid #D5D8E4",background:"#FFFFFF",fontSize:14.5,color:C.textMuted,fontFamily:"inherit",whiteSpace:"nowrap"},
+                          onClick:function(){
+                            var cotVinculada=ped.cotizacionId?cotizaciones.find(function(cot){ return cot.id===ped.cotizacionId; }):null;
+                            if(!cotVinculada&&!ped.cotizacionId){ var cotsDelClientePed=cotizaciones.filter(function(cot){ return String(cot.clienteId)===String(ped.clienteId); }); if(cotsDelClientePed.length===1){ cotVinculada=cotsDelClientePed[0]; setPedidos(function(prevP){ return prevP.map(function(p){ return p.id===ped.id?Object.assign({},p,{cotizacionId:cotVinculada.id}):p; }); }); } }
+                            if(cotVinculada){ editarCot(cotVinculada); } else { setFormCot(Object.assign({},cotVacio,{clienteId:String(ped.clienteId),clienteNombre:cl?cl.nombre:"",items:obtenerItemsPedido(ped),_origenPedidoId:ped.id})); setModalCot(true); }
+                          }
+                        },"Cotización"),
+                        e("button",{
+                          style:{cursor:"pointer",height:44,padding:"0 16px",borderRadius:22,border:"1.5px solid #D5D8E4",background:"#FFFFFF",fontSize:14.5,color:C.textMuted,fontFamily:"inherit",whiteSpace:"nowrap"},
+                          onClick:function(){ setFormPagoPedidoModal({monto:"",fecha:FECHA_HOY,concepto:pagosArr.length===0?"Anticipo":"Pago"}); setPedidoPagosId(ped.id); }
+                        },pagosArr.length>0?"Pagos ("+pagosArr.length+")":"Ver pagos")
+                      ),
+                      e("div",{style:{display:"flex",gap:8,alignItems:"center"}},
+                        restante>0&&totalPedido>0&&e("button",{
+                          style:{cursor:"pointer",height:46,padding:"0 20px",borderRadius:23,border:"none",background:C.ink,fontSize:15,color:"#fff",fontWeight:700,fontFamily:"inherit"},
+                          onClick:function(){ setFormPagoPedidoModal({monto:String(redondearDinero(restante)),fecha:FECHA_HOY,concepto:"Pago final"}); setPedidoPagosId(ped.id); }
+                        },"Registrar pago"),
+                        !esEntregado&&(restante<=0||totalPedido===0)&&e("button",{
+                          style:{cursor:"pointer",height:46,padding:"0 20px",borderRadius:23,border:"none",background:C.green,fontSize:15,color:"#fff",fontWeight:700,fontFamily:"inherit"},
+                          onClick:function(){ actualizarPedido(ped.id,{estadoPedido:"entregado"}); var cl2=clientes.find(function(c){ return c.id===ped.clienteId; }); setCelebEntregadoData({pedidoId:ped.id,clienteNombre:cl2?cl2.nombre:"Cliente",producto:ped.productos||"",precio:ped.total||0,clienteId:ped.clienteId}); setCelebPaso(1); setCelebRazon([]); setCelebRecontacto("30"); }
+                        },"Marcar entregado")
+                      )
+                    )
+                  )
 
                 );
               })
