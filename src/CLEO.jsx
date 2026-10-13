@@ -12263,7 +12263,7 @@ export default function CLEO(props){
                   c.estadoProspecto==="En seguimiento"?"Intenta contactarla de nuevo":
                   c.estadoProspecto==="Sin respuesta"?"Intenta contactarla de nuevo":"";
 
-                var btnOpoP={cursor:"pointer",display:"inline-flex",alignItems:"center",justifyContent:"center",gap:7,height:isMobile?44:38,padding:"0 16px",borderRadius:999,border:"none",background:C.ink,color:"#fff",fontSize:14,fontWeight:700,fontFamily:"inherit",whiteSpace:"nowrap",boxSizing:"border-box"};
+                var btnOpoP={cursor:"pointer",display:"inline-flex",alignItems:"center",justifyContent:"center",gap:7,height:isMobile?sc.btnH:sc.btnSmH,padding:"0 16px",borderRadius:999,border:"none",background:C.ink,color:"#fff",fontSize:isMobile?sc.btnText:sc.btnSmText,fontWeight:700,fontFamily:"inherit",whiteSpace:"nowrap",boxSizing:"border-box"};
                 var btnOpoS={cursor:"pointer",display:"inline-flex",alignItems:"center",justifyContent:"center",gap:7,height:isMobile?40:34,padding:"0 13px",borderRadius:999,border:"1.5px solid #D5D8E4",background:C.surface,color:C.text,fontSize:13,fontWeight:700,fontFamily:"inherit",whiteSpace:"nowrap",boxSizing:"border-box",textDecoration:"none"};
                 var btnOpoGreen=Object.assign({},btnOpoP,{background:C.green});
 
@@ -13989,10 +13989,10 @@ export default function CLEO(props){
 
             var sinNada=opsRetomar.length===0&&pedidosAccion.length===0&&alertasStock.length===0&&pocasExistencias.length===0;
 
-            var btnPrimHoy={cursor:"pointer",display:"inline-flex",alignItems:"center",justifyContent:"center",gap:7,height:isMobile?44:38,padding:"0 16px",borderRadius:999,border:"none",background:C.ink,color:"#fff",fontSize:14,fontWeight:700,fontFamily:"inherit",whiteSpace:"nowrap",boxSizing:"border-box"};
-            var btnGhostHoy={cursor:"pointer",display:"inline-flex",alignItems:"center",justifyContent:"center",gap:6,height:isMobile?44:38,padding:"0 10px",borderRadius:999,border:"none",background:"transparent",color:C.text,fontSize:14,fontWeight:700,fontFamily:"inherit",whiteSpace:"nowrap",boxSizing:"border-box"};
-            var btnSecHoy={cursor:"pointer",display:"inline-flex",alignItems:"center",justifyContent:"center",gap:7,height:isMobile?44:38,padding:"0 16px",borderRadius:999,border:"1.5px solid #D5D8E4",background:C.surface,color:C.text,fontSize:14,fontWeight:700,fontFamily:"inherit",whiteSpace:"nowrap",boxSizing:"border-box",textDecoration:"none"};
-            var cardHoy={background:C.surface,borderRadius:22,padding:isMobile?"18px 16px":"18px 20px"};
+            var btnPrimHoy={cursor:"pointer",display:"inline-flex",alignItems:"center",justifyContent:"center",gap:7,height:isMobile?sc.btnH:sc.btnSmH,padding:"0 16px",borderRadius:999,border:"none",background:C.ink,color:"#fff",fontSize:isMobile?sc.btnText:sc.btnSmText,fontWeight:700,fontFamily:"inherit",whiteSpace:"nowrap",boxSizing:"border-box"};
+            var btnGhostHoy={cursor:"pointer",display:"inline-flex",alignItems:"center",justifyContent:"center",gap:6,height:isMobile?sc.btnH:sc.btnSmH,padding:"0 10px",borderRadius:999,border:"none",background:"transparent",color:C.text,fontSize:isMobile?sc.btnText:sc.btnSmText,fontWeight:700,fontFamily:"inherit",whiteSpace:"nowrap",boxSizing:"border-box"};
+            var btnSecHoy={cursor:"pointer",display:"inline-flex",alignItems:"center",justifyContent:"center",gap:7,height:isMobile?sc.btnH:sc.btnSmH,padding:"0 16px",borderRadius:999,border:"1.5px solid #D5D8E4",background:C.surface,color:C.text,fontSize:isMobile?sc.btnText:sc.btnSmText,fontWeight:700,fontFamily:"inherit",whiteSpace:"nowrap",boxSizing:"border-box",textDecoration:"none"};
+            var cardHoy={background:C.surface,borderRadius:20,padding:isMobile?"18px 16px":"18px 20px"};
 
             function OpCard(props){
               var u=props.u;
@@ -14050,7 +14050,7 @@ export default function CLEO(props){
                 esSaldo
                   ?e("div",null,
                       e("div",{style:{marginTop:8,fontSize:sc.textSec,fontWeight:600,color:"#6E4806"}},"Saldo pendiente:"),
-                      e("div",{style:{fontSize:30,lineHeight:1.1,fontWeight:800,letterSpacing:"-0.03em",color:"#5E3D04",fontVariantNumeric:"tabular-nums"}},"$"+formatoDinero(saldo)),
+                      e("div",{style:{fontSize:sc.figHero,lineHeight:1.1,fontWeight:800,letterSpacing:"-0.03em",color:"#5E3D04",fontVariantNumeric:"tabular-nums"}},"$"+formatoDinero(saldo)),
                       item.ped.productos&&e("div",{style:{fontSize:14,color:C.textMuted}},item.ped.productos)
                     )
                   :e("p",{style:{margin:"4px 0 0",fontSize:14,lineHeight:1.55,color:urgColor,fontWeight:700,display:"flex",alignItems:"center",gap:5}},
