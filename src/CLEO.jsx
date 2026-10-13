@@ -9236,13 +9236,23 @@ export default function CLEO(props){
   // Desktop (≥768px): texto compacto para ver más contenido sin scroll.
   // Móvil: texto mayor (16px en campos para evitar zoom de iOS, 44px mínimo táctil).
   var sc={
-    text:isMobile?16:14,
-    textSec:isMobile?15:13,
-    textLabel:isMobile?12:11,
-    titlePage:isMobile?28:26,
-    titleSection:isMobile?22:20,
-    namePerson:isMobile?18:17,
-    btnH:isMobile?44:38,
+    // Escala única v2 (sección 0 — tiene prioridad)
+    text:isMobile?15:14,
+    textSec:isMobile?13.5:13,
+    textMeta:isMobile?13:12.5,
+    textLabel:11,
+    titlePage:isMobile?22:24,
+    titleSection:isMobile?17:18,
+    namePerson:15,
+    figHero:isMobile?26:28,
+    figCard:isMobile?18:22,
+    figRow:14,
+    figCount:isMobile?28:32,
+    btnH:isMobile?40:36,
+    btnText:isMobile?14:13,
+    btnSmH:isMobile?40:32,
+    btnSmText:isMobile?14:12.5,
+    inputH:isMobile?44:38,
     inputFs:isMobile?16:14,
     blockPad:isMobile?24:20,
     blockR:isMobile?28:22,
@@ -9253,16 +9263,16 @@ export default function CLEO(props){
     hdr:{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"0.85rem 1.25rem",borderBottom:"0.5px solid "+C.border,background:C.dark},
     nav:{display:"flex",gap:2,padding:"0.5rem 1.25rem",borderBottom:"0.5px solid "+C.border,background:C.bg,flexWrap:"wrap"},
     nb:function(a){ return {padding:"7px 14px",borderRadius:8,border:"none",background:a?C.surfaceUp:"transparent",cursor:"pointer",fontSize:12,fontWeight:a?500:400,color:a?C.text:C.textMuted}; },
-    btn:{cursor:"pointer",padding:isMobile?"9px 18px":"7px 16px",borderRadius:999,border:"1.5px solid "+C.borderStrong,background:C.surface,fontSize:14,color:C.text,fontWeight:600,fontFamily:"inherit",
+    btn:{cursor:"pointer",padding:isMobile?"9px 18px":"7px 16px",borderRadius:999,border:"1.5px solid "+C.borderStrong,background:C.surface,fontSize:sc.btnText,color:C.text,fontWeight:600,fontFamily:"inherit",
       minHeight:sc.btnH,boxSizing:"border-box",display:"inline-flex",alignItems:"center",justifyContent:"center"},
-    btnP:{cursor:"pointer",padding:isMobile?"10px 20px":"7px 18px",borderRadius:999,border:"none",background:C.ink,fontSize:14,color:"#fff",fontWeight:700,fontFamily:"inherit",
+    btnP:{cursor:"pointer",padding:isMobile?"10px 20px":"7px 18px",borderRadius:999,border:"none",background:C.ink,fontSize:sc.btnText,color:"#fff",fontWeight:700,fontFamily:"inherit",
       minHeight:sc.btnH,boxSizing:"border-box",display:"inline-flex",alignItems:"center",justifyContent:"center"},
     btnG:{cursor:"pointer",padding:"9px 18px",borderRadius:999,border:"none",background:C.green,fontSize:14,color:"#fff",fontWeight:700,fontFamily:"inherit"},
     card:{background:C.surface,border:"none",borderRadius:sc.blockR,padding:isMobile?"24px 26px":"20px",marginBottom:0,boxShadow:"none"},
     badge:function(et){ return {display:"inline-block",padding:"3px 10px",borderRadius:20,fontSize:10,fontWeight:600,background:ETAPA_COLOR[et]+"15",color:ETAPA_COLOR[et]||C.textMuted,border:"1px solid "+(ETAPA_COLOR[et]||C.borderStrong)+"30"}; },
     badgeCot:function(et){ var m={Aceptada:C.green,Rechazada:C.red,Pendiente:C.amber}; var bg={Aceptada:C.greenBg,Rechazada:C.redBg,Pendiente:C.amberBg}; var cl=m[et]||C.textMuted; return {display:"inline-block",padding:"2px 9px",borderRadius:20,fontSize:11,background:bg[et]||C.surfaceUp,color:cl,border:"0.5px solid "+cl+"44"}; },
-    inp:{width:"100%",padding:isMobile?"11px 14px":"9px 14px",borderRadius:14,border:"1.5px solid "+C.borderStrong,background:C.surface,color:C.text,fontSize:sc.inputFs,boxSizing:"border-box",fontFamily:FONT_CLEO,minHeight:isMobile?44:40},
-    lbl:{fontSize:isMobile?13:12,color:C.textMuted,marginBottom:6,display:"block",fontWeight:700},
+    inp:{width:"100%",padding:isMobile?"11px 14px":"9px 14px",borderRadius:14,border:"1.5px solid "+C.borderStrong,background:C.surface,color:C.text,fontSize:sc.inputFs,boxSizing:"border-box",fontFamily:FONT_CLEO,minHeight:sc.inputH},
+    lbl:{fontSize:sc.textMeta,color:C.textMuted,marginBottom:6,display:"block",fontWeight:700},
     ov:{position:"fixed",inset:0,background:"rgba(14,19,40,0.5)",display:"flex",alignItems:isMobile?"flex-end":"center",justifyContent:"center",zIndex:100,padding:0},
     modal:{background:C.surface,borderRadius:isMobile?"28px 28px 0 0":"22px",padding:isMobile?"28px":"22px",width:isMobile?"100%":440,maxWidth:isMobile?"100%":"95vw",border:"none",maxHeight:isMobile?"92vh":"88vh",overflowY:"auto",overflowX:"hidden",boxShadow:C.shadowFloat},
     pb:function(a){ return {cursor:"pointer",padding:"6px 16px",borderRadius:12,border:"1px solid "+(a?C.border:"transparent"),background:a?C.surface:"transparent",color:a?C.text:C.textMuted,fontSize:13,fontWeight:a?600:400}; },
@@ -9812,19 +9822,19 @@ export default function CLEO(props){
         var colorNeg=colorHexSeguro(perfil.color,C.accent);
         var logoNeg=logoSeguro(perfil.logo);
         function icono(path,activo){
-          return e("svg",{width:18,height:18,viewBox:"0 0 24 24",fill:"none",stroke:activo?"#AEB8FF":"currentColor",strokeWidth:activo?2.1:1.9,strokeLinecap:"round",strokeLinejoin:"round","aria-hidden":true,style:{flexShrink:0}},e("path",{d:path||""}));
+          return e("svg",{width:17,height:17,viewBox:"0 0 24 24",fill:"none",stroke:activo?"#AEB8FF":"currentColor",strokeWidth:activo?2.1:1.9,strokeLinecap:"round",strokeLinejoin:"round","aria-hidden":true,style:{flexShrink:0}},e("path",{d:path||""}));
         }
         function item(v,label,iconPath,opts){
           opts=opts||{};
           var activo=opts.activo!==undefined?opts.activo:vista===v;
           return e("button",{key:opts.key||v,type:"button","aria-current":activo?"page":undefined,"aria-label":sbOpen?undefined:label,title:sbOpen?undefined:label,
-            style:{cursor:"pointer",width:sbOpen?88:48,minHeight:sbOpen?52:44,padding:sbOpen?"7px 2px":"6px 2px",boxSizing:"border-box",borderRadius:12,border:"none",
-              background:activo?"rgba(141,155,255,0.22)":"transparent",color:activo?"#FFFFFF":"#B9BED3",fontFamily:"inherit",fontSize:11,fontWeight:activo?800:600,lineHeight:1.2,
+            style:{cursor:"pointer",width:sbOpen?76:48,minHeight:44,padding:sbOpen?"8px 2px":"6px 2px",boxSizing:"border-box",borderRadius:12,border:"none",
+              background:activo?"rgba(141,155,255,0.22)":"transparent",color:activo?"#FFFFFF":"#B9BED3",fontFamily:"inherit",fontSize:10.5,fontWeight:activo?800:600,lineHeight:1.2,
               display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:4,textAlign:"center",position:"relative",flexShrink:0,whiteSpace:"normal"},
             onClick:opts.onClick||function(){ setVista(v); if(v!=="clientes") setClienteAbierto(null); }},
             e("span",{style:{position:"relative",display:"grid"}},
               icono(iconPath,activo),
-              opts.badge>0&&e("span",{style:{position:"absolute",top:-6,right:-13,minWidth:17,height:17,padding:"0 5px",boxSizing:"border-box",borderRadius:9,background:"#9AA7FF",color:C.ink,fontSize:10.5,fontWeight:800,display:"grid",placeItems:"center"}},opts.badge>99?"99+":opts.badge)
+              opts.badge>0&&e("span",{style:{position:"absolute",top:-6,right:-13,minWidth:16,height:16,padding:"0 4px",boxSizing:"border-box",borderRadius:8,background:"#9AA7FF",color:C.ink,fontSize:9.5,fontWeight:800,display:"grid",placeItems:"center"}},opts.badge>99?"99+":opts.badge)
             ),
             sbOpen&&e("span",null,label),
             sbOpen&&opts.sub&&e("span",{style:{display:"block",marginTop:-1,fontSize:10,fontWeight:500,color:"#8E94AE",whiteSpace:"nowrap"}},opts.sub)
@@ -9833,11 +9843,11 @@ export default function CLEO(props){
         function separador(k){ return e("span",{key:k,"aria-hidden":true,style:{width:40,height:1,background:"rgba(255,255,255,0.13)",margin:"5px 0",flexShrink:0}}); }
         var nHoy=contarPendientesHoy(clientes,cotizaciones,pedidos,esProductos);
         return e("div",{style:{display:isMobile?"none":"flex",flexShrink:0,padding:"12px 0 12px 12px",boxSizing:"border-box",position:"sticky",top:0,height:"100vh",zIndex:40}},
-          e("div",{role:"navigation","aria-label":"Navegación principal",style:{width:sbOpen?104:64,boxSizing:"border-box",background:C.dark,borderRadius:22,padding:"8px 8px 8px",display:"flex",flexDirection:"column",alignItems:"center",gap:2,transition:"width 0.2s ease",height:"100%"}},
+          e("div",{role:"navigation","aria-label":"Navegación principal",style:{width:sbOpen?88:64,boxSizing:"border-box",background:C.dark,borderRadius:22,padding:sbOpen?"14px 6px 10px":"8px 6px 10px",display:"flex",flexDirection:"column",alignItems:"center",gap:2,transition:"width 0.2s ease",height:"100%"}},
             e("button",{type:"button","aria-label":sbOpen?"Contraer menú":"Expandir menú","aria-expanded":sbOpen,style:{cursor:"pointer",background:"none",border:"none",color:"#B9BED3",width:40,height:30,borderRadius:10,display:"grid",placeItems:"center",flexShrink:0},onClick:function(){ setSbOpen(!sbOpen); }},
               e("svg",{width:20,height:20,viewBox:"0 0 24 24",fill:"none",stroke:"currentColor",strokeWidth:2,strokeLinecap:"round","aria-hidden":true},e("path",{d:"M4 7h16M4 12h16M4 17h10"}))
             ),
-            e("div",{style:{color:"#FFFFFF",fontSize:sbOpen?15:12,fontWeight:800,letterSpacing:"0.02em",margin:"0 0 8px",flexShrink:0}},"CLEO"),
+            e("div",{style:{color:"#FFFFFF",fontSize:13,fontWeight:800,letterSpacing:"0.02em",margin:"0 0 8px",flexShrink:0}},"CLEO"),
             e("div",{style:{flex:1,minHeight:0,overflowY:"auto",width:"100%",display:"flex",flexDirection:"column",alignItems:"center",gap:2}},
               item("inicio",NAV_LABELS.inicio,NAV_SVG.inicio),
               item("hoy",NAV_LABELS.hoy,NAV_SVG.hoy,{badge:nHoy}),
@@ -9853,13 +9863,13 @@ export default function CLEO(props){
             // Cuenta: logo y nombre del negocio (anillo con su color) + usuario
             e("div",{style:{position:"relative",marginTop:4,flexShrink:0}},
               e("button",{type:"button","aria-label":"Menú de cuenta de "+(perfil.tuNombre||"usuario")+", "+(perfil.nombre||"mi negocio"),"aria-expanded":menuUsuario,"aria-haspopup":"menu",
-                style:{cursor:"pointer",width:sbOpen?88:48,padding:"6px 2px",boxSizing:"border-box",border:"none",borderRadius:12,background:"rgba(255,255,255,0.06)",color:"#FFFFFF",fontFamily:"inherit",display:"flex",flexDirection:"column",alignItems:"center",gap:3},
+                style:{cursor:"pointer",width:sbOpen?76:48,padding:"6px 2px",boxSizing:"border-box",border:"none",borderRadius:12,background:"rgba(255,255,255,0.06)",color:"#FFFFFF",fontFamily:"inherit",display:"flex",flexDirection:"column",alignItems:"center",gap:3},
                 onClick:function(){ setMenuUsuario(!menuUsuario); }},
-                e("span",{style:{width:30,height:30,borderRadius:10,background:"#FFFFFF",boxShadow:"inset 0 0 0 2px "+colorNeg,display:"grid",placeItems:"center",overflow:"hidden",color:colorNeg,fontSize:11,fontWeight:800}},
-                  logoNeg?e("img",{src:logoNeg,alt:"",style:{width:22,height:22,objectFit:"contain"}}):(perfil.nombre||perfil.tuNombre||"?").slice(0,2).toUpperCase()
+                e("span",{style:{width:26,height:26,borderRadius:8,background:"#FFFFFF",boxShadow:"inset 0 0 0 2px "+colorNeg,display:"grid",placeItems:"center",overflow:"hidden",color:colorNeg,fontSize:10,fontWeight:800}},
+                  logoNeg?e("img",{src:logoNeg,alt:"",style:{width:20,height:20,objectFit:"contain"}}):(perfil.nombre||perfil.tuNombre||"?").slice(0,2).toUpperCase()
                 ),
-                sbOpen&&e("span",{style:{fontSize:11,fontWeight:700,lineHeight:1.15,textAlign:"center",maxWidth:72,overflowWrap:"anywhere"}},perfil.nombre||"Mi negocio"),
-                sbOpen&&e("span",{style:{display:"inline-flex",alignItems:"center",gap:1,fontSize:10,lineHeight:1.15,color:"#8E94AE",maxWidth:72,textAlign:"center"}},perfil.tuNombre||"Mi cuenta",
+                sbOpen&&e("span",{style:{fontSize:10.5,fontWeight:700,lineHeight:1.15,textAlign:"center",maxWidth:68,overflowWrap:"anywhere"}},perfil.nombre||"Mi negocio"),
+                sbOpen&&e("span",{style:{display:"inline-flex",alignItems:"center",gap:1,fontSize:10,lineHeight:1.15,color:"#8E94AE",maxWidth:68,textAlign:"center"}},perfil.tuNombre||"Mi cuenta",
                   e("svg",{width:11,height:11,viewBox:"0 0 24 24",fill:"none",stroke:"currentColor",strokeWidth:2,strokeLinecap:"round","aria-hidden":true,style:{flexShrink:0,transform:menuUsuario?"rotate(180deg)":"none",transition:"transform 0.15s"}},e("path",{d:"M6 9l6 6 6-6"})))
               ),
               menuUsuario&&e("div",{role:"menu",style:{position:"absolute",left:"calc(100% + 18px)",bottom:0,minWidth:210,background:C.dark,borderRadius:20,padding:8,boxShadow:C.shadowFloat,zIndex:60}},
@@ -9883,7 +9893,7 @@ export default function CLEO(props){
       // CONTENIDO PRINCIPAL
       e("div",{style:{flex:1,minWidth:0,minHeight:0,overflow:"auto",background:C.bg,paddingBottom:isMobile?70:0}},
 
-        e("div",{style:{padding:isMobile?"20px 16px":sbOpen?"24px 24px":"24px 32px",maxWidth:1280,margin:"0 auto",width:"100%",boxSizing:"border-box"}},
+        e("div",{style:{padding:isMobile?"20px 16px":"28px 40px",maxWidth:1120,margin:"0 auto",width:"100%",boxSizing:"border-box"}},
 
       // INICIO - ONBOARDING GUIADO NUEVO
       vista==="inicio"&&(function(){
