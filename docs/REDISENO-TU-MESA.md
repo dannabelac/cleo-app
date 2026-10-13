@@ -115,6 +115,16 @@ Referencias: `R5-Inicio.html`, `R5-Inicio-SinIdea.html`, `R5-Movil-Inicio.html`.
 
 ---
 
+## 4b. Ronda 7 — Inicio con aire (aprobada, reemplaza el Inicio de la fase 2)
+Referencias: `docs/rediseno/referencias/R7-Inicio-Desktop.html` y `R7-Movil-Inicio.html`.
+- "+ Nuevo ▾" solo arriba a la derecha; fecha y saludo debajo (sin el nombre del negocio junto a la fecha).
+- Resumen "Hoy tienes…" y acceso a Hoy unidos en una sola franja oscura; toda la franja lleva a Hoy. Desaparece el bloque "Tu día".
+- Registro: desktop en una fila de 4 tarjetas; móvil en 2x2. Tarjetas blancas separadas sobre #8D9BFF.
+- A quién contactar: máximo 3. Desktop en fila de 3 tarjetas; móvil en un bloque blanco con filas.
+- Idea del día al final de Inicio, en tarjeta blanca con foco ocre. Si no hay idea, no se muestra.
+- Más aire: 32px bajo el saludo y 48px entre secciones (36px en móvil). Main desktop con padding 36px 64px.
+- Riel desktop: 104px de ancho, items de 88px, letra 11px, sin cortar palabras ("Oportunidades" completa; "Inventario y costos" en dos líneas).
+
 ## 5. Fase 3 — Pedidos (y el resto de secciones)
 
 Referencias: `R5-Pedidos.html`, `R5-Movil-Pedidos.html`.
@@ -151,6 +161,7 @@ Capturas desktop (1440) y móvil (390) de cada pantalla y modal, en ambos perfil
 - Se elimina el botón flotante del sol; se quitan títulos de grupo del riel y emojis decorativos.
 - En móvil: se quitan la "C" y "CLEO · Nunca emprendas solo"; se agrega el resumen "Hoy tienes…" (antes solo desktop).
 - Etiquetas TOTAL / PAGADO / RESTANTE pasan a mayúscula inicial.
+- Inicio R7: resumen y acceso a Hoy en una franja; idea del día al final; en pedidos con saldo, el importe a la derecha del nombre en móvil.
 
 ## 10. Pendientes por confirmar con Danna
 - Opciones del menú "+ Nuevo" (no revisadas en diseño).
