@@ -14477,7 +14477,7 @@ export default function CLEO(props){
                   e("input",{type:"search",placeholder:"Buscar...",value:filtroVP.busqueda,onChange:function(ev){ setFiltroVP(Object.assign({},filtroVP,{busqueda:ev.target.value})); },style:{flex:1,minWidth:0,border:0,outline:"none",background:"transparent",fontFamily:"inherit",fontSize:sc.text,color:C.ink}})
                 ),
                 e("div",{role:"tablist",style:{margin:"8px 0 6px",display:"flex",gap:2,padding:3,borderRadius:21,background:"#F4F5FA"}},
-                  [{k:"todos",label:"Todos"},{k:"cotizacion",label:"Pedidos"},{k:"venta_rapida",label:"Ventas rápidas"}].map(function(tab){
+                  [{k:"todos",label:"Todos"},{k:"pedido",label:"Pedidos"},{k:"venta_rapida",label:"Ventas rápidas"}].map(function(tab){
                     var activo=filtroVP.origen===tab.k;
                     return e("button",{key:tab.k,role:"tab","aria-selected":activo,style:{flex:1,height:sc.btnSmH,padding:"0 6px",border:0,borderRadius:18,background:activo?"#E4E8FF":"transparent",fontFamily:"inherit",fontSize:12.5,fontWeight:activo?800:600,color:activo?C.ink:"#4A5068",cursor:"pointer"},onClick:function(){ setFiltroVP(Object.assign({},filtroVP,{origen:tab.k})); }},tab.label);
                   })
@@ -14528,7 +14528,7 @@ export default function CLEO(props){
                     e("input",{type:"search",placeholder:"Buscar...",value:filtroVP.busqueda,onChange:function(ev){ setFiltroVP(Object.assign({},filtroVP,{busqueda:ev.target.value})); },style:{flex:1,minWidth:0,border:0,outline:"none",background:"transparent",fontFamily:"inherit",fontSize:14,color:C.ink}})
                   ),
                   e("div",{role:"tablist",style:{display:"inline-flex",gap:2,padding:3,borderRadius:21,background:"#F4F5FA"}},
-                    [{k:"todos",label:"Todos"},{k:"cotizacion",label:"Pedidos"},{k:"venta_rapida",label:"Ventas rápidas"}].map(function(tab){
+                    [{k:"todos",label:"Todos"},{k:"pedido",label:"Pedidos"},{k:"venta_rapida",label:"Ventas rápidas"}].map(function(tab){
                       var activo=filtroVP.origen===tab.k;
                       return e("button",{key:tab.k,role:"tab","aria-selected":activo,style:{height:sc.btnSmH,padding:"0 16px",border:0,borderRadius:18,background:activo?"#E4E8FF":"transparent",fontFamily:"inherit",fontSize:sc.textSec,fontWeight:activo?800:600,color:activo?C.ink:"#4A5068",cursor:"pointer"},onClick:function(){ setFiltroVP(Object.assign({},filtroVP,{origen:tab.k})); }},tab.label);
                     })
