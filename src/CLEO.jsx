@@ -9868,9 +9868,6 @@ export default function CLEO(props){
               e("button",{type:"button","aria-label":"Menú de cuenta de "+(perfil.tuNombre||"usuario")+", "+(perfil.nombre||"mi negocio"),"aria-expanded":menuUsuario,"aria-haspopup":"menu",
                 style:{cursor:"pointer",width:sbOpen?76:48,padding:"6px 2px",boxSizing:"border-box",border:"none",borderRadius:12,background:"rgba(255,255,255,0.06)",color:"#FFFFFF",fontFamily:"inherit",display:"flex",flexDirection:"column",alignItems:"center",gap:3},
                 onClick:function(){ setMenuUsuario(!menuUsuario); }},
-                e("span",{style:{width:26,height:26,borderRadius:8,background:"#FFFFFF",boxShadow:"inset 0 0 0 2px "+colorNeg,display:"grid",placeItems:"center",overflow:"hidden",color:colorNeg,fontSize:10,fontWeight:800}},
-                  (perfil.nombre||perfil.tuNombre||"?").slice(0,2).toUpperCase()
-                ),
                 sbOpen&&e("span",{style:{fontSize:10.5,fontWeight:700,lineHeight:1.15,textAlign:"center",maxWidth:68,overflowWrap:"anywhere"}},perfil.nombre||"Mi negocio"),
                 sbOpen&&e("span",{style:{display:"inline-flex",alignItems:"center",gap:1,fontSize:10,lineHeight:1.15,color:"#8E94AE",maxWidth:68,textAlign:"center"}},perfil.tuNombre||"Mi cuenta",
                   e("svg",{width:11,height:11,viewBox:"0 0 24 24",fill:"none",stroke:"currentColor",strokeWidth:2,strokeLinecap:"round","aria-hidden":true,style:{flexShrink:0,transform:menuUsuario?"rotate(180deg)":"none",transition:"transform 0.15s"}},e("path",{d:"M6 9l6 6 6-6"})))
