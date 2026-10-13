@@ -9869,7 +9869,7 @@ export default function CLEO(props){
                 style:{cursor:"pointer",width:sbOpen?76:48,padding:"6px 2px",boxSizing:"border-box",border:"none",borderRadius:12,background:"rgba(255,255,255,0.06)",color:"#FFFFFF",fontFamily:"inherit",display:"flex",flexDirection:"column",alignItems:"center",gap:3},
                 onClick:function(){ setMenuUsuario(!menuUsuario); }},
                 e("span",{style:{width:26,height:26,borderRadius:8,background:"#FFFFFF",boxShadow:"inset 0 0 0 2px "+colorNeg,display:"grid",placeItems:"center",overflow:"hidden",color:colorNeg,fontSize:10,fontWeight:800}},
-                  logoNeg?e("img",{src:logoNeg,alt:"",style:{width:20,height:20,objectFit:"contain"}}):(perfil.nombre||perfil.tuNombre||"?").slice(0,2).toUpperCase()
+                  (perfil.nombre||perfil.tuNombre||"?").slice(0,2).toUpperCase()
                 ),
                 sbOpen&&e("span",{style:{fontSize:10.5,fontWeight:700,lineHeight:1.15,textAlign:"center",maxWidth:68,overflowWrap:"anywhere"}},perfil.nombre||"Mi negocio"),
                 sbOpen&&e("span",{style:{display:"inline-flex",alignItems:"center",gap:1,fontSize:10,lineHeight:1.15,color:"#8E94AE",maxWidth:68,textAlign:"center"}},perfil.tuNombre||"Mi cuenta",
