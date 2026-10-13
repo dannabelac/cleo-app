@@ -13821,134 +13821,168 @@ export default function CLEO(props){
 
             var sinNada=opsRetomar.length===0&&pedidosAccion.length===0&&alertasStock.length===0&&pocasExistencias.length===0;
 
-            return e("div",{style:{display:"flex",flexDirection:"column",gap:20}},
+            var btnPrimHoy={cursor:"pointer",display:"inline-flex",alignItems:"center",justifyContent:"center",gap:7,height:isMobile?44:38,padding:"0 16px",borderRadius:999,border:"none",background:C.ink,color:"#fff",fontSize:14,fontWeight:700,fontFamily:"inherit",whiteSpace:"nowrap",boxSizing:"border-box"};
+            var btnGhostHoy={cursor:"pointer",display:"inline-flex",alignItems:"center",justifyContent:"center",gap:6,height:isMobile?44:38,padding:"0 10px",borderRadius:999,border:"none",background:"transparent",color:C.text,fontSize:14,fontWeight:700,fontFamily:"inherit",whiteSpace:"nowrap",boxSizing:"border-box"};
+            var btnSecHoy={cursor:"pointer",display:"inline-flex",alignItems:"center",justifyContent:"center",gap:7,height:isMobile?44:38,padding:"0 16px",borderRadius:999,border:"1.5px solid #D5D8E4",background:C.surface,color:C.text,fontSize:14,fontWeight:700,fontFamily:"inherit",whiteSpace:"nowrap",boxSizing:"border-box",textDecoration:"none"};
+            var cardHoy={background:C.surface,borderRadius:22,padding:isMobile?"18px 16px":"18px 20px"};
 
-              sinNada&&e("div",{style:{background:C.surface,borderRadius:20,padding:"28px",border:"1px solid "+C.border,boxShadow:"0 2px 12px rgba(0,0,0,0.06)"}},
-                e("div",{style:{fontSize:18,fontWeight:700,color:C.text,marginBottom:8}},"✓ Todo en orden"),
+            function OpCard(props){
+              var u=props.u;
+              var c=u.cliente;
+              var isSugerido=u.mensajeSugerido&&!u.recordatorioEsManualOPersonalizado;
+              return e("article",{key:u.accionId,style:cardHoy},
+                e("div",{style:{fontSize:16,fontWeight:800,letterSpacing:"-0.01em",color:C.text}},c.nombre),
+                c.etapa==="Perdido"&&e("span",{style:{display:"inline-block",fontSize:10,fontWeight:600,padding:"2px 7px",borderRadius:10,background:"#FEE2E2",color:"#991B1B",marginBottom:4}},
+                  "Perdido"+(c.motivoPerdida?" · "+c.motivoPerdida:"")
+                ),
+                e("p",{style:{margin:"4px 0 0",fontSize:14,lineHeight:1.55,color:C.textMuted}},u.desc),
+                (u.recordatorioEsManualOPersonalizado&&u.recordatorioNota)&&e("p",{style:{display:"flex",gap:7,alignItems:"flex-start",margin:"6px 0 0",fontSize:13.5,lineHeight:1.5,color:"#545A72"}},
+                  e("svg",{width:15,height:15,viewBox:"0 0 24 24",fill:"none",stroke:"#7C8CFF",strokeWidth:1.9,strokeLinecap:"round",strokeLinejoin:"round",style:{flexShrink:0,marginTop:2}},e("path",{d:"M4 20h4L19 9l-4-4L4 16z"})),
+                  e("span",null,'"'+u.recordatorioNota+'"')
+                ),
+                isSugerido&&e("p",{style:{display:"flex",alignItems:"center",gap:7,margin:"10px 0 0",fontSize:13.5,fontWeight:600,color:"#2E37A3"}},
+                  e("svg",{width:15,height:15,viewBox:"0 0 24 24",fill:"none",stroke:"#3F4BD0",strokeWidth:1.9,strokeLinecap:"round",strokeLinejoin:"round"},e("path",{d:"M9 18h6M10 21h4M12 3a6 6 0 0 0-3.6 10.8c.6.5 1 1.2 1 2V16h5.2v-.2c0-.8.4-1.5 1-2A6 6 0 0 0 12 3z"})),
+                  u.mensajeSugerido
+                ),
+                e("div",{style:{display:"flex",gap:4,marginTop:14}},
+                  e("button",{style:btnPrimHoy,onClick:function(){ manejarClickContactar(c,u.recordatorioId,u.recordatorioNota,u.recordatorioEsManualOPersonalizado); }},
+                    e("svg",{width:16,height:16,viewBox:"0 0 24 24",fill:"none",stroke:"currentColor",strokeWidth:1.9,strokeLinecap:"round",strokeLinejoin:"round"},e("path",{d:"M4 5.5A1.5 1.5 0 0 1 5.5 4h13A1.5 1.5 0 0 1 20 5.5v9a1.5 1.5 0 0 1-1.5 1.5H9.5L4 20z"})),
+                    "Contactar"
+                  ),
+                  u.recordatorioEsManualOPersonalizado
+                    ? e("button",{style:btnGhostHoy,onClick:function(){
+                        var resultado=completarRecordatorioManual(c.id,u.recordatorioId);
+                        if(resultado.ok) mostrarToast("✓ Marcaste tu recordatorio como atendido para "+resultado.nombreCliente+".");
+                      }},
+                        e("svg",{width:16,height:16,viewBox:"0 0 24 24",fill:"none",stroke:"currentColor",strokeWidth:2.4,strokeLinecap:"round",strokeLinejoin:"round"},e("path",{d:"m5 12.5 4.5 4.5L19 7.5"})),
+                        "Ya lo atendí"
+                      )
+                    : e("button",{style:btnGhostHoy,onClick:function(){ setContactadoClienteId(c.id); setContactadoRecordatorioId(u.recordatorioId); }},
+                        e("svg",{width:16,height:16,viewBox:"0 0 24 24",fill:"none",stroke:"currentColor",strokeWidth:2.4,strokeLinecap:"round",strokeLinejoin:"round"},e("path",{d:"m5 12.5 4.5 4.5L19 7.5"})),
+                        "Ya le hablé"
+                      )
+                )
+              );
+            }
+
+            function PedCard(props){
+              var item=props.item;
+              var cl=item.cl;
+              var esSaldo=item.tipo==="cobro"||item.tipo==="cobro_entregado";
+              var pagado=(item.ped.pagos||[]).reduce(function(s,p){ return s+Number(p.monto); },0);
+              var saldo=Math.max(0,Number(item.ped.total||0)-pagado);
+              var urgColor=item.tipo==="atrasado"||item.tipo==="cobro_entregado"?"#B23A24":item.tipo==="entrega_hoy"?"#3B82F6":"#8A5A06";
+              var urgIcon=item.tipo==="atrasado"||item.tipo==="cobro_entregado"
+                ?e("svg",{width:14,height:14,viewBox:"0 0 24 24",fill:"none",stroke:"currentColor",strokeWidth:1.9,strokeLinecap:"round",strokeLinejoin:"round"},e("circle",{cx:12,cy:12,r:8.5}),e("path",{d:"M12 7.5v5M12 16h.01"}))
+                :e("svg",{width:14,height:14,viewBox:"0 0 24 24",fill:"none",stroke:"currentColor",strokeWidth:1.9,strokeLinecap:"round",strokeLinejoin:"round"},e("circle",{cx:12,cy:12,r:8.5}),e("path",{d:"M12 7.5V12l3 2"}));
+              var canalUrl=cl?contactUrl(cl,msgEtapa(cl)):null;
+              var canal=cl?(cl.canalPrincipal||"WhatsApp"):"WhatsApp";
+              return e("article",{key:item.ped.id+"_"+item.tipo,style:Object.assign({},cardHoy,esSaldo?{background:"#FBF1DC"}:{})},
+                e("div",{style:{fontSize:16,fontWeight:800,letterSpacing:"-0.01em",color:C.text}},cl?cl.nombre:"Cliente"),
+                esSaldo
+                  ?e("div",null,
+                      e("div",{style:{marginTop:8,fontSize:13.5,fontWeight:600,color:"#6E4806"}},"Saldo pendiente:"),
+                      e("div",{style:{fontSize:30,lineHeight:1.1,fontWeight:800,letterSpacing:"-0.03em",color:"#5E3D04",fontVariantNumeric:"tabular-nums"}},"$"+formatoDinero(saldo)),
+                      item.ped.productos&&e("div",{style:{fontSize:14,color:C.textMuted}},item.ped.productos)
+                    )
+                  :e("p",{style:{margin:"4px 0 0",fontSize:14,lineHeight:1.55,color:urgColor,fontWeight:700,display:"flex",alignItems:"center",gap:5}},
+                      urgIcon,
+                      item.msg+(item.ped.productos?" · "+item.ped.productos:"")
+                    ),
+                e("div",{style:{display:"flex",gap:4,marginTop:14}},
+                  canalUrl&&e("a",{href:canalUrl,target:"_blank",rel:"noopener noreferrer",style:Object.assign({},btnSecHoy,esSaldo?{borderColor:"#E7D5AE"}:{})},
+                    e(SvgIcon,{canal:canal,size:16}),
+                    canal
+                  ),
+                  e("button",{style:btnPrimHoy,onClick:function(){ setVista("pedidos"); setHighlightPedidoId(item.ped.id); }},"Ver pedido →")
+                )
+              );
+            }
+
+            return e("div",{style:{display:"flex",flexDirection:"column",gap:16}},
+
+              sinNada&&e("div",{style:{background:C.surface,borderRadius:sc.blockR,padding:"28px"}},
+                e("div",{style:{fontSize:18,fontWeight:700,color:C.text,marginBottom:8}},"Todo en orden"),
                 e("div",{style:{fontSize:14,color:C.textMuted,lineHeight:1.7}},"No tienes oportunidades pendientes ni pedidos que atender hoy. Buen momento para agregar nuevos contactos.")
               ),
 
-              // SECCIÓN 1: Oportunidades por retomar , mismo estilo de tarjeta que Inicio
-              opsRetomar.length>0&&e("div",null,
-                e("div",{style:{fontSize:11,fontWeight:700,color:C.textMuted,textTransform:"uppercase",letterSpacing:"0.5px",marginBottom:10,display:"flex",alignItems:"center",gap:8}},
-                  "🎯 OPORTUNIDADES POR RETOMAR",
-                  e("span",{style:{fontSize:11,padding:"2px 8px",borderRadius:10,background:C.purple+"18",color:C.purple,fontWeight:700}},opsRetomar.length)
-                ),
-                e("div",{style:{display:"flex",flexDirection:"column",gap:10}},
-                  opsRetomar.map(function(u){
-                    var c=u.cliente;
-                    var ac=avatarColor(c.id);
-                    return e("div",{key:u.accionId,style:{display:"flex",alignItems:"center",gap:12,padding:"14px 16px",background:C.surface,borderLeft:"4px solid "+prioColor[u.prioridad],borderRadius:16,flexWrap:isMobile?"wrap":"nowrap",boxShadow:C.shadowAction}},
-                      e("div",{style:{display:"none"}},prioLabel[u.prioridad]),
-                      e("div",{style:{display:"flex",alignItems:"flex-start",gap:12,flex:isMobile?"1 1 100%":"1 1 auto",minWidth:0}},
-                      e("div",{style:{width:40,height:40,borderRadius:"50%",background:ac+"22",display:"flex",alignItems:"center",justifyContent:"center",fontSize:13,fontWeight:700,color:ac,flexShrink:0}},iniciales(c.nombre)),
-                      e("div",{style:{flex:1,minWidth:isMobile?0:200}},
-                        e("div",{style:{fontSize:15,fontWeight:700,color:C.text,marginBottom:2}},c.nombre),
-                        c.etapa==="Perdido"&&e("span",{style:{display:"inline-block",fontSize:10,fontWeight:600,padding:"2px 7px",borderRadius:10,background:"#FEE2E2",color:"#991B1B",marginBottom:4}},
-                          "Perdido"+(c.motivoPerdida?" · "+c.motivoPerdida:"")
+              (opsRetomar.length>0||pedidosAccion.length>0)&&(
+                isMobile
+                  // Mobile: stacked sections
+                  ? e("div",{style:{display:"flex",flexDirection:"column",gap:12}},
+                      opsRetomar.length>0&&e("div",{style:{display:"flex",flexDirection:"column",gap:10}},
+                        e("div",{style:{fontSize:11,fontWeight:800,letterSpacing:".08em",color:C.textMuted,textTransform:"uppercase",marginBottom:4,display:"flex",alignItems:"center",gap:8}},
+                          "OPORTUNIDADES POR RETOMAR",
+                          e("span",{style:{color:C.purple}},opsRetomar.length)
                         ),
-                        e("div",{style:{fontSize:12,color:C.textMuted,lineHeight:1.4}},u.desc),
-                        u.mensajeSugerido&&e("div",{style:{fontSize:11,color:C.purple,fontStyle:"italic",lineHeight:1.4,marginTop:4}},'💬 "'+u.mensajeSugerido+'"'),
-                        u.recordatorioEsManualOPersonalizado&&u.recordatorioNota&&e("div",{style:{fontSize:11,color:C.purple,fontStyle:"italic",lineHeight:1.4,marginTop:4}},'💬 "'+u.recordatorioNota+'"')
+                        opsRetomar.map(function(u){ return e(OpCard,{key:u.accionId,u:u}); })
                       ),
-                      ) // cierra grupo avatar + texto
-                      ,
-                      e("div",{style:{flexShrink:0,flex:isMobile?"1 1 100%":"0 0 auto"}},
-                        e("div",{style:{display:"flex",alignItems:"center",background:C.surfaceUp,border:"1.5px solid "+C.borderStrong,borderRadius:50,padding:3,gap:0}},
-                          e("button",{style:{cursor:"pointer",padding:"8px 16px",borderRadius:50,border:"none",background:C.purple,fontSize:12,color:"#fff",fontWeight:600,display:"flex",alignItems:"center",gap:6,whiteSpace:"nowrap",flex:1,justifyContent:"center"},onClick:function(){ manejarClickContactar(c,u.recordatorioId,u.recordatorioNota,u.recordatorioEsManualOPersonalizado); }},
-                            "💬 Contactar"
-                          ),
-                          u.recordatorioEsManualOPersonalizado
-                            ? e("button",{style:{cursor:"pointer",padding:"8px 16px",borderRadius:50,border:"none",background:"transparent",fontSize:12,color:C.textMuted,fontWeight:500,whiteSpace:"nowrap",flex:1,textAlign:"center"},onClick:function(){
-                                var resultado=completarRecordatorioManual(c.id,u.recordatorioId);
-                                if(resultado.ok) mostrarToast("✓ Marcaste tu recordatorio como atendido para "+resultado.nombreCliente+".");
-                              }},"✓ Ya lo atendí")
-                            : e("button",{style:{cursor:"pointer",padding:"8px 16px",borderRadius:50,border:"none",background:"transparent",fontSize:12,color:C.textMuted,fontWeight:500,whiteSpace:"nowrap",flex:1,textAlign:"center"},onClick:function(){ setContactadoClienteId(c.id); setContactadoRecordatorioId(u.recordatorioId); }},
-                                "✓ Ya le hablé"
-                              )
-                        )
+                      pedidosAccion.length>0&&e("div",{style:{display:"flex",flexDirection:"column",gap:10}},
+                        e("div",{style:{fontSize:11,fontWeight:800,letterSpacing:".08em",color:C.textMuted,textTransform:"uppercase",marginBottom:4,display:"flex",alignItems:"center",gap:8}},
+                          "PEDIDOS QUE REQUIEREN ACCIÓN",
+                          e("span",{style:{color:C.purple}},pedidosAccion.length)
+                        ),
+                        pedidosAccion.map(function(item){ return e(PedCard,{key:item.ped.id+"_"+item.tipo,item:item}); })
                       )
-                    );
-                  })
-                )
+                    )
+                  // Desktop: 12-col grid
+                  : e("div",{style:{display:"grid",gridTemplateColumns:"repeat(12,minmax(0,1fr))",gap:16,alignItems:"start"}},
+                      opsRetomar.length>0&&e("section",{style:{gridColumn:pedidosAccion.length===0?"span 12":"span 7",display:"flex",flexDirection:"column",gap:12}},
+                        e("div",{style:{display:"flex",alignItems:"center",gap:14,padding:"16px 20px",borderRadius:22,background:"#8D9BFF"}},
+                          e("span",{style:{fontSize:44,lineHeight:1,fontWeight:800,letterSpacing:"-0.04em",color:C.ink}},opsRetomar.length),
+                          e("span",{style:{fontSize:15,lineHeight:1.25,fontWeight:800,color:C.ink}},opsRetomar.length===1?"Oportunidad\npor retomar":"Oportunidades\npor retomar")
+                        ),
+                        opsRetomar.map(function(u){ return e(OpCard,{key:u.accionId,u:u}); })
+                      ),
+                      pedidosAccion.length>0&&e("section",{style:{gridColumn:opsRetomar.length===0?"span 12":"span 5",display:"flex",flexDirection:"column",gap:12}},
+                        e("div",{style:{display:"flex",alignItems:"center",gap:14,padding:"16px 20px",borderRadius:22,background:"radial-gradient(110% 90% at 100% 0%, #24307A 0%, rgba(36,48,122,0) 62%), #0E1328",color:"#fff"}},
+                          e("span",{style:{fontSize:44,lineHeight:1,fontWeight:800,letterSpacing:"-0.04em",color:"#FFD36B"}},pedidosAccion.length),
+                          e("span",{style:{fontSize:15,lineHeight:1.25,fontWeight:800,color:"#fff"}},"Pedidos que\nrequieren acción")
+                        ),
+                        pedidosAccion.map(function(item){ return e(PedCard,{key:item.ped.id+"_"+item.tipo,item:item}); })
+                      )
+                    )
               ),
 
-              // SECCIÓN 2: Alertas de stock insuficiente
+              // Stock insuficiente
               alertasStock.length>0&&e("div",null,
-                e("div",{style:{fontSize:11,fontWeight:700,color:C.red,textTransform:"uppercase",letterSpacing:"0.5px",marginBottom:10,display:"flex",alignItems:"center",gap:8}},
-                  "⚠️ STOCK INSUFICIENTE",
-                  e("span",{style:{fontSize:11,padding:"2px 8px",borderRadius:10,background:C.red+"18",color:C.red,fontWeight:700}},alertasStock.length)
+                e("div",{style:{fontSize:11,fontWeight:800,color:C.red,textTransform:"uppercase",letterSpacing:".08em",marginBottom:10,display:"flex",alignItems:"center",gap:8}},
+                  "STOCK INSUFICIENTE",
+                  e("span",{style:{fontSize:11,padding:"2px 8px",borderRadius:10,background:C.red+"18",color:C.red,fontWeight:800}},alertasStock.length)
                 ),
                 e("div",{style:{display:"flex",flexDirection:"column",gap:10}},
                   alertasStock.map(function(item){
-                    return e("div",{key:item.prod.id,style:{display:"flex",alignItems:"center",gap:12,padding:"14px 16px",background:C.surface,borderLeft:"4px solid "+C.red,borderRadius:16,flexWrap:isMobile?"wrap":"nowrap",boxShadow:C.shadowAction}},
+                    return e("div",{key:item.prod.id,style:{display:"flex",alignItems:"center",gap:12,padding:"14px 16px",background:C.surface,borderRadius:16}},
                       e("div",{style:{flex:1,minWidth:0}},
                         e("div",{style:{fontSize:15,fontWeight:700,color:C.text,marginBottom:2}},item.prod.nombre),
-                        e("div",{style:{fontSize:12,color:C.textMuted,lineHeight:1.4}},
+                        e("div",{style:{fontSize:13,color:C.textMuted,lineHeight:1.4}},
                           "Te faltan "+item.faltantes+" unidad"+(item.faltantes===1?"":"es")+" para completar tus pedidos"
                         )
                       ),
-                      e("button",{style:{cursor:"pointer",padding:"8px 16px",borderRadius:50,border:"1.5px solid "+C.borderStrong,background:C.surfaceUp,fontSize:12,color:C.textMuted,fontWeight:500,whiteSpace:"nowrap",flexShrink:0},
-                        onClick:function(){ setVista("inventario"); }
-                      },"Ver inventario →")
+                      e("button",{style:btnSecHoy,onClick:function(){ setVista("inventario"); }},"Ver inventario →")
                     );
                   })
                 )
               ),
 
-              // SECCIÓN 2b: Pocas existencias (stock <= stockMinimo)
+              // Pocas existencias
               pocasExistencias.length>0&&e("div",null,
-                e("div",{style:{fontSize:11,fontWeight:700,color:C.amber,textTransform:"uppercase",letterSpacing:"0.5px",marginBottom:10,display:"flex",alignItems:"center",gap:8}},
-                  "📦 POCAS EXISTENCIAS",
-                  e("span",{style:{fontSize:11,padding:"2px 8px",borderRadius:10,background:C.amber+"22",color:C.amber,fontWeight:700}},pocasExistencias.length)
+                e("div",{style:{fontSize:11,fontWeight:800,color:C.amber,textTransform:"uppercase",letterSpacing:".08em",marginBottom:10,display:"flex",alignItems:"center",gap:8}},
+                  "POCAS EXISTENCIAS",
+                  e("span",{style:{fontSize:11,padding:"2px 8px",borderRadius:10,background:C.amber+"22",color:C.amber,fontWeight:800}},pocasExistencias.length)
                 ),
                 e("div",{style:{display:"flex",flexDirection:"column",gap:10}},
                   pocasExistencias.map(function(item){
-                    return e("div",{key:item.prod.id,style:{display:"flex",alignItems:"center",gap:12,padding:"14px 16px",background:C.surface,borderLeft:"4px solid "+C.amber,borderRadius:16,flexWrap:isMobile?"wrap":"nowrap",boxShadow:C.shadowAction}},
+                    return e("div",{key:item.prod.id,style:{display:"flex",alignItems:"center",gap:12,padding:"14px 16px",background:C.surface,borderRadius:16}},
                       e("div",{style:{flex:1,minWidth:0}},
                         e("div",{style:{fontSize:15,fontWeight:700,color:C.text,marginBottom:2}},item.prod.nombre),
-                        e("div",{style:{fontSize:12,color:C.textMuted,lineHeight:1.4}},
+                        e("div",{style:{fontSize:13,color:C.textMuted,lineHeight:1.4}},
                           item.disp===0
                             ?"Sin existencias disponibles — llegaste al mínimo que configuraste"
                             :"Quedan "+item.disp+" unidad"+(item.disp===1?"":"es")+" — llegaste al mínimo que configuraste"
                         )
                       ),
-                      e("button",{style:{cursor:"pointer",padding:"8px 16px",borderRadius:50,border:"1.5px solid "+C.borderStrong,background:C.surfaceUp,fontSize:12,color:C.textMuted,fontWeight:500,whiteSpace:"nowrap",flexShrink:0},
-                        onClick:function(){ setVista("inventario"); }
-                      },"Ver inventario →")
-                    );
-                  })
-                )
-              ),
-
-              // SECCIÓN 3: Pedidos que requieren acción , mismo estilo de tarjeta
-              pedidosAccion.length>0&&e("div",null,
-                e("div",{style:{fontSize:11,fontWeight:700,color:C.amber,textTransform:"uppercase",letterSpacing:"0.5px",marginBottom:10,display:"flex",alignItems:"center",gap:8}},
-                  "📦 PEDIDOS QUE REQUIEREN ACCIÓN",
-                  e("span",{style:{fontSize:11,padding:"2px 8px",borderRadius:10,background:C.amber+"22",color:C.amber,fontWeight:700}},pedidosAccion.length)
-                ),
-                e("div",{style:{display:"flex",flexDirection:"column",gap:10}},
-                  pedidosAccion.map(function(item,i){
-                    var cl=item.cl;
-                    var ac=cl?avatarColor(cl.id):"#94A3B8";
-                    return e("div",{key:item.ped.id+"_"+item.tipo,style:{display:"flex",alignItems:"center",gap:12,padding:"14px 16px",background:C.surface,borderLeft:"4px solid "+item.color,borderRadius:16,flexWrap:isMobile?"wrap":"nowrap",boxShadow:C.shadowAction}},
-                      e("div",{style:{display:"none"}},item.tipo==="atrasado"?"SIN ENTREGAR":item.tipo==="entrega_hoy"?"ENTREGA HOY":"SALDO PENDIENTE"),
-                      e("div",{style:{display:"flex",alignItems:"flex-start",gap:12,flex:isMobile?"1 1 100%":"1 1 auto",minWidth:0}},
-                      e("div",{style:{width:40,height:40,borderRadius:"50%",background:ac+"22",display:"flex",alignItems:"center",justifyContent:"center",fontSize:13,fontWeight:700,color:ac,flexShrink:0}},cl?iniciales(cl.nombre):"?"),
-                      e("div",{style:{flex:1,minWidth:isMobile?0:200}},
-                        e("div",{style:{fontSize:15,fontWeight:700,color:C.text,marginBottom:2}},cl?cl.nombre:"Cliente"),
-                        e("div",{style:{fontSize:12,color:C.textMuted,lineHeight:1.4}},item.msg+(item.ped.productos?" · "+item.ped.productos:""))
-                      ),
-                      ) // cierra grupo avatar + texto
-                      ,
-                      e("div",{style:{flexShrink:0,flex:isMobile?"1 1 100%":"0 0 auto"}},
-                        e("div",{style:{display:"flex",alignItems:"center",background:C.surfaceUp,border:"1.5px solid "+C.borderStrong,borderRadius:50,padding:3,gap:0}},
-                          cl&&e(BtnCanal,{cliente:cl,small:false,pill:true}),
-                          e("button",{style:{cursor:"pointer",padding:"8px 16px",borderRadius:50,border:"none",background:"transparent",fontSize:12,color:C.textMuted,fontWeight:500,whiteSpace:"nowrap",flex:1,textAlign:"center"},onClick:function(){ setVista("pedidos"); setHighlightPedidoId(item.ped.id); }},
-                            "Ver pedido →"
-                          )
-                        )
-                      )
+                      e("button",{style:btnSecHoy,onClick:function(){ setVista("inventario"); }},"Ver inventario →")
                     );
                   })
                 )
