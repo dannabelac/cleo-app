@@ -15245,12 +15245,12 @@ export default function CLEO(props){
                   })
                 ),
                 e("div",{style:{borderRadius:12,border:"1px solid "+C.border,overflow:"hidden",marginBottom:12}},
-                  e("div",{style:{display:"grid",gridTemplateColumns:"1fr 56px 56px 56px",background:C.surfaceUp,padding:"6px 12px",borderBottom:"1px solid "+C.border}},
-                    ["Producto","Llevas","Vendidas","Quedan"].map(function(h,i){ return e("span",{key:h,style:{fontSize:sc.textLabel,fontWeight:700,textTransform:"uppercase",letterSpacing:"0.5px",color:C.textMuted,textAlign:i>0?"center":"left"}},h); })
+                  e("div",{style:{display:"grid",gridTemplateColumns:"1fr 56px 68px 60px",background:C.surfaceUp,padding:"6px 12px",borderBottom:"1px solid "+C.border}},
+                    ["Producto","Llevas","Vendidas","Quedan"].map(function(h,i){ return e("span",{key:h,style:{fontSize:sc.textLabel,fontWeight:700,textTransform:"uppercase",letterSpacing:"0.4px",color:C.textMuted,textAlign:i>0?"center":"left"}},h); })
                   ),
                   (evActual.productos||[]).map(function(ep,idx){
                     var quedan=Math.max(0,(ep.cantidadLlevada||0)-(ep.cantidadVendida||0));
-                    return e("div",{key:ep.catalogoId||idx,style:{display:"grid",gridTemplateColumns:"1fr 56px 56px 56px",padding:"8px 12px",borderBottom:idx<(evActual.productos||[]).length-1?"1px solid "+C.border:"none",alignItems:"center",background:C.surface}},
+                    return e("div",{key:ep.catalogoId||idx,style:{display:"grid",gridTemplateColumns:"1fr 56px 68px 60px",padding:"8px 12px",borderBottom:idx<(evActual.productos||[]).length-1?"1px solid "+C.border:"none",alignItems:"center",background:C.surface}},
                       e("div",null,
                         e("div",{style:{fontSize:13,fontWeight:500}},ep.nombre),
                         !ep.tieneInventario&&e("span",{style:{fontSize:sc.textLabel,color:C.textDim}},"solo registro")
@@ -15281,6 +15281,8 @@ export default function CLEO(props){
                   var _pedEvtIds=[...(new Set([...(evActual.pedidosIds||[]).map(String),...(pedidos||[]).filter(function(p){ return p.eventoId&&String(p.eventoId)===String(evActual.id); }).map(function(p){ return String(p.id); })]))];
                   var pedEvt=_pedEvtIds.map(function(pid){ return (pedidos||[]).find(function(p){ return String(p.id)===pid&&p.estadoPedido!=="cancelado"; }); }).filter(Boolean);
                   var inicioEvt=evActual.fecha||FECHA_HOY;
+                  // Si el evento ya está abierto pero aún no llega su fecha oficial, incluir desde hoy
+                  if(evActual.estado==="abierto"&&FECHA_HOY<inicioEvt) inicioEvt=FECHA_HOY;
                   var finEvt=evActual.estado==="abierto"?FECHA_HOY:(evActual.fechaFin||evActual.fecha||FECHA_HOY);
                   var diasEvt=[];
                   var cur=new Date(inicioEvt+"T12:00:00"); var fin=new Date(finEvt+"T12:00:00");
