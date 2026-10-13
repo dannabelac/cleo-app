@@ -11964,80 +11964,88 @@ export default function CLEO(props){
           setModalProspecto(true);
         }
 
+        var MESES_CORTOS_OPO=["ene","feb","mar","abr","may","jun","jul","ago","sep","oct","nov","dic"];
+        function fmtOpo(fechaStr){
+          if(!fechaStr) return "";
+          var d=new Date(fechaStr+"T00:00:00");
+          return d.getDate()+" "+MESES_CORTOS_OPO[d.getMonth()]+" "+d.getFullYear();
+        }
+
         return e("div",null,
           // HEADER
-          e("div",{style:{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:24,flexWrap:"wrap",gap:12}},
+          e("header",{style:{display:"flex",flexWrap:"wrap",alignItems:"flex-end",justifyContent:"space-between",gap:16,marginBottom:24}},
             e("div",null,
-              e("div",{style:{fontSize:28,fontWeight:700,color:C.text,lineHeight:1.1,marginBottom:4}},"Oportunidades"),
-              e("div",{style:{fontSize:14,color:C.textMuted}},"Personas interesadas en tus productos")
+              e("h1",{style:{margin:0,fontSize:sc.titlePage,fontWeight:800,letterSpacing:"-0.03em",color:C.text}},"Oportunidades"),
+              e("p",{style:{margin:"4px 0 0",fontSize:14.5,color:C.textMuted}},"Personas interesadas en tus productos")
             ),
             e("button",{
-              style:{cursor:"pointer",padding:"9px 20px",borderRadius:14,border:"none",background:C.purple,fontSize:13,color:"#fff",fontWeight:600,whiteSpace:"nowrap"},
+              style:{cursor:"pointer",display:"inline-flex",alignItems:"center",justifyContent:"center",gap:7,height:sc.btnH,padding:"0 20px",borderRadius:999,border:"none",background:C.ink,color:"#fff",fontSize:14,fontWeight:700,fontFamily:"inherit",whiteSpace:"nowrap"},
               onClick:function(){ setFormProspecto(formProspectoVacio); setBuscaCliOpo(""); setModalProspecto(true); }
-            },"+ Nueva oportunidad")
+            },
+              e("svg",{width:16,height:16,viewBox:"0 0 24 24",fill:"none",stroke:"currentColor",strokeWidth:2.4,strokeLinecap:"round",strokeLinejoin:"round"},e("path",{d:"M12 5v14M5 12h14"})),
+              "Nueva oportunidad"
+            )
           ),
 
-          // FILTROS
-          e("div",{style:{display:"flex",gap:8,marginBottom:20,flexWrap:"wrap"}},
+          // FILTROS — pill group
+          e("div",{role:"tablist",style:{display:"inline-flex",gap:2,margin:"0 0 20px",padding:4,borderRadius:999,background:C.surface}},
             e("button",{
-              "aria-pressed":filtroProspecto!=="Perdido",
-              style:{cursor:"pointer",padding:"6px 16px",borderRadius:20,border:"1.5px solid "+(filtroProspecto!=="Perdido"?C.purple:C.border),background:filtroProspecto!=="Perdido"?C.purplePale:"transparent",fontSize:12,color:filtroProspecto!=="Perdido"?C.purple:C.textMuted,fontWeight:filtroProspecto!=="Perdido"?600:400},
+              role:"tab","aria-selected":filtroProspecto!=="Perdido",
+              style:{cursor:"pointer",display:"inline-flex",alignItems:"center",gap:6,height:36,padding:"0 16px",borderRadius:999,border:0,fontFamily:"inherit",fontSize:14,
+                fontWeight:filtroProspecto!=="Perdido"?800:600,
+                background:filtroProspecto!=="Perdido"?"#E4E8FF":"transparent",
+                color:filtroProspecto!=="Perdido"?C.ink:"#4A5068"},
               onClick:function(){ setFiltroProspecto("activas"); }
-            },"Activas · "+oportunidades.filter(function(c){ return c.estadoProspecto!=="Perdido"; }).length),
+            },
+              "Activas",
+              e("span",{style:{color:C.purple}}," · "+oportunidades.filter(function(c){ return c.estadoProspecto!=="Perdido"; }).length)
+            ),
             e("button",{
-              "aria-pressed":filtroProspecto==="Perdido",
-              style:{cursor:"pointer",padding:"6px 16px",borderRadius:20,border:"1.5px solid "+(filtroProspecto==="Perdido"?C.redBorder:C.border),background:filtroProspecto==="Perdido"?C.redBg:"transparent",fontSize:12,color:filtroProspecto==="Perdido"?C.red:C.textMuted,fontWeight:filtroProspecto==="Perdido"?600:400},
+              role:"tab","aria-selected":filtroProspecto==="Perdido",
+              style:{cursor:"pointer",display:"inline-flex",alignItems:"center",gap:6,height:36,padding:"0 16px",borderRadius:999,border:0,fontFamily:"inherit",fontSize:14,
+                fontWeight:filtroProspecto==="Perdido"?800:600,
+                background:filtroProspecto==="Perdido"?"#E4E8FF":"transparent",
+                color:filtroProspecto==="Perdido"?C.ink:"#4A5068"},
               onClick:function(){ setFiltroProspecto("Perdido"); }
-            },"Perdidas · "+oportunidades.filter(function(c){ return c.estadoProspecto==="Perdido"; }).length)
-          ),
-
-          (filtroProspecto==="Nueva"||filtroProspecto==="En seguimiento"||filtroProspecto==="Sin respuesta")&&e("div",{style:{display:"flex",alignItems:"center",gap:6,marginBottom:16,fontSize:12,color:C.purple}},
-            e("span",null,"Mostrando: "+filtroProspecto),
-            e("button",{style:{cursor:"pointer",background:"none",border:"none",color:C.purple,fontSize:13,padding:0,lineHeight:1},onClick:function(){ setFiltroProspecto("activas"); }},"×")
+            },
+              "Perdidas",
+              e("span",{style:{color:C.purple}}," · "+oportunidades.filter(function(c){ return c.estadoProspecto==="Perdido"; }).length)
+            )
           ),
 
           // LISTA
           opsFiltradas.length===0?
             e("div",{style:{textAlign:"center",padding:"60px 0"}},
-              e("div",{style:{fontSize:36,marginBottom:12}},"🎯"),
               filtroProspecto==="todos"
                 ? e("div",null,
                     e("div",{style:{fontSize:15,fontWeight:600,color:C.textMuted,marginBottom:6}},"Aún no tienes oportunidades"),
                     e("div",{style:{fontSize:13,color:C.textDim,marginBottom:20}},"Todo contacto nuevo se convierte en una oportunidad."),
-                    e("button",{style:{cursor:"pointer",padding:"9px 20px",borderRadius:12,border:"none",background:C.purple,fontSize:13,color:"#fff",fontWeight:600},onClick:function(){ setModalProspecto(true); }},"+ Nueva oportunidad")
+                    e("button",{style:{cursor:"pointer",padding:"9px 20px",borderRadius:12,border:"none",background:C.ink,fontSize:13,color:"#fff",fontWeight:600},onClick:function(){ setModalProspecto(true); }},"+ Nueva oportunidad")
                   )
                 : e("div",{style:{fontSize:14,color:C.textDim}},"No hay oportunidades en este estado")
             ):
             e("div",{style:{display:"flex",flexDirection:"column",gap:12}},
               opsFiltradas.map(function(c){
-                var est=ESTADOS_OPO.find(function(x){ return x.k===c.estadoProspecto; })||ESTADOS_OPO[0];
                 var esPerdido=c.estadoProspecto==="Perdido";
-                var editando=editandoId===c.id;
-
                 var esHighlight=c.id===highlightOpoId;
-                // Única fuente de verdad para el botón "Cotización" de esta
-                // tarjeta , la usan tanto la variante de texto (desktop)
-                // como la variante ícono-únicamente (móvil), para no
-                // duplicar la lógica de "reusar cotización existente vs.
-                // sintetizar items desde el interés" en dos lados.
+                var diasEnEstado=diasDesde(c.fechaEtapa||c.fecha);
+                var esNueva=c.estadoProspecto==="Nueva";
+                var esSeguimiento=c.estadoProspecto==="En seguimiento";
+                var esSinRespuesta=c.estadoProspecto==="Sin respuesta";
+                var urgente=(esNueva&&diasEnEstado>=3)||(esSeguimiento&&diasEnEstado>=4)||(esSinRespuesta&&diasEnEstado>=3);
+                var precioNum=tienePrecioReal(c)?Number(c.precioInteres):0;
+
                 function abrirCotizacionDesdeOpo(){
                   var cotExistente=cotizaciones.find(function(cot){ return String(cot.clienteId)===String(c.id); });
                   if(cotExistente){
                     editarCot(cotExistente);
                   } else {
-                    // obtenerItemsInteres trae TODOS los items de interés del
-                    // cliente (no solo uno) , si no hay ninguno, sintetiza uno
-                    // vacío con el nombre del producto/catálogo si aplica.
                     var itemsOpo=obtenerItemsInteres(c);
                     if(itemsOpo.length===0){
-                      // tienePrecioReal(c) , "0" (sin precio real) es
-                      // truthy como string, así que antes se usaba "0" como
-                      // precio del renglón en vez de caer al precio del
-                      // catálogo (mismo bug raíz que el reporte, punto 1).
                       var precioOpo=tienePrecioReal(c)?c.precioInteres:"";
                       if(!precioOpo&&c.productoInteres){
-                        var match=catActivo.find(function(p){ return p.nombre===c.productoInteres; });
-                        if(match&&match.precio) precioOpo=String(match.precio);
+                        var matchOpo=catActivo.find(function(p){ return p.nombre===c.productoInteres; });
+                        if(matchOpo&&matchOpo.precio) precioOpo=String(matchOpo.precio);
                       }
                       itemsOpo=[{id:"it_"+Date.now(),catalogoId:null,nombre:c.productoInteres||"",cantidad:1,precioUnitario:precioOpo,total:redondearDinero(interpretarImporte(precioOpo))}];
                     }
@@ -12045,107 +12053,77 @@ export default function CLEO(props){
                     setModalCot(true);
                   }
                 }
-                return e("div",{key:c.id,style:{background:C.surface,borderRadius:14,border:"2px solid "+(esHighlight?C.purple:esPerdido?C.border+"55":C.border),padding:"16px 18px",boxShadow:esHighlight?"0 0 0 3px "+C.purple+"22":"0 1px 4px rgba(0,0,0,0.04)",opacity:esPerdido?0.65:1,transition:"box-shadow 0.3s"},ref:function(el){ if(el&&esHighlight){ el.scrollIntoView({behavior:"smooth",block:"start"}); } }},
 
-                  // FILA 1: avatar + nombre + estado (discreto)
-                  e("div",{style:{display:"flex",alignItems:"center",gap:12,marginBottom:10}},
-                    e("div",{style:{width:38,height:38,borderRadius:10,background:avatarColor(c.id)+"18",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,fontWeight:700,fontSize:13,color:avatarColor(c.id)}},iniciales(c.nombre)),
-                    e("div",{style:{flex:1,minWidth:0}},
-                      e("div",{style:{fontWeight:700,fontSize:14,color:C.text,marginBottom:2}},c.nombre),
-                      e("div",{style:{display:"flex",alignItems:"center",gap:6,flexWrap:"wrap"}},(function(){
-                        var diasEnEstado=diasDesde(c.fechaEtapa||c.fecha);
-                        var esNueva=c.estadoProspecto==="Nueva";
-                        var esSeguimiento=c.estadoProspecto==="En seguimiento";
-                        var urgente=(esNueva&&diasEnEstado>=3)||(esSeguimiento&&diasEnEstado>=4);
-                        return [
-                          e("span",{key:"fecha",style:{fontSize:11,color:C.textDim}},c.fecha||FECHA_HOY),
-                          urgente&&e("span",{key:"alerta",role:"status",style:{fontSize:11,fontWeight:600,color:C.red,background:C.redBg,border:"1px solid "+C.redBorder,borderRadius:20,padding:"1px 8px"}},
-                            diasEnEstado+" días "+(esSeguimiento?"sin confirmar":"sin movimiento")
-                          )
-                        ];
-                      })())
-                    ),
-                    // Estado — discreto, solo punto + texto
-                    e("select",{
-                      "aria-label":"Estado de "+c.nombre,
-                      value:c.estadoProspecto,
-                      onChange:function(ev){ cambiarEstado(c.id,ev.target.value); },
-                      style:{fontSize:11,padding:"4px 6px",borderRadius:8,border:"1px solid "+C.border,background:C.surfaceUp,color:C.textMuted,cursor:"pointer",outline:"none",flexShrink:0}
-                    }, ESTADOS_OPO.map(function(x){ return e("option",{key:x.k,value:x.k},x.label); }))
-                  ),
+                var tipTexto=esPerdido?"":
+                  !c.productoInteres?"Pregúntale qué producto le interesa y agrégalo aquí":
+                  c.estadoProspecto==="Nueva"&&tienePrecioReal(c)?"Envíale el precio para que confirme":
+                  c.estadoProspecto==="En seguimiento"?"Intenta contactarla de nuevo":
+                  c.estadoProspecto==="Sin respuesta"?"Intenta contactarla de nuevo":"";
 
-                  // FILA 2: datos (clickeable para editar)
-                  e("button",{
-                        type:"button","aria-label":"Editar producto de interés",
-                        style:{borderRadius:10,padding:"8px 12px",marginBottom:8,cursor:"pointer",display:"flex",alignItems:"center",gap:10,border:"1px solid "+C.border,background:C.surfaceUp,width:"100%",textAlign:"left",fontFamily:"inherit"},
-                        onClick:function(){ abrirEdicion(c); }
-                      },
-                        e("div",{style:{flex:1,minWidth:0}},
-                          c.productoInteres
-                            ? e("div",{style:{fontSize:13,fontWeight:600,color:C.text,marginBottom:1}},c.productoInteres)
-                            : e("div",{style:{fontSize:12,color:C.textDim}},"Sin producto aún — toca para agregar"),
-                          tienePrecioReal(c)&&e("div",{style:{fontSize:13,color:C.green,fontWeight:700}},"$"+formatoDinero(Number(c.precioInteres))),
-                          c.notasProspecto&&e("div",{style:{fontSize:11,color:C.textMuted,marginTop:1,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}},c.notasProspecto)
-                        ),
-                        e("svg",{width:12,height:12,viewBox:"0 0 24 24",fill:"none",stroke:C.border,strokeWidth:2,flexShrink:0,"aria-hidden":true},e("path",{d:"M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"}))
+                var btnOpoP={cursor:"pointer",display:"inline-flex",alignItems:"center",justifyContent:"center",gap:7,height:isMobile?44:38,padding:"0 16px",borderRadius:999,border:"none",background:C.ink,color:"#fff",fontSize:14,fontWeight:700,fontFamily:"inherit",whiteSpace:"nowrap",boxSizing:"border-box"};
+                var btnOpoS={cursor:"pointer",display:"inline-flex",alignItems:"center",justifyContent:"center",gap:7,height:isMobile?40:34,padding:"0 13px",borderRadius:999,border:"1.5px solid #D5D8E4",background:C.surface,color:C.text,fontSize:13,fontWeight:700,fontFamily:"inherit",whiteSpace:"nowrap",boxSizing:"border-box",textDecoration:"none"};
+                var btnOpoGreen=Object.assign({},btnOpoP,{background:C.green});
+
+                return e("article",{key:c.id,style:{background:C.surface,borderRadius:22,padding:isMobile?"18px 16px 14px":"20px 22px 16px",opacity:esPerdido?0.65:1,boxShadow:esHighlight?"0 0 0 3px "+C.purple+"22":"none",outline:esHighlight?"2px solid "+C.purple:"none"},ref:function(el){ if(el&&esHighlight){ el.scrollIntoView({behavior:"smooth",block:"start"}); } }},
+                  e("div",{style:isMobile?{display:"flex",flexDirection:"column",gap:12}:{display:"grid",gridTemplateColumns:"minmax(0,1fr) 240px",columnGap:28,rowGap:12}},
+                    // LEFT COLUMN
+                    e("div",{style:{minWidth:0}},
+                      e("div",{style:{fontSize:17,fontWeight:800,letterSpacing:"-0.01em",color:C.text}},c.nombre),
+                      e("div",{style:{display:"flex",alignItems:"center",gap:6,marginTop:3}},
+                        c.productoInteres
+                          ? e("span",{style:{fontSize:14.5,fontWeight:600,color:C.text}},c.productoInteres+(c.cantidadInteres&&Number(c.cantidadInteres)>1?" x"+c.cantidadInteres:""))
+                          : e("span",{style:{fontSize:13.5,color:C.textDim}},"Sin producto aún"),
+                        e("button",{"aria-label":"Editar","type":"button",style:{cursor:"pointer",width:28,height:28,border:0,borderRadius:"50%",background:"transparent",color:"#6E7489",display:"grid",placeItems:"center"},onClick:function(){ abrirEdicion(c); }},
+                          e("svg",{width:14,height:14,viewBox:"0 0 24 24",fill:"none",stroke:"currentColor",strokeWidth:1.9,strokeLinecap:"round",strokeLinejoin:"round"},e("path",{d:"M4 20h4L19 9l-4-4L4 16z"}))
+                        )
                       ),
-
-                  // HINT CLEO
-                  !esPerdido&&!editando&&(function(){
-                    var texto=!c.productoInteres?"Pregúntale qué producto le interesa y agrégalo aquí":
-                              c.estadoProspecto==="Nueva"&&tienePrecioReal(c)?"Envíale el precio para que confirme":
-                              c.estadoProspecto==="En seguimiento"?"¿Ya confirmó? Convierte en pedido":
-                              c.estadoProspecto==="Sin respuesta"?"Intenta contactarla de nuevo":"";
-                    if(!texto) return null;
-                    return e("div",{style:{fontSize:11,color:C.textDim,marginBottom:8,display:"flex",alignItems:"center",gap:4}},
-                      e("span",{style:{opacity:0.5}},"💡"),e("span",null,texto)
-                    );
-                  })(),
-
-                  // FILA 3: acciones
-                  // Secundarias: en móvil, mismo tratamiento ícono-únicamente
-                  // (32×32, nombre disponible como tooltip) que se usó en la
-                  // tarjeta de Pedidos, para mantener el mismo lenguaje visual
-                  // en toda la app. En desktop se deja el botón con texto,
-                  // igual que antes.
-                  !esPerdido&&!editando&&e("div",{style:{display:"flex",gap:isMobile?8:6,borderTop:"1px solid "+C.border+"44",paddingTop:10,alignItems:"center"}},
-                    isMobile
-                      ? e(BtnCanal,{cliente:c,iconOnly:true})
-                      : e(BtnCanal,{cliente:c,small:true}),
-                    c.productoInteres&&tienePrecioReal(c)&&(isMobile
-                      ? e("button",{
-                          title:"Cotización","aria-label":"Ver cotización",
-                          style:{cursor:"pointer",width:40,height:40,padding:0,borderRadius:8,border:"1px solid "+C.border+"88",background:"transparent",fontSize:13,color:C.textDim,display:"inline-flex",alignItems:"center",justifyContent:"center",flexShrink:0},
-                          onClick:abrirCotizacionDesdeOpo
-                        },"📄")
-                      : e("button",{
-                          style:{cursor:"pointer",padding:"5px 10px",borderRadius:8,border:"1px solid "+C.border+"88",background:"transparent",fontSize:11,color:C.textDim},
-                          onClick:abrirCotizacionDesdeOpo
-                        },"Cotización")
+                      e("div",{style:{display:"flex",flexWrap:"wrap",alignItems:"center",gap:"6px 12px",marginTop:9,fontSize:13.5,color:C.textMuted}},
+                        e("span",null,fmtOpo(c.fecha||c.fechaEtapa)),
+                        urgente&&e("span",{style:{display:"inline-flex",alignItems:"center",gap:5,height:26,padding:"0 10px",borderRadius:13,background:"#FBF1DC",color:"#6E4806",fontSize:12.5,fontWeight:700}},
+                          e("svg",{width:14,height:14,viewBox:"0 0 24 24",fill:"none",stroke:"currentColor",strokeWidth:1.9,strokeLinecap:"round",strokeLinejoin:"round"},e("circle",{cx:12,cy:12,r:8.5}),e("path",{d:"M12 7.5V12l3 2"})),
+                          diasEnEstado+" días sin movimiento"
+                        )
+                      ),
+                      tipTexto&&!esPerdido&&e("p",{style:{display:"flex",alignItems:"center",gap:7,margin:"10px 0 0",fontSize:13.5,fontWeight:600,color:"#2E37A3"}},
+                        e("svg",{width:15,height:15,viewBox:"0 0 24 24",fill:"none",stroke:"#3F4BD0",strokeWidth:1.9,strokeLinecap:"round",strokeLinejoin:"round"},e("path",{d:"M9 18h6M10 21h4M12 3a6 6 0 0 0-3.6 10.8c.6.5 1 1.2 1 2V16h5.2v-.2c0-.8.4-1.5 1-2A6 6 0 0 0 12 3z"})),
+                        tipTexto
+                      ),
+                      isMobile&&tienePrecioReal(c)&&e("div",{style:{marginTop:10,padding:"10px 14px",borderRadius:14,background:"#F4F5FA",textAlign:"right"}},
+                        e("small",{style:{display:"block",fontSize:12,fontWeight:700,color:"#4A5068"}},"Total"),
+                        e("strong",{style:{display:"block",marginTop:2,fontSize:20,fontWeight:800,letterSpacing:"-0.02em",fontVariantNumeric:"tabular-nums"}},"$"+formatoDinero(precioNum))
+                      )
                     ),
-
-                    e("div",{style:{flex:1}}),
-
-                    // Acción principal
-                    !c.productoInteres&&e("button",{
-                      style:{cursor:"pointer",padding:"7px 16px",borderRadius:10,border:"none",background:C.purple,fontSize:12,color:"#fff",fontWeight:600},
-                      onClick:function(){ abrirEdicion(c); }
-                    },"¿Qué le interesa? →"),
-
-                    // tienePrecioReal(c) , no `c.precioInteres` a secas (ver
-                    // comentario junto a la función). Antes, un precio "0"
-                    // (todavía sin definir) igual mostraba este botón y
-                    // mandaba "el precio es $0" por WhatsApp.
-                    c.productoInteres&&tienePrecioReal(c)&&c.estadoProspecto==="Nueva"&&e("button",{
-                      style:{cursor:"pointer",padding:"7px 16px",borderRadius:10,border:"none",background:C.purple,fontSize:12,color:"#fff",fontWeight:600},
-                      onClick:function(){
+                    // RIGHT COLUMN (desktop)
+                    !isMobile&&e("div",null,
+                      e("div",{style:{display:"flex",justifyContent:"flex-end"}},
+                        e("select",{
+                          "aria-label":"Etapa: "+c.estadoProspecto,
+                          value:c.estadoProspecto,
+                          onChange:function(ev){ cambiarEstado(c.id,ev.target.value); },
+                          style:{display:"inline-flex",alignItems:"center",height:36,padding:"0 12px 0 14px",border:0,borderRadius:999,background:"#F4F5FA",fontFamily:"inherit",fontSize:13.5,fontWeight:700,color:C.ink,cursor:"pointer",outline:"none"}
+                        }, ESTADOS_OPO.map(function(x){ return e("option",{key:x.k,value:x.k},x.label); }))
+                      ),
+                      tienePrecioReal(c)&&e("div",{style:{marginTop:10,padding:"10px 14px 11px",borderRadius:14,background:"#F4F5FA",textAlign:"right"}},
+                        e("small",{style:{display:"block",fontSize:12,fontWeight:700,color:"#4A5068"}},"Total"),
+                        e("strong",{style:{display:"block",marginTop:2,fontSize:20,fontWeight:800,letterSpacing:"-0.02em",fontVariantNumeric:"tabular-nums"}},"$"+formatoDinero(precioNum))
+                      )
+                    )
+                  ),
+                  // FOOTER ACTIONS
+                  !esPerdido&&e("div",{style:{display:"flex",flexWrap:"wrap",alignItems:"center",justifyContent:"space-between",gap:8,paddingTop:12,borderTop:"1px solid #E6E8F0",marginTop:12}},
+                    e("div",{style:{display:"flex",gap:6}},
+                      e(BtnCanal,{cliente:c,small:true}),
+                      (c.productoInteres&&tienePrecioReal(c))&&e("button",{style:btnOpoS,onClick:abrirCotizacionDesdeOpo},
+                        e("svg",{width:14,height:14,viewBox:"0 0 24 24",fill:"none",stroke:"currentColor",strokeWidth:1.9,strokeLinecap:"round",strokeLinejoin:"round"},e("path",{d:"M6 3h8l4 4v14H6zM14 3v4h4M9 12h6M9 16h6"})),
+                        "Cotización"
+                      )
+                    ),
+                    e("div",null,
+                      !c.productoInteres&&e("button",{style:btnOpoP,onClick:function(){ abrirEdicion(c); }},"¿Qué le interesa? →"),
+                      c.productoInteres&&!tienePrecioReal(c)&&c.estadoProspecto==="Nueva"&&e("button",{style:btnOpoP,onClick:function(){ abrirEdicion(c); }},"Agregar precio"),
+                      c.productoInteres&&tienePrecioReal(c)&&c.estadoProspecto==="Nueva"&&e("button",{style:btnOpoP,onClick:function(){
                         var canal=c.canalPrincipal||"WhatsApp";
                         var nombre=c.nombre.split(" ")[0];
-                        // Si el interés tiene varios productos reales (items[]),
-                        // aquí se listan TODOS por nombre (nunca truncado a "y N
-                        // más") , el resumen central (resumenItemsCotizacion) es
-                        // para tarjetas/listados internos, no para un mensaje
-                        // real que la persona le manda al cliente.
                         var itemsInteresOpoEnvio=obtenerItemsInteres(c);
                         var nombresInteresC=itemsInteresOpoEnvio.map(function(it){ return it.nombre; }).filter(Boolean);
                         var listaProductoC=nombresInteresC.length===0?(c.productoInteres||"mi producto")
@@ -12157,74 +12135,42 @@ export default function CLEO(props){
                         else if(canal==="Instagram"&&c.instagram) url=crearUrlInstagram(c.instagram);
                         else if(c.contacto) url=crearUrlWhatsApp(c.contacto,msg);
                         if(url) abrirEnlaceExternoSeguro(url);
-                        // "Precio enviado" en el historial , vía la MISMA
-                        // función central que ya usan guardarEnvieP/
-                        // guardarPreguntoP (crearEventoPrecioEnviado), nunca
-                        // un motor aparte. Se construye UNA sola vez aquí,
-                        // dentro del onClick (nunca dentro de un render ni de
-                        // abrir/descargar el PDF de la cotización, que son
-                        // flujos de solo lectura) , así que se agrega
-                        // exactamente una vez por cada clic real (reporte de
-                        // fallos, punto 2: antes este botón nunca dejaba
-                        // rastro en el historial).
                         var eventoPrecioEnviadoOpo=crearEventoPrecioEnviado(itemsInteresOpoEnvio);
-                        // Seguimiento posterior al envío , reemplaza (nunca
-                        // solo agrega) el recordatorio automático de pipeline
-                        // "quedaste en enviarle el precio" por UN único
-                        // recordatorio nuevo, mismo filtro exacto
-                        // (categoria:"pipeline"&&origen:"cleo") que ya usan
-                        // guardarPreguntoP/guardarPregunto , nunca toca
-                        // recordatorios manuales/personalizados (reporte,
-                        // punto 3). resolverFechaPregunto("manana") es el
-                        // mismo default que ya usa el resto de la app para
-                        // "hoy/mañana/2 días/3 días" cuando no hay un paso de
-                        // formulario propio que pregunte la fecha (este botón
-                        // es una acción de un solo clic, sin modal).
                         var fechaSeguimientoOpoEnvio=resolverFechaPregunto("manana");
                         setClientes(clientes.map(function(x){
                           if(x.id!==c.id) return x;
-                          var baseOpoEnvio=Object.assign({},x,{
-                            estadoProspecto:"En seguimiento",fechaEtapa:FECHA_HOY,ultimoContacto:FECHA_HOY,
-                            historialContactos:(x.historialContactos||[]).concat([eventoPrecioEnviadoOpo])
-                          });
+                          var baseOpoEnvio=Object.assign({},x,{estadoProspecto:"En seguimiento",fechaEtapa:FECHA_HOY,ultimoContacto:FECHA_HOY,historialContactos:(x.historialContactos||[]).concat([eventoPrecioEnviadoOpo])});
                           var recordatoriosSinPipelineAnteriorOpoEnvio=recordatoriosDe(baseOpoEnvio).filter(function(r){ return !(r&&r.categoria==="pipeline"&&r.origen==="cleo"); });
                           if(!fechaSeguimientoOpoEnvio) return baseOpoEnvio;
                           return conRecordatoriosActualizados(baseOpoEnvio,recordatoriosSinPipelineAnteriorOpoEnvio.concat([{id:"r_"+Date.now(),fecha:fechaSeguimientoOpoEnvio,nota:"Ya le enviaste el precio. Dijiste que le darías seguimiento.",esPersonalizada:false,origen:"cleo",categoria:"pipeline"}]));
                         }));
-                      }
-                    },"Enviar precio"),
-
-                    c.productoInteres&&!tienePrecioReal(c)&&c.estadoProspecto==="Nueva"&&e("button",{
-                      style:{cursor:"pointer",padding:"7px 16px",borderRadius:10,border:"none",background:C.purple,fontSize:12,color:"#fff",fontWeight:600},
-                      onClick:function(){ abrirEdicion(c); }
-                    },"Agregar precio"),
-
-                    c.estadoProspecto==="En seguimiento"&&e("button",{
-                      style:{cursor:"pointer",padding:"7px 16px",borderRadius:10,border:"none",background:C.green,fontSize:12,color:"#fff",fontWeight:600,whiteSpace:"nowrap"},
-                      onClick:function(){
+                      }},
+                        e("svg",{width:16,height:16,viewBox:"0 0 24 24",fill:"none",stroke:"currentColor",strokeWidth:1.9,strokeLinecap:"round",strokeLinejoin:"round"},e("path",{d:"M3.5 11.5V4.5a1 1 0 0 1 1-1h7l9 9-8 8z"}),e("circle",{cx:8,cy:8,r:1.4})),
+                        "Enviar precio"
+                      ),
+                      c.estadoProspecto==="En seguimiento"&&e("button",{style:btnOpoGreen,onClick:function(){
                         var ahora=new Date().toISOString();
                         setClientes(clientes.map(function(x){
                           return x.id===c.id?cancelarRecordatoriosPipeline(Object.assign({},x,{estadoProspecto:"Convertido",etapa:"Ganado",fechaEtapa:FECHA_HOY,fechaPedido:ahora})):x;
                         }));
-                        // Copia TODOS los items de interés al pedido nuevo (no solo
-                        // uno) , productos/cantidad/total quedan como compatibilidad
-                        // derivada, igual que en el resto de creadores de pedido.
                         var itemsPedOpo=calcularInvItemsParaNuevoPedido(obtenerItemsInteres(c));
                         var compatPedOpo=buildItemsCompat(itemsPedOpo,"producto");
-                        // itemsConfirmacion/montoConfirmacion: snapshot inmutable al confirmar , ver crearPedidoDesdeVenta.
                         var nuevoPedido={id:"ped_"+Date.now(),clienteId:c.id,items:itemsPedOpo,productos:compatPedOpo.resumen||c.productoInteres||"",itemsConfirmacion:itemsPedOpo,montoConfirmacion:compatPedOpo.total||Number(c.precioInteres)||0,cantidad:compatPedOpo.cantidad||1,total:compatPedOpo.total||Number(c.precioInteres)||0,pagos:[],estadoPedido:"preparando",notas:c.notasProspecto||"",fecha:FECHA_HOY,fechaCreado:ahora};
                         setPedidos([nuevoPedido,...pedidos]);
-                        // pedido_creado , conversión directa de una oportunidad
-                        // "En seguimiento" a pedido (mismo criterio que el otro
-                        // botón "Sí, crear pedido" del modal confirmPedidoData).
                         registrarEvento("pedido_creado",{tipo_perfil:perfil.tipoPerfil||"",origen:"oportunidad",dispositivo:dispositivoActual()});
                         setCelebPedidoData({clienteNombre:c.nombre,producto:c.productoInteres||"",precio:c.precioInteres||0,clienteId:c.id});
                         setCelebPaso(1); setCelebRazon([]);
                         setVista("pedidos");
-                      }
-                    },"Crear pedido"),
-
-                    c.estadoProspecto==="Sin respuesta"&&e(BtnCanal,{cliente:c,small:false,label:"Contactar"})
+                      }},"Crear pedido"),
+                      c.estadoProspecto==="Sin respuesta"&&e(BtnCanal,{cliente:c,small:false,label:"Contactar"})
+                    )
+                  ),
+                  isMobile&&e("div",{style:{marginTop:10}},
+                    e("select",{
+                      "aria-label":"Etapa",value:c.estadoProspecto,
+                      onChange:function(ev){ cambiarEstado(c.id,ev.target.value); },
+                      style:{width:"100%",height:40,padding:"0 12px",border:"1.5px solid #D5D8E4",borderRadius:12,background:C.surface,fontFamily:"inherit",fontSize:13.5,fontWeight:700,color:C.ink,cursor:"pointer",outline:"none",boxSizing:"border-box"}
+                    }, ESTADOS_OPO.map(function(x){ return e("option",{key:x.k,value:x.k},x.label); }))
                   )
                 );
               })
