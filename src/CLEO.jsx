@@ -14183,59 +14183,65 @@ export default function CLEO(props){
             );
           })(),
 
-          // LISTA DE URGENTES , mismo estilo compacto de tarjeta que usa Inicio
+          // LISTA DE URGENTES — card style (mismo que productos)
           (function(){
             var prioColorH={"alta":"#EF4444","media":"#F59E0B","baja":"#3B82F6"};
             var prioLabelH={"alta":"LO MÁS IMPORTANTE","media":"CONVIENE HOY","baja":"SE ESTÁ ENFRIANDO"};
             var prioBgH={"alta":"#FEF2F2","media":"#FFFBEB","baja":"#EFF6FF"};
+            var btnPrimHoy={cursor:"pointer",display:"inline-flex",alignItems:"center",justifyContent:"center",gap:7,height:isMobile?sc.btnH:sc.btnSmH,padding:"0 16px",borderRadius:999,border:"none",background:C.ink,color:"#fff",fontSize:isMobile?sc.btnText:sc.btnSmText,fontWeight:700,fontFamily:"inherit",whiteSpace:"nowrap",boxSizing:"border-box"};
+            var btnGhostHoy={cursor:"pointer",display:"inline-flex",alignItems:"center",justifyContent:"center",gap:6,height:isMobile?sc.btnH:sc.btnSmH,padding:"0 10px",borderRadius:999,border:"none",background:"transparent",color:C.text,fontSize:isMobile?sc.btnText:sc.btnSmText,fontWeight:700,fontFamily:"inherit",whiteSpace:"nowrap",boxSizing:"border-box"};
+            var btnSecHoy={cursor:"pointer",display:"inline-flex",alignItems:"center",justifyContent:"center",gap:7,height:isMobile?sc.btnH:sc.btnSmH,padding:"0 14px",borderRadius:999,border:"1.5px solid #D5D8E4",background:C.surface,color:C.text,fontSize:isMobile?sc.btnText:sc.btnSmText,fontWeight:700,fontFamily:"inherit",whiteSpace:"nowrap",boxSizing:"border-box"};
+            var cardHoy={background:C.surface,borderRadius:20,padding:isMobile?"18px 16px":"18px 20px"};
             return e("div",null,
               urgentes.length>0&&e("div",{style:{fontSize:11,fontWeight:700,color:C.textMuted,textTransform:"uppercase",letterSpacing:"0.5px",marginBottom:10,display:"flex",alignItems:"center",gap:8}},
                 "💬 CONVERSACIONES POR RETOMAR",
                 e("span",{style:{fontSize:11,padding:"2px 8px",borderRadius:10,background:C.purple+"18",color:C.purple,fontWeight:700}},urgentes.length)
               ),
-              e("div",{style:{display:"flex",flexDirection:"column",gap:10}},
+              e("div",{style:{display:"flex",flexDirection:"column",gap:12}},
                 urgentes.map(function(u){
                   try {
                     var c=u.cliente;
-                    var urlContactar=contactUrl(c,msgEtapa(c));
-                    var ac=avatarColor(c.id);
                     var esHighlightHoy=c.id===highlightHoyClienteId;
-                    return e("div",{key:u.accionId||c.id,style:{display:"flex",alignItems:"center",gap:12,padding:"14px 16px",background:C.surface,borderLeft:esHighlightHoy?"4px solid "+C.purple:"4px solid "+prioColorH[u.prioridad],borderRadius:16,flexWrap:isMobile?"wrap":"nowrap",boxShadow:esHighlightHoy?"0 0 0 3px "+C.purple+"22":C.shadowAction},ref:function(el){ if(el&&esHighlightHoy){ el.scrollIntoView({behavior:"smooth",block:"start"}); } }},
-                      e("div",{style:{display:"none"}},prioLabelH[u.prioridad]),
-                      e("div",{style:{display:"flex",alignItems:"flex-start",gap:12,flex:isMobile?"1 1 100%":"1 1 auto",minWidth:0}},
-                      e("div",{style:{width:40,height:40,borderRadius:"50%",background:ac+"22",display:"flex",alignItems:"center",justifyContent:"center",fontSize:13,fontWeight:700,color:ac,flexShrink:0}},iniciales(c.nombre)),
-                      e("div",{style:{flex:1,minWidth:isMobile?0:200}},
-                        e("div",{style:{fontSize:sc.namePerson,fontWeight:700,color:C.text,marginBottom:2}},c.nombre),
-                        c.etapa==="Perdido"&&e("span",{style:{display:"inline-block",fontSize:sc.textLabel,fontWeight:600,padding:"2px 7px",borderRadius:10,background:"#FEE2E2",color:"#991B1B",marginBottom:4}},
-                          "Perdido"+(c.motivoPerdida?" · "+c.motivoPerdida:"")
-                        ),
-                        e("div",{style:{fontSize:12,color:C.textMuted,lineHeight:1.4}},u.razon),
-                        u.mensajeSugerido&&e("div",{style:{fontSize:11,color:C.purple,fontStyle:"italic",lineHeight:1.4,marginTop:4}},'💬 "'+u.mensajeSugerido+'"'),
-                        u.recordatorioEsManualOPersonalizado&&u.recordatorioNota&&e("div",{style:{fontSize:11,color:C.purple,fontStyle:"italic",lineHeight:1.4,marginTop:4}},'💬 "'+u.recordatorioNota+'"')
+                    return e("article",{key:u.accionId||c.id,style:Object.assign({},cardHoy,esHighlightHoy?{outline:"2px solid "+C.purple,outlineOffset:2}:{}),ref:function(el){ if(el&&esHighlightHoy){ el.scrollIntoView({behavior:"smooth",block:"start"}); } }},
+                      e("div",{style:{display:"flex",alignItems:"flex-start",justifyContent:"space-between",gap:8,marginBottom:2}},
+                        e("div",{style:{fontSize:sc.namePerson,fontWeight:800,letterSpacing:"-0.01em",color:C.text}},c.nombre),
+                        e("span",{style:{fontSize:10,fontWeight:700,padding:"3px 8px",borderRadius:10,background:prioBgH[u.prioridad],color:prioColorH[u.prioridad],flexShrink:0,marginTop:1}},prioLabelH[u.prioridad])
                       ),
-                      ) // cierra grupo avatar + texto
-                      ,
-                      u.monto>0&&e("div",{style:{textAlign:isMobile?"left":"right",flexShrink:0,minWidth:100,marginRight:isMobile?0:8,flex:isMobile?"1 1 100%":"0 0 auto"}},
-                        e("div",{style:{fontSize:sc.namePerson,fontWeight:700,color:C.text}},"$"+formatoDinero(Number(u.monto)))
+                      c.etapa==="Perdido"&&e("span",{style:{display:"inline-block",fontSize:sc.textLabel,fontWeight:600,padding:"2px 7px",borderRadius:10,background:"#FEE2E2",color:"#991B1B",marginBottom:4}},"Perdido"+(c.motivoPerdida?" · "+c.motivoPerdida:"")),
+                      e("p",{style:{margin:"4px 0 0",fontSize:14,lineHeight:1.55,color:C.textMuted}},u.razon),
+                      u.mensajeSugerido&&!u.recordatorioEsManualOPersonalizado&&e("p",{style:{display:"flex",alignItems:"center",gap:7,margin:"8px 0 0",fontSize:sc.textSec,fontWeight:600,color:"#2E37A3"}},
+                        e("svg",{width:15,height:15,viewBox:"0 0 24 24",fill:"none",stroke:"#3F4BD0",strokeWidth:1.9,strokeLinecap:"round",strokeLinejoin:"round"},e("path",{d:"M9 18h6M10 21h4M12 3a6 6 0 0 0-3.6 10.8c.6.5 1 1.2 1 2V16h5.2v-.2c0-.8.4-1.5 1-2A6 6 0 0 0 12 3z"})),
+                        u.mensajeSugerido
                       ),
+                      u.recordatorioEsManualOPersonalizado&&u.recordatorioNota&&e("p",{style:{display:"flex",gap:7,alignItems:"flex-start",margin:"6px 0 0",fontSize:sc.textSec,lineHeight:1.5,color:"#545A72"}},
+                        e("svg",{width:15,height:15,viewBox:"0 0 24 24",fill:"none",stroke:"#7C8CFF",strokeWidth:1.9,strokeLinecap:"round",strokeLinejoin:"round",style:{flexShrink:0,marginTop:2}},e("path",{d:"M4 20h4L19 9l-4-4L4 16z"})),
+                        e("span",null,'"'+u.recordatorioNota+'"')
+                      ),
+                      u.monto>0&&e("div",{style:{fontSize:sc.figHero,lineHeight:1.1,fontWeight:800,letterSpacing:"-0.03em",color:C.text,marginTop:8}},"$"+formatoDinero(Number(u.monto))),
                       u.origenAccion==="cotizacion_independiente"
-                        ? e("div",{style:{display:"flex",gap:8,flexShrink:0,flex:isMobile?"1 1 100%":"0 0 auto",flexWrap:"wrap"}},
-                            e("button",{key:"contactar",style:{cursor:"pointer",padding:"8px 14px",borderRadius:50,border:"none",background:C.purple,fontSize:12,color:"#fff",fontWeight:600,display:"flex",alignItems:"center",gap:6,whiteSpace:"nowrap",flex:1,justifyContent:"center"},onClick:function(){ contactarCotizacionIndependiente(u.cotizacionId); }},"💬 Contactar"),
-                            e("button",{key:"atendida",style:{cursor:"pointer",padding:"8px 14px",borderRadius:50,border:"1px solid "+C.border,background:"transparent",fontSize:12,color:C.textMuted,fontWeight:500,whiteSpace:"nowrap",flex:1},onClick:function(){ atenderSeguimientoCotizacion(u.cotizacionId); }},"✓ Ya la revisó"),
-                            e("button",{key:"reprogramar",style:{cursor:"pointer",padding:"8px 14px",borderRadius:50,border:"1px solid "+C.border,background:"transparent",fontSize:12,color:C.textMuted,fontWeight:500,whiteSpace:"nowrap",flex:1},onClick:function(){ setModalReprogSeguimientoCot(u.cotizacionId); }},"Reprogramar"),
-                            e("button",{key:"abrir",style:{cursor:"pointer",padding:"8px 14px",borderRadius:50,border:"1px solid "+C.border,background:"transparent",fontSize:12,color:C.textMuted,fontWeight:500,whiteSpace:"nowrap",flex:1},onClick:function(){ abrirCotizacionIndependiente(u.cotizacionId); }},"Abrir cotización")
+                        ? e("div",{style:{display:"flex",gap:6,marginTop:14,flexWrap:"wrap"}},
+                            e("button",{key:"contactar",style:btnPrimHoy,onClick:function(){ contactarCotizacionIndependiente(u.cotizacionId); }},
+                              e("svg",{width:16,height:16,viewBox:"0 0 24 24",fill:"none",stroke:"currentColor",strokeWidth:1.9,strokeLinecap:"round",strokeLinejoin:"round"},e("path",{d:"M4 5.5A1.5 1.5 0 0 1 5.5 4h13A1.5 1.5 0 0 1 20 5.5v9a1.5 1.5 0 0 1-1.5 1.5H9.5L4 20z"})),
+                              "Contactar"
+                            ),
+                            e("button",{key:"atendida",style:btnGhostHoy,onClick:function(){ atenderSeguimientoCotizacion(u.cotizacionId); }},"✓ Ya la revisó"),
+                            e("button",{key:"reprogramar",style:btnSecHoy,onClick:function(){ setModalReprogSeguimientoCot(u.cotizacionId); }},"Reprogramar"),
+                            e("button",{key:"abrir",style:btnSecHoy,onClick:function(){ abrirCotizacionIndependiente(u.cotizacionId); }},"Abrir cotización")
                           )
-                        : e("div",{style:{flexShrink:0,flex:isMobile?"1 1 100%":"0 0 auto"}},
-                            e("div",{style:{display:"flex",alignItems:"center",background:C.surfaceUp,border:"1.5px solid "+C.borderStrong,borderRadius:50,padding:3,gap:0}},
-                              e("button",{key:"contactar",style:{cursor:"pointer",padding:"8px 16px",borderRadius:50,border:"none",background:C.purple,fontSize:12,color:"#fff",fontWeight:600,display:"flex",alignItems:"center",gap:6,whiteSpace:"nowrap",flex:1,justifyContent:"center"},onClick:function(){ manejarClickContactar(c,u.recordatorioId,u.recordatorioNota,u.recordatorioEsManualOPersonalizado); }},"💬 Contactar"),
+                        : e("div",{style:{marginTop:14}},
+                            e("div",{style:{display:"flex",gap:4}},
+                              e("button",{key:"contactar",style:btnPrimHoy,onClick:function(){ manejarClickContactar(c,u.recordatorioId,u.recordatorioNota,u.recordatorioEsManualOPersonalizado); }},
+                                e("svg",{width:16,height:16,viewBox:"0 0 24 24",fill:"none",stroke:"currentColor",strokeWidth:1.9,strokeLinecap:"round",strokeLinejoin:"round"},e("path",{d:"M4 5.5A1.5 1.5 0 0 1 5.5 4h13A1.5 1.5 0 0 1 20 5.5v9a1.5 1.5 0 0 1-1.5 1.5H9.5L4 20z"})),
+                                "Contactar"
+                              ),
                               u.recordatorioEsManualOPersonalizado
-                                ? e("button",{key:"atendida",style:{cursor:"pointer",padding:"8px 16px",borderRadius:50,border:"none",background:"transparent",fontSize:12,color:C.textMuted,fontWeight:500,whiteSpace:"nowrap",flex:1,textAlign:"center"},onClick:function(){
+                                ? e("button",{key:"atendida",style:btnGhostHoy,onClick:function(){
                                     var resultado=completarRecordatorioManual(c.id,u.recordatorioId);
                                     if(resultado.ok) mostrarToast("✓ Marcaste tu recordatorio como atendido para "+resultado.nombreCliente+".");
                                   }},"✓ Ya lo atendí")
-                                : e("button",{key:"atendida",style:{cursor:"pointer",padding:"8px 16px",borderRadius:50,border:"none",background:"transparent",fontSize:12,color:C.textMuted,fontWeight:500,whiteSpace:"nowrap",flex:1,textAlign:"center"},onClick:function(){ setContactadoClienteId(c.id); setContactadoRecordatorioId(u.recordatorioId); }},"✓ Ya le hablé")
+                                : e("button",{key:"atendida",style:btnGhostHoy,onClick:function(){ setContactadoClienteId(c.id); setContactadoRecordatorioId(u.recordatorioId); }},"✓ Ya le hablé")
                             ),
-                            u.estancado&&e("button",{key:"perdido",style:{cursor:"pointer",padding:"8px 16px",borderRadius:50,border:"1px solid "+C.amber+"55",background:C.amberBg,fontSize:12,color:C.amber,fontWeight:600,whiteSpace:"nowrap",width:"100%",textAlign:"center",marginTop:6},onClick:function(){ moverEtapa(c.id,"Perdido"); }},"Marcar como perdido")
+                            u.estancado&&e("button",{key:"perdido",style:{cursor:"pointer",marginTop:8,padding:"0 16px",height:isMobile?sc.btnH:sc.btnSmH,borderRadius:999,border:"1.5px solid "+C.amber+"55",background:C.amberBg,fontSize:isMobile?sc.btnText:sc.btnSmText,color:C.amber,fontWeight:700,whiteSpace:"nowrap",width:"100%",textAlign:"center",display:"flex",alignItems:"center",justifyContent:"center",fontFamily:"inherit"},onClick:function(){ moverEtapa(c.id,"Perdido"); }},"Marcar como perdido")
                           )
                     );
                   } catch(err){ return e("div",{key:u.cliente&&u.cliente.id,style:{padding:8,fontSize:11,color:C.red}},"Error cargando cliente"); }
@@ -14245,44 +14251,37 @@ export default function CLEO(props){
           })(),
 
 
-          // COBROS PENDIENTES , cotizaciones aceptadas con saldo (dinero ya ganado, falta cobrar)
+          // COBROS PENDIENTES — card style (mismo que productos)
           (function(){
             var cobrosPendientes=obtenerCobrosPendientesHoy(cotizaciones,ventas,clientes);
             if(cobrosPendientes.length===0) return null;
+            var btnPrimCob={cursor:"pointer",display:"inline-flex",alignItems:"center",justifyContent:"center",gap:7,height:isMobile?sc.btnH:sc.btnSmH,padding:"0 16px",borderRadius:999,border:"none",background:C.ink,color:"#fff",fontSize:isMobile?sc.btnText:sc.btnSmText,fontWeight:700,fontFamily:"inherit",whiteSpace:"nowrap",boxSizing:"border-box"};
+            var btnGhostCob={cursor:"pointer",display:"inline-flex",alignItems:"center",justifyContent:"center",gap:6,height:isMobile?sc.btnH:sc.btnSmH,padding:"0 10px",borderRadius:999,border:"none",background:"transparent",color:C.text,fontSize:isMobile?sc.btnText:sc.btnSmText,fontWeight:700,fontFamily:"inherit",whiteSpace:"nowrap",boxSizing:"border-box"};
             return e("div",{style:{marginTop:20}},
               e("div",{style:{fontSize:11,fontWeight:700,color:C.amber,textTransform:"uppercase",letterSpacing:"0.5px",marginBottom:10,display:"flex",alignItems:"center",gap:8}},
                 "💰 COBROS PENDIENTES",
                 e("span",{style:{fontSize:11,padding:"2px 8px",borderRadius:10,background:C.amber+"22",color:C.amber,fontWeight:700}},cobrosPendientes.length)
               ),
-              e("div",{style:{display:"flex",flexDirection:"column",gap:10}},
+              e("div",{style:{display:"flex",flexDirection:"column",gap:12}},
                 cobrosPendientes.map(function(x,i){
-                  var ac=avatarColor(x.cliente.id);
                   var pagado=Number(x.cot.monto)-x.saldo;
                   var descSaldo=pagado<=0
                     ?"Aún no ha pagado nada de esta cotización."
                     :"Ya pagó $"+formatoDinero(pagado)+". Quedó pendiente un saldo de $"+formatoDinero(x.saldo)+".";
-                  var pagosX=x.cot.pagos||[];
-                  return e("div",{key:i,style:{display:"flex",alignItems:"center",gap:12,padding:"14px 16px",background:C.surface,borderLeft:"4px solid "+C.amber,borderRadius:16,flexWrap:isMobile?"wrap":"nowrap",boxShadow:C.shadowAction}},
-                    e("div",{style:{display:"none"}},"COBRO PENDIENTE"),
-                    e("div",{style:{display:"flex",alignItems:"flex-start",gap:12,flex:isMobile?"1 1 100%":"1 1 auto",minWidth:0}},
-                    e("div",{style:{width:40,height:40,borderRadius:"50%",background:ac+"22",display:"flex",alignItems:"center",justifyContent:"center",fontSize:13,fontWeight:700,color:ac,flexShrink:0}},iniciales(x.cliente.nombre)),
-                    e("div",{style:{flex:1,minWidth:isMobile?0:200}},
-                      e("div",{style:{fontSize:sc.namePerson,fontWeight:700,color:C.text,marginBottom:2}},x.cliente.nombre),
-                      e("div",{style:{fontSize:12,color:C.textMuted,lineHeight:1.4}},descSaldo)
+                  return e("article",{key:i,style:{background:"#FFFBEB",borderRadius:20,padding:isMobile?"18px 16px":"18px 20px"}},
+                    e("div",{style:{display:"flex",alignItems:"flex-start",justifyContent:"space-between",gap:8,marginBottom:2}},
+                      e("div",{style:{fontSize:sc.namePerson,fontWeight:800,letterSpacing:"-0.01em",color:C.text}},x.cliente.nombre),
+                      e("span",{style:{fontSize:10,fontWeight:700,padding:"3px 8px",borderRadius:10,background:"#FCD34D33",color:"#92400E",flexShrink:0,marginTop:1}},"COBRO PENDIENTE")
                     ),
-                    ) // cierra grupo avatar + texto
-                    ,
-                    e("div",{style:{textAlign:isMobile?"left":"right",flexShrink:0,minWidth:100,marginRight:isMobile?0:8,flex:isMobile?"1 1 100%":"0 0 auto"}},
-                      e("div",{style:{fontSize:15,fontWeight:700,color:C.amber}},"$"+formatoDinero(x.saldo))
-                    ),
-                    e("div",{style:{flexShrink:0,flex:isMobile?"1 1 100%":"0 0 auto"}},
-                      e("div",{style:{display:"flex",alignItems:"center",background:C.surfaceUp,border:"1.5px solid "+C.borderStrong,borderRadius:50,padding:3,gap:0}},
-                        e("button",{style:{cursor:"pointer",padding:"8px 16px",borderRadius:50,border:"none",background:C.purple,fontSize:12,color:"#fff",fontWeight:600,display:"flex",alignItems:"center",gap:6,whiteSpace:"nowrap",flex:1,justifyContent:"center"},onClick:function(){ var url=contactUrl(x.cliente,"Hola "+x.cliente.nombre.split(" ")[0]+", te escribo para preguntar cómo va el pago pendiente de "+(x.cot.concepto||"tu cotización")+"."); if(url) abrirEnlaceExternoSeguro(url); else setClienteCompletarId(x.cliente.id); }},
-                          "💬 Contactar"
-                        ),
-                        e("button",{style:{cursor:"pointer",padding:"8px 16px",borderRadius:50,border:"none",background:"transparent",fontSize:12,color:C.textMuted,fontWeight:500,whiteSpace:"nowrap",flex:1,textAlign:"center"},onClick:function(){ setPagosModalTipo(x.tipo); setPagosModalId(x.cot.id); setFormPago({monto:"",fecha:FECHA_HOY,concepto:"Pago"}); }},
-                          "+ Registrar pago"
-                        )
+                    e("p",{style:{margin:"4px 0 0",fontSize:14,lineHeight:1.55,color:C.textMuted}},descSaldo),
+                    e("div",{style:{fontSize:sc.figHero,lineHeight:1.1,fontWeight:800,letterSpacing:"-0.03em",color:"#92400E",marginTop:8}},"$"+formatoDinero(x.saldo)),
+                    e("div",{style:{display:"flex",gap:4,marginTop:14}},
+                      e("button",{style:btnPrimCob,onClick:function(){ var url=contactUrl(x.cliente,"Hola "+x.cliente.nombre.split(" ")[0]+", te escribo para preguntar cómo va el pago pendiente de "+(x.cot.concepto||"tu cotización")+"."); if(url) abrirEnlaceExternoSeguro(url); else setClienteCompletarId(x.cliente.id); }},
+                        e("svg",{width:16,height:16,viewBox:"0 0 24 24",fill:"none",stroke:"currentColor",strokeWidth:1.9,strokeLinecap:"round",strokeLinejoin:"round"},e("path",{d:"M4 5.5A1.5 1.5 0 0 1 5.5 4h13A1.5 1.5 0 0 1 20 5.5v9a1.5 1.5 0 0 1-1.5 1.5H9.5L4 20z"})),
+                        "Contactar"
+                      ),
+                      e("button",{style:btnGhostCob,onClick:function(){ setPagosModalTipo(x.tipo); setPagosModalId(x.cot.id); setFormPago({monto:"",fecha:FECHA_HOY,concepto:"Pago"}); }},
+                        "+ Registrar pago"
                       )
                     )
                   );
