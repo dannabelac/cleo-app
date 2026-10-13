@@ -10575,6 +10575,11 @@ export default function CLEO(props){
                 pedidosAccionTodos.push({ped:ped,cl:clPed,tipo:"atrasado",msg:"Lleva "+diasDesde(ped.fecha)+" días sin marcarse como entregado",color:"#EF4444",bg:"#FEF2F2"});
               }
             });
+            var seenPedIds={};
+            pedidosAccionTodos=pedidosAccionTodos.filter(function(item){
+              if(seenPedIds[item.ped.id]) return false;
+              seenPedIds[item.ped.id]=true; return true;
+            });
             var urgentes=[],pedidosAccionIni=[];
             var iU=0,iP=0;
             while(urgentes.length+pedidosAccionIni.length<3&&(iU<urgentesTodas.length||iP<pedidosAccionTodos.length)){
