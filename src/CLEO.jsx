@@ -4349,7 +4349,7 @@ function TopBarProductos(props){
   return e("div",{style:{position:"relative",display:"inline-block"}},
     open&&e("div",{style:{position:"fixed",inset:0,zIndex:499},onClick:function(){ setOpen(false); }}),
     e("button",{
-      style:{cursor:"pointer",padding:isMobile?"0 14px":"9px 20px",height:isMobile?36:"auto",borderRadius:14,border:"none",background:C.purple,fontSize:isMobile?12:13,color:"#fff",fontWeight:700,display:"flex",alignItems:"center",gap:6,whiteSpace:"nowrap"},
+      style:{cursor:"pointer",padding:isMobile?"0 14px":"9px 20px",height:isMobile?36:"auto",borderRadius:14,border:"none",background:C.ink,fontSize:isMobile?12:13,color:"#fff",fontWeight:700,display:"flex",alignItems:"center",gap:6,whiteSpace:"nowrap"},
       onClick:function(){ setOpen(!open); }
     },
       "+ Nuevo",
@@ -4388,7 +4388,7 @@ function TopBarServicios(props){
   return e("div",{style:{position:"relative",display:"inline-block"}},
     open&&e("div",{style:{position:"fixed",inset:0,zIndex:499},onClick:function(){ setOpen(false); }}),
     e("button",{
-      style:{cursor:"pointer",padding:isMobile?"0 14px":"9px 20px",height:isMobile?36:"auto",borderRadius:14,border:"none",background:C.purple,fontSize:isMobile?12:13,color:"#fff",fontWeight:700,display:"flex",alignItems:"center",gap:6,whiteSpace:"nowrap"},
+      style:{cursor:"pointer",padding:isMobile?"0 14px":"9px 20px",height:isMobile?36:"auto",borderRadius:14,border:"none",background:C.ink,fontSize:isMobile?12:13,color:"#fff",fontWeight:700,display:"flex",alignItems:"center",gap:6,whiteSpace:"nowrap"},
       onClick:function(){ setOpen(!open); }
     },
       "+ Nuevo",
@@ -9893,7 +9893,7 @@ export default function CLEO(props){
       // CONTENIDO PRINCIPAL
       e("div",{style:{flex:1,minWidth:0,minHeight:0,overflow:"auto",background:C.bg,paddingBottom:isMobile?70:0}},
 
-        e("div",{style:{padding:isMobile?"20px 16px":"28px 40px",maxWidth:1120,margin:"0 auto",width:"100%",boxSizing:"border-box"}},
+        e("div",{style:{padding:isMobile?"20px 16px":"24px 40px",maxWidth:1120,margin:"0 auto",width:"100%",boxSizing:"border-box"}},
 
       // INICIO - ONBOARDING GUIADO NUEVO
       vista==="inicio"&&(function(){
@@ -10438,8 +10438,8 @@ export default function CLEO(props){
                     onCot:function(){ setModalCot(true); },
                     onVenta:abrirModalVenta})
             ),
-            e("div",{style:{marginTop:isMobile?28:20,fontSize:isMobile?13.5:14,color:"#5A6078",fontWeight:500}},hoyLabel),
-            e("h1",{style:{margin:"6px 0 0",fontSize:isMobile?24:28,lineHeight:1.2,fontWeight:800,letterSpacing:"-0.03em",color:C.ink}},saludo+", "+nombre)
+            e("div",{style:{marginTop:isMobile?28:8,fontSize:isMobile?13.5:14,color:"#5A6078",fontWeight:500}},hoyLabel),
+            e("h1",{style:{margin:isMobile?"6px 0 0":"4px 0 0",fontSize:isMobile?24:28,lineHeight:1.2,fontWeight:800,letterSpacing:"-0.03em",color:C.ink}},saludo+", "+nombre)
           ),
 
           // ── FRANJA HOY ──────────────────────────────────────────────────────
@@ -10449,14 +10449,14 @@ export default function CLEO(props){
             style:{
               marginTop:isMobile?20:32,
               display:"flex",alignItems:"center",gap:isMobile?14:24,
-              padding:isMobile?"20px 16px 20px 20px":"22px 22px 22px 28px",
+              padding:isMobile?"20px 16px 20px 20px":"14px 16px 14px 22px",
               borderRadius:isMobile?24:22,
               background:"radial-gradient("+(isMobile?"120% 120%":"110% 160%")+" at 100% 0%, #24307A 0%, rgba(36,48,122,0) 62%), "+C.ink,
               color:"#FFFFFF",border:"none",cursor:"pointer",width:"100%",boxSizing:"border-box",
               textAlign:"left",fontFamily:FONT_CLEO
             }
           },
-            e("p",{style:{margin:0,flex:1,fontSize:isMobile?16.5:19,lineHeight:1.4,fontWeight:700,letterSpacing:"-0.015em"}},
+            e("p",{style:{margin:0,flex:1,fontSize:isMobile?16.5:16,lineHeight:1.4,fontWeight:700,letterSpacing:"-0.015em"}},
               (function(){
                 var pfx=subtitulo.startsWith("Hoy tienes ")?"Hoy tienes ":subtitulo.startsWith("Tienes ")?"Tienes ":"";
                 if(pfx) return [e("span",{key:"p",style:{color:"#A9AFC6",fontWeight:600}},pfx),e("span",{key:"r",style:{color:"#A3AFFF"}},subtitulo.slice(pfx.length))];
@@ -10471,7 +10471,7 @@ export default function CLEO(props){
                 ),
                 "Ver Hoy"
               ),
-              e("span",{style:{width:40,height:40,flexShrink:0,borderRadius:"50%",background:"#FFFFFF",color:C.ink,display:"grid",placeItems:"center"}},
+              e("span",{style:{width:isMobile?40:36,height:isMobile?40:36,flexShrink:0,borderRadius:"50%",background:"#FFFFFF",color:C.ink,display:"grid",placeItems:"center"}},
                 e("svg",{width:16,height:16,viewBox:"0 0 24 24",fill:"none",stroke:"currentColor",strokeWidth:2.4,strokeLinecap:"round",strokeLinejoin:"round"},
                   e("path",{d:"M5 12h14M13 6l6 6-6 6"})
                 )
@@ -10494,19 +10494,19 @@ export default function CLEO(props){
           ),
 
           // ── REGISTRO ──────────────────────────────────────────────────────────
-          e("section",{style:{marginTop:isMobile?36:48}},
+          e("section",{style:{marginTop:isMobile?36:32}},
             e("h2",{style:{margin:isMobile?"0 2px":"0",fontSize:isMobile?18:20,fontWeight:800,letterSpacing:"-0.025em",color:C.ink}},"¿Qué ha pasado en "+empresa+"?"),
             e("p",{style:{margin:isMobile?"4px 2px 14px":"4px 0 0",fontSize:14,lineHeight:1.45,color:"#5A6078"}},"Registra algo nuevo para mantener tus ventas al día."),
-            e("div",{style:{marginTop:isMobile?0:16,display:"grid",gridTemplateColumns:isMobile?"repeat(2,minmax(0,1fr))":"repeat(4,minmax(0,1fr))",gap:isMobile?10:12,padding:12,borderRadius:isMobile?24:26,background:"#8D9BFF"}},
+            e("div",{style:{marginTop:isMobile?0:14,display:"grid",gridTemplateColumns:isMobile?"repeat(2,minmax(0,1fr))":"repeat(4,minmax(0,1fr))",gap:10,padding:isMobile?12:10,borderRadius:isMobile?24:22,background:"#8D9BFF"}},
               [
                 {label:"Alguien preguntó",onClick:function(){ if(esProductos){ setPasoPreguntoP(1); } else { setPasoPregunto(1); } }},
                 {label:"Envié un precio",onClick:function(){ if(esProductos){ setModalEnvieP(true); } else { setFormCot(Object.assign({},cotVacio,{nuevoNombre:""})); setModalCot(true); } }},
                 {label:"Cerré una venta",onClick:function(){ if(esProductos){ setModalCerreP(true); } else { setModalCerre(true); } }},
                 {label:"Recibí un pago",onClick:function(){ if(esProductos){ setModalRecibiP(true); } else { setModalRecibi(true); } }}
               ].map(function(op,i){
-                return e("button",{key:i,style:{display:"flex",alignItems:"center",justifyContent:"space-between",gap:10,minHeight:isMobile?60:68,padding:isMobile?"0 12px 0 16px":"0 14px 0 20px",border:0,borderRadius:18,background:"#FFFFFF",fontFamily:"inherit",fontSize:isMobile?14.5:15.5,fontWeight:700,color:C.ink,textAlign:"left",cursor:"pointer"},onClick:op.onClick},
+                return e("button",{key:i,style:{display:"flex",alignItems:"center",justifyContent:"space-between",gap:10,minHeight:isMobile?60:56,padding:isMobile?"0 12px 0 16px":"0 14px 0 20px",border:0,borderRadius:18,background:"#FFFFFF",fontFamily:"inherit",fontSize:isMobile?14.5:14,fontWeight:700,color:C.ink,textAlign:"left",cursor:"pointer"},onClick:op.onClick},
                   op.label,
-                  e("span",{style:{width:32,height:32,flexShrink:0,borderRadius:"50%",background:"#EEF0FF",color:"#3F4BD0",display:"grid",placeItems:"center"}},
+                  e("span",{style:{width:isMobile?32:28,height:isMobile?32:28,flexShrink:0,borderRadius:"50%",background:"#EEF0FF",color:"#3F4BD0",display:"grid",placeItems:"center"}},
                     e("svg",{width:15,height:15,viewBox:"0 0 24 24",fill:"none",stroke:"currentColor",strokeWidth:2.4,strokeLinecap:"round",strokeLinejoin:"round"},e("path",{d:"M5 12h14M13 6l6 6-6 6"}))
                   )
                 );
@@ -10580,7 +10580,7 @@ export default function CLEO(props){
             }
             var hayItems=urgentes.length>0||pedidosAccionIni.length>0;
 
-            return e("section",{style:{marginTop:isMobile?36:48}},
+            return e("section",{style:{marginTop:isMobile?36:32}},
               e("div",{style:{display:"flex",alignItems:"flex-end",justifyContent:"space-between",gap:16}},
                 e("div",null,
                   e("h2",{style:{margin:0,fontSize:isMobile?18:20,fontWeight:800,letterSpacing:"-0.025em",color:C.text}},"A quién contactar hoy"),
@@ -10636,26 +10636,26 @@ export default function CLEO(props){
                   })
                 ):e("div",{style:{marginTop:10,padding:18,borderRadius:24,background:"#FFFFFF",textAlign:"center",fontSize:13,color:C.textMuted}},"Todo importante está atendido por hoy.")
               ):(
-                e("div",{style:{marginTop:22,display:"grid",gridTemplateColumns:"repeat(3,minmax(0,1fr))",columnGap:20}},
+                e("div",{style:{marginTop:14,display:"grid",gridTemplateColumns:"repeat(3,minmax(0,1fr))",columnGap:20}},
                   urgentes.length>0&&e("div",{style:{fontSize:11,fontWeight:800,letterSpacing:".08em",color:"#4A5068",display:"flex",gap:7,marginBottom:12,marginLeft:4,gridColumn:pedidosAccionIni.length>0?"span "+urgentes.length:"1/-1"}},"OPORTUNIDADES POR RETOMAR",e("span",{style:{color:C.purple}},urgentes.length)),
                   pedidosAccionIni.length>0&&e("div",{style:{fontSize:11,fontWeight:800,letterSpacing:".08em",color:"#4A5068",display:"flex",gap:7,marginBottom:12,marginLeft:4,gridColumn:urgentes.length>0?"span "+pedidosAccionIni.length:"1/-1"}},"PEDIDOS QUE REQUIEREN ACCIÓN",e("span",{style:{color:C.purple}},pedidosAccionIni.length)),
                   urgentes.map(function(u){
                     var c=u.cliente;
                     var nota=u.recordatorioEsManualOPersonalizado&&u.recordatorioNota?u.recordatorioNota:null;
-                    return e("article",{key:u.accionId,style:{background:"#FFFFFF",borderRadius:22,padding:"24px 24px 22px",display:"flex",flexDirection:"column",boxSizing:"border-box"}},
+                    return e("article",{key:u.accionId,style:{background:"#FFFFFF",borderRadius:20,padding:"18px 20px",display:"flex",flexDirection:"column",boxSizing:"border-box"}},
                       e("div",{style:{fontSize:sc.namePerson,fontWeight:800,letterSpacing:"-0.015em",color:C.ink}},c.nombre),
-                      e("p",{style:{margin:"8px 0 0",fontSize:14,lineHeight:1.6,color:"#4A5068"}},u.desc),
+                      e("p",{style:{margin:"8px 0 0",fontSize:13.5,lineHeight:1.55,color:"#4A5068"}},u.desc),
                       nota&&e("p",{style:{display:"flex",gap:7,alignItems:"flex-start",margin:"12px 0 0",fontSize:13,lineHeight:1.5,color:"#545A72"}},
                         e("svg",{width:15,height:15,viewBox:"0 0 24 24",fill:"none",stroke:"#7C8CFF",strokeWidth:1.9,strokeLinecap:"round",strokeLinejoin:"round",style:{flexShrink:0,marginTop:2}},e("path",{d:"M4 20h4L19 9l-4-4L4 16z"})),
                         e("span",null,'"'+nota+'"')
                       ),
-                      e("div",{style:{flex:1,minHeight:20}}),
+                      e("div",{style:{flex:1,minHeight:14}}),
                       e("div",{style:{display:"flex",gap:4}},
-                        e("button",{style:{cursor:"pointer",height:sc.btnH,padding:"0 16px",borderRadius:999,border:0,background:C.ink,color:"#FFFFFF",fontSize:sc.btnText,fontWeight:700,fontFamily:"inherit",display:"inline-flex",alignItems:"center",justifyContent:"center",gap:8,flex:1},onClick:function(){manejarClickContactar(c,u.recordatorioId,u.recordatorioNota,u.recordatorioEsManualOPersonalizado);}},
+                        e("button",{style:{cursor:"pointer",height:sc.btnSmH,padding:"0 16px",borderRadius:999,border:0,background:C.ink,color:"#FFFFFF",fontSize:sc.btnSmText,fontWeight:700,fontFamily:"inherit",display:"inline-flex",alignItems:"center",justifyContent:"center",gap:8,flex:1},onClick:function(){manejarClickContactar(c,u.recordatorioId,u.recordatorioNota,u.recordatorioEsManualOPersonalizado);}},
                           e("svg",{width:16,height:16,viewBox:"0 0 24 24",fill:"none",stroke:"currentColor",strokeWidth:1.9,strokeLinecap:"round",strokeLinejoin:"round"},e("path",{d:"M4 5.5A1.5 1.5 0 0 1 5.5 4h13A1.5 1.5 0 0 1 20 5.5v9a1.5 1.5 0 0 1-1.5 1.5H9.5L4 20z"})),
                           "Contactar"
                         ),
-                        e("button",{style:{cursor:"pointer",height:sc.btnH,padding:"0 10px",borderRadius:999,border:0,background:"transparent",color:C.ink,fontSize:sc.btnText,fontWeight:700,fontFamily:"inherit",display:"inline-flex",alignItems:"center",justifyContent:"center",gap:6},onClick:function(){
+                        e("button",{style:{cursor:"pointer",height:sc.btnSmH,padding:"0 10px",borderRadius:999,border:0,background:"transparent",color:C.ink,fontSize:sc.btnSmText,fontWeight:700,fontFamily:"inherit",display:"inline-flex",alignItems:"center",justifyContent:"center",gap:6},onClick:function(){
                           if(u.recordatorioEsManualOPersonalizado){ var res=completarRecordatorioManual(c.id,u.recordatorioId); if(res.ok) mostrarToast("✓ Marcaste tu recordatorio como atendido para "+res.nombreCliente+"."); }
                           else { setContactadoClienteId(c.id); setContactadoRecordatorioId(u.recordatorioId); }
                         }},
@@ -10670,15 +10670,15 @@ export default function CLEO(props){
                     var pagadoP=(item.ped.pagos||[]).reduce(function(s,p){ return s+Number(p.monto); },0);
                     var saldoP=Math.max(0,Number(item.ped.total||0)-pagadoP);
                     var saldoStr="$"+formatoDinero(saldoP);
-                    return e("article",{key:item.ped.id+"_"+item.tipo,style:{background:"#FBF1DC",borderRadius:22,padding:"24px 24px 22px",display:"flex",flexDirection:"column",boxSizing:"border-box"}},
+                    return e("article",{key:item.ped.id+"_"+item.tipo,style:{background:"#FBF1DC",borderRadius:20,padding:"18px 20px",display:"flex",flexDirection:"column",boxSizing:"border-box"}},
                       e("div",{style:{fontSize:sc.namePerson,fontWeight:800,letterSpacing:"-0.015em",color:C.ink}},clP?clP.nombre:"Cliente"),
                       e("div",{style:{marginTop:14,fontSize:13,fontWeight:600,color:"#6E4806"}},"Saldo pendiente"),
                       e("div",{style:{marginTop:2,fontSize:sc.figHero,lineHeight:1.05,fontWeight:800,letterSpacing:"-0.035em",color:"#5E3D04"}},saldoStr),
-                      item.ped.productos&&e("div",{style:{marginTop:6,fontSize:14,color:"#4A5068"}},item.ped.productos),
-                      e("div",{style:{flex:1,minHeight:20}}),
+                      item.ped.productos&&e("div",{style:{marginTop:6,fontSize:13.5,color:"#4A5068"}},item.ped.productos),
+                      e("div",{style:{flex:1,minHeight:14}}),
                       e("div",{style:{display:"flex",gap:6}},
                         clP&&e(BtnCanal,{cliente:clP,small:false}),
-                        e("button",{style:{cursor:"pointer",height:sc.btnH,padding:"0 16px",borderRadius:999,border:0,background:C.ink,color:"#FFFFFF",fontSize:sc.btnText,fontWeight:700,fontFamily:"inherit",display:"inline-flex",alignItems:"center",justifyContent:"center",flex:1},onClick:function(){setVista("pedidos");setHighlightPedidoId(item.ped.id);}},"Ver pedido →")
+                        e("button",{style:{cursor:"pointer",height:sc.btnSmH,padding:"0 16px",borderRadius:999,border:0,background:C.ink,color:"#FFFFFF",fontSize:sc.btnSmText,fontWeight:700,fontFamily:"inherit",display:"inline-flex",alignItems:"center",justifyContent:"center",flex:1},onClick:function(){setVista("pedidos");setHighlightPedidoId(item.ped.id);}},"Ver pedido →")
                       )
                     );
                   }),
@@ -10690,7 +10690,7 @@ export default function CLEO(props){
             var hayCobrosPendientes=cobrosTodosIni.length>0;
             var totalRestantes=accionesRestantes+cobrosRestantesIni;
             var hayItemsSrv=acciones.length>0||hayCobrosPendientes;
-            return e("section",{style:{marginTop:isMobile?36:48}},
+            return e("section",{style:{marginTop:isMobile?36:32}},
               e("div",{style:{display:"flex",alignItems:"flex-end",justifyContent:"space-between",gap:16}},
                 e("div",null,
                   e("h2",{style:{margin:0,fontSize:isMobile?18:20,fontWeight:800,letterSpacing:"-0.025em",color:C.text}},"A quién contactar hoy"),
@@ -10757,36 +10757,36 @@ export default function CLEO(props){
                   })
                 ):e("div",{style:{marginTop:10,padding:18,borderRadius:24,background:"#FFFFFF",textAlign:"center",fontSize:13,color:C.textMuted}},"Todo importante está atendido por hoy.")
               ):(
-                e("div",{style:{marginTop:22,display:"grid",gridTemplateColumns:"repeat(3,minmax(0,1fr))",columnGap:20}},
+                e("div",{style:{marginTop:14,display:"grid",gridTemplateColumns:"repeat(3,minmax(0,1fr))",columnGap:20}},
                   acciones.length>0&&e("div",{style:{fontSize:11,fontWeight:800,letterSpacing:".08em",color:"#4A5068",display:"flex",gap:7,marginBottom:12,marginLeft:4,gridColumn:hayCobrosPendientes?"span "+acciones.length:"1/-1"}},"CONVERSACIONES POR RETOMAR",e("span",{style:{color:C.purple}},acciones.length)),
                   hayCobrosPendientes&&e("div",{style:{fontSize:11,fontWeight:800,letterSpacing:".08em",color:"#4A5068",display:"flex",gap:7,marginBottom:12,marginLeft:4,gridColumn:acciones.length>0?"span "+cobrosPendientes.length:"1/-1"}},"COBROS PENDIENTES",e("span",{style:{color:C.purple}},cobrosTodosIni.length)),
                   acciones.map(function(a,i){
                     var nota=a.recordatorioEsManualOPersonalizado&&a.recordatorioNota?a.recordatorioNota:null;
-                    return e("article",{key:a.accionId||i,style:{background:"#FFFFFF",borderRadius:22,padding:"24px 24px 22px",display:"flex",flexDirection:"column",boxSizing:"border-box"}},
+                    return e("article",{key:a.accionId||i,style:{background:"#FFFFFF",borderRadius:20,padding:"18px 20px",display:"flex",flexDirection:"column",boxSizing:"border-box"}},
                       e("div",{style:{fontSize:sc.namePerson,fontWeight:800,letterSpacing:"-0.015em",color:C.ink}},a.cliente.nombre),
-                      e("p",{style:{margin:"8px 0 0",fontSize:14,lineHeight:1.6,color:"#4A5068"}},a.desc),
+                      e("p",{style:{margin:"8px 0 0",fontSize:13.5,lineHeight:1.55,color:"#4A5068"}},a.desc),
                       nota&&e("p",{style:{display:"flex",gap:7,alignItems:"flex-start",margin:"12px 0 0",fontSize:13,lineHeight:1.5,color:"#545A72"}},
                         e("svg",{width:15,height:15,viewBox:"0 0 24 24",fill:"none",stroke:"#7C8CFF",strokeWidth:1.9,strokeLinecap:"round",strokeLinejoin:"round",style:{flexShrink:0,marginTop:2}},e("path",{d:"M4 20h4L19 9l-4-4L4 16z"})),
                         e("span",null,'"'+nota+'"')
                       ),
-                      e("div",{style:{flex:1,minHeight:20}}),
+                      e("div",{style:{flex:1,minHeight:14}}),
                       a.origenAccion==="cotizacion_independiente"
                         ?e("div",{style:{display:"flex",gap:8,flexWrap:"wrap"}},
-                            e("button",{key:"contactar",style:{cursor:"pointer",height:sc.btnH,padding:"0 16px",borderRadius:999,border:0,background:C.ink,color:"#FFFFFF",fontSize:sc.btnText,fontWeight:700,fontFamily:"inherit",display:"inline-flex",alignItems:"center",justifyContent:"center",gap:8,flex:1},onClick:function(){ contactarCotizacionIndependiente(a.cotizacionId); }},
+                            e("button",{key:"contactar",style:{cursor:"pointer",height:sc.btnSmH,padding:"0 16px",borderRadius:999,border:0,background:C.ink,color:"#FFFFFF",fontSize:sc.btnSmText,fontWeight:700,fontFamily:"inherit",display:"inline-flex",alignItems:"center",justifyContent:"center",gap:8,flex:1},onClick:function(){ contactarCotizacionIndependiente(a.cotizacionId); }},
                               e("svg",{width:16,height:16,viewBox:"0 0 24 24",fill:"none",stroke:"currentColor",strokeWidth:1.9,strokeLinecap:"round",strokeLinejoin:"round"},e("path",{d:"M4 5.5A1.5 1.5 0 0 1 5.5 4h13A1.5 1.5 0 0 1 20 5.5v9a1.5 1.5 0 0 1-1.5 1.5H9.5L4 20z"})),
                               "Contactar"
                             ),
-                            e("button",{key:"atendida",style:{cursor:"pointer",height:sc.btnH,padding:"0 12px",borderRadius:999,border:"1.5px solid "+C.border,background:"transparent",fontSize:sc.btnText,fontWeight:600,fontFamily:"inherit",color:C.textMuted},onClick:function(){ atenderSeguimientoCotizacion(a.cotizacionId); }},"✓ Ya la revisó"),
-                            e("button",{key:"reprogramar",style:{cursor:"pointer",height:sc.btnH,padding:"0 12px",borderRadius:999,border:"1.5px solid "+C.border,background:"transparent",fontSize:sc.btnText,fontWeight:600,fontFamily:"inherit",color:C.textMuted},onClick:function(){ setModalReprogSeguimientoCot(a.cotizacionId); }},"Reprogramar"),
-                            e("button",{key:"abrir",style:{cursor:"pointer",height:sc.btnH,padding:"0 12px",borderRadius:999,border:"1.5px solid "+C.border,background:"transparent",fontSize:sc.btnText,fontWeight:600,fontFamily:"inherit",color:C.textMuted},onClick:function(){ abrirCotizacionIndependiente(a.cotizacionId); }},"Abrir cotización")
+                            e("button",{key:"atendida",style:{cursor:"pointer",height:sc.btnSmH,padding:"0 12px",borderRadius:999,border:"1.5px solid "+C.border,background:"transparent",fontSize:sc.btnSmText,fontWeight:600,fontFamily:"inherit",color:C.textMuted},onClick:function(){ atenderSeguimientoCotizacion(a.cotizacionId); }},"✓ Ya la revisó"),
+                            e("button",{key:"reprogramar",style:{cursor:"pointer",height:sc.btnSmH,padding:"0 12px",borderRadius:999,border:"1.5px solid "+C.border,background:"transparent",fontSize:sc.btnSmText,fontWeight:600,fontFamily:"inherit",color:C.textMuted},onClick:function(){ setModalReprogSeguimientoCot(a.cotizacionId); }},"Reprogramar"),
+                            e("button",{key:"abrir",style:{cursor:"pointer",height:sc.btnSmH,padding:"0 12px",borderRadius:999,border:"1.5px solid "+C.border,background:"transparent",fontSize:sc.btnSmText,fontWeight:600,fontFamily:"inherit",color:C.textMuted},onClick:function(){ abrirCotizacionIndependiente(a.cotizacionId); }},"Abrir cotización")
                           )
                         :e("div",{style:{display:"flex",gap:4,flexDirection:"column"}},
                             e("div",{style:{display:"flex",gap:4}},
-                              e("button",{style:{cursor:"pointer",height:sc.btnH,padding:"0 16px",borderRadius:999,border:0,background:C.ink,color:"#FFFFFF",fontSize:sc.btnText,fontWeight:700,fontFamily:"inherit",display:"inline-flex",alignItems:"center",justifyContent:"center",gap:8,flex:1},onClick:function(){ manejarClickContactar(a.cliente,a.recordatorioId,a.recordatorioNota,a.recordatorioEsManualOPersonalizado); }},
+                              e("button",{style:{cursor:"pointer",height:sc.btnSmH,padding:"0 16px",borderRadius:999,border:0,background:C.ink,color:"#FFFFFF",fontSize:sc.btnSmText,fontWeight:700,fontFamily:"inherit",display:"inline-flex",alignItems:"center",justifyContent:"center",gap:8,flex:1},onClick:function(){ manejarClickContactar(a.cliente,a.recordatorioId,a.recordatorioNota,a.recordatorioEsManualOPersonalizado); }},
                                 e("svg",{width:16,height:16,viewBox:"0 0 24 24",fill:"none",stroke:"currentColor",strokeWidth:1.9,strokeLinecap:"round",strokeLinejoin:"round"},e("path",{d:"M4 5.5A1.5 1.5 0 0 1 5.5 4h13A1.5 1.5 0 0 1 20 5.5v9a1.5 1.5 0 0 1-1.5 1.5H9.5L4 20z"})),
                                 "Contactar"
                               ),
-                              e("button",{style:{cursor:"pointer",height:sc.btnH,padding:"0 10px",borderRadius:999,border:0,background:"transparent",color:C.ink,fontSize:sc.btnText,fontWeight:700,fontFamily:"inherit",display:"inline-flex",alignItems:"center",justifyContent:"center",gap:6},onClick:function(){
+                              e("button",{style:{cursor:"pointer",height:sc.btnSmH,padding:"0 10px",borderRadius:999,border:0,background:"transparent",color:C.ink,fontSize:sc.btnSmText,fontWeight:700,fontFamily:"inherit",display:"inline-flex",alignItems:"center",justifyContent:"center",gap:6},onClick:function(){
                                 if(a.recordatorioEsManualOPersonalizado){ var res2=completarRecordatorioManual(a.cliente.id,a.recordatorioId); if(res2.ok) mostrarToast("✓ Marcaste tu recordatorio como atendido para "+res2.nombreCliente+"."); }
                                 else { setContactadoClienteId(a.cliente.id); setContactadoRecordatorioId(a.recordatorioId); }
                               }},
@@ -10800,18 +10800,18 @@ export default function CLEO(props){
                   }),
                   cobrosPendientes.map(function(x,i){
                     var saldoStr="$"+formatoDinero(x.saldo);
-                    return e("article",{key:i,style:{background:"#FBF1DC",borderRadius:22,padding:"24px 24px 22px",display:"flex",flexDirection:"column",boxSizing:"border-box"}},
+                    return e("article",{key:i,style:{background:"#FBF1DC",borderRadius:20,padding:"18px 20px",display:"flex",flexDirection:"column",boxSizing:"border-box"}},
                       e("div",{style:{fontSize:sc.namePerson,fontWeight:800,letterSpacing:"-0.015em",color:C.ink}},x.cliente.nombre),
                       e("div",{style:{marginTop:14,fontSize:13,fontWeight:600,color:"#6E4806"}},"Saldo pendiente"),
                       e("div",{style:{marginTop:2,fontSize:sc.figHero,lineHeight:1.05,fontWeight:800,letterSpacing:"-0.035em",color:"#5E3D04"}},"$"+formatoDinero(x.saldo)),
-                      x.cot.concepto&&e("div",{style:{marginTop:6,fontSize:14,color:"#4A5068"}},x.cot.concepto),
-                      e("div",{style:{flex:1,minHeight:20}}),
+                      x.cot.concepto&&e("div",{style:{marginTop:6,fontSize:13.5,color:"#4A5068"}},x.cot.concepto),
+                      e("div",{style:{flex:1,minHeight:14}}),
                       e("div",{style:{display:"flex",gap:6,flexWrap:"wrap"}},
-                        e("button",{style:{cursor:"pointer",height:sc.btnH,padding:"0 16px",borderRadius:999,border:0,background:C.ink,color:"#FFFFFF",fontSize:sc.btnText,fontWeight:700,fontFamily:"inherit",display:"inline-flex",alignItems:"center",justifyContent:"center",gap:8,flex:1},onClick:function(){ var url=contactUrl(x.cliente,"Hola "+x.cliente.nombre.split(" ")[0]+", te escribo para preguntar cómo va el pago pendiente de "+(x.cot.concepto||"tu cotización")+"."); if(url) abrirEnlaceExternoSeguro(url); else setClienteCompletarId(x.cliente.id); }},
+                        e("button",{style:{cursor:"pointer",height:sc.btnSmH,padding:"0 16px",borderRadius:999,border:0,background:C.ink,color:"#FFFFFF",fontSize:sc.btnSmText,fontWeight:700,fontFamily:"inherit",display:"inline-flex",alignItems:"center",justifyContent:"center",gap:8,flex:1},onClick:function(){ var url=contactUrl(x.cliente,"Hola "+x.cliente.nombre.split(" ")[0]+", te escribo para preguntar cómo va el pago pendiente de "+(x.cot.concepto||"tu cotización")+"."); if(url) abrirEnlaceExternoSeguro(url); else setClienteCompletarId(x.cliente.id); }},
                           e("svg",{width:16,height:16,viewBox:"0 0 24 24",fill:"none",stroke:"currentColor",strokeWidth:1.9,strokeLinecap:"round",strokeLinejoin:"round"},e("path",{d:"M4 5.5A1.5 1.5 0 0 1 5.5 4h13A1.5 1.5 0 0 1 20 5.5v9a1.5 1.5 0 0 1-1.5 1.5H9.5L4 20z"})),
                           "Contactar"
                         ),
-                        e("button",{style:{cursor:"pointer",height:sc.btnH,padding:"0 12px",borderRadius:999,border:"1.5px solid #E7D5AE",background:"transparent",fontSize:sc.btnText,fontWeight:600,fontFamily:"inherit",color:"#6E4806"},onClick:function(){ setPagosModalTipo(x.tipo); setPagosModalId(x.cot.id); setFormPago({monto:"",fecha:FECHA_HOY,concepto:"Pago"}); }},
+                        e("button",{style:{cursor:"pointer",height:sc.btnSmH,padding:"0 12px",borderRadius:999,border:"1.5px solid #E7D5AE",background:"transparent",fontSize:sc.btnSmText,fontWeight:600,fontFamily:"inherit",color:"#6E4806"},onClick:function(){ setPagosModalTipo(x.tipo); setPagosModalId(x.cot.id); setFormPago({monto:"",fecha:FECHA_HOY,concepto:"Pago"}); }},
                           "+ Registrar pago"
                         )
                       )
@@ -10824,15 +10824,15 @@ export default function CLEO(props){
           })(),
 
           // ── IDEA DEL DÍA ────────────────────────────────────────────────────
-          textoIdea&&e("aside",{"aria-label":"Idea del día",style:{marginTop:isMobile?32:40,display:"flex",alignItems:"center",gap:isMobile?12:16,padding:isMobile?"18px":"20px 24px",borderRadius:22,background:"#FFFFFF"}},
-            e("span",{style:{width:isMobile?34:40,height:isMobile?34:40,flexShrink:0,borderRadius:isMobile?11:13,background:"#FBF1DC",color:"#8A5A06",display:"grid",placeItems:"center"}},
-              e("svg",{width:isMobile?16:18,height:isMobile?16:18,viewBox:"0 0 24 24",fill:"none",stroke:"currentColor",strokeWidth:1.9,strokeLinecap:"round",strokeLinejoin:"round"},
+          textoIdea&&e("aside",{"aria-label":"Idea del día",style:{marginTop:isMobile?32:32,display:"flex",alignItems:"center",gap:isMobile?12:16,padding:isMobile?"18px":"14px 18px",borderRadius:22,background:"#FFFFFF"}},
+            e("span",{style:{width:isMobile?34:32,height:isMobile?34:32,flexShrink:0,borderRadius:isMobile?11:10,background:"#FBF1DC",color:"#8A5A06",display:"grid",placeItems:"center"}},
+              e("svg",{width:isMobile?16:15,height:isMobile?16:15,viewBox:"0 0 24 24",fill:"none",stroke:"currentColor",strokeWidth:1.9,strokeLinecap:"round",strokeLinejoin:"round"},
                 e("path",{d:"M9 18h6M10 21h4M12 3a6 6 0 0 0-3.6 10.8c.6.5 1 1.2 1 2V16h5.2v-.2c0-.8.4-1.5 1-2A6 6 0 0 0 12 3z"})
               )
             ),
             e("div",{style:{minWidth:0}},
               e("div",{style:{fontSize:11,fontWeight:800,letterSpacing:".08em",color:"#8A5A06"}},"IDEA DEL DÍA"),
-              e("p",{style:{margin:"3px 0 0",fontSize:sc.text,lineHeight:1.55,color:"#4A5068"}},textoIdea)
+              e("p",{style:{margin:"3px 0 0",fontSize:isMobile?sc.text:13.5,lineHeight:1.55,color:"#4A5068"}},textoIdea)
             )
           )
 
