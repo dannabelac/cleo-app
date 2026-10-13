@@ -9,6 +9,34 @@ Copias del HTML de esas pantallas en `docs/rediseno/referencias/` (son mockups: 
 
 ---
 
+## 0. Escala única v2 (aprobada — tiene prioridad sobre los tamaños de TODAS las referencias R5–R10)
+Referencia visual: `docs/rediseno/referencias/R11-Escala-v2-Pedidos.html` (Pedidos a 1280×800). Solo cambia tamaños y espacios: no cambia layout, textos, colores ni funciones. Aplica a todas las pantallas, modales, formularios, onboarding y Resumen.
+Actualiza el objeto `sc` con estos valores y úsalo en todo el código; ningún `fontSize`, alto de botón o campo debe quedar como número suelto fuera de esta escala.
+
+| Rol | Desktop | Móvil | Peso |
+|---|---|---|---|
+| Título de pantalla (`sc.titlePage`) | 24 | 22 | 800, -0.03em |
+| Título de sección (`sc.titleSection`) | 18 | 17 | 800 |
+| Nombre de persona (`sc.namePerson`) | 15 | 15 | 800 |
+| Texto (`sc.text`) | 14 | 15 | 400–600 |
+| Secundario (`sc.textSec`) | 13 | 13.5 | 400–600 |
+| Datos / meta (`sc.textMeta`) | 12.5 | 13 | 500–700 |
+| Etiqueta en mayúsculas (`sc.textLabel`) | 11 | 11 | 800, .08em |
+| Cifra principal de la pantalla (`sc.figHero`) | 28 | 26 | 800 |
+| Importe de tarjeta (`sc.figCard`) | 22 | 18 | 800 |
+| Importe en lista (`sc.figRow`) | 14 | 14 | 800 |
+| Contador grande (Hoy) (`sc.figCount`) | 32 | 28 | 800 |
+| Botón (`sc.btnH`) | 36, texto 13 | 40, texto 14 | 700 |
+| Botón chico / acciones de tarjeta (`sc.btnSmH`) | 32, texto 12.5 | 40 | 700 |
+| Campo / filtro (`sc.inputH`, `sc.inputFs`) | 38 / 14 | 44 / 16 | — |
+| Pastilla de etapa o estado | 24, texto 12 | 26, texto 12 | 700 |
+
+- Mínimo absoluto: 11px. Eliminar todo 8, 9, 10 y 10.5 (excepto el texto del riel, abajo).
+- Valores intermedios sueltos (13.5, 14.5, 15.5, 16.5, 17, 19, 20, 30, 34, 36, 40, 44…) se llevan al rol que les corresponde de la tabla.
+- Espacios: contenido con padding 28px 40px (móvil 20px 16px) y `maxWidth:1120`; tarjetas padding 18px 20px, radio 20 (móvil 16px 18px, radio 22); 32px entre secciones; 12px entre tarjetas; íconos de 16–17px en desktop.
+- Riel v2 (desktop): ancho 88px, padding 14px 6px 10px, radio 22; elementos de 76px de ancho y 44px de alto mínimo, ícono 17px, texto 10.5px/600 (activo 800), sin cortar palabras ("Oportunidades" completa, "Inventario y costos" en dos líneas); "CLEO" 13px; contador 16px con texto 9.5px; "Mi catálogo" con "N productos" en 10px; bloque del negocio de 76px con logo de 26px y nombre 10.5px.
+- Verificar a 1280×800 y 1440×900: en Pedidos deben verse 3 tarjetas completas sin desplazarse.
+
 ## 1. Qué es y qué no es
 
 - **Solo diseño visual del front.** No cambiar lógica, datos, localStorage, cloudSync, flujos ni reglas del negocio.
