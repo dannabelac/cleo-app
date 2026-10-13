@@ -11780,83 +11780,149 @@ export default function CLEO(props){
         });
 
         var periodos=[
-          {label:"HOY",valor:totalHoy,periodo:"hoy"},
-          {label:"SEMANA",valor:totalSemana,periodo:"semana"},
-          {label:"MES",valor:totalMes,periodo:"mes"},
+          {k:"hoy",   label:"Hoy",    labelDark:"Entró hoy",         valor:totalHoy},
+          {k:"semana",label:"Semana", labelDark:"Entró esta semana", valor:totalSemana},
+          {k:"mes",   label:"Mes",    labelDark:"Entró este mes",    valor:totalMes},
         ];
+        var periodoActivo=periodos.find(function(p){ return p.k===filtroVP.periodo; })||periodos[2];
 
         return e("div",null,
-          e("header",{style:{marginBottom:20}},
-            e("h1",{style:{margin:0,fontSize:sc.titlePage,fontWeight:800,letterSpacing:"-0.03em",color:C.text}},"Ingresos"),
-            e("p",{style:{margin:"4px 0 0",fontSize:14.5,color:C.textMuted}},"Dinero que ya entró a tu negocio")
+          // Encabezado
+          e("header",null,
+            e("h1",{style:{margin:0,fontSize:isMobile?24:28,fontWeight:800,letterSpacing:"-0.03em",color:C.ink}},"Ingresos"),
+            e("p",{style:{margin:"6px 0 0",fontSize:14,color:"#5A6078"}},"Dinero que ya entró a tu negocio")
           ),
-
-          e("div",{role:"tablist","aria-label":"Periodo",style:{display:"grid",gridTemplateColumns:"1fr 1fr 2fr",gap:12,marginBottom:16}},
-            periodos.map(function(kpi){
-              var activo=filtroVP.periodo===kpi.periodo;
-              var btnStyle=Object.assign({
-                display:"flex",flexDirection:"column",alignItems:"flex-start",justifyContent:"flex-end",gap:4,
-                padding:activo?"20px 26px":"16px 20px",border:0,borderRadius:22,
-                fontFamily:"inherit",textAlign:"left",cursor:"pointer",transition:"background 0.15s",
-                background:activo?"":"#FFFFFF"
-              },activo?{background:"radial-gradient(110% 120% at 100% 0%, #24307A 0%, rgba(36,48,122,0) 62%), #0E1328"}:{});
-              return e("button",{key:kpi.periodo,role:"tab","aria-selected":activo,style:btnStyle,
-                onClick:function(){ setFiltroVP(Object.assign({},filtroVP,{periodo:kpi.periodo})); }},
-                e("small",{style:{fontSize:12,fontWeight:800,letterSpacing:".08em",color:activo?"#A3AFFF":"#4A5068"}},kpi.label),
-                e("strong",{style:{fontSize:activo?44:26,fontWeight:800,letterSpacing:"-0.03em",color:activo?"#FFFFFF":kpi.valor>0?C.ink:"#6E7489",lineHeight:1}},"$"+formatoDinero(kpi.valor))
-              );
-            })
-          ),
-
-          e("section",{"aria-label":"Movimientos",style:{background:"#FFFFFF",borderRadius:24,padding:isMobile?"16px 16px 8px":"16px 22px 8px"}},
-            e("div",{style:{display:"flex",flexWrap:"wrap",alignItems:"center",gap:12,paddingBottom:6}},
-              e("label",{style:{flex:"1 1 200px",position:"relative",display:"flex"}},
-                e("span",{style:{position:"absolute",width:1,height:1,overflow:"hidden",clipPath:"inset(50%)"}},"Buscar"),
-                e("svg",{width:18,height:18,viewBox:"0 0 24 24",fill:"none",stroke:"#5A6078",strokeWidth:1.9,strokeLinecap:"round",strokeLinejoin:"round",style:{position:"absolute",left:14,top:11,pointerEvents:"none"}},e("circle",{cx:11,cy:11,r:6.5}),e("path",{d:"m16 16 4 4"})),
-                e("input",{type:"search",placeholder:"Buscar...",value:filtroVP.busqueda,
-                  onChange:function(ev){ setFiltroVP(Object.assign({},filtroVP,{busqueda:ev.target.value})); },
-                  style:{flex:1,height:40,boxSizing:"border-box",padding:"0 16px 0 42px",border:0,borderRadius:999,background:"#F4F5FA",fontFamily:"inherit",fontSize:14,color:C.ink,outline:"none"}})
+          // Layout
+          isMobile ? (
+            // MÓVIL — bloque oscuro + selector fila + movimientos
+            e("div",{style:{marginTop:20}},
+              e("div",{style:{borderRadius:24,padding:"18px 20px",color:"#FFFFFF",background:"radial-gradient(120% 120% at 100% 0%, #24307A 0%, rgba(36,48,122,0) 62%), #0E1328"}},
+                e("div",{style:{fontSize:13,fontWeight:600,color:"#A9AFC6"}},periodoActivo.labelDark),
+                e("div",{style:{marginTop:2,fontSize:30,fontWeight:800,letterSpacing:"-0.035em",lineHeight:1.1}},"$"+formatoDinero(Math.abs(periodoActivo.valor)))
               ),
-              e("div",{role:"tablist","aria-label":"Tipo",style:{display:"inline-flex",gap:2,padding:4,borderRadius:999,background:"#F4F5FA"}},
-                [
-                  {k:"todos",label:"Todos"},
-                  {k:"cotizacion",label:"Pedidos"},
-                  {k:"venta_rapida",label:"Ventas rápidas"},
-                ].map(function(tab){
-                  var activo=filtroVP.origen===tab.k;
-                  return e("button",{key:tab.k,role:"tab","aria-selected":activo,style:{cursor:"pointer",display:"inline-flex",alignItems:"center",height:36,padding:"0 16px",borderRadius:999,border:0,fontFamily:"inherit",fontSize:14,fontWeight:activo?800:600,background:activo?"#E4E8FF":"transparent",color:activo?C.ink:"#4A5068"},
-                    onClick:function(){ setFiltroVP(Object.assign({},filtroVP,{origen:tab.k})); }
-                  },tab.label);
+              e("div",{role:"tablist",style:{marginTop:8,display:"flex",gap:2,padding:4,borderRadius:22,background:"#FFFFFF"}},
+                periodos.map(function(p){
+                  var activo=filtroVP.periodo===p.k;
+                  return e("button",{key:p.k,role:"tab","aria-selected":activo,style:{flex:1,display:"flex",flexDirection:"column",alignItems:"flex-start",gap:2,padding:"10px 12px",border:0,borderRadius:16,background:activo?"#E4E8FF":"transparent",fontFamily:"inherit",textAlign:"left",cursor:"pointer"},onClick:function(){ setFiltroVP(Object.assign({},filtroVP,{periodo:p.k})); }},
+                    e("small",{style:{fontSize:12,fontWeight:activo?800:600,color:activo?C.ink:"#5A6078"}},p.label),
+                    e("strong",{style:{fontSize:14.5,fontWeight:800,letterSpacing:"-0.01em",color:C.ink}},"$"+formatoDinero(Math.abs(p.valor)))
+                  );
                 })
+              ),
+              e("section",{"aria-label":"Movimientos",style:{marginTop:20,padding:"14px 18px 8px",borderRadius:24,background:"#FFFFFF"}},
+                e("label",{style:{display:"flex",alignItems:"center",gap:10,height:42,padding:"0 14px",borderRadius:21,background:"#F4F5FA",color:"#6E7489"}},
+                  e("svg",{width:18,height:18,viewBox:"0 0 24 24",fill:"none",stroke:"currentColor",strokeWidth:1.9,strokeLinecap:"round",strokeLinejoin:"round"},e("circle",{cx:11,cy:11,r:6.5}),e("path",{d:"m16 16 4 4"})),
+                  e("input",{type:"search",placeholder:"Buscar...",value:filtroVP.busqueda,onChange:function(ev){ setFiltroVP(Object.assign({},filtroVP,{busqueda:ev.target.value})); },style:{flex:1,minWidth:0,border:0,outline:"none",background:"transparent",fontFamily:"inherit",fontSize:14.5,color:C.ink}})
+                ),
+                e("div",{role:"tablist",style:{margin:"8px 0 6px",display:"flex",gap:2,padding:3,borderRadius:21,background:"#F4F5FA"}},
+                  [{k:"todos",label:"Todos"},{k:"cotizacion",label:"Pedidos"},{k:"venta_rapida",label:"Ventas rápidas"}].map(function(tab){
+                    var activo=filtroVP.origen===tab.k;
+                    return e("button",{key:tab.k,role:"tab","aria-selected":activo,style:{flex:1,height:36,padding:"0 6px",border:0,borderRadius:18,background:activo?"#E4E8FF":"transparent",fontFamily:"inherit",fontSize:12.5,fontWeight:activo?800:600,color:activo?C.ink:"#4A5068",cursor:"pointer"},onClick:function(){ setFiltroVP(Object.assign({},filtroVP,{origen:tab.k})); }},tab.label);
+                  })
+                ),
+                ingFiltrados.length===0
+                  ? e("div",{style:{textAlign:"center",padding:"40px 0 32px"}},
+                      e("div",{style:{fontSize:14,fontWeight:600,color:C.textMuted}},"Sin ingresos en este período"),
+                      e("div",{style:{fontSize:12.5,color:C.textDim,marginTop:4}},"Los pagos de cotizaciones y ventas rápidas aparecen aquí.")
+                    )
+                  : dayGroups.map(function(group,grpIdx){
+                      return e(React.Fragment,{key:group.label},
+                        e("div",{style:{fontSize:12,fontWeight:800,letterSpacing:".06em",color:"#3F4BD0",textTransform:"uppercase",padding:grpIdx===0?"6px 0 6px":"22px 0 6px"}},group.label),
+                        group.items.map(function(ing,idx){
+                          var esNeg=ing.monto<0;
+                          var esVR=ing.origenVenta==="venta_rapida"||ing.origen==="venta_rapida";
+                          var tipoIcoBg=esNeg?"#FBE6E1":esVR?"#FBF1DC":"#EEF0FF";
+                          var tipoIcoColor=esNeg?"#B23A24":esVR?"#8A5A06":"#3F4BD0";
+                          var tipoLabel=esNeg?"Pedido cancelado":esVR?"Venta rápida":"Pedido";
+                          return e("div",{key:ing.id,style:{display:"flex",alignItems:"flex-start",gap:14,padding:"12px 0",borderTop:idx===0?"none":"1px solid #EDEFF5"}},
+                            e("span",{style:{width:36,height:36,flexShrink:0,borderRadius:12,display:"grid",placeItems:"center",background:tipoIcoBg,color:tipoIcoColor}},
+                              esNeg
+                                ? e("svg",{width:16,height:16,viewBox:"0 0 24 24",fill:"none",stroke:"currentColor",strokeWidth:1.9,strokeLinecap:"round",strokeLinejoin:"round"},e("path",{d:"M6 6l12 12M18 6 6 18"}))
+                                : esVR
+                                  ? e("svg",{width:16,height:16,viewBox:"0 0 24 24",fill:"none",stroke:"currentColor",strokeWidth:1.9,strokeLinecap:"round",strokeLinejoin:"round"},e("path",{d:"M13 3 5 13.5h6L10 21l8-10.5h-6z"}))
+                                  : e("svg",{width:16,height:16,viewBox:"0 0 24 24",fill:"none",stroke:"currentColor",strokeWidth:1.9,strokeLinecap:"round",strokeLinejoin:"round"},e("path",{d:"M5 8h14l-1 13H6z"}),e("path",{d:"M9 8V6a3 3 0 0 1 6 0v2"}))
+                            ),
+                            e("div",{style:{flex:1,minWidth:0}},
+                              e("div",{style:{fontSize:14.5,fontWeight:700,color:C.ink}},ing.clienteNombre||"Sin cliente"),
+                              e("div",{style:{marginTop:2,fontSize:12.5,color:"#5A6078",lineHeight:1.4}},
+                                e("b",{style:{fontWeight:700,color:esNeg?"#B23A24":"#4A5068"}},tipoLabel),
+                                " · "+(ing.concepto||"")
+                              )
+                            ),
+                            e("span",{style:{fontSize:14.5,fontWeight:800,letterSpacing:"-0.01em",color:esNeg?"#B23A24":C.ink,whiteSpace:"nowrap",paddingTop:2}},(esNeg?"−":"")+"$"+formatoDinero(Math.abs(ing.monto)))
+                          );
+                        })
+                      );
+                    })
               )
-            ),
-
-            ingFiltrados.length===0?
-              e("div",{style:{textAlign:"center",padding:"48px 0 40px"}},
-                e("div",{style:{fontSize:15,fontWeight:600,color:C.textMuted,marginBottom:6}},"Sin ingresos en este período"),
-                e("div",{style:{fontSize:13,color:C.textDim}},"Los pagos de cotizaciones y ventas rápidas aparecen aquí.")
-              ):
-              dayGroups.map(function(group){
-                return e(React.Fragment,{key:group.label},
-                  e("div",{style:{margin:"14px 0 2px",fontSize:12,fontWeight:800,letterSpacing:".06em",color:"#3F4BD0",textTransform:"uppercase"}},group.label),
-                  group.items.map(function(ing,idx){
-                    var esCot=ing.origen==="cotizacion";
-                    var esNeg=ing.monto<0;
-                    var tagStyle=esCot
-                      ?{background:"#ECEEF5",color:"#3A3F58"}
-                      :{background:"#EEF0FF",color:"#2E37A3"};
-                    var tagLabel=esCot?"PEDIDO":"VENTA RÁPIDA";
-                    return e("div",{key:ing.id,style:{display:"grid",gridTemplateColumns:"minmax(0,1fr) 150px 140px",columnGap:isMobile?12:20,alignItems:"center",padding:"14px 0",borderTop:idx===0?"none":"1px solid #E6E8F0"}},
-                      e("div",null,
-                        e("div",{style:{fontSize:15,fontWeight:800,color:C.ink}},ing.clienteNombre),
-                        e("div",{style:{marginTop:2,fontSize:13.5,color:"#4A5068",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}},ing.concepto)
-                      ),
-                      e("span",{style:Object.assign({justifySelf:"start",display:"inline-flex",alignItems:"center",height:24,padding:"0 9px",borderRadius:12,fontSize:11,fontWeight:800,letterSpacing:".06em"},tagStyle)},tagLabel),
-                      e("span",{style:{fontSize:16,fontWeight:800,textAlign:"right",letterSpacing:"-0.01em",color:esNeg?"#B23A24":C.ink}},(esNeg?"−":"")+"$"+formatoDinero(Math.abs(ing.monto)))
+            )
+          ) : (
+            // DESKTOP — grid 1fr 300px
+            e("div",{style:{marginTop:28,display:"grid",gridTemplateColumns:"minmax(0,1fr) 300px",gap:24,alignItems:"start"}},
+              e("section",{"aria-label":"Movimientos",style:{background:"#FFFFFF",borderRadius:22,padding:"20px 26px 14px"}},
+                e("div",{style:{display:"flex",flexWrap:"wrap",gap:10,alignItems:"center",marginBottom:8}},
+                  e("label",{style:{flex:"1 1 220px",display:"flex",alignItems:"center",gap:10,height:42,padding:"0 16px",borderRadius:21,background:"#F4F5FA",color:"#6E7489"}},
+                    e("svg",{width:18,height:18,viewBox:"0 0 24 24",fill:"none",stroke:"currentColor",strokeWidth:1.9,strokeLinecap:"round",strokeLinejoin:"round"},e("circle",{cx:11,cy:11,r:6.5}),e("path",{d:"m16 16 4 4"})),
+                    e("input",{type:"search",placeholder:"Buscar...",value:filtroVP.busqueda,onChange:function(ev){ setFiltroVP(Object.assign({},filtroVP,{busqueda:ev.target.value})); },style:{flex:1,minWidth:0,border:0,outline:"none",background:"transparent",fontFamily:"inherit",fontSize:14,color:C.ink}})
+                  ),
+                  e("div",{role:"tablist",style:{display:"inline-flex",gap:2,padding:3,borderRadius:21,background:"#F4F5FA"}},
+                    [{k:"todos",label:"Todos"},{k:"cotizacion",label:"Pedidos"},{k:"venta_rapida",label:"Ventas rápidas"}].map(function(tab){
+                      var activo=filtroVP.origen===tab.k;
+                      return e("button",{key:tab.k,role:"tab","aria-selected":activo,style:{height:36,padding:"0 16px",border:0,borderRadius:18,background:activo?"#E4E8FF":"transparent",fontFamily:"inherit",fontSize:13.5,fontWeight:activo?800:600,color:activo?C.ink:"#4A5068",cursor:"pointer"},onClick:function(){ setFiltroVP(Object.assign({},filtroVP,{origen:tab.k})); }},tab.label);
+                    })
+                  )
+                ),
+                ingFiltrados.length===0
+                  ? e("div",{style:{textAlign:"center",padding:"48px 0 40px"}},
+                      e("div",{style:{fontSize:15,fontWeight:600,color:C.textMuted,marginBottom:6}},"Sin ingresos en este período"),
+                      e("div",{style:{fontSize:13,color:C.textDim}},"Los pagos de cotizaciones y ventas rápidas aparecen aquí.")
+                    )
+                  : dayGroups.map(function(group,grpIdx){
+                      return e(React.Fragment,{key:group.label},
+                        e("div",{style:{fontSize:12,fontWeight:800,letterSpacing:".06em",color:"#3F4BD0",textTransform:"uppercase",padding:grpIdx===0?"6px 0 6px":"22px 0 6px"}},group.label),
+                        group.items.map(function(ing,idx){
+                          var esNeg=ing.monto<0;
+                          var esVR=ing.origenVenta==="venta_rapida"||ing.origen==="venta_rapida";
+                          var tipoIcoBg=esNeg?"#FBE6E1":esVR?"#FBF1DC":"#EEF0FF";
+                          var tipoIcoColor=esNeg?"#B23A24":esVR?"#8A5A06":"#3F4BD0";
+                          var tipoLabel=esNeg?"Pedido cancelado":esVR?"Venta rápida":"Pedido";
+                          return e("div",{key:ing.id,style:{display:"flex",alignItems:"center",gap:14,padding:"12px 0",borderTop:idx===0?"none":"1px solid #EDEFF5"}},
+                            e("span",{style:{width:40,height:40,flexShrink:0,borderRadius:13,display:"grid",placeItems:"center",background:tipoIcoBg,color:tipoIcoColor}},
+                              esNeg
+                                ? e("svg",{width:18,height:18,viewBox:"0 0 24 24",fill:"none",stroke:"currentColor",strokeWidth:1.9,strokeLinecap:"round",strokeLinejoin:"round"},e("path",{d:"M6 6l12 12M18 6 6 18"}))
+                                : esVR
+                                  ? e("svg",{width:18,height:18,viewBox:"0 0 24 24",fill:"none",stroke:"currentColor",strokeWidth:1.9,strokeLinecap:"round",strokeLinejoin:"round"},e("path",{d:"M13 3 5 13.5h6L10 21l8-10.5h-6z"}))
+                                  : e("svg",{width:18,height:18,viewBox:"0 0 24 24",fill:"none",stroke:"currentColor",strokeWidth:1.9,strokeLinecap:"round",strokeLinejoin:"round"},e("path",{d:"M5 8h14l-1 13H6z"}),e("path",{d:"M9 8V6a3 3 0 0 1 6 0v2"}))
+                            ),
+                            e("div",{style:{flex:1,minWidth:0}},
+                              e("div",{style:{fontSize:15,fontWeight:700,color:C.ink}},ing.clienteNombre||"Sin cliente"),
+                              e("div",{style:{marginTop:2,fontSize:13,color:"#5A6078",whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}},
+                                e("b",{style:{fontWeight:700,color:esNeg?"#B23A24":"#4A5068"}},tipoLabel),
+                                " · "+(ing.concepto||"")
+                              )
+                            ),
+                            e("span",{style:{fontSize:15.5,fontWeight:800,letterSpacing:"-0.01em",color:esNeg?"#B23A24":C.ink,whiteSpace:"nowrap"}},(esNeg?"−":"")+"$"+formatoDinero(Math.abs(ing.monto)))
+                          );
+                        })
+                      );
+                    })
+              ),
+              e("aside",{"aria-label":"Periodo",style:{position:"sticky",top:24}},
+                e("div",{style:{borderRadius:22,padding:22,color:"#FFFFFF",background:"radial-gradient(120% 90% at 100% 0%, #24307A 0%, rgba(36,48,122,0) 62%), #0E1328"}},
+                  e("div",{style:{fontSize:13,fontWeight:600,color:"#A9AFC6"}},periodoActivo.labelDark),
+                  e("div",{style:{marginTop:4,fontSize:34,lineHeight:1.1,fontWeight:800,letterSpacing:"-0.035em"}},"$"+formatoDinero(Math.abs(periodoActivo.valor)))
+                ),
+                e("div",{role:"tablist",style:{marginTop:10,padding:6,borderRadius:22,background:"#FFFFFF"}},
+                  periodos.map(function(p){
+                    var activo=filtroVP.periodo===p.k;
+                    return e("button",{key:p.k,role:"tab","aria-selected":activo,style:{display:"flex",alignItems:"center",justifyContent:"space-between",gap:12,width:"100%",padding:"14px 16px",border:0,borderRadius:16,background:activo?"#E4E8FF":"transparent",fontFamily:"inherit",textAlign:"left",cursor:"pointer",boxSizing:"border-box"},onClick:function(){ setFiltroVP(Object.assign({},filtroVP,{periodo:p.k})); }},
+                      e("small",{style:{fontSize:13.5,fontWeight:activo?800:600,color:activo?C.ink:"#5A6078"}},p.label),
+                      e("strong",{style:{fontSize:17,fontWeight:800,letterSpacing:"-0.01em",color:C.ink}},"$"+formatoDinero(Math.abs(p.valor)))
                     );
                   })
-                );
-              })
+                )
+              )
+            )
           )
         );
       })(),
@@ -14361,88 +14427,150 @@ export default function CLEO(props){
           else { dayGroupsP.push({label:label,items:[ing]}); }
         });
 
-        var periodosP=[
-          {label:"HOY",valor:totalHoy,periodo:"hoy"},
-          {label:"SEMANA",valor:totalSemana,periodo:"semana"},
-          {label:"MES",valor:totalMes,periodo:"mes"},
+        var periodos=[
+          {k:"hoy",   label:"Hoy",    labelDark:"Entró hoy",         valor:totalHoy},
+          {k:"semana",label:"Semana", labelDark:"Entró esta semana", valor:totalSemana},
+          {k:"mes",   label:"Mes",    labelDark:"Entró este mes",    valor:totalMes},
         ];
+        var periodoActivo=periodos.find(function(p){ return p.k===filtroVP.periodo; })||periodos[2];
 
         return e("div",null,
-          e("header",{style:{marginBottom:20}},
-            e("h1",{style:{margin:0,fontSize:sc.titlePage,fontWeight:800,letterSpacing:"-0.03em",color:C.text}},"Ingresos"),
-            e("p",{style:{margin:"4px 0 0",fontSize:14.5,color:C.textMuted}},"Dinero que ya entró a tu negocio")
+          // Encabezado
+          e("header",null,
+            e("h1",{style:{margin:0,fontSize:isMobile?24:28,fontWeight:800,letterSpacing:"-0.03em",color:C.ink}},"Ingresos"),
+            e("p",{style:{margin:"6px 0 0",fontSize:14,color:"#5A6078"}},"Dinero que ya entró a tu negocio")
           ),
-
-          e("div",{role:"tablist","aria-label":"Periodo",style:{display:"grid",gridTemplateColumns:"1fr 1fr 2fr",gap:12,marginBottom:16}},
-            periodosP.map(function(kpi){
-              var activo=filtroVP.periodo===kpi.periodo;
-              var btnStyle=Object.assign({
-                display:"flex",flexDirection:"column",alignItems:"flex-start",justifyContent:"flex-end",gap:4,
-                padding:activo?"20px 26px":"16px 20px",border:0,borderRadius:22,
-                fontFamily:"inherit",textAlign:"left",cursor:"pointer",transition:"background 0.15s"
-              },activo?{background:"radial-gradient(110% 120% at 100% 0%, #24307A 0%, rgba(36,48,122,0) 62%), #0E1328"}:{background:"#FFFFFF"});
-              var valAbs=Math.abs(kpi.valor);
-              var valNeg=kpi.valor<0;
-              return e("button",{key:kpi.periodo,role:"tab","aria-selected":activo,style:btnStyle,
-                onClick:function(){ setFiltroVP(Object.assign({},filtroVP,{periodo:kpi.periodo})); }},
-                e("small",{style:{fontSize:12,fontWeight:800,letterSpacing:".08em",color:activo?"#A3AFFF":"#4A5068"}},kpi.label),
-                e("strong",{style:{fontSize:activo?44:26,fontWeight:800,letterSpacing:"-0.03em",color:activo?"#FFFFFF":valNeg?C.red:kpi.valor>0?C.ink:"#6E7489",lineHeight:1}},(valNeg?"-":"")+"$"+formatoDinero(valAbs))
-              );
-            })
-          ),
-
-          e("section",{"aria-label":"Movimientos",style:{background:"#FFFFFF",borderRadius:24,padding:isMobile?"16px 16px 8px":"16px 22px 8px"}},
-            e("div",{style:{display:"flex",flexWrap:"wrap",alignItems:"center",gap:12,paddingBottom:6}},
-              e("label",{style:{flex:"1 1 200px",position:"relative",display:"flex"}},
-                e("span",{style:{position:"absolute",width:1,height:1,overflow:"hidden",clipPath:"inset(50%)"}},"Buscar"),
-                e("svg",{width:18,height:18,viewBox:"0 0 24 24",fill:"none",stroke:"#5A6078",strokeWidth:1.9,strokeLinecap:"round",strokeLinejoin:"round",style:{position:"absolute",left:14,top:11,pointerEvents:"none"}},e("circle",{cx:11,cy:11,r:6.5}),e("path",{d:"m16 16 4 4"})),
-                e("input",{type:"search",placeholder:"Buscar...",value:filtroVP.busqueda,
-                  onChange:function(ev){ setFiltroVP(Object.assign({},filtroVP,{busqueda:ev.target.value})); },
-                  style:{flex:1,height:40,boxSizing:"border-box",padding:"0 16px 0 42px",border:0,borderRadius:999,background:"#F4F5FA",fontFamily:"inherit",fontSize:14,color:C.ink,outline:"none"}})
+          // Layout
+          isMobile ? (
+            // MÓVIL — bloque oscuro + selector fila + movimientos
+            e("div",{style:{marginTop:20}},
+              e("div",{style:{borderRadius:24,padding:"18px 20px",color:"#FFFFFF",background:"radial-gradient(120% 120% at 100% 0%, #24307A 0%, rgba(36,48,122,0) 62%), #0E1328"}},
+                e("div",{style:{fontSize:13,fontWeight:600,color:"#A9AFC6"}},periodoActivo.labelDark),
+                e("div",{style:{marginTop:2,fontSize:30,fontWeight:800,letterSpacing:"-0.035em",lineHeight:1.1}},"$"+formatoDinero(Math.abs(periodoActivo.valor)))
               ),
-              e("div",{role:"tablist","aria-label":"Tipo",style:{display:"inline-flex",gap:2,padding:4,borderRadius:999,background:"#F4F5FA"}},
-                [
-                  {k:"todos",label:"Todos"},
-                  {k:"pedido",label:"Pedidos"},
-                  {k:"venta_rapida",label:"Ventas rápidas"},
-                ].map(function(tab){
-                  var activo=filtroVP.origen===tab.k;
-                  return e("button",{key:tab.k,role:"tab","aria-selected":activo,style:{cursor:"pointer",display:"inline-flex",alignItems:"center",height:36,padding:"0 16px",borderRadius:999,border:0,fontFamily:"inherit",fontSize:14,fontWeight:activo?800:600,background:activo?"#E4E8FF":"transparent",color:activo?C.ink:"#4A5068"},
-                    onClick:function(){ setFiltroVP(Object.assign({},filtroVP,{origen:tab.k})); }
-                  },tab.label);
+              e("div",{role:"tablist",style:{marginTop:8,display:"flex",gap:2,padding:4,borderRadius:22,background:"#FFFFFF"}},
+                periodos.map(function(p){
+                  var activo=filtroVP.periodo===p.k;
+                  return e("button",{key:p.k,role:"tab","aria-selected":activo,style:{flex:1,display:"flex",flexDirection:"column",alignItems:"flex-start",gap:2,padding:"10px 12px",border:0,borderRadius:16,background:activo?"#E4E8FF":"transparent",fontFamily:"inherit",textAlign:"left",cursor:"pointer"},onClick:function(){ setFiltroVP(Object.assign({},filtroVP,{periodo:p.k})); }},
+                    e("small",{style:{fontSize:12,fontWeight:activo?800:600,color:activo?C.ink:"#5A6078"}},p.label),
+                    e("strong",{style:{fontSize:14.5,fontWeight:800,letterSpacing:"-0.01em",color:C.ink}},"$"+formatoDinero(Math.abs(p.valor)))
+                  );
                 })
+              ),
+              e("section",{"aria-label":"Movimientos",style:{marginTop:20,padding:"14px 18px 8px",borderRadius:24,background:"#FFFFFF"}},
+                e("label",{style:{display:"flex",alignItems:"center",gap:10,height:42,padding:"0 14px",borderRadius:21,background:"#F4F5FA",color:"#6E7489"}},
+                  e("svg",{width:18,height:18,viewBox:"0 0 24 24",fill:"none",stroke:"currentColor",strokeWidth:1.9,strokeLinecap:"round",strokeLinejoin:"round"},e("circle",{cx:11,cy:11,r:6.5}),e("path",{d:"m16 16 4 4"})),
+                  e("input",{type:"search",placeholder:"Buscar...",value:filtroVP.busqueda,onChange:function(ev){ setFiltroVP(Object.assign({},filtroVP,{busqueda:ev.target.value})); },style:{flex:1,minWidth:0,border:0,outline:"none",background:"transparent",fontFamily:"inherit",fontSize:14.5,color:C.ink}})
+                ),
+                e("div",{role:"tablist",style:{margin:"8px 0 6px",display:"flex",gap:2,padding:3,borderRadius:21,background:"#F4F5FA"}},
+                  [{k:"todos",label:"Todos"},{k:"cotizacion",label:"Pedidos"},{k:"venta_rapida",label:"Ventas rápidas"}].map(function(tab){
+                    var activo=filtroVP.origen===tab.k;
+                    return e("button",{key:tab.k,role:"tab","aria-selected":activo,style:{flex:1,height:36,padding:"0 6px",border:0,borderRadius:18,background:activo?"#E4E8FF":"transparent",fontFamily:"inherit",fontSize:12.5,fontWeight:activo?800:600,color:activo?C.ink:"#4A5068",cursor:"pointer"},onClick:function(){ setFiltroVP(Object.assign({},filtroVP,{origen:tab.k})); }},tab.label);
+                  })
+                ),
+                ingFiltrados.length===0
+                  ? e("div",{style:{textAlign:"center",padding:"40px 0 32px"}},
+                      e("div",{style:{fontSize:14,fontWeight:600,color:C.textMuted}},"Sin ingresos en este período"),
+                      e("div",{style:{fontSize:12.5,color:C.textDim,marginTop:4}},"Los pagos de pedidos y ventas rápidas aparecen aquí.")
+                    )
+                  : dayGroupsP.map(function(group,grpIdx){
+                      return e(React.Fragment,{key:group.label},
+                        e("div",{style:{fontSize:12,fontWeight:800,letterSpacing:".06em",color:"#3F4BD0",textTransform:"uppercase",padding:grpIdx===0?"6px 0 6px":"22px 0 6px"}},group.label),
+                        group.items.map(function(ing,idx){
+                          var esNeg=ing.monto<0;
+                          var esVR=ing.origenVenta==="venta_rapida"||ing.origen==="venta_rapida";
+                          var tipoIcoBg=esNeg?"#FBE6E1":esVR?"#FBF1DC":"#EEF0FF";
+                          var tipoIcoColor=esNeg?"#B23A24":esVR?"#8A5A06":"#3F4BD0";
+                          var tipoLabel=esNeg?"Pedido cancelado":esVR?"Venta rápida":"Pedido";
+                          return e("div",{key:ing.id,style:{display:"flex",alignItems:"flex-start",gap:14,padding:"12px 0",borderTop:idx===0?"none":"1px solid #EDEFF5"}},
+                            e("span",{style:{width:36,height:36,flexShrink:0,borderRadius:12,display:"grid",placeItems:"center",background:tipoIcoBg,color:tipoIcoColor}},
+                              esNeg
+                                ? e("svg",{width:16,height:16,viewBox:"0 0 24 24",fill:"none",stroke:"currentColor",strokeWidth:1.9,strokeLinecap:"round",strokeLinejoin:"round"},e("path",{d:"M6 6l12 12M18 6 6 18"}))
+                                : esVR
+                                  ? e("svg",{width:16,height:16,viewBox:"0 0 24 24",fill:"none",stroke:"currentColor",strokeWidth:1.9,strokeLinecap:"round",strokeLinejoin:"round"},e("path",{d:"M13 3 5 13.5h6L10 21l8-10.5h-6z"}))
+                                  : e("svg",{width:16,height:16,viewBox:"0 0 24 24",fill:"none",stroke:"currentColor",strokeWidth:1.9,strokeLinecap:"round",strokeLinejoin:"round"},e("path",{d:"M5 8h14l-1 13H6z"}),e("path",{d:"M9 8V6a3 3 0 0 1 6 0v2"}))
+                            ),
+                            e("div",{style:{flex:1,minWidth:0}},
+                              e("div",{style:{fontSize:14.5,fontWeight:700,color:C.ink}},ing.clienteNombre||"Sin cliente"),
+                              e("div",{style:{marginTop:2,fontSize:12.5,color:"#5A6078",lineHeight:1.4}},
+                                e("b",{style:{fontWeight:700,color:esNeg?"#B23A24":"#4A5068"}},tipoLabel),
+                                " · "+(ing.concepto||"")
+                              )
+                            ),
+                            e("span",{style:{fontSize:14.5,fontWeight:800,letterSpacing:"-0.01em",color:esNeg?"#B23A24":C.ink,whiteSpace:"nowrap",paddingTop:2}},(esNeg?"−":"")+"$"+formatoDinero(Math.abs(ing.monto)))
+                          );
+                        })
+                      );
+                    })
               )
-            ),
-
-            ingFiltrados.length===0?
-              e("div",{style:{textAlign:"center",padding:"48px 0 40px"}},
-                e("div",{style:{fontSize:15,fontWeight:600,color:C.textMuted,marginBottom:6}},"Sin ingresos en este período"),
-                e("div",{style:{fontSize:13,color:C.textDim}},"Los pagos de pedidos y ventas rápidas aparecen aquí.")
-              ):
-              dayGroupsP.map(function(group){
-                return e(React.Fragment,{key:group.label},
-                  e("div",{style:{margin:"14px 0 2px",fontSize:12,fontWeight:800,letterSpacing:".06em",color:"#3F4BD0",textTransform:"uppercase"}},group.label),
-                  group.items.map(function(ing,idx){
-                    var esVentaRapidaP=ing.origenVenta==="venta_rapida";
-                    var esReversionP=ing.monto<0;
-                    var tagStyle=esReversionP
-                      ?{background:"#FCEBE7",color:"#B23A24"}
-                      :esVentaRapidaP
-                        ?{background:"#EEF0FF",color:"#2E37A3"}
-                        :{background:"#ECEEF5",color:"#3A3F58"};
-                    var tagLabel=esReversionP?"PEDIDO CANCELADO":esVentaRapidaP?"VENTA RÁPIDA":"PEDIDO";
-                    var montoAbs=Math.abs(ing.monto);
-                    return e("div",{key:ing.id,style:{display:"grid",gridTemplateColumns:"minmax(0,1fr) 150px 140px",columnGap:isMobile?12:20,alignItems:"center",padding:"14px 0",borderTop:idx===0?"none":"1px solid #E6E8F0"}},
-                      e("div",null,
-                        e("div",{style:{fontSize:15,fontWeight:800,color:C.ink}},ing.clienteNombre),
-                        e("div",{style:{marginTop:2,fontSize:13.5,color:"#4A5068",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}},ing.concepto+(ing.productos?" · "+ing.productos:""))
-                      ),
-                      e("span",{style:Object.assign({justifySelf:"start",display:"inline-flex",alignItems:"center",height:24,padding:"0 9px",borderRadius:12,fontSize:11,fontWeight:800,letterSpacing:".06em"},tagStyle)},tagLabel),
-                      e("span",{style:{fontSize:16,fontWeight:800,textAlign:"right",letterSpacing:"-0.01em",color:esReversionP?"#B23A24":C.ink}},(esReversionP?"−":"")+"$"+formatoDinero(montoAbs))
+            )
+          ) : (
+            // DESKTOP — grid 1fr 300px
+            e("div",{style:{marginTop:28,display:"grid",gridTemplateColumns:"minmax(0,1fr) 300px",gap:24,alignItems:"start"}},
+              e("section",{"aria-label":"Movimientos",style:{background:"#FFFFFF",borderRadius:22,padding:"20px 26px 14px"}},
+                e("div",{style:{display:"flex",flexWrap:"wrap",gap:10,alignItems:"center",marginBottom:8}},
+                  e("label",{style:{flex:"1 1 220px",display:"flex",alignItems:"center",gap:10,height:42,padding:"0 16px",borderRadius:21,background:"#F4F5FA",color:"#6E7489"}},
+                    e("svg",{width:18,height:18,viewBox:"0 0 24 24",fill:"none",stroke:"currentColor",strokeWidth:1.9,strokeLinecap:"round",strokeLinejoin:"round"},e("circle",{cx:11,cy:11,r:6.5}),e("path",{d:"m16 16 4 4"})),
+                    e("input",{type:"search",placeholder:"Buscar...",value:filtroVP.busqueda,onChange:function(ev){ setFiltroVP(Object.assign({},filtroVP,{busqueda:ev.target.value})); },style:{flex:1,minWidth:0,border:0,outline:"none",background:"transparent",fontFamily:"inherit",fontSize:14,color:C.ink}})
+                  ),
+                  e("div",{role:"tablist",style:{display:"inline-flex",gap:2,padding:3,borderRadius:21,background:"#F4F5FA"}},
+                    [{k:"todos",label:"Todos"},{k:"cotizacion",label:"Pedidos"},{k:"venta_rapida",label:"Ventas rápidas"}].map(function(tab){
+                      var activo=filtroVP.origen===tab.k;
+                      return e("button",{key:tab.k,role:"tab","aria-selected":activo,style:{height:36,padding:"0 16px",border:0,borderRadius:18,background:activo?"#E4E8FF":"transparent",fontFamily:"inherit",fontSize:13.5,fontWeight:activo?800:600,color:activo?C.ink:"#4A5068",cursor:"pointer"},onClick:function(){ setFiltroVP(Object.assign({},filtroVP,{origen:tab.k})); }},tab.label);
+                    })
+                  )
+                ),
+                ingFiltrados.length===0
+                  ? e("div",{style:{textAlign:"center",padding:"48px 0 40px"}},
+                      e("div",{style:{fontSize:15,fontWeight:600,color:C.textMuted,marginBottom:6}},"Sin ingresos en este período"),
+                      e("div",{style:{fontSize:13,color:C.textDim}},"Los pagos de pedidos y ventas rápidas aparecen aquí.")
+                    )
+                  : dayGroupsP.map(function(group,grpIdx){
+                      return e(React.Fragment,{key:group.label},
+                        e("div",{style:{fontSize:12,fontWeight:800,letterSpacing:".06em",color:"#3F4BD0",textTransform:"uppercase",padding:grpIdx===0?"6px 0 6px":"22px 0 6px"}},group.label),
+                        group.items.map(function(ing,idx){
+                          var esNeg=ing.monto<0;
+                          var esVR=ing.origenVenta==="venta_rapida"||ing.origen==="venta_rapida";
+                          var tipoIcoBg=esNeg?"#FBE6E1":esVR?"#FBF1DC":"#EEF0FF";
+                          var tipoIcoColor=esNeg?"#B23A24":esVR?"#8A5A06":"#3F4BD0";
+                          var tipoLabel=esNeg?"Pedido cancelado":esVR?"Venta rápida":"Pedido";
+                          return e("div",{key:ing.id,style:{display:"flex",alignItems:"center",gap:14,padding:"12px 0",borderTop:idx===0?"none":"1px solid #EDEFF5"}},
+                            e("span",{style:{width:40,height:40,flexShrink:0,borderRadius:13,display:"grid",placeItems:"center",background:tipoIcoBg,color:tipoIcoColor}},
+                              esNeg
+                                ? e("svg",{width:18,height:18,viewBox:"0 0 24 24",fill:"none",stroke:"currentColor",strokeWidth:1.9,strokeLinecap:"round",strokeLinejoin:"round"},e("path",{d:"M6 6l12 12M18 6 6 18"}))
+                                : esVR
+                                  ? e("svg",{width:18,height:18,viewBox:"0 0 24 24",fill:"none",stroke:"currentColor",strokeWidth:1.9,strokeLinecap:"round",strokeLinejoin:"round"},e("path",{d:"M13 3 5 13.5h6L10 21l8-10.5h-6z"}))
+                                  : e("svg",{width:18,height:18,viewBox:"0 0 24 24",fill:"none",stroke:"currentColor",strokeWidth:1.9,strokeLinecap:"round",strokeLinejoin:"round"},e("path",{d:"M5 8h14l-1 13H6z"}),e("path",{d:"M9 8V6a3 3 0 0 1 6 0v2"}))
+                            ),
+                            e("div",{style:{flex:1,minWidth:0}},
+                              e("div",{style:{fontSize:15,fontWeight:700,color:C.ink}},ing.clienteNombre||"Sin cliente"),
+                              e("div",{style:{marginTop:2,fontSize:13,color:"#5A6078",whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}},
+                                e("b",{style:{fontWeight:700,color:esNeg?"#B23A24":"#4A5068"}},tipoLabel),
+                                " · "+(ing.concepto||"")
+                              )
+                            ),
+                            e("span",{style:{fontSize:15.5,fontWeight:800,letterSpacing:"-0.01em",color:esNeg?"#B23A24":C.ink,whiteSpace:"nowrap"}},(esNeg?"−":"")+"$"+formatoDinero(Math.abs(ing.monto)))
+                          );
+                        })
+                      );
+                    })
+              ),
+              e("aside",{"aria-label":"Periodo",style:{position:"sticky",top:24}},
+                e("div",{style:{borderRadius:22,padding:22,color:"#FFFFFF",background:"radial-gradient(120% 90% at 100% 0%, #24307A 0%, rgba(36,48,122,0) 62%), #0E1328"}},
+                  e("div",{style:{fontSize:13,fontWeight:600,color:"#A9AFC6"}},periodoActivo.labelDark),
+                  e("div",{style:{marginTop:4,fontSize:34,lineHeight:1.1,fontWeight:800,letterSpacing:"-0.035em"}},"$"+formatoDinero(Math.abs(periodoActivo.valor)))
+                ),
+                e("div",{role:"tablist",style:{marginTop:10,padding:6,borderRadius:22,background:"#FFFFFF"}},
+                  periodos.map(function(p){
+                    var activo=filtroVP.periodo===p.k;
+                    return e("button",{key:p.k,role:"tab","aria-selected":activo,style:{display:"flex",alignItems:"center",justifyContent:"space-between",gap:12,width:"100%",padding:"14px 16px",border:0,borderRadius:16,background:activo?"#E4E8FF":"transparent",fontFamily:"inherit",textAlign:"left",cursor:"pointer",boxSizing:"border-box"},onClick:function(){ setFiltroVP(Object.assign({},filtroVP,{periodo:p.k})); }},
+                      e("small",{style:{fontSize:13.5,fontWeight:activo?800:600,color:activo?C.ink:"#5A6078"}},p.label),
+                      e("strong",{style:{fontSize:17,fontWeight:800,letterSpacing:"-0.01em",color:C.ink}},"$"+formatoDinero(Math.abs(p.valor)))
                     );
                   })
-                );
-              })
+                )
+              )
+            )
           )
         );
       })(),
