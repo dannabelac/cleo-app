@@ -1,0 +1,132 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<title>CLEO · Ingresos</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0;background:#ECEEF5}
+a{color:#3F4BD0}a:hover{color:#0E1328}
+.cl{font-family:'Plus Jakarta Sans',system-ui,sans-serif;color:#0E1328;font-variant-numeric:tabular-nums;-webkit-font-smoothing:antialiased}
+.i{width:18px;height:18px;flex:none;fill:none;stroke:currentColor;stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round}
+.rail{width:104px;box-sizing:border-box;background:#0E1328;border-radius:26px;padding:14px 8px 10px;display:flex;flex-direction:column;align-items:center;gap:2px}
+.rl{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:5px;width:88px;min-height:54px;padding:7px 4px;box-sizing:border-box;border-radius:16px;text-decoration:none;color:#B9BED3;font-size:11.5px;font-weight:600;line-height:1.2;text-align:center}
+.rl .i{width:20px;height:20px}
+.rl.on{background:rgba(141,155,255,0.22);color:#FFFFFF;font-weight:800}
+.rl.on .i{color:#AEB8FF}
+.dv{width:44px;height:1px;background:rgba(255,255,255,0.13);margin:6px 0}
+.cnt{min-width:18px;height:18px;padding:0 5px;box-sizing:border-box;border-radius:9px;background:#9AA7FF;color:#0E1328;font-size:11px;font-weight:800;display:inline-grid;place-items:center}
+.per{display:flex;flex-direction:column;align-items:flex-start;gap:4px;padding:16px 20px;border:0;border-radius:22px;background:#FFFFFF;font-family:inherit;text-align:left;cursor:pointer}
+.per small{font-size:12px;font-weight:800;letter-spacing:.08em;color:#4A5068}
+.per strong{font-size:26px;font-weight:800;letter-spacing:-0.03em}
+.tab{display:inline-flex;align-items:center;height:36px;padding:0 16px;border-radius:999px;border:0;font-family:inherit;font-size:14px;font-weight:600;cursor:pointer;background:transparent;color:#4A5068}
+.row{display:grid;grid-template-columns:minmax(0,1fr) 150px 80px 140px;column-gap:20px;align-items:center;padding:14px 0}
+.row+.row{border-top:1px solid #E6E8F0}
+.nm{font-size:15px;font-weight:800}
+.ds{margin-top:2px;font-size:13.5px;color:#4A5068}
+.tg{justify-self:start;display:inline-flex;align-items:center;height:24px;padding:0 9px;border-radius:12px;font-size:11px;font-weight:800;letter-spacing:.06em}
+.t-ped{background:#ECEEF5;color:#3A3F58}
+.t-can{background:#FCEBE7;color:#B23A24}
+.t-vr{background:#EEF0FF;color:#2E37A3}
+.fe{font-size:13.5px;color:#4A5068;text-align:right}
+.mo{font-size:16px;font-weight:800;text-align:right;letter-spacing:-0.01em}
+.day{margin:14px 0 2px;font-size:12px;font-weight:800;letter-spacing:.06em;color:#3F4BD0}
+.row{grid-template-columns:minmax(0,1fr) 150px 140px !important}
+.row:not(.day+.row){border-top:1px solid #E6E8F0}
+.day+.row{border-top:0}
+.per{justify-content:flex-end}
+</style>
+</helmet>
+<svg width="0" height="0" style="position: absolute" aria-hidden="true">
+<symbol id="i-home" viewBox="0 0 24 24"><path d="M3.5 10.5 12 3.5l8.5 7V20h-5.5v-5.5h-6V20H3.5z"/></symbol>
+<symbol id="i-sun" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 2.5v2M12 19.5v2M2.5 12h2M19.5 12h2M5.3 5.3l1.4 1.4M17.3 17.3l1.4 1.4M5.3 18.7l1.4-1.4M17.3 6.7l1.4-1.4"/></symbol>
+<symbol id="i-users" viewBox="0 0 24 24"><circle cx="9" cy="8" r="3.5"/><path d="M2.5 20c.6-3.5 3.3-5.5 6.5-5.5s5.9 2 6.5 5.5M16 4.6a3.5 3.5 0 0 1 0 6.8M18 14.8c2 .8 3.2 2.6 3.5 5.2"/></symbol>
+<symbol id="i-bag" viewBox="0 0 24 24"><path d="M5 8h14l-1 13H6z"/><path d="M9 8V6a3 3 0 0 1 6 0v2"/></symbol>
+<symbol id="i-user" viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 21c.8-4 4-6 8-6s7.2 2 8 6"/></symbol>
+<symbol id="i-db" viewBox="0 0 24 24"><ellipse cx="12" cy="5.5" rx="7.5" ry="2.5"/><path d="M4.5 5.5v13c0 1.4 3.4 2.5 7.5 2.5s7.5-1.1 7.5-2.5v-13M4.5 12c0 1.4 3.4 2.5 7.5 2.5s7.5-1.1 7.5-2.5"/></symbol>
+<symbol id="i-cash" viewBox="0 0 24 24"><rect x="3" y="6" width="18" height="12" rx="2"/><circle cx="12" cy="12" r="2.5"/></symbol>
+<symbol id="i-chart" viewBox="0 0 24 24"><path d="M5 20v-8M11 20V5M17 20v-6M3 20h18"/></symbol>
+<symbol id="i-book" viewBox="0 0 24 24"><rect x="5" y="4" width="14" height="17" rx="2"/><path d="M9 4V2.8h6V4M9 10h6M9 14h4"/></symbol>
+<symbol id="i-chev" viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"/></symbol>
+<symbol id="i-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="6.5"/><path d="m16 16 4 4"/></symbol>
+<symbol id="i-img" viewBox="0 0 24 24"><rect x="3.5" y="4.5" width="17" height="15" rx="2.5"/><circle cx="9" cy="10" r="1.6"/><path d="m4 18 5.5-5 4 3.5 2.5-2 4 3.5"/></symbol>
+</svg>
+<div class="cl" style="min-height: 1000px; background: #ECEEF5; display: flex; flex-wrap: wrap">
+
+<div style="flex: 0 0 auto; padding: 14px 0 14px 14px; display: flex">
+<nav class="rail" aria-label="Principal">
+<span style="color: #FFFFFF; font-size: 16px; font-weight: 800; letter-spacing: 0.02em; margin: 2px 0 12px">CLEO</span>
+<a href="#" class="rl"><svg class="i"><use href="#i-home"></use></svg>Inicio</a>
+<a href="#" class="rl"><span style="position: relative; display: grid"><svg class="i"><use href="#i-sun"></use></svg><span class="cnt" style="position: absolute; top: -6px; right: -13px">6</span></span>Hoy</a>
+<span class="dv"></span>
+<a href="#" class="rl"><svg class="i"><use href="#i-users"></use></svg>Oportunidades</a>
+<a href="#" class="rl"><svg class="i"><use href="#i-bag"></use></svg>Pedidos</a>
+<a href="#" class="rl"><svg class="i"><use href="#i-user"></use></svg>Clientes</a>
+<a href="#" class="rl"><svg class="i"><use href="#i-db"></use></svg>Inventario y costos</a>
+<span class="dv"></span>
+<a href="#" class="rl on" aria-current="page"><svg class="i"><use href="#i-cash"></use></svg>Ingresos</a>
+<a href="#" class="rl"><svg class="i"><use href="#i-chart"></use></svg>Resumen</a>
+<div style="flex: 1; min-height: 16px"></div>
+<a href="#" class="rl"><svg class="i"><use href="#i-book"></use></svg><span>Mi catálogo<span style="display: block; font-size: 10.5px; font-weight: 500; color: #8E94AE; margin-top: 2px">12 productos</span></span></a>
+<button aria-haspopup="menu" style="display: flex; flex-direction: column; align-items: center; gap: 5px; width: 88px; padding: 8px 4px; margin-top: 4px; border: 0; border-radius: 16px; background: rgba(255,255,255,0.06); color: #FFFFFF; font-family: inherit; cursor: pointer">
+<span style="width: 34px; height: 34px; border-radius: 11px; background: #FFFFFF; box-shadow: inset 0 0 0 2px {{negocio}}; display: grid; place-items: center; color: {{negocio}}"><svg class="i"><use href="#i-img"></use></svg></span>
+<span style="font-size: 11.5px; font-weight: 700; line-height: 1.2">Racing Rush</span>
+<span style="display: inline-flex; align-items: center; gap: 2px; font-size: 10.5px; color: #8E94AE">Danna<svg class="i" style="width: 12px; height: 12px"><use href="#i-chev"></use></svg></span>
+</button>
+</nav>
+</div>
+
+<main style="flex: 999 1 600px; min-width: 0; box-sizing: border-box; padding: 28px 32px 40px">
+<div style="max-width: 1160px; margin: 0 auto">
+<h1 style="margin: 0; font-size: 26px; font-weight: 800; letter-spacing: -0.03em">Ingresos</h1>
+<p style="margin: 4px 0 0; font-size: 14.5px; color: #4A5068">Dinero que ya entró a tu negocio</p>
+
+<div role="tablist" aria-label="Periodo" style="display: grid; grid-template-columns: 1fr 1fr 2fr; gap: 12px; margin-top: 20px">
+<button role="tab" aria-selected="false" class="per"><small>HOY</small><strong style="color: #6E7489">$0.00</strong></button>
+<button role="tab" aria-selected="false" class="per"><small>SEMANA</small><strong>$2,500.00</strong></button>
+<button role="tab" aria-selected="true" class="per" style="padding: 20px 26px; background: radial-gradient(110% 120% at 100% 0%, #24307A 0%, rgba(36,48,122,0) 62%), #0E1328"><small style="color: #A3AFFF">MES</small><strong style="color: #FFFFFF; font-size: 44px">$6,960.00</strong></button>
+</div>
+
+<section aria-label="Movimientos" style="margin-top: 16px; background: #FFFFFF; border-radius: 24px; padding: 16px 22px 8px">
+<div style="display: flex; flex-wrap: wrap; align-items: center; gap: 12px; padding-bottom: 6px">
+<label style="flex: 1 1 280px; position: relative; display: flex">
+<span style="position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%)">Buscar</span>
+<svg class="i" style="position: absolute; left: 14px; top: 11px; color: #5A6078"><use href="#i-search"></use></svg>
+<input type="search" placeholder="Buscar..." style="flex: 1; height: 40px; box-sizing: border-box; padding: 0 16px 0 42px; border: 0; border-radius: 999px; background: #F4F5FA; font-family: inherit; font-size: 14px; color: #0E1328"></label>
+<div role="tablist" aria-label="Tipo" style="display: inline-flex; gap: 2px; padding: 4px; border-radius: 999px; background: #F4F5FA">
+<button role="tab" aria-selected="true" class="tab" style="background: #E4E8FF; color: #0E1328; font-weight: 800">Todos</button>
+<button role="tab" aria-selected="false" class="tab">Pedidos</button>
+<button role="tab" aria-selected="false" class="tab">Ventas rápidas</button>
+</div>
+</div>
+
+<div class="day">Ayer</div>
+<div class="row"><div><div class="nm">Roberto Cauich</div><div class="ds">Anticipo · Set collar y aretes</div></div><span class="tg t-ped">PEDIDO</span><span class="mo">$1,000.00</span></div>
+<div class="day">10 oct</div>
+<div class="row"><div><div class="nm">Nicolás Ek</div><div class="ds">Anticipo descontado · pedido cancelado · Anillo boda custom</div></div><span class="tg t-can">PEDIDO CANCELADO</span><span class="mo" style="color: #B23A24">−$200.00</span></div>
+<div class="day">8 oct</div>
+<div class="row"><div><div class="nm">Gaby Torres</div><div class="ds">Pago completo · Aretes plata</div></div><span class="tg t-ped">PEDIDO</span><span class="mo">$1,000.00</span></div>
+<div class="row"><div><div class="nm">Ximena Cab</div><div class="ds">Anticipo · Collar dorado</div></div><span class="tg t-ped">PEDIDO</span><span class="mo">$500.00</span></div>
+<div class="row"><div><div class="nm">Nicolás Ek</div><div class="ds">Anticipo · Anillo boda custom</div></div><span class="tg t-ped">PEDIDO</span><span class="mo">$200.00</span></div>
+<div class="day">4 oct</div>
+<div class="row"><div><div class="nm">Sin cliente</div><div class="ds">Pago completo · Aretes dorados pequeños</div></div><span class="tg t-vr">VENTA RÁPIDA</span><span class="mo">$320.00</span></div>
+<div class="day">3 oct</div>
+<div class="row"><div><div class="nm">Renata Flores</div><div class="ds" style="color: #6E7489">[descripción no visible en la captura]</div></div><span></span><span class="mo">$1,060.00</span></div>
+</section>
+</div>
+</main>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"negocio":{"editor":"color","default":"#0F7C80"},"$preview":{"width":1440,"height":1000}}'>
+class Component extends DCLogic {
+  renderVals() { return { negocio: this.props.negocio ?? '#0F7C80' }; }
+}
+</script>
+</body>
+</html>
