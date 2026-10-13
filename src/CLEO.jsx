@@ -21401,36 +21401,6 @@ export default function CLEO(props){
                 e("input",{value:formPerfil.email||"",onChange:function(ev){ setFormPerfil(Object.assign({},formPerfil,{email:ev.target.value})); },placeholder:"correo@negocio.com",style:st.inp})
               )
             ),
-            e("div",null,
-              e("label",{style:st.lbl},"Logo"),
-              e("div",{style:{display:"flex",gap:10,alignItems:"center"}},
-                e("div",{style:{width:52,height:52,borderRadius:10,border:"1px solid "+C.border,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,overflow:"hidden",background:C.surfaceUp}},
-                  formPerfil.logo
-                    ? e("img",{src:formPerfil.logo,style:{width:52,height:52,objectFit:"cover"},onError:function(ev){ ev.target.style.display="none"; }})
-                    : e("span",{style:{fontSize:22}},"🏢")
-                ),
-                e("div",{style:{display:"flex",flexDirection:"column",gap:6}},
-                  e("label",{style:{cursor:"pointer",padding:"8px 16px",borderRadius:10,border:"1px solid "+C.purple,background:C.purplePale,fontSize:13,color:C.purple,fontWeight:500,display:"inline-block"}},
-                    "Subir logo",
-                    e("input",{type:"file",accept:"image/*",style:{display:"none"},onChange:function(ev){
-                      var file=ev.target.files&&ev.target.files[0];
-                      if(!file) return;
-                      // Se convierte SIEMPRE a PNG antes de guardar (ver
-                      // convertirImagenAPngDataURL) , así el formato original
-                      // del archivo (WEBP, HEIC, GIF, etc.) nunca hace que el
-                      // logo desaparezca en silencio al generar un PDF.
-                      convertirImagenAPngDataURL(file).then(function(pngDataURL){
-                        setFormPerfil(Object.assign({},formPerfil,{logo:pngDataURL}));
-                      }).catch(function(){
-                        window.alert("No pudimos procesar esta imagen como logo. Prueba con otro archivo (PNG o JPG funcionan mejor).");
-                      });
-                      ev.target.value="";
-                    }})
-                  ),
-                  formPerfil.logo&&e("button",{style:{cursor:"pointer",background:"none",border:"none",fontSize:12,color:C.red,textAlign:"left",padding:0},onClick:function(){ setFormPerfil(Object.assign({},formPerfil,{logo:""})); }},"Quitar logo")
-                )
-              )
-            )
           ),
 
           // SECCIÓN: Redes sociales
