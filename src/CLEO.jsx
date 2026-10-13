@@ -10867,7 +10867,7 @@ export default function CLEO(props){
         return e("div",{style:{display:"flex",flexDirection:"column",gap:0}},
 
           // BOTONES , arriba a la derecha solos
-          e("div",{style:{display:"flex",alignItems:"center",justifyContent:isMobile?"space-between":"flex-end",gap:isMobile?6:8,marginLeft:isMobile?-16:-48,marginRight:isMobile?-16:-48,marginTop:isMobile?-20:-40,padding:isMobile?"12px 16px":"14px 48px",background:C.bg,flexWrap:"nowrap"}},
+          e("div",{style:{display:"flex",alignItems:"center",justifyContent:isMobile?"space-between":"flex-end",gap:isMobile?6:8,marginLeft:isMobile?-16:0,marginRight:isMobile?-16:0,marginTop:isMobile?-20:0,padding:isMobile?"12px 16px":"0 0 16px",background:isMobile?C.bg:"none",flexWrap:"nowrap"}},
             isMobile&&e("div",{style:{
               width:36,height:36,borderRadius:10,
               background:C.dark,
@@ -11597,7 +11597,7 @@ export default function CLEO(props){
           );
         }
         return e("div",{style:{display:"flex",flexDirection:"column",gap:0}},
-          e("div",{style:{display:"flex",alignItems:"center",justifyContent:isMobile?"space-between":"flex-end",gap:isMobile?6:8,marginLeft:isMobile?-16:-48,marginRight:isMobile?-16:-48,marginTop:isMobile?-20:-40,padding:isMobile?"12px 16px":"14px 48px",background:C.bg,flexWrap:"nowrap"}},
+          e("div",{style:{display:"flex",alignItems:"center",justifyContent:isMobile?"space-between":"flex-end",gap:isMobile?6:8,marginLeft:isMobile?-16:0,marginRight:isMobile?-16:0,marginTop:isMobile?-20:0,padding:isMobile?"12px 16px":"0 0 16px",background:isMobile?C.bg:"none",flexWrap:"nowrap"}},
             isMobile&&e("div",{style:{
               width:36,height:36,borderRadius:10,
               background:C.dark,
@@ -13503,7 +13503,7 @@ export default function CLEO(props){
 
       // COTIZACIONES
       vista==="cotizaciones"&&e("div",{style:{display:"flex",flexDirection:"column",gap:0}},
-        e("div",{style:{display:"flex",alignItems:"center",justifyContent:isMobile?"space-between":"flex-end",gap:isMobile?6:8,marginLeft:isMobile?-16:-48,marginRight:isMobile?-16:-48,marginTop:isMobile?-20:-40,padding:isMobile?"12px 16px":"14px 48px",background:C.bg,flexWrap:"nowrap"}},
+        e("div",{style:{display:"flex",alignItems:"center",justifyContent:isMobile?"space-between":"flex-end",gap:isMobile?6:8,marginLeft:isMobile?-16:0,marginRight:isMobile?-16:0,marginTop:isMobile?-20:0,padding:isMobile?"12px 16px":"0 0 16px",background:isMobile?C.bg:"none",flexWrap:"nowrap"}},
             isMobile&&e("div",{style:{
               width:36,height:36,borderRadius:10,
               background:C.dark,
@@ -13898,7 +13898,7 @@ export default function CLEO(props){
         return e("div",{style:{display:"flex",flexDirection:"column",gap:0}},
 
           // BOTONES , arriba a la derecha
-          e("div",{style:{display:"flex",alignItems:"center",justifyContent:isMobile?"space-between":"flex-end",gap:isMobile?6:8,marginLeft:isMobile?-16:-48,marginRight:isMobile?-16:-48,marginTop:isMobile?-20:-40,padding:isMobile?"12px 16px":"14px 48px",background:C.bg,flexWrap:"nowrap"}},
+          e("div",{style:{display:"flex",alignItems:"center",justifyContent:isMobile?"space-between":"flex-end",gap:isMobile?6:8,marginLeft:isMobile?-16:0,marginRight:isMobile?-16:0,marginTop:isMobile?-20:0,padding:isMobile?"12px 16px":"0 0 16px",background:isMobile?C.bg:"none",flexWrap:"nowrap"}},
             isMobile&&e("div",{style:{
               width:36,height:36,borderRadius:10,
               background:C.dark,
@@ -16528,7 +16528,7 @@ export default function CLEO(props){
         return e("div",{style:{display:"flex",flexDirection:"column",gap:0}},
 
           // TOP BAR
-          e("div",{style:{display:"flex",alignItems:"center",justifyContent:"space-between",marginLeft:isMobile?-16:-48,marginRight:isMobile?-16:-48,marginTop:isMobile?-20:-40,padding:isMobile?"12px 16px":"14px 48px",background:C.bg}},
+          e("div",{style:{display:"flex",alignItems:"center",justifyContent:"space-between",marginLeft:isMobile?-16:0,marginRight:isMobile?-16:0,marginTop:isMobile?-20:0,padding:isMobile?"12px 16px":"0 0 16px",background:isMobile?C.bg:"none"}},
             e("div",{style:{display:"flex",gap:3,background:C.surfaceUp,border:"1px solid "+C.border,borderRadius:10,padding:3}},
               PERIODOS.map(function(p){
                 var activo=periodo===p[0];
@@ -16921,7 +16921,7 @@ export default function CLEO(props){
         return e("div",{style:{display:"flex",flexDirection:"column",gap:0}},
 
           // TOP BAR
-          e("div",{style:{display:"flex",alignItems:"center",justifyContent:"space-between",marginLeft:isMobile?-16:-48,marginRight:isMobile?-16:-48,marginTop:isMobile?-20:-40,padding:isMobile?"12px 16px":"14px 48px",background:C.bg}},
+          e("div",{style:{display:"flex",alignItems:"center",justifyContent:"space-between",marginLeft:isMobile?-16:0,marginRight:isMobile?-16:0,marginTop:isMobile?-20:0,padding:isMobile?"12px 16px":"0 0 16px",background:isMobile?C.bg:"none"}},
             e("div",{style:{display:"flex",gap:3,background:C.surfaceUp,border:"1px solid "+C.border,borderRadius:10,padding:3}},
               [["semana","Semana"],["mes","Mes"],["trimestre","Trimestre"],["todo","Todo"]].map(function(p){
                 var activo=periodo===p[0];
