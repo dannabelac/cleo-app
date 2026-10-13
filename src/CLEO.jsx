@@ -18809,10 +18809,11 @@ export default function CLEO(props){
 
       return e("div",{style:st.ov,onClick:cerrarCerre},
         e("div",{style:Object.assign({},st.modal,{maxWidth:420}),onClick:function(ev){ ev.stopPropagation(); }},
-          e("div",{style:{display:"flex",justifyContent:"flex-end",marginBottom:8}},
+          e("div",{style:{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:14}},
+            e("div",{style:{fontSize:11,fontWeight:700,color:C.textMuted,textTransform:"uppercase",letterSpacing:"0.7px"}},"Cerré una venta"),
             e("button",{"aria-label":"Cerrar",style:Object.assign({background:"none",border:"none",cursor:"pointer",color:C.textDim,fontSize:20,lineHeight:1,padding:"0 4px"},st.tapIcon),onClick:cerrarCerre},"×")
           ),
-          e("div",{style:{fontSize:17,fontWeight:700,color:C.purple,marginBottom:18,lineHeight:1.4}},"¿Qué vendiste y a quién?"),
+          e("div",{style:{fontSize:18,fontWeight:800,color:C.text,marginBottom:14,lineHeight:1.3}},"¿Qué vendiste y a quién?"),
 
           e("div",{style:{marginBottom:14,position:"relative"}},
             e("label",{style:st.lbl},"¿A quién le cerraste la venta?"),
@@ -18854,11 +18855,11 @@ export default function CLEO(props){
               st:st,TXT:TXT
             }),
             e("div",{style:{marginBottom:22}},
-              e("div",{style:{fontSize:14,fontWeight:600,color:C.text,marginBottom:10}},"¿Cómo quedó el pago?"),
+              e("div",{style:{fontSize:11,fontWeight:700,color:C.textMuted,textTransform:"uppercase",letterSpacing:"0.7px",marginBottom:10}},"Cómo quedó el pago"),
               e("div",{style:{display:"flex",gap:8,flexWrap:"wrap"}},
-                e("button",{style:Object.assign({},st.btn,{flex:"1 1 30%",background:fc.tipoPago==="completo"?C.purple:"transparent",color:fc.tipoPago==="completo"?"#fff":C.textMuted,borderColor:fc.tipoPago==="completo"?C.purple:C.border}),onClick:function(){ setFormCerre(Object.assign({},fc,{tipoPago:"completo",anticipo:""})); }},"Pagó completo"),
-                e("button",{style:Object.assign({},st.btn,{flex:"1 1 30%",background:fc.tipoPago==="anticipo"?C.purple:"transparent",color:fc.tipoPago==="anticipo"?"#fff":C.textMuted,borderColor:fc.tipoPago==="anticipo"?C.purple:C.border}),onClick:function(){ setFormCerre(Object.assign({},fc,{tipoPago:"anticipo"})); }},"Dejó anticipo"),
-                e("button",{style:Object.assign({},st.btn,{flex:"1 1 30%",background:fc.tipoPago==="nada"?C.purple:"transparent",color:fc.tipoPago==="nada"?"#fff":C.textMuted,borderColor:fc.tipoPago==="nada"?C.purple:C.border}),onClick:function(){ setFormCerre(Object.assign({},fc,{tipoPago:"nada",anticipo:""})); }},"Aún no ha pagado nada")
+                e("button",{style:Object.assign({},st.btn,{flex:"1 1 30%",padding:"9px 10px",background:fc.tipoPago==="completo"?C.greenBg:"transparent",color:fc.tipoPago==="completo"?C.green:C.textMuted,borderColor:fc.tipoPago==="completo"?C.green:C.border,fontWeight:fc.tipoPago==="completo"?700:500}),onClick:function(){ setFormCerre(Object.assign({},fc,{tipoPago:"completo",anticipo:""})); }},"Pagó completo"),
+                e("button",{style:Object.assign({},st.btn,{flex:"1 1 30%",padding:"9px 10px",background:fc.tipoPago==="anticipo"?C.amberBg:"transparent",color:fc.tipoPago==="anticipo"?"#92400E":C.textMuted,borderColor:fc.tipoPago==="anticipo"?C.amber:C.border,fontWeight:fc.tipoPago==="anticipo"?700:500}),onClick:function(){ setFormCerre(Object.assign({},fc,{tipoPago:"anticipo"})); }},"Dejó anticipo"),
+                e("button",{style:Object.assign({},st.btn,{flex:"1 1 30%",padding:"9px 10px",background:fc.tipoPago==="nada"?C.surfaceUp:"transparent",color:fc.tipoPago==="nada"?C.textDim:C.textMuted,borderColor:fc.tipoPago==="nada"?C.border:C.border,fontWeight:fc.tipoPago==="nada"?700:500}),onClick:function(){ setFormCerre(Object.assign({},fc,{tipoPago:"nada",anticipo:""})); }},"Aún no ha pagado nada")
               ),
               fc.tipoPago==="anticipo"&&e(MontoInput,{value:fc.anticipo,onChange:function(ev){ setFormCerre(Object.assign({},fc,{anticipo:ev.target.value})); },placeholder:"¿Cuánto dejó?",style:Object.assign({},st.inp,{marginTop:8})})
             ),
@@ -18919,10 +18920,11 @@ export default function CLEO(props){
 
       return e("div",{style:st.ov,onClick:cerrarCerreP},
         e("div",{style:Object.assign({},st.modal,{maxWidth:420}),onClick:function(ev){ ev.stopPropagation(); }},
-          e("div",{style:{display:"flex",justifyContent:"flex-end",marginBottom:8}},
+          e("div",{style:{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:14}},
+            e("div",{style:{fontSize:11,fontWeight:700,color:C.textMuted,textTransform:"uppercase",letterSpacing:"0.7px"}},"Cerré una venta"),
             e("button",{"aria-label":"Cerrar",style:Object.assign({background:"none",border:"none",cursor:"pointer",color:C.textDim,fontSize:20,lineHeight:1,padding:"0 4px"},st.tapIcon),onClick:cerrarCerreP},"×")
           ),
-          e("div",{style:{fontSize:17,fontWeight:700,color:C.purple,marginBottom:18,lineHeight:1.4}},"¿Qué vendiste y a quién?"),
+          e("div",{style:{fontSize:18,fontWeight:800,color:C.text,marginBottom:14,lineHeight:1.3}},"¿Qué vendiste y a quién?"),
 
           e("div",{style:{marginBottom:14,position:"relative"}},
             e("label",{style:st.lbl},"¿A quién le cerraste la venta?"),
@@ -18976,11 +18978,11 @@ export default function CLEO(props){
               st:st,TXT:TXT
             }),
             e("div",{style:{marginBottom:22}},
-              e("div",{style:{fontSize:14,fontWeight:600,color:C.text,marginBottom:10}},"¿Cómo quedó el pago?"),
+              e("div",{style:{fontSize:11,fontWeight:700,color:C.textMuted,textTransform:"uppercase",letterSpacing:"0.7px",marginBottom:10}},"Cómo quedó el pago"),
               e("div",{style:{display:"flex",gap:8,flexWrap:"wrap"}},
-                e("button",{style:Object.assign({},st.btn,{flex:"1 1 30%",background:fc.tipoPago==="completo"?C.purple:"transparent",color:fc.tipoPago==="completo"?"#fff":C.textMuted,borderColor:fc.tipoPago==="completo"?C.purple:C.border}),onClick:function(){ setFormCerreP(Object.assign({},fc,{tipoPago:"completo",anticipo:""})); }},"Pagó completo"),
-                e("button",{style:Object.assign({},st.btn,{flex:"1 1 30%",background:fc.tipoPago==="anticipo"?C.purple:"transparent",color:fc.tipoPago==="anticipo"?"#fff":C.textMuted,borderColor:fc.tipoPago==="anticipo"?C.purple:C.border}),onClick:function(){ setFormCerreP(Object.assign({},fc,{tipoPago:"anticipo"})); }},"Dejó anticipo"),
-                e("button",{style:Object.assign({},st.btn,{flex:"1 1 30%",background:fc.tipoPago==="nada"?C.purple:"transparent",color:fc.tipoPago==="nada"?"#fff":C.textMuted,borderColor:fc.tipoPago==="nada"?C.purple:C.border}),onClick:function(){ setFormCerreP(Object.assign({},fc,{tipoPago:"nada",anticipo:""})); }},"Aún no ha pagado nada")
+                e("button",{style:Object.assign({},st.btn,{flex:"1 1 30%",padding:"9px 10px",background:fc.tipoPago==="completo"?C.greenBg:"transparent",color:fc.tipoPago==="completo"?C.green:C.textMuted,borderColor:fc.tipoPago==="completo"?C.green:C.border,fontWeight:fc.tipoPago==="completo"?700:500}),onClick:function(){ setFormCerreP(Object.assign({},fc,{tipoPago:"completo",anticipo:""})); }},"Pagó completo"),
+                e("button",{style:Object.assign({},st.btn,{flex:"1 1 30%",padding:"9px 10px",background:fc.tipoPago==="anticipo"?C.amberBg:"transparent",color:fc.tipoPago==="anticipo"?"#92400E":C.textMuted,borderColor:fc.tipoPago==="anticipo"?C.amber:C.border,fontWeight:fc.tipoPago==="anticipo"?700:500}),onClick:function(){ setFormCerreP(Object.assign({},fc,{tipoPago:"anticipo"})); }},"Dejó anticipo"),
+                e("button",{style:Object.assign({},st.btn,{flex:"1 1 30%",padding:"9px 10px",background:fc.tipoPago==="nada"?C.surfaceUp:"transparent",color:fc.tipoPago==="nada"?C.textDim:C.textMuted,borderColor:fc.tipoPago==="nada"?C.border:C.border,fontWeight:fc.tipoPago==="nada"?700:500}),onClick:function(){ setFormCerreP(Object.assign({},fc,{tipoPago:"nada",anticipo:""})); }},"Aún no ha pagado nada")
               ),
               fc.tipoPago==="anticipo"&&e(MontoInput,{value:fc.anticipo,onChange:function(ev){ setFormCerreP(Object.assign({},fc,{anticipo:ev.target.value})); },placeholder:"¿Cuánto dejó?",style:Object.assign({},st.inp,{marginTop:8})}),
               (fc.tipoPago==="anticipo"||fc.tipoPago==="completo")&&e("div",{style:{marginTop:10}},
@@ -18997,10 +18999,10 @@ export default function CLEO(props){
               )
             ),
             e("div",{style:{marginBottom:22}},
-              e("div",{style:{fontSize:14,fontWeight:600,color:C.text,marginBottom:10}},"¿Ya entregaste este pedido?"),
+              e("div",{style:{fontSize:11,fontWeight:700,color:C.textMuted,textTransform:"uppercase",letterSpacing:"0.7px",marginBottom:10}},"¿Ya entregaste?"),
               e("div",{style:{display:"flex",gap:8,flexWrap:"wrap"}},
-                e("button",{style:Object.assign({},st.btn,{flex:"1 1 45%",background:fc.yaEntregado===true?C.purple:"transparent",color:fc.yaEntregado===true?"#fff":C.textMuted,borderColor:fc.yaEntregado===true?C.purple:C.border}),onClick:function(){ setFormCerreP(Object.assign({},fc,{yaEntregado:true})); }},"Sí, ya lo entregué"),
-                e("button",{style:Object.assign({},st.btn,{flex:"1 1 45%",background:fc.yaEntregado===false?C.purple:"transparent",color:fc.yaEntregado===false?"#fff":C.textMuted,borderColor:fc.yaEntregado===false?C.purple:C.border}),onClick:function(){ setFormCerreP(Object.assign({},fc,{yaEntregado:false})); }},"No, todavía está pendiente")
+                e("button",{style:Object.assign({},st.btn,{flex:"1 1 45%",padding:"9px 10px",background:fc.yaEntregado===true?C.greenBg:"transparent",color:fc.yaEntregado===true?C.green:C.textMuted,borderColor:fc.yaEntregado===true?C.green:C.border,fontWeight:fc.yaEntregado===true?700:500}),onClick:function(){ setFormCerreP(Object.assign({},fc,{yaEntregado:true})); }},"Sí, ya lo entregué"),
+                e("button",{style:Object.assign({},st.btn,{flex:"1 1 45%",padding:"9px 10px",background:fc.yaEntregado===false?C.amberBg:"transparent",color:fc.yaEntregado===false?"#92400E":C.textMuted,borderColor:fc.yaEntregado===false?C.amber:C.border,fontWeight:fc.yaEntregado===false?700:500}),onClick:function(){ setFormCerreP(Object.assign({},fc,{yaEntregado:false})); }},"No, todavía está pendiente")
               )
             ),
             !listoVenta&&e("div",{style:{fontSize:11,color:C.textMuted,marginBottom:8,textAlign:"center"}},!(fc.items||[]).some(function(it){ return it.nombre.trim(); })?"Agrega al menos un producto para registrar":"Indica si ya entregaste el pedido"),
