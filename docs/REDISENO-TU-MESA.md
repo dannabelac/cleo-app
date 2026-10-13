@@ -136,6 +136,17 @@ Referencias: `docs/rediseno/referencias/R8-Clientes.html` (desktop) y `R8-Movil-
 - Canal (BtnCanal): botón neutro con contorno #E3E6EF, ícono + nombre en desktop; solo ícono de 40px en móvil. Conserva su comportamiento y el stopPropagation.
 - Chevron gris a la derecha; toda la fila abre el perfil como hoy.
 
+## 4d. Ronda 9 — Tarjetas de Pedidos y Oportunidades (aprobada)
+Referencias: `docs/rediseno/referencias/R9-Pedidos.html`, `R9-Movil-Pedidos.html`, `R9-Oportunidades.html`, `R9-Movil-Oportunidades.html`. Reemplaza el diseño de tarjeta de R5/R6 en ambas vistas.
+Desktop: tarjeta blanca radio 22, padding 22/24, grid `minmax(0,1fr) 280px`, gap 32.
+- Línea 1: nombre (17px/800) + etapa como pastilla tocable (28px, punto + texto + chevron) que abre el MISMO selector de etapa/estado de hoy. Colores: Preparando/Nueva = #EEF0FF/#3F4BD0; Entregado = #E2F2E8/#1E5C38; Sin respuesta y demás = #EEF0F5/#4A5068. Se quita la etiqueta de estado duplicada y el select grande.
+- Línea 2: producto 14.5px/600 (en oportunidades conserva el lápiz de editar).
+- Línea 3 (13.5px #5A6078): fecha. Pedidos: "Entrega 1 oct 2026" con ícono calendario, o el enlace "+ Agregar fecha de entrega". Tiempo en ocre #8A5A06 con reloj: "12 días preparando", "9 días sin movimiento".
+- Nota del usuario con lápiz #7C8CFF; consejo de CLEO con foco en #3F4BD0.
+- Columna derecha, alineada a la derecha. Pedidos con saldo: "Resta" + importe 26px en #5E3D04, barra de 6px (#EEF0F5, relleno #C99A3E al % pagado) y debajo "{estado de pago} · $pagado de $total". Pedidos pagados: "Total" + importe, barra llena #3E9A64 y "✓ Pagado completo" en verde. Oportunidades: "Total" + importe. Se quitan las 3 cajas Total/Pagado/Restante.
+- Acciones (separadas por línea #EDEFF5): todos los botones 36px, contorno #E3E6EF, texto 13px/700: canal (ícono + nombre), Cotización, Pagos (N), Adjuntar archivo como botón de solo ícono (clip, con title/aria-label). Acción principal oscura a la derecha (Registrar pago solo si hay saldo; Enviar precio / WhatsApp en oportunidades, como hoy).
+Móvil: misma tarjeta en una columna, padding 18, radio 24. Importe arriba a la derecha junto al nombre (Resta o Total, 18px). Etapa como pastilla al inicio de la línea de datos. En pedidos con saldo, la barra va con "Registrar pago" a su derecha. Botones de 40px: el canal solo con ícono, los secundarios sin ícono y sin envolver. En oportunidades, la acción principal ocupa el resto de la fila.
+
 ## 5. Fase 3 — Pedidos (y el resto de secciones)
 
 Referencias: `R5-Pedidos.html`, `R5-Movil-Pedidos.html`.
@@ -172,6 +183,7 @@ Capturas desktop (1440) y móvil (390) de cada pantalla y modal, en ambos perfil
 - Se elimina el botón flotante del sol; se quitan títulos de grupo del riel y emojis decorativos.
 - En móvil: se quitan la "C" y "CLEO · Nunca emprendas solo"; se agrega el resumen "Hoy tienes…" (antes solo desktop).
 - Etiquetas TOTAL / PAGADO / RESTANTE pasan a mayúscula inicial.
+- Tarjetas R9: "12d preparando" → "12 días preparando" en ocre (no rojo); "Entrega: …" → "Entrega …" con calendario; Total/Pagado/Restante pasan a "Resta" + barra de pago.
 - Clientes R8: "Seg: En N días" pasa a "Seguimiento en N días"; filtro de etapa como pastillas; se quitan el borde de color y las iniciales.
 - Inicio R7: resumen y acceso a Hoy en una franja; idea del día al final; en pedidos con saldo, el importe a la derecha del nombre en móvil.
 
