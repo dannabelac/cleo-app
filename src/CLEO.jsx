@@ -17262,8 +17262,6 @@ export default function CLEO(props){
       // Menú "Más": hoja azul noche con el negocio arriba
       mostrarMas&&e("div",{role:"menu",style:{position:"absolute",bottom:"calc(100% + 8px)",left:8,right:8,background:C.dark,borderRadius:28,padding:"12px 10px",boxShadow:C.shadowFloat}},
         e("div",{style:{display:"flex",alignItems:"center",gap:12,margin:"0 4px 8px",padding:12,borderRadius:18,background:"rgba(255,255,255,0.07)"}},
-          e("span",{style:{width:40,height:40,flexShrink:0,borderRadius:13,background:"#FFFFFF",boxShadow:"inset 0 0 0 2.5px "+colorHexSeguro(perfil.color,C.accent),display:"grid",placeItems:"center",overflow:"hidden",color:colorHexSeguro(perfil.color,C.accent),fontSize:13,fontWeight:800}},
-            logoSeguro(perfil.logo)?e("img",{src:logoSeguro(perfil.logo),alt:"",style:{width:30,height:30,objectFit:"contain"}}):(perfil.nombre||perfil.tuNombre||"?").slice(0,2).toUpperCase()),
           e("span",{style:{display:"flex",flexDirection:"column",lineHeight:1.25,minWidth:0}},
             e("span",{style:{fontSize:sc.namePerson,fontWeight:700,color:"#fff",overflowWrap:"anywhere"}},perfil.nombre||"Mi negocio"),
             perfil.tuNombre&&e("span",{style:{fontSize:13,color:"#8E94AE"}},perfil.tuNombre))
