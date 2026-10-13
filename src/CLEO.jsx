@@ -11178,7 +11178,7 @@ export default function CLEO(props){
           }
           var ec2=ETAPA_COLOR[c.etapa]||C.purple;
           return e("div",null,
-            e("div",{style:{display:"flex",alignItems:"center",justifyContent:"space-between",marginLeft:isMobile?-16:-48,marginRight:isMobile?-16:-48,marginTop:isMobile?-20:-40,padding:isMobile?"12px 16px":"14px 48px",background:C.bg,marginBottom:isMobile?12:20}},
+            e("div",{style:{display:"flex",alignItems:"center",justifyContent:"space-between",marginLeft:isMobile?-16:0,marginRight:isMobile?-16:0,marginTop:isMobile?-20:0,padding:isMobile?"12px 16px":"0 0 16px",background:isMobile?C.bg:"none",marginBottom:isMobile?12:0}},
               e("button",{style:{cursor:"pointer",background:"none",border:"none",fontSize:13,color:C.textMuted,fontWeight:500,padding:"4px 0"},onClick:function(){ setClienteAbierto(null); setTabCliente("perfil"); }},"← Volver"),
               e(BtnCanal,{cliente:c})
             ),
