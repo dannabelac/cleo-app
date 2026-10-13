@@ -1,0 +1,143 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<title>CLEO · Ingresos móvil</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0;background:#ECEEF5}
+a{color:#3F4BD0}
+.cl{font-family:'Plus Jakarta Sans',system-ui,sans-serif;color:#0E1328;font-variant-numeric:tabular-nums;-webkit-font-smoothing:antialiased}
+.i{width:18px;height:18px;flex:none;fill:none;stroke:currentColor;stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;height:44px;padding:0 16px;border-radius:999px;font-family:inherit;font-size:14.5px;font-weight:700;cursor:pointer;text-decoration:none;box-sizing:border-box;white-space:nowrap}
+.btn .i{width:16px;height:16px}
+.p{background:#0E1328;color:#FFFFFF;border:0}
+.o{background:#FFFFFF;color:#0E1328;border:1.5px solid #D5D8E4}
+.g{background:transparent;color:#0E1328;border:0;padding:0 10px}
+.tile{display:flex;align-items:center;justify-content:space-between;gap:8px;min-height:60px;padding:0 12px 0 16px;border:0;border-radius:18px;background:#FFFFFF;font-family:inherit;font-size:14.5px;font-weight:700;color:#0E1328;text-align:left;cursor:pointer}
+.tile .go{width:28px;height:28px;flex:none;border-radius:50%;background:#EEF0FF;color:#3F4BD0;display:grid;place-items:center}
+.tile .go .i{width:14px;height:14px;stroke-width:2.4}
+.row{padding:18px 0 20px}
+.row+.row{border-top:1px solid #E6E8F0}
+.nm{font-size:15.5px;font-weight:800}
+.sn{margin:6px 0 0;font-size:14.5px;line-height:1.55;color:#4A5068}
+.dt{color:#0E1328;font-weight:700}
+.pz{font-weight:700;white-space:nowrap}
+.pz .i{width:13px;height:13px;stroke-width:2.2;vertical-align:-2px;margin-right:2px}
+.lbl{display:flex;gap:6px;font-size:11px;font-weight:800;letter-spacing:.08em;color:#4A5068;padding-top:4px}
+.lbl span{color:#3F4BD0}
+.tb{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;min-width:44px;min-height:56px;text-decoration:none;color:#5A6078;font-size:11px;font-weight:600;white-space:nowrap}
+.tb .pill{width:46px;height:28px;border-radius:14px;display:grid;place-items:center;position:relative}
+.tb .i{width:20px;height:20px}
+.tb.on{color:#0E1328;font-weight:800}
+.tb.on .pill{background:#E4E8FF;color:#3F4BD0}
+.cnt{min-width:18px;height:18px;padding:0 5px;box-sizing:border-box;border-radius:9px;background:#0E1328;color:#FFFFFF;font-size:10.5px;font-weight:800;display:grid;place-items:center}
+.flt{display:flex;gap:2px;padding:4px;border-radius:22px;background:#FFFFFF}
+.flt button{flex:1;height:36px;padding:0 6px;border:0;border-radius:18px;background:transparent;font-family:inherit;font-size:13px;font-weight:600;color:#4A5068}
+.flt button.on{background:#E4E8FF;color:#0E1328;font-weight:800}
+.cr{display:flex;align-items:center;gap:12px;min-height:62px;border-top:1px solid #EDEFF5}
+.cr:first-child{border-top:0}
+.lt{width:16px;flex:none;font-size:12.5px;font-weight:800;color:#3F4BD0}
+.nm2{flex:1;min-width:0;font-size:15px;font-weight:700}
+.seg{display:inline-flex;align-items:center;gap:5px;margin-top:4px;height:24px;padding:0 9px;border-radius:12px;background:#EEF0FF;color:#3F4BD0;font-size:12px;font-weight:700}
+.seg .i{width:13px;height:13px;stroke-width:2.2}
+.ch{width:40px;height:40px;flex:none;border-radius:50%;border:1.5px solid #E3E6EF;display:grid;place-items:center;color:#0E1328}
+.ch .i{width:17px;height:17px}
+.dg{font-size:12px;font-weight:800;letter-spacing:.06em;color:#3F4BD0;padding:22px 0 6px}
+.dg:first-child{padding-top:6px}
+.mv{display:flex;align-items:center;gap:14px;padding:12px 0;border-top:1px solid #EDEFF5}
+.dg+.mv{border-top:0}
+.ti{width:40px;height:40px;flex:none;border-radius:13px;display:grid;place-items:center}
+.ti .i{width:18px;height:18px}
+.t-ped{background:#EEF0FF;color:#3F4BD0}.t-vr{background:#FBF1DC;color:#8A5A06}.t-can{background:#FBE6E1;color:#B23A24}
+.mv .tx{flex:1;min-width:0}
+.mv .who{font-size:15px;font-weight:700}
+.mv .what{margin-top:2px;font-size:13px;color:#5A6078;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.mv .what b{font-weight:700;color:#4A5068}
+.mv .what .neg{color:#B23A24}
+.mv .am{font-size:15.5px;font-weight:800;letter-spacing:-0.01em;white-space:nowrap}
+.mv .am.neg{color:#B23A24}
+.ct{height:36px;padding:0 16px;border:0;border-radius:18px;background:transparent;font-family:inherit;font-size:13.5px;font-weight:600;color:#4A5068;cursor:pointer}
+.ct.on{background:#E4E8FF;color:#0E1328;font-weight:800}
+.pr{display:flex;align-items:center;justify-content:space-between;gap:12px;width:100%;padding:14px 16px;border:0;border-radius:16px;background:transparent;font-family:inherit;text-align:left;cursor:pointer;color:#0E1328}
+.pr small{font-size:13.5px;font-weight:600;color:#5A6078}
+.pr strong{font-size:17px;font-weight:800;letter-spacing:-0.01em}
+.pr.on{background:#E4E8FF}
+.pr.on small{color:#0E1328;font-weight:800}
+.mv .who{font-size:14.5px}.mv .what{font-size:12.5px}.mv .am{font-size:14.5px}.ti{width:36px;height:36px;border-radius:12px}.ti .i{width:16px;height:16px}
+.ps{flex:1;display:flex;flex-direction:column;align-items:flex-start;gap:2px;padding:10px 12px;border:0;border-radius:16px;background:transparent;font-family:inherit;text-align:left;color:#0E1328}
+.ps small{font-size:12px;font-weight:600;color:#5A6078}.ps strong{font-size:14.5px;font-weight:800;letter-spacing:-0.01em}
+.ps.on{background:#E4E8FF}.ps.on small{color:#0E1328;font-weight:800}
+.ct{flex:1;padding:0 6px;font-size:12.5px;white-space:nowrap}
+.mv .what{white-space:normal;line-height:1.4}
+.mv{align-items:flex-start}.mv .am{padding-top:2px}
+</style>
+</helmet>
+<svg width="0" height="0" style="position: absolute" aria-hidden="true">
+<symbol id="i-home" viewBox="0 0 24 24"><path d="M3.5 10.5 12 3.5l8.5 7V20h-5.5v-5.5h-6V20H3.5z"/></symbol>
+<symbol id="i-sun" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 2.5v2M12 19.5v2M2.5 12h2M19.5 12h2M5.3 5.3l1.4 1.4M17.3 17.3l1.4 1.4M5.3 18.7l1.4-1.4M17.3 6.7l1.4-1.4"/></symbol>
+<symbol id="i-users" viewBox="0 0 24 24"><circle cx="9" cy="8" r="3.5"/><path d="M2.5 20c.6-3.5 3.3-5.5 6.5-5.5s5.9 2 6.5 5.5M16 4.6a3.5 3.5 0 0 1 0 6.8M18 14.8c2 .8 3.2 2.6 3.5 5.2"/></symbol>
+<symbol id="i-bag" viewBox="0 0 24 24"><path d="M5 8h14l-1 13H6z"/><path d="M9 8V6a3 3 0 0 1 6 0v2"/></symbol>
+<symbol id="i-cash" viewBox="0 0 24 24"><rect x="3" y="6" width="18" height="12" rx="2"/><circle cx="12" cy="12" r="2.5"/></symbol>
+<symbol id="i-dots" viewBox="0 0 24 24"><path d="M5.5 12h.01M12 12h.01M18.5 12h.01" stroke-width="3"/></symbol>
+<symbol id="i-plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></symbol>
+<symbol id="i-chev" viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"/></symbol>
+<symbol id="i-arrow" viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></symbol>
+<symbol id="i-chat" viewBox="0 0 24 24"><path d="M4 5.5A1.5 1.5 0 0 1 5.5 4h13A1.5 1.5 0 0 1 20 5.5v9a1.5 1.5 0 0 1-1.5 1.5H9.5L4 20z"/></symbol>
+<symbol id="i-check" viewBox="0 0 24 24"><path d="m5 12.5 4.5 4.5L19 7.5"/></symbol>
+<symbol id="i-alert" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><path d="M12 7.5v5M12 16h.01"/></symbol>
+<symbol id="i-pen" viewBox="0 0 24 24"><path d="M4 20h4L19 9l-4-4L4 16z"/></symbol>
+<symbol id="i-bulb" viewBox="0 0 24 24"><path d="M9 18h6M10 21h4M12 3a6 6 0 0 0-3.6 10.8c.6.5 1 1.2 1 2V16h5.2v-.2c0-.8.4-1.5 1-2A6 6 0 0 0 12 3z"/></symbol>
+<symbol id="i-ig" viewBox="0 0 24 24"><rect x="3.5" y="3.5" width="17" height="17" rx="5"/><circle cx="12" cy="12" r="4"/><path d="M17 7h.01"/></symbol>
+<symbol id="i-wa" viewBox="0 0 24 24"><path d="M4.5 19.5 5.8 16A8 8 0 1 1 8.3 18.5z"/><path d="M9.2 8.8c.2 2.7 2.4 5 5.2 5.6l1.1-1.4"/></symbol>
+<symbol id="i-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="6.5"/><path d="m16 16 4.5 4.5"/></symbol>
+<symbol id="i-right" viewBox="0 0 24 24"><path d="m9 6 6 6-6 6"/></symbol>
+<symbol id="i-clock" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><path d="M12 7.5V12l3 2"/></symbol>
+<symbol id="i-bolt" viewBox="0 0 24 24"><path d="M13 3 5 13.5h6L10 21l8-10.5h-6z"/></symbol>
+<symbol id="i-x" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18"/></symbol>
+<symbol id="i-bag2" viewBox="0 0 24 24"><path d="M5 8h14l-1 13H6z"/><path d="M9 8V6a3 3 0 0 1 6 0v2"/></symbol>
+</svg>
+<div class="cl" style="width: 390px; height: 1200px; position: relative; overflow: hidden; background: #ECEEF5">
+<div style="padding: 22px 20px 120px">
+<header style="padding: 0 2px"><h1 style="margin: 8px 0 0; font-size: 24px; line-height: 1.2; font-weight: 800; letter-spacing: -0.03em">Ingresos</h1><p style="margin: 6px 0 0; font-size: 14px; color: #5A6078">Dinero que ya entró a tu negocio</p></header>
+<div style="margin-top: 22px; border-radius: 24px; padding: 18px 20px; color: #FFFFFF; background: radial-gradient(120% 120% at 100% 0%, #24307A 0%, rgba(36,48,122,0) 62%), #0E1328"><div style="font-size: 13px; font-weight: 600; color: #A9AFC6">Entró este mes</div><div style="margin-top: 2px; font-size: 30px; font-weight: 800; letter-spacing: -0.035em">$6,960.00</div></div>
+<div role="tablist" style="margin-top: 8px; display: flex; gap: 2px; padding: 4px; border-radius: 22px; background: #FFFFFF"><button class="ps"><small>Hoy</small><strong>$0.00</strong></button><button class="ps"><small>Semana</small><strong>$2,500.00</strong></button><button class="ps on"><small>Mes</small><strong>$6,960.00</strong></button></div>
+<section style="margin-top: 20px; padding: 14px 18px 8px; border-radius: 24px; background: #FFFFFF">
+<label style="display: flex; align-items: center; gap: 10px; height: 42px; padding: 0 14px; border-radius: 21px; background: #F4F5FA; color: #6E7489"><svg class="i"><use href="#i-search"></use></svg><input placeholder="Buscar..." style="flex: 1; min-width: 0; border: 0; outline: 0; background: transparent; font-family: inherit; font-size: 14.5px"></label>
+<div role="tablist" style="margin: 8px 0 6px; display: flex; gap: 2px; padding: 3px; border-radius: 21px; background: #F4F5FA"><button class="ct on">Todos</button><button class="ct">Pedidos</button><button class="ct">Ventas rápidas</button></div>
+<div class="dg">AYER</div>
+<div class="mv"><span class="ti t-ped"><svg class="i"><use href="#i-bag2"></use></svg></span><div class="tx"><div class="who">Roberto Cauich</div><div class="what"><b>Pedido</b> · Anticipo · Set collar y aretes</div></div><div class="am">$1,000.00</div></div>
+<div class="dg">10 OCT</div>
+<div class="mv"><span class="ti t-can"><svg class="i"><use href="#i-x"></use></svg></span><div class="tx"><div class="who">Nicolás Ek</div><div class="what"><b class="neg">Pedido cancelado</b> · Anticipo descontado · Anillo boda custom</div></div><div class="am neg">−$200.00</div></div>
+<div class="dg">8 OCT</div>
+<div class="mv"><span class="ti t-ped"><svg class="i"><use href="#i-bag2"></use></svg></span><div class="tx"><div class="who">Gaby Torres</div><div class="what"><b>Pedido</b> · Pago completo · Aretes plata</div></div><div class="am">$1,000.00</div></div>
+<div class="mv"><span class="ti t-ped"><svg class="i"><use href="#i-bag2"></use></svg></span><div class="tx"><div class="who">Ximena Cab</div><div class="what"><b>Pedido</b> · Anticipo · Collar dorado</div></div><div class="am">$500.00</div></div>
+<div class="mv"><span class="ti t-ped"><svg class="i"><use href="#i-bag2"></use></svg></span><div class="tx"><div class="who">Nicolás Ek</div><div class="what"><b>Pedido</b> · Anticipo · Anillo boda custom</div></div><div class="am">$200.00</div></div>
+<div class="dg">4 OCT</div>
+<div class="mv"><span class="ti t-vr"><svg class="i"><use href="#i-bolt"></use></svg></span><div class="tx"><div class="who">Sin cliente</div><div class="what"><b>Venta rápida</b> · Pago completo · Aretes dorados pequeños</div></div><div class="am">$320.00</div></div>
+</section>
+</div>
+
+<nav aria-label="Principal" style="position: absolute; left: 0; right: 0; bottom: 0; background: #FFFFFF; border-top: 1px solid #DADDE8; padding: 4px 8px 20px; display: flex; justify-content: space-between">
+<a href="#" class="tb"><span class="pill"><svg class="i"><use href="#i-home"></use></svg></span>Inicio</a>
+<a href="#" class="tb"><span class="pill"><svg class="i"><use href="#i-sun"></use></svg><span class="cnt" style="position: absolute; top: -5px; right: 0">4</span></span>Hoy</a>
+<a href="#" class="tb"><span class="pill"><svg class="i"><use href="#i-users"></use></svg></span>Oportunidades</a>
+<a href="#" class="tb"><span class="pill"><svg class="i"><use href="#i-bag"></use></svg></span>Pedidos</a>
+<a href="#" class="tb on" aria-current="page"><span class="pill"><svg class="i"><use href="#i-cash"></use></svg></span>Ingresos</a>
+<a href="#" class="tb"><span class="pill"><svg class="i"><use href="#i-dots"></use></svg></span>Más</a>
+</nav>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":390,"height":1200}}'>
+class Component extends DCLogic {
+  renderVals() { return {}; }
+}
+</script>
+</body>
+</html>

@@ -147,6 +147,15 @@ Desktop: tarjeta blanca radio 22, padding 22/24, grid `minmax(0,1fr) 280px`, gap
 - Acciones (separadas por línea #EDEFF5): todos los botones 36px, contorno #E3E6EF, texto 13px/700: canal (ícono + nombre), Cotización, Pagos (N), Adjuntar archivo como botón de solo ícono (clip, con title/aria-label). Acción principal oscura a la derecha (Registrar pago solo si hay saldo; Enviar precio / WhatsApp en oportunidades, como hoy).
 Móvil: misma tarjeta en una columna, padding 18, radio 24. Importe arriba a la derecha junto al nombre (Resta o Total, 18px). Etapa como pastilla al inicio de la línea de datos. En pedidos con saldo, la barra va con "Registrar pago" a su derecha. Botones de 40px: el canal solo con ícono, los secundarios sin ícono y sin envolver. En oportunidades, la acción principal ocupa el resto de la fila.
 
+## 4e. Ronda 10 — Ingresos (aprobada, reemplaza R6-Ingresos)
+Referencias: `docs/rediseno/referencias/R10-Ingresos.html` (desktop) y `R10-Movil-Ingresos.html` (móvil).
+- Encabezado: "Ingresos" + "Dinero que ya entró a tu negocio".
+- Desktop: grid `minmax(0,1fr) 300px`, gap 24. Izquierda: lista de movimientos en bloque blanco (radio 22, padding 20/26). Derecha (sticky top 24): el periodo.
+- Periodo: un bloque oscuro (mismo degradado navy, radio 22) con "Entró hoy / Entró esta semana / Entró este mes" (13px #A9AFC6) y el total del periodo elegido (34px desktop, 30px móvil). Debajo, un selector blanco con las 3 opciones (Hoy, Semana, Mes), cada una con su importe; la elegida en #E4E8FF. En desktop van apiladas (filas 15px de etiqueta + importe a la derecha); en móvil, en fila de 3 (etiqueta arriba, importe abajo). Se quitan las 3 tarjetas grandes. Misma lógica de periodo que hoy.
+- Buscador y filtro Todos · Pedidos · Ventas rápidas dentro del bloque de la lista, sobre fondo #F4F5FA.
+- Grupos por día (AYER, 10 OCT…) en pervinca 12px/800, como hoy.
+- Movimiento: ícono de 40px (36px móvil) radio 13: pedido = bolsa en #EEF0FF/#3F4BD0; venta rápida = rayo en #FBF1DC/#8A5A06; pedido cancelado = × en #FBE6E1/#B23A24. Nombre 15px/700; debajo, en 13px #5A6078: tipo en negritas ("Pedido", "Venta rápida", "Pedido cancelado" en rojo) + " · " + concepto. En móvil el texto se ajusta en varias líneas, sin cortar. Importe 15.5px/800 a la derecha; negativos en rojo con "−". Se quitan las etiquetas en mayúsculas.
+
 ## 5. Fase 3 — Pedidos (y el resto de secciones)
 
 Referencias: `R5-Pedidos.html`, `R5-Movil-Pedidos.html`.
@@ -183,6 +192,7 @@ Capturas desktop (1440) y móvil (390) de cada pantalla y modal, en ambos perfil
 - Se elimina el botón flotante del sol; se quitan títulos de grupo del riel y emojis decorativos.
 - En móvil: se quitan la "C" y "CLEO · Nunca emprendas solo"; se agrega el resumen "Hoy tienes…" (antes solo desktop).
 - Etiquetas TOTAL / PAGADO / RESTANTE pasan a mayúscula inicial.
+- Ingresos R10: "MES/SEMANA/HOY" → "Entró este mes / esta semana / hoy" en el bloque del periodo; el tipo de movimiento pasa de etiqueta en mayúsculas a texto + ícono.
 - Tarjetas R9: "12d preparando" → "12 días preparando" en ocre (no rojo); "Entrega: …" → "Entrega …" con calendario; Total/Pagado/Restante pasan a "Resta" + barra de pago.
 - Clientes R8: "Seg: En N días" pasa a "Seguimiento en N días"; filtro de etapa como pastillas; se quitan el borde de color y las iniciales.
 - Inicio R7: resumen y acceso a Hoy en una franja; idea del día al final; en pedidos con saldo, el importe a la derecha del nombre en móvil.
