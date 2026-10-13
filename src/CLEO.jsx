@@ -17260,18 +17260,18 @@ export default function CLEO(props){
         "Más"
       ),
       // Menú "Más": hoja azul noche con el negocio arriba
-      mostrarMas&&e("div",{role:"menu",style:{position:"absolute",bottom:"calc(100% + 8px)",left:8,right:8,background:C.dark,borderRadius:28,padding:"12px 10px",boxShadow:C.shadowFloat}},
-        e("div",{style:{display:"flex",alignItems:"center",gap:12,margin:"0 4px 8px",padding:12,borderRadius:18,background:"rgba(255,255,255,0.07)"}},
+      mostrarMas&&e("div",{role:"menu",style:{position:"absolute",bottom:"calc(100% + 8px)",left:8,right:8,background:C.dark,borderRadius:22,padding:"10px 8px",boxShadow:C.shadowFloat}},
+        e("div",{style:{display:"flex",alignItems:"center",gap:10,margin:"0 4px 6px",padding:"8px 12px",borderRadius:14,background:"rgba(255,255,255,0.07)"}},
           e("span",{style:{display:"flex",flexDirection:"column",lineHeight:1.25,minWidth:0}},
-            e("span",{style:{fontSize:sc.namePerson,fontWeight:700,color:"#fff",overflowWrap:"anywhere"}},perfil.nombre||"Mi negocio"),
-            perfil.tuNombre&&e("span",{style:{fontSize:13,color:"#8E94AE"}},perfil.tuNombre))
+            e("span",{style:{fontSize:14,fontWeight:700,color:"#fff",overflowWrap:"anywhere"}},perfil.nombre||"Mi negocio"),
+            perfil.tuNombre&&e("span",{style:{fontSize:12,color:"#8E94AE"}},perfil.tuNombre))
         ),
         (function(){
           function fila(k,label,d,activo,fn,sub){
-            return e("button",{key:k,type:"button",role:"menuitem",style:{display:"flex",alignItems:"center",gap:14,width:"100%",minHeight:52,padding:"0 16px",background:activo?"rgba(141,155,255,0.22)":"none",border:"none",cursor:"pointer",borderRadius:16,fontFamily:"inherit",fontSize:sc.text,fontWeight:activo?800:600,color:"#fff",textAlign:"left"},onClick:function(){ fn(); setMostrarMas(false); }},
-              e("svg",{width:22,height:22,viewBox:"0 0 24 24",fill:"none",stroke:"#AEB8FF",strokeWidth:1.9,strokeLinecap:"round",strokeLinejoin:"round","aria-hidden":true},e("path",{d:d||""})),
+            return e("button",{key:k,type:"button",role:"menuitem",style:{display:"flex",alignItems:"center",gap:10,width:"100%",minHeight:44,padding:"0 12px",background:activo?"rgba(141,155,255,0.22)":"none",border:"none",cursor:"pointer",borderRadius:13,fontFamily:"inherit",fontSize:14,fontWeight:activo?800:600,color:"#fff",textAlign:"left"},onClick:function(){ fn(); setMostrarMas(false); }},
+              e("svg",{width:19,height:19,viewBox:"0 0 24 24",fill:"none",stroke:"#AEB8FF",strokeWidth:1.9,strokeLinecap:"round",strokeLinejoin:"round","aria-hidden":true},e("path",{d:d||""})),
               e("span",{style:{flex:1}},label),
-              sub&&e("span",{style:{fontSize:sc.textSec,fontWeight:500,color:"#8E94AE"}},sub));
+              sub&&e("span",{style:{fontSize:12,fontWeight:500,color:"#8E94AE"}},sub));
           }
           var items=esProductos?[
             {v:"clientes",label:"Clientes"},
