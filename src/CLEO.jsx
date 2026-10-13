@@ -9812,32 +9812,32 @@ export default function CLEO(props){
         var colorNeg=colorHexSeguro(perfil.color,C.accent);
         var logoNeg=logoSeguro(perfil.logo);
         function icono(path,activo){
-          return e("svg",{width:20,height:20,viewBox:"0 0 24 24",fill:"none",stroke:activo?"#AEB8FF":"currentColor",strokeWidth:activo?2.1:1.9,strokeLinecap:"round",strokeLinejoin:"round","aria-hidden":true,style:{flexShrink:0}},e("path",{d:path||""}));
+          return e("svg",{width:18,height:18,viewBox:"0 0 24 24",fill:"none",stroke:activo?"#AEB8FF":"currentColor",strokeWidth:activo?2.1:1.9,strokeLinecap:"round",strokeLinejoin:"round","aria-hidden":true,style:{flexShrink:0}},e("path",{d:path||""}));
         }
         function item(v,label,iconPath,opts){
           opts=opts||{};
           var activo=opts.activo!==undefined?opts.activo:vista===v;
           return e("button",{key:opts.key||v,type:"button","aria-current":activo?"page":undefined,"aria-label":sbOpen?undefined:label,title:sbOpen?undefined:label,
-            style:{cursor:"pointer",width:sbOpen?84:52,minHeight:52,padding:sbOpen?"8px 4px":"7px 4px",boxSizing:"border-box",borderRadius:14,border:"none",
-              background:activo?"rgba(141,155,255,0.22)":"transparent",color:activo?"#FFFFFF":"#B9BED3",fontFamily:"inherit",fontSize:11.5,fontWeight:activo?800:600,lineHeight:1.2,
-              display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:5,textAlign:"center",position:"relative",flexShrink:0},
+            style:{cursor:"pointer",width:sbOpen?76:48,minHeight:44,padding:sbOpen?"6px 2px":"6px 2px",boxSizing:"border-box",borderRadius:12,border:"none",
+              background:activo?"rgba(141,155,255,0.22)":"transparent",color:activo?"#FFFFFF":"#B9BED3",fontFamily:"inherit",fontSize:11,fontWeight:activo?800:600,lineHeight:1.15,
+              display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:3,textAlign:"center",position:"relative",flexShrink:0},
             onClick:opts.onClick||function(){ setVista(v); if(v!=="clientes") setClienteAbierto(null); }},
             e("span",{style:{position:"relative",display:"grid"}},
               icono(iconPath,activo),
-              opts.badge>0&&e("span",{style:{position:"absolute",top:-7,right:-15,minWidth:20,height:20,padding:"0 6px",boxSizing:"border-box",borderRadius:10,background:"#9AA7FF",color:C.ink,fontSize:11.5,fontWeight:800,display:"grid",placeItems:"center"}},opts.badge>99?"99+":opts.badge)
+              opts.badge>0&&e("span",{style:{position:"absolute",top:-6,right:-13,minWidth:17,height:17,padding:"0 5px",boxSizing:"border-box",borderRadius:9,background:"#9AA7FF",color:C.ink,fontSize:10.5,fontWeight:800,display:"grid",placeItems:"center"}},opts.badge>99?"99+":opts.badge)
             ),
             sbOpen&&e("span",null,label),
-            sbOpen&&opts.sub&&e("span",{style:{display:"block",marginTop:-4,fontSize:11.5,fontWeight:500,color:"#8E94AE"}},opts.sub)
+            sbOpen&&opts.sub&&e("span",{style:{display:"block",marginTop:-1,fontSize:10,fontWeight:500,color:"#8E94AE",whiteSpace:"nowrap"}},opts.sub)
           );
         }
-        function separador(k){ return e("span",{key:k,"aria-hidden":true,style:{width:52,height:1,background:"rgba(255,255,255,0.13)",margin:"8px 0",flexShrink:0}}); }
+        function separador(k){ return e("span",{key:k,"aria-hidden":true,style:{width:40,height:1,background:"rgba(255,255,255,0.13)",margin:"5px 0",flexShrink:0}}); }
         var nHoy=contarPendientesHoy(clientes,cotizaciones,pedidos,esProductos);
         return e("div",{style:{display:isMobile?"none":"flex",flexShrink:0,padding:"12px 0 12px 12px",boxSizing:"border-box",position:"sticky",top:0,height:"100vh",zIndex:40}},
-          e("div",{role:"navigation","aria-label":"Navegación principal",style:{width:sbOpen?104:68,boxSizing:"border-box",background:C.dark,borderRadius:24,padding:"12px 8px 10px",display:"flex",flexDirection:"column",alignItems:"center",gap:2,transition:"width 0.2s ease",height:"100%"}},
-            e("button",{type:"button","aria-label":sbOpen?"Contraer menú":"Expandir menú","aria-expanded":sbOpen,style:{cursor:"pointer",background:"none",border:"none",color:"#B9BED3",width:44,height:36,borderRadius:12,display:"grid",placeItems:"center",flexShrink:0},onClick:function(){ setSbOpen(!sbOpen); }},
+          e("div",{role:"navigation","aria-label":"Navegación principal",style:{width:sbOpen?92:64,boxSizing:"border-box",background:C.dark,borderRadius:22,padding:"8px 8px 8px",display:"flex",flexDirection:"column",alignItems:"center",gap:2,transition:"width 0.2s ease",height:"100%"}},
+            e("button",{type:"button","aria-label":sbOpen?"Contraer menú":"Expandir menú","aria-expanded":sbOpen,style:{cursor:"pointer",background:"none",border:"none",color:"#B9BED3",width:40,height:30,borderRadius:10,display:"grid",placeItems:"center",flexShrink:0},onClick:function(){ setSbOpen(!sbOpen); }},
               e("svg",{width:20,height:20,viewBox:"0 0 24 24",fill:"none",stroke:"currentColor",strokeWidth:2,strokeLinecap:"round","aria-hidden":true},e("path",{d:"M4 7h16M4 12h16M4 17h10"}))
             ),
-            e("div",{style:{color:"#FFFFFF",fontSize:sbOpen?16:13,fontWeight:800,letterSpacing:"0.02em",margin:"2px 0 10px",flexShrink:0}},"CLEO"),
+            e("div",{style:{color:"#FFFFFF",fontSize:sbOpen?15:12,fontWeight:800,letterSpacing:"0.02em",margin:"0 0 8px",flexShrink:0}},"CLEO"),
             e("div",{style:{flex:1,minHeight:0,overflowY:"auto",width:"100%",display:"flex",flexDirection:"column",alignItems:"center",gap:2}},
               item("inicio",NAV_LABELS.inicio,NAV_SVG.inicio),
               item("hoy",NAV_LABELS.hoy,NAV_SVG.hoy,{badge:nHoy}),
@@ -9851,16 +9851,16 @@ export default function CLEO(props){
               sub:catActivo.length>0?catActivo.length+(esProductos?" productos":" servicios"):"Sin "+(esProductos?"productos":"servicios"),
               onClick:function(){ setModalCatalogo(true); }}),
             // Cuenta: logo y nombre del negocio (anillo con su color) + usuario
-            e("div",{style:{position:"relative",marginTop:6,flexShrink:0}},
+            e("div",{style:{position:"relative",marginTop:4,flexShrink:0}},
               e("button",{type:"button","aria-label":"Menú de cuenta de "+(perfil.tuNombre||"usuario")+", "+(perfil.nombre||"mi negocio"),"aria-expanded":menuUsuario,"aria-haspopup":"menu",
-                style:{cursor:"pointer",width:sbOpen?84:52,padding:sbOpen?"8px 4px":"7px 4px",boxSizing:"border-box",border:"none",borderRadius:14,background:"rgba(255,255,255,0.06)",color:"#FFFFFF",fontFamily:"inherit",display:"flex",flexDirection:"column",alignItems:"center",gap:5},
+                style:{cursor:"pointer",width:sbOpen?76:48,padding:"6px 2px",boxSizing:"border-box",border:"none",borderRadius:12,background:"rgba(255,255,255,0.06)",color:"#FFFFFF",fontFamily:"inherit",display:"flex",flexDirection:"column",alignItems:"center",gap:3},
                 onClick:function(){ setMenuUsuario(!menuUsuario); }},
-                e("span",{style:{width:40,height:40,borderRadius:13,background:"#FFFFFF",boxShadow:"inset 0 0 0 2.5px "+colorNeg,display:"grid",placeItems:"center",overflow:"hidden",color:colorNeg,fontSize:13,fontWeight:800}},
-                  logoNeg?e("img",{src:logoNeg,alt:"",style:{width:30,height:30,objectFit:"contain"}}):(perfil.nombre||perfil.tuNombre||"?").slice(0,2).toUpperCase()
+                e("span",{style:{width:30,height:30,borderRadius:10,background:"#FFFFFF",boxShadow:"inset 0 0 0 2px "+colorNeg,display:"grid",placeItems:"center",overflow:"hidden",color:colorNeg,fontSize:11,fontWeight:800}},
+                  logoNeg?e("img",{src:logoNeg,alt:"",style:{width:22,height:22,objectFit:"contain"}}):(perfil.nombre||perfil.tuNombre||"?").slice(0,2).toUpperCase()
                 ),
-                sbOpen&&e("span",{style:{fontSize:11.5,fontWeight:700,lineHeight:1.2,textAlign:"center",maxWidth:84,overflowWrap:"anywhere"}},perfil.nombre||"Mi negocio"),
-                sbOpen&&e("span",{style:{display:"inline-flex",alignItems:"center",gap:2,fontSize:10.5,color:"#8E94AE"}},perfil.tuNombre||"Mi cuenta",
-                  e("svg",{width:13,height:13,viewBox:"0 0 24 24",fill:"none",stroke:"currentColor",strokeWidth:2,strokeLinecap:"round","aria-hidden":true,style:{transform:menuUsuario?"rotate(180deg)":"none",transition:"transform 0.15s"}},e("path",{d:"M6 9l6 6 6-6"})))
+                sbOpen&&e("span",{style:{fontSize:11,fontWeight:700,lineHeight:1.15,textAlign:"center",maxWidth:72,overflowWrap:"anywhere"}},perfil.nombre||"Mi negocio"),
+                sbOpen&&e("span",{style:{display:"inline-flex",alignItems:"center",gap:1,fontSize:10,lineHeight:1.15,color:"#8E94AE",maxWidth:72,textAlign:"center"}},perfil.tuNombre||"Mi cuenta",
+                  e("svg",{width:11,height:11,viewBox:"0 0 24 24",fill:"none",stroke:"currentColor",strokeWidth:2,strokeLinecap:"round","aria-hidden":true,style:{flexShrink:0,transform:menuUsuario?"rotate(180deg)":"none",transition:"transform 0.15s"}},e("path",{d:"M6 9l6 6 6-6"})))
               ),
               menuUsuario&&e("div",{role:"menu",style:{position:"absolute",left:"calc(100% + 18px)",bottom:0,minWidth:210,background:C.dark,borderRadius:20,padding:8,boxShadow:C.shadowFloat,zIndex:60}},
                 [
