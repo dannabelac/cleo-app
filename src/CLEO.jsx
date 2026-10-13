@@ -11286,6 +11286,7 @@ export default function CLEO(props){
                       var itemsInteresHist=obtenerItemsInteres(c);
                       setNuevoPedidoForm(Object.assign({},pedidoVacio,{clienteId:String(c.id),items:itemsInteresHist.length>0?itemsInteresHist:pedidoVacio.items}));
                       setBuscaCliPed("");
+                      setVista("pedidos");
                       setNuevoPedidoModal(true);
                     }},"+ Pedido")
                   : e("button",{style:Object.assign({},st.btn,{fontSize:12,padding:"5px 12px"}),onClick:function(){ setFormCot(Object.assign({},cotVacio,{clienteId:String(c.id)})); setModalCot(true); }},"+ "+TXT.cotizacion),
