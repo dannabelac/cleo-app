@@ -3761,6 +3761,7 @@ function _abrirHTML(html,filename){
 function ItemsEditor(props){
   var e=eSeguro;
   var isMobile=useEsMobile();
+  var sc={textLabel:11,namePerson:15,inputFs:isMobile?16:14};
   var items=props.items||[];
   var setItems=props.setItems;
   var catalogo=props.catalogo||[];
@@ -3954,6 +3955,7 @@ function ItemsEditor(props){
 function ModalVenta(props){
   var e=eSeguro;
   var isMobile=useEsMobile();
+  var sc={text:isMobile?15:14,titleSection:isMobile?17:18,textLabel:11,inputFs:isMobile?16:14};
   var modalVenta=props.modalVenta; var setModalVenta=props.setModalVenta;
   var formVenta=props.formVenta; var setFormVenta=props.setFormVenta;
   var pasoVenta=props.pasoVenta; var setPasoVenta=props.setPasoVenta;
@@ -4320,6 +4322,7 @@ function BtnCanal(props){
 
 function BadgeAnticipo(props){
   var e=eSeguro;
+  var sc={textLabel:11};
   var cot=props.cot;
   if(!cot||cot.estatus!=="Aceptada") return null;
   var totalPagado=totalPagadoDe(cot);
