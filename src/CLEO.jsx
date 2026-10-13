@@ -9232,25 +9232,39 @@ export default function CLEO(props){
 
   var isMobile=useEsMobile();
   var docLegalCuenta=useDocumentoLegal(); // "Mi cuenta" → Privacidad y términos (solo consulta)
+  // Escala tipográfica y de espaciado según viewport.
+  // Desktop (≥768px): texto compacto para ver más contenido sin scroll.
+  // Móvil: texto mayor (16px en campos para evitar zoom de iOS, 44px mínimo táctil).
+  var sc={
+    text:isMobile?16:14,
+    textSec:isMobile?15:13,
+    textLabel:isMobile?12:11,
+    titlePage:isMobile?28:26,
+    titleSection:isMobile?22:20,
+    namePerson:isMobile?18:17,
+    btnH:isMobile?44:38,
+    inputFs:isMobile?16:14,
+    blockPad:isMobile?24:20,
+    blockR:isMobile?28:22,
+  };
+
   var st={
     wrap:{fontFamily:FONT_CLEO,background:C.bg,minHeight:"100vh",color:C.text},
     hdr:{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"0.85rem 1.25rem",borderBottom:"0.5px solid "+C.border,background:C.dark},
     nav:{display:"flex",gap:2,padding:"0.5rem 1.25rem",borderBottom:"0.5px solid "+C.border,background:C.bg,flexWrap:"wrap"},
     nb:function(a){ return {padding:"7px 14px",borderRadius:8,border:"none",background:a?C.surfaceUp:"transparent",cursor:"pointer",fontSize:12,fontWeight:a?500:400,color:a?C.text:C.textMuted}; },
-    btn:{cursor:"pointer",padding:"9px 18px",borderRadius:999,border:"1.5px solid "+C.borderStrong,background:C.surface,fontSize:14,color:C.text,fontWeight:600,fontFamily:"inherit",
-      minHeight:isMobile?44:undefined,boxSizing:isMobile?"border-box":undefined,
-      display:isMobile?"inline-flex":undefined,alignItems:isMobile?"center":undefined,justifyContent:isMobile?"center":undefined},
-    btnP:{cursor:"pointer",padding:"10px 20px",borderRadius:999,border:"none",background:C.ink,fontSize:14,color:"#fff",fontWeight:700,fontFamily:"inherit",
-      minHeight:isMobile?44:undefined,boxSizing:isMobile?"border-box":undefined,
-      display:isMobile?"inline-flex":undefined,alignItems:isMobile?"center":undefined,justifyContent:isMobile?"center":undefined},
+    btn:{cursor:"pointer",padding:isMobile?"9px 18px":"7px 16px",borderRadius:999,border:"1.5px solid "+C.borderStrong,background:C.surface,fontSize:14,color:C.text,fontWeight:600,fontFamily:"inherit",
+      minHeight:sc.btnH,boxSizing:"border-box",display:"inline-flex",alignItems:"center",justifyContent:"center"},
+    btnP:{cursor:"pointer",padding:isMobile?"10px 20px":"7px 18px",borderRadius:999,border:"none",background:C.ink,fontSize:14,color:"#fff",fontWeight:700,fontFamily:"inherit",
+      minHeight:sc.btnH,boxSizing:"border-box",display:"inline-flex",alignItems:"center",justifyContent:"center"},
     btnG:{cursor:"pointer",padding:"9px 18px",borderRadius:999,border:"none",background:C.green,fontSize:14,color:"#fff",fontWeight:700,fontFamily:"inherit"},
-    card:{background:C.surface,border:"none",borderRadius:28,padding:"24px 26px",marginBottom:0,boxShadow:"none"},
+    card:{background:C.surface,border:"none",borderRadius:sc.blockR,padding:isMobile?"24px 26px":"20px",marginBottom:0,boxShadow:"none"},
     badge:function(et){ return {display:"inline-block",padding:"3px 10px",borderRadius:20,fontSize:10,fontWeight:600,background:ETAPA_COLOR[et]+"15",color:ETAPA_COLOR[et]||C.textMuted,border:"1px solid "+(ETAPA_COLOR[et]||C.borderStrong)+"30"}; },
     badgeCot:function(et){ var m={Aceptada:C.green,Rechazada:C.red,Pendiente:C.amber}; var bg={Aceptada:C.greenBg,Rechazada:C.redBg,Pendiente:C.amberBg}; var cl=m[et]||C.textMuted; return {display:"inline-block",padding:"2px 9px",borderRadius:20,fontSize:11,background:bg[et]||C.surfaceUp,color:cl,border:"0.5px solid "+cl+"44"}; },
-    inp:{width:"100%",padding:"11px 14px",borderRadius:14,border:"1.5px solid "+C.borderStrong,background:C.surface,color:C.text,fontSize:16,boxSizing:"border-box",fontFamily:FONT_CLEO},
-    lbl:{fontSize:13,color:C.textMuted,marginBottom:6,display:"block",fontWeight:700},
+    inp:{width:"100%",padding:isMobile?"11px 14px":"9px 14px",borderRadius:14,border:"1.5px solid "+C.borderStrong,background:C.surface,color:C.text,fontSize:sc.inputFs,boxSizing:"border-box",fontFamily:FONT_CLEO,minHeight:isMobile?44:40},
+    lbl:{fontSize:isMobile?13:12,color:C.textMuted,marginBottom:6,display:"block",fontWeight:700},
     ov:{position:"fixed",inset:0,background:"rgba(14,19,40,0.5)",display:"flex",alignItems:isMobile?"flex-end":"center",justifyContent:"center",zIndex:100,padding:0},
-    modal:{background:C.surface,borderRadius:isMobile?"28px 28px 0 0":"28px",padding:"28px",width:isMobile?"100%":480,maxWidth:isMobile?"100%":"95vw",border:"none",maxHeight:isMobile?"92vh":"88vh",overflowY:"auto",overflowX:"hidden",boxShadow:C.shadowFloat},
+    modal:{background:C.surface,borderRadius:isMobile?"28px 28px 0 0":"22px",padding:isMobile?"28px":"22px",width:isMobile?"100%":440,maxWidth:isMobile?"100%":"95vw",border:"none",maxHeight:isMobile?"92vh":"88vh",overflowY:"auto",overflowX:"hidden",boxShadow:C.shadowFloat},
     pb:function(a){ return {cursor:"pointer",padding:"6px 16px",borderRadius:12,border:"1px solid "+(a?C.border:"transparent"),background:a?C.surface:"transparent",color:a?C.text:C.textMuted,fontSize:13,fontWeight:a?600:400}; },
     av:function(color){ return {width:36,height:36,borderRadius:"50%",background:color+"22",display:"flex",alignItems:"center",justifyContent:"center",fontWeight:700,fontSize:12,color:color,flexShrink:0}; },
     // Patrón central para botones de SOLO ícono (cerrar, eliminar, editar,
@@ -9271,9 +9285,9 @@ export default function CLEO(props){
   //      )
   st.modal2={
     outer:Object.assign({},st.modal,{padding:0,overflow:"hidden",display:"flex",flexDirection:"column",maxHeight:isMobile?"92vh":"88vh"}),
-    header:{padding:"20px 24px 16px",borderBottom:"1px solid "+C.border,display:"flex",alignItems:"center",justifyContent:"space-between",flexShrink:0},
-    body:{padding:"20px 24px",overflowY:"auto",flex:1},
-    footer:{padding:isMobile?"12px 24px 28px":"16px 24px",borderTop:"1px solid "+C.border,background:C.surface,display:"flex",gap:8,justifyContent:"flex-end",flexWrap:"wrap",flexShrink:0},
+    header:{padding:isMobile?"20px 24px 16px":"16px 22px 14px",borderBottom:"1px solid "+C.border,display:"flex",alignItems:"center",justifyContent:"space-between",flexShrink:0},
+    body:{padding:isMobile?"20px 24px":"16px 22px",overflowY:"auto",flex:1},
+    footer:{padding:isMobile?"12px 24px 28px":"14px 22px",borderTop:"1px solid "+C.border,background:C.surface,display:"flex",gap:8,justifyContent:"flex-end",flexWrap:"wrap",flexShrink:0},
   };
 
   var sidebarAbierto=useState(function(){
@@ -9798,15 +9812,15 @@ export default function CLEO(props){
         var colorNeg=colorHexSeguro(perfil.color,C.accent);
         var logoNeg=logoSeguro(perfil.logo);
         function icono(path,activo){
-          return e("svg",{width:22,height:22,viewBox:"0 0 24 24",fill:"none",stroke:activo?"#AEB8FF":"currentColor",strokeWidth:activo?2.1:1.9,strokeLinecap:"round",strokeLinejoin:"round","aria-hidden":true,style:{flexShrink:0}},e("path",{d:path||""}));
+          return e("svg",{width:20,height:20,viewBox:"0 0 24 24",fill:"none",stroke:activo?"#AEB8FF":"currentColor",strokeWidth:activo?2.1:1.9,strokeLinecap:"round",strokeLinejoin:"round","aria-hidden":true,style:{flexShrink:0}},e("path",{d:path||""}));
         }
         function item(v,label,iconPath,opts){
           opts=opts||{};
           var activo=opts.activo!==undefined?opts.activo:vista===v;
           return e("button",{key:opts.key||v,type:"button","aria-current":activo?"page":undefined,"aria-label":sbOpen?undefined:label,title:sbOpen?undefined:label,
-            style:{cursor:"pointer",width:sbOpen?112:56,minHeight:sbOpen?62:52,padding:sbOpen?"9px 6px":"8px 4px",boxSizing:"border-box",borderRadius:18,border:"none",
-              background:activo?"rgba(141,155,255,0.22)":"transparent",color:activo?"#FFFFFF":"#B9BED3",fontFamily:"inherit",fontSize:12.5,fontWeight:activo?800:600,lineHeight:1.2,
-              display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:6,textAlign:"center",position:"relative",flexShrink:0},
+            style:{cursor:"pointer",width:sbOpen?84:52,minHeight:52,padding:sbOpen?"8px 4px":"7px 4px",boxSizing:"border-box",borderRadius:14,border:"none",
+              background:activo?"rgba(141,155,255,0.22)":"transparent",color:activo?"#FFFFFF":"#B9BED3",fontFamily:"inherit",fontSize:11.5,fontWeight:activo?800:600,lineHeight:1.2,
+              display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:5,textAlign:"center",position:"relative",flexShrink:0},
             onClick:opts.onClick||function(){ setVista(v); if(v!=="clientes") setClienteAbierto(null); }},
             e("span",{style:{position:"relative",display:"grid"}},
               icono(iconPath,activo),
@@ -9818,12 +9832,12 @@ export default function CLEO(props){
         }
         function separador(k){ return e("span",{key:k,"aria-hidden":true,style:{width:52,height:1,background:"rgba(255,255,255,0.13)",margin:"8px 0",flexShrink:0}}); }
         var nHoy=contarPendientesHoy(clientes,cotizaciones,pedidos,esProductos);
-        return e("div",{style:{display:isMobile?"none":"flex",flexShrink:0,padding:"16px 0 16px 16px",boxSizing:"border-box",position:"sticky",top:0,height:"100vh",zIndex:40}},
-          e("div",{role:"navigation","aria-label":"Navegación principal",style:{width:sbOpen?132:84,boxSizing:"border-box",background:C.dark,borderRadius:30,padding:"16px 10px 12px",display:"flex",flexDirection:"column",alignItems:"center",gap:2,transition:"width 0.2s ease",height:"100%"}},
+        return e("div",{style:{display:isMobile?"none":"flex",flexShrink:0,padding:"12px 0 12px 12px",boxSizing:"border-box",position:"sticky",top:0,height:"100vh",zIndex:40}},
+          e("div",{role:"navigation","aria-label":"Navegación principal",style:{width:sbOpen?104:68,boxSizing:"border-box",background:C.dark,borderRadius:24,padding:"12px 8px 10px",display:"flex",flexDirection:"column",alignItems:"center",gap:2,transition:"width 0.2s ease",height:"100%"}},
             e("button",{type:"button","aria-label":sbOpen?"Contraer menú":"Expandir menú","aria-expanded":sbOpen,style:{cursor:"pointer",background:"none",border:"none",color:"#B9BED3",width:44,height:36,borderRadius:12,display:"grid",placeItems:"center",flexShrink:0},onClick:function(){ setSbOpen(!sbOpen); }},
               e("svg",{width:20,height:20,viewBox:"0 0 24 24",fill:"none",stroke:"currentColor",strokeWidth:2,strokeLinecap:"round","aria-hidden":true},e("path",{d:"M4 7h16M4 12h16M4 17h10"}))
             ),
-            e("div",{style:{color:"#FFFFFF",fontSize:sbOpen?19:14,fontWeight:800,letterSpacing:"0.02em",margin:"2px 0 12px",flexShrink:0}},"CLEO"),
+            e("div",{style:{color:"#FFFFFF",fontSize:sbOpen?16:13,fontWeight:800,letterSpacing:"0.02em",margin:"2px 0 10px",flexShrink:0}},"CLEO"),
             e("div",{style:{flex:1,minHeight:0,overflowY:"auto",width:"100%",display:"flex",flexDirection:"column",alignItems:"center",gap:2}},
               item("inicio",NAV_LABELS.inicio,NAV_SVG.inicio),
               item("hoy",NAV_LABELS.hoy,NAV_SVG.hoy,{badge:nHoy}),
@@ -9839,13 +9853,13 @@ export default function CLEO(props){
             // Cuenta: logo y nombre del negocio (anillo con su color) + usuario
             e("div",{style:{position:"relative",marginTop:6,flexShrink:0}},
               e("button",{type:"button","aria-label":"Menú de cuenta de "+(perfil.tuNombre||"usuario")+", "+(perfil.nombre||"mi negocio"),"aria-expanded":menuUsuario,"aria-haspopup":"menu",
-                style:{cursor:"pointer",width:sbOpen?112:56,padding:sbOpen?"10px 4px":"8px 4px",boxSizing:"border-box",border:"none",borderRadius:18,background:"rgba(255,255,255,0.06)",color:"#FFFFFF",fontFamily:"inherit",display:"flex",flexDirection:"column",alignItems:"center",gap:6},
+                style:{cursor:"pointer",width:sbOpen?84:52,padding:sbOpen?"8px 4px":"7px 4px",boxSizing:"border-box",border:"none",borderRadius:14,background:"rgba(255,255,255,0.06)",color:"#FFFFFF",fontFamily:"inherit",display:"flex",flexDirection:"column",alignItems:"center",gap:5},
                 onClick:function(){ setMenuUsuario(!menuUsuario); }},
                 e("span",{style:{width:40,height:40,borderRadius:13,background:"#FFFFFF",boxShadow:"inset 0 0 0 2.5px "+colorNeg,display:"grid",placeItems:"center",overflow:"hidden",color:colorNeg,fontSize:13,fontWeight:800}},
                   logoNeg?e("img",{src:logoNeg,alt:"",style:{width:30,height:30,objectFit:"contain"}}):(perfil.nombre||perfil.tuNombre||"?").slice(0,2).toUpperCase()
                 ),
-                sbOpen&&e("span",{style:{fontSize:12.5,fontWeight:700,lineHeight:1.2,textAlign:"center",maxWidth:104,overflowWrap:"anywhere"}},perfil.nombre||"Mi negocio"),
-                sbOpen&&e("span",{style:{display:"inline-flex",alignItems:"center",gap:2,fontSize:11.5,color:"#8E94AE"}},perfil.tuNombre||"Mi cuenta",
+                sbOpen&&e("span",{style:{fontSize:11.5,fontWeight:700,lineHeight:1.2,textAlign:"center",maxWidth:84,overflowWrap:"anywhere"}},perfil.nombre||"Mi negocio"),
+                sbOpen&&e("span",{style:{display:"inline-flex",alignItems:"center",gap:2,fontSize:10.5,color:"#8E94AE"}},perfil.tuNombre||"Mi cuenta",
                   e("svg",{width:13,height:13,viewBox:"0 0 24 24",fill:"none",stroke:"currentColor",strokeWidth:2,strokeLinecap:"round","aria-hidden":true,style:{transform:menuUsuario?"rotate(180deg)":"none",transition:"transform 0.15s"}},e("path",{d:"M6 9l6 6 6-6"})))
               ),
               menuUsuario&&e("div",{role:"menu",style:{position:"absolute",left:"calc(100% + 18px)",bottom:0,minWidth:210,background:C.dark,borderRadius:20,padding:8,boxShadow:C.shadowFloat,zIndex:60}},
@@ -9869,7 +9883,7 @@ export default function CLEO(props){
       // CONTENIDO PRINCIPAL
       e("div",{style:{flex:1,minWidth:0,minHeight:0,overflow:"auto",background:C.bg,paddingBottom:isMobile?70:0}},
 
-        e("div",{style:{padding:isMobile?"20px 16px":sbOpen?"40px 32px":"40px 48px",maxWidth:1280,margin:"0 auto",width:"100%",boxSizing:"border-box"}},
+        e("div",{style:{padding:isMobile?"20px 16px":sbOpen?"24px 24px":"24px 32px",maxWidth:1280,margin:"0 auto",width:"100%",boxSizing:"border-box"}},
 
       // INICIO - ONBOARDING GUIADO NUEVO
       vista==="inicio"&&(function(){
@@ -10401,9 +10415,9 @@ export default function CLEO(props){
 
         return e("div",{style:{display:"flex",flexDirection:"column",gap:0}},
 
-          // BARRA SUPERIOR , solo botones
-          e("div",{style:{display:"flex",alignItems:"center",justifyContent:isMobile?"space-between":"flex-end",gap:isMobile?6:8,marginLeft:isMobile?-16:-48,marginRight:isMobile?-16:-48,marginTop:isMobile?-20:-40,padding:isMobile?"12px 16px":"14px 48px",background:C.bg,flexWrap:"nowrap"}},
-            isMobile&&e("div",{style:{fontSize:14,color:"#5A6078",fontWeight:500,marginRight:"auto"}},hoyLabel),
+          // BARRA SUPERIOR — solo móvil (desktop: TopBar va inline con el saludo)
+          isMobile&&e("div",{style:{display:"flex",alignItems:"center",justifyContent:"space-between",gap:6,marginLeft:-16,marginRight:-16,marginTop:-20,padding:"10px 16px",background:C.bg,flexWrap:"nowrap"}},
+            e("div",{style:{fontSize:14,color:"#5A6078",fontWeight:500,marginRight:"auto"}},hoyLabel),
             esProductos
               ? e(TopBarProductos,{open:menuNuevo,setOpen:setMenuNuevo,isMobile:isMobile,C:C,st:st,
                   onProspecto:function(){ setFormProspecto(formProspectoVacio); setBuscaCliOpo(""); setModalProspecto(true); setVista("prospectos"); },
@@ -10414,62 +10428,74 @@ export default function CLEO(props){
                   onCot:function(){ setModalCot(true); },
                   onVenta:abrirModalVenta})
           ),
-          e("div",{style:{marginBottom:isMobile?8:20,paddingTop:isMobile?4:24}},
-            !isMobile&&e("div",{style:{fontSize:15,color:"#5A6078",fontWeight:500}},hoyLabel+" · "+empresa),
-            e("div",{style:{fontSize:isMobile?28:34,fontWeight:800,color:C.text,lineHeight:1.1,letterSpacing:"-0.035em",marginTop:isMobile?0:4}},saludo+", "+nombre)
+          // ENCABEZADO — desktop: saludo izq + "+Nuevo" der en la misma línea
+          e("div",{style:{display:isMobile?"block":"flex",alignItems:"flex-end",justifyContent:"space-between",gap:16,marginBottom:isMobile?8:16,paddingTop:isMobile?4:0}},
+            e("div",null,
+              !isMobile&&e("div",{style:{fontSize:13,color:"#5A6078",fontWeight:500}},hoyLabel+" · "+empresa),
+              e("div",{style:{fontSize:isMobile?28:26,fontWeight:800,color:C.text,lineHeight:1.1,letterSpacing:"-0.035em",marginTop:isMobile?0:4}},saludo+", "+nombre)
+            ),
+            !isMobile&&(esProductos
+              ? e(TopBarProductos,{open:menuNuevo,setOpen:setMenuNuevo,isMobile:false,C:C,st:st,
+                  onProspecto:function(){ setFormProspecto(formProspectoVacio); setBuscaCliOpo(""); setModalProspecto(true); setVista("prospectos"); },
+                  onPedido:function(){ setNuevoPedidoForm(pedidoVacio); setBuscaCliPed(""); setNuevoPedidoModal(true); setVista("pedidos"); },
+                  onVenta:abrirModalVenta})
+              : e(TopBarServicios,{open:menuNuevo,setOpen:setMenuNuevo,isMobile:false,C:C,st:st,
+                  onCliente:function(){ setClienteSel(null); setForm(formVacio); setModalCliente(true); },
+                  onCot:function(){ setModalCot(true); },
+                  onVenta:abrirModalVenta}))
           ),
 
           // FILA REGISTRO + TU DÍA — grid 2 cols desktop, flex-col móvil (Tu día primero)
-          e("div",{style:{display:"grid",gridTemplateColumns:isMobile?"1fr":"7fr 5fr",gap:isMobile?12:16,marginBottom:isMobile?20:28,width:"100%",boxSizing:"border-box"}},
+          e("div",{style:{display:"grid",gridTemplateColumns:isMobile?"1fr":"7fr 5fr",gap:isMobile?12:16,marginBottom:isMobile?20:16,width:"100%",boxSizing:"border-box"}},
 
             // REGISTRO
-            e("section",{style:{order:isMobile?1:0,background:"#8D9BFF",borderRadius:30,padding:isMobile?"20px 12px 12px":"30px 30px 14px",boxSizing:"border-box",display:"flex",flexDirection:"column"}},
-              e("div",{style:{fontSize:isMobile?22:26,fontWeight:800,letterSpacing:"-0.03em",color:C.ink,margin:isMobile?"0 8px":"0"}},"¿Qué ha pasado en "+empresa+"?"),
-              e("p",{style:{fontSize:isMobile?15:16,lineHeight:1.45,color:"#1E2547",fontWeight:500,margin:isMobile?"6px 8px 14px":"6px 0 22px"}},"Registra algo nuevo para mantener tus ventas al día."),
-              e("div",{style:{display:"grid",gridTemplateColumns:"repeat(2,minmax(0,1fr))",background:"#FFFFFF",borderRadius:isMobile?22:24,overflow:"hidden",width:"100%",boxSizing:"border-box"}},
+            e("section",{style:{order:isMobile?1:0,background:"#8D9BFF",borderRadius:isMobile?30:22,padding:isMobile?"20px 12px 12px":"20px 20px 12px",boxSizing:"border-box",display:"flex",flexDirection:"column"}},
+              e("div",{style:{fontSize:isMobile?22:20,fontWeight:800,letterSpacing:"-0.03em",color:C.ink,margin:isMobile?"0 8px":"0"}},"¿Qué ha pasado en "+empresa+"?"),
+              e("p",{style:{fontSize:isMobile?15:14,lineHeight:1.45,color:"#1E2547",fontWeight:500,margin:isMobile?"6px 8px 14px":"6px 0 14px"}},"Registra algo nuevo para mantener tus ventas al día."),
+              e("div",{style:{display:"grid",gridTemplateColumns:"repeat(2,minmax(0,1fr))",background:"#FFFFFF",borderRadius:isMobile?22:18,overflow:"hidden",width:"100%",boxSizing:"border-box"}},
                 [
                   {label:"Alguien preguntó",onClick:function(){ if(esProductos){ setPasoPreguntoP(1); } else { setPasoPregunto(1); } }},
                   {label:"Envié un precio",onClick:function(){ if(esProductos){ setModalEnvieP(true); } else { setFormCot(Object.assign({},cotVacio,{nuevoNombre:""})); setModalCot(true); } }},
                   {label:"Cerré una venta",onClick:function(){ if(esProductos){ setModalCerreP(true); } else { setModalCerre(true); } }},
                   {label:"Recibí un pago",onClick:function(){ if(esProductos){ setModalRecibiP(true); } else { setModalRecibi(true); } }}
                 ].map(function(op,i){
-                  return e("button",{key:i,style:{display:"flex",alignItems:isMobile?"center":"flex-end",justifyContent:"space-between",gap:12,minHeight:isMobile?74:104,padding:isMobile?"12px 10px 12px 14px":"18px 18px 18px 22px",background:"#FFFFFF",border:"0",borderRight:i%2===0?"1px solid #E4E6F2":"0",borderBottom:i<2?"1px solid #E4E6F2":"0",fontFamily:"inherit",fontSize:isMobile?16.5:21,fontWeight:800,letterSpacing:"-0.02em",color:C.ink,textAlign:"left",cursor:"pointer"},onClick:op.onClick},
+                  return e("button",{key:i,style:{display:"flex",alignItems:"center",justifyContent:"space-between",gap:10,minHeight:isMobile?74:64,padding:isMobile?"12px 10px 12px 14px":"10px 12px 10px 16px",background:"#FFFFFF",border:"0",borderRight:i%2===0?"1px solid #E4E6F2":"0",borderBottom:i<2?"1px solid #E4E6F2":"0",fontFamily:"inherit",fontSize:isMobile?16.5:16,fontWeight:800,letterSpacing:"-0.02em",color:C.ink,textAlign:"left",cursor:"pointer"},onClick:op.onClick},
                     op.label,
-                    e("span",{style:{width:isMobile?32:40,height:isMobile?32:40,flexShrink:0,borderRadius:"50%",background:"#EEF0FF",color:"#3F4BD0",display:"grid",placeItems:"center"}},
-                      e("svg",{width:isMobile?17:18,height:isMobile?17:18,viewBox:"0 0 24 24",fill:"none",stroke:"currentColor",strokeWidth:2.4,strokeLinecap:"round",strokeLinejoin:"round"},e("path",{d:"M5 12h14M13 6l6 6-6 6"}))
+                    e("span",{style:{width:32,height:32,flexShrink:0,borderRadius:"50%",background:"#EEF0FF",color:"#3F4BD0",display:"grid",placeItems:"center"}},
+                      e("svg",{width:17,height:17,viewBox:"0 0 24 24",fill:"none",stroke:"currentColor",strokeWidth:2.4,strokeLinecap:"round",strokeLinejoin:"round"},e("path",{d:"M5 12h14M13 6l6 6-6 6"}))
                     )
                   );
                 })
               ),
-              e("div",{style:{height:16}})
+              e("div",{style:{height:isMobile?16:10}})
             ),
 
             // TU DÍA
-            e("section",{style:{order:isMobile?0:1,background:"radial-gradient(110% 80% at 100% 0%, #24307A 0%, rgba(36,48,122,0) 62%), "+C.ink,borderRadius:30,padding:isMobile?"22px 18px 18px":"30px",boxSizing:"border-box",color:"#FFFFFF",display:"flex",flexDirection:"column",justifyContent:"space-between",gap:isMobile?0:28}},
-              e("div",{style:{display:"flex",flexDirection:"column",gap:22}},
-                e("p",{style:{margin:isMobile?"0 4px":"0",fontSize:isMobile?24:28,lineHeight:1.16,fontWeight:800,letterSpacing:"-0.035em"}},
+            e("section",{style:{order:isMobile?0:1,background:"radial-gradient(110% 80% at 100% 0%, #24307A 0%, rgba(36,48,122,0) 62%), "+C.ink,borderRadius:isMobile?30:22,padding:isMobile?"22px 18px 18px":"20px",boxSizing:"border-box",color:"#FFFFFF",display:"flex",flexDirection:"column",justifyContent:"space-between",gap:isMobile?0:16}},
+              e("div",{style:{display:"flex",flexDirection:"column",gap:isMobile?22:14}},
+                e("p",{style:{margin:isMobile?"0 4px":"0",fontSize:isMobile?24:20,lineHeight:1.16,fontWeight:800,letterSpacing:"-0.035em"}},
                   (function(){
                     var pfx=subtitulo.startsWith("Hoy tienes ")?"Hoy tienes ":subtitulo.startsWith("Tienes ")?"Tienes ":"";
                     if(pfx) return [e("span",{key:"p",style:{color:"#A9AFC6",fontWeight:600}},pfx),e("span",{key:"r",style:{color:"#9AA7FF"}},subtitulo.slice(pfx.length))];
                     return e("span",{style:{color:"#D6D9E6",fontWeight:600}},subtitulo);
                   })()
                 ),
-                textoIdea&&e("aside",{"aria-label":"Idea del día",style:{padding:isMobile?"14px 16px 16px":"16px 18px 18px",borderRadius:isMobile?18:20,background:"rgba(255,255,255,0.07)",boxShadow:"inset 0 0 0 1px rgba(154,167,255,0.28)"}},
-                  e("div",{style:{display:"flex",alignItems:"center",gap:8,fontSize:isMobile?12:12.5,fontWeight:800,letterSpacing:".1em",color:"#FFD36B"}},
-                    e("svg",{width:isMobile?17:18,height:isMobile?17:18,viewBox:"0 0 24 24",fill:"none",stroke:"currentColor",strokeWidth:1.9,strokeLinecap:"round",strokeLinejoin:"round"},e("path",{d:"M9 18h6M10 21h4M12 3a6 6 0 0 0-3.6 10.8c.6.5 1 1.2 1 2V16h5.2v-.2c0-.8.4-1.5 1-2A6 6 0 0 0 12 3z"})),
+                textoIdea&&e("aside",{"aria-label":"Idea del día",style:{padding:isMobile?"14px 16px 16px":"12px",borderRadius:isMobile?18:16,background:"rgba(255,255,255,0.07)",boxShadow:"inset 0 0 0 1px rgba(154,167,255,0.28)"}},
+                  e("div",{style:{display:"flex",alignItems:"center",gap:8,fontSize:isMobile?12:11,fontWeight:800,letterSpacing:".1em",color:"#FFD36B"}},
+                    e("svg",{width:16,height:16,viewBox:"0 0 24 24",fill:"none",stroke:"currentColor",strokeWidth:1.9,strokeLinecap:"round",strokeLinejoin:"round"},e("path",{d:"M9 18h6M10 21h4M12 3a6 6 0 0 0-3.6 10.8c.6.5 1 1.2 1 2V16h5.2v-.2c0-.8.4-1.5 1-2A6 6 0 0 0 12 3z"})),
                     "IDEA DEL DÍA"
                   ),
-                  e("p",{style:{margin:"8px 0 0",fontSize:isMobile?15.5:16,lineHeight:1.55,color:"#D6D9E6"}},textoIdea)
+                  e("p",{style:{margin:"6px 0 0",fontSize:isMobile?15.5:14,lineHeight:1.55,color:"#D6D9E6"}},textoIdea)
                 )
               ),
-              e("button",{onClick:function(){setVista("hoy");},style:{display:"flex",alignItems:"center",justifyContent:"space-between",gap:12,height:52,marginTop:isMobile?14:0,padding:"0 "+(isMobile?"7px":"8px")+" 0 "+(isMobile?"18px":"20px"),borderRadius:26,background:"rgba(255,255,255,"+(isMobile?"0.09":"0.08")+")",color:"#FFFFFF",border:"none",cursor:"pointer",fontSize:16,fontWeight:700,fontFamily:"inherit",alignSelf:"stretch"}},
+              e("button",{onClick:function(){setVista("hoy");},style:{display:"flex",alignItems:"center",justifyContent:"space-between",gap:12,height:isMobile?44:42,marginTop:isMobile?14:0,padding:"0 "+(isMobile?"7px":"6px")+" 0 "+(isMobile?"18px":"16px"),borderRadius:isMobile?26:21,background:"rgba(255,255,255,"+(isMobile?"0.09":"0.08")+")",color:"#FFFFFF",border:"none",cursor:"pointer",fontSize:isMobile?16:14,fontWeight:700,fontFamily:"inherit",alignSelf:"stretch"}},
                 e("span",{style:{display:"inline-flex",alignItems:"center",gap:10}},
                   e("svg",{width:20,height:20,viewBox:"0 0 24 24",fill:"none",stroke:"#FFD36B",strokeWidth:1.9,strokeLinecap:"round",strokeLinejoin:"round"},e("circle",{cx:12,cy:12,r:4}),e("path",{d:"M12 2.5v2M12 19.5v2M2.5 12h2M19.5 12h2M5.3 5.3l1.4 1.4M17.3 17.3l1.4 1.4M5.3 18.7l1.4-1.4M17.3 6.7l1.4-1.4"})),
                   "Hoy",
                   e("span",{style:{minWidth:20,height:20,padding:"0 6px",boxSizing:"border-box",borderRadius:10,background:"#9AA7FF",color:C.ink,fontSize:isMobile?12:11.5,fontWeight:800,display:"grid",placeItems:"center"}},contarPendientesHoy(clientes,cotizaciones,pedidos,esProductos)||0)
                 ),
-                e("span",{style:{width:38,height:38,borderRadius:"50%",background:"#FFFFFF",color:C.ink,display:"grid",placeItems:"center"}},
-                  e("svg",{width:18,height:18,viewBox:"0 0 24 24",fill:"none",stroke:"currentColor",strokeWidth:2.4,strokeLinecap:"round",strokeLinejoin:"round"},e("path",{d:"M5 12h14M13 6l6 6-6 6"}))
+                e("span",{style:{width:isMobile?38:34,height:isMobile?38:34,borderRadius:"50%",background:"#FFFFFF",color:C.ink,display:"grid",placeItems:"center"}},
+                  e("svg",{width:16,height:16,viewBox:"0 0 24 24",fill:"none",stroke:"currentColor",strokeWidth:2.4,strokeLinecap:"round",strokeLinejoin:"round"},e("path",{d:"M5 12h14M13 6l6 6-6 6"}))
                 )
               )
             )
@@ -10596,37 +10622,37 @@ export default function CLEO(props){
             // A QUIÉN CONTACTAR HOY — sección con nuevo diseño
             var hayItems=urgentes.length>0||pedidosAccionIni.length>0;
             return e("div",null,
-              e("div",{style:{display:"flex",alignItems:"flex-start",justifyContent:"space-between",gap:16,marginTop:22,marginBottom:4}},
+              e("div",{style:{display:"flex",alignItems:"flex-start",justifyContent:"space-between",gap:16,marginTop:isMobile?22:16,marginBottom:4}},
                 e("div",null,
-                  e("div",{style:{fontSize:isMobile?23:26,fontWeight:800,letterSpacing:"-0.03em",color:C.text}},"A quién contactar hoy"),
-                  e("p",{style:{margin:"4px 0 0",fontSize:16,color:"#5A6078",lineHeight:1.5}},"Estas son las acciones que más necesitan tu atención.")
+                  e("div",{style:{fontSize:isMobile?23:20,fontWeight:800,letterSpacing:"-0.03em",color:C.text}},"A quién contactar hoy"),
+                  e("p",{style:{margin:"4px 0 0",fontSize:isMobile?16:14,color:"#5A6078",lineHeight:1.5}},"Estas son las acciones que más necesitan tu atención.")
                 ),
-                hayItems&&e("button",{style:{cursor:"pointer",background:"none",border:"none",color:C.purple,fontSize:isMobile?15:15.5,fontWeight:700,padding:"12px 0",whiteSpace:"nowrap",fontFamily:"inherit"},onClick:function(){setVista("hoy");}},"Ver todo →")
+                hayItems&&e("button",{style:{cursor:"pointer",background:"none",border:"none",color:C.purple,fontSize:isMobile?15:14,fontWeight:700,padding:"10px 0",whiteSpace:"nowrap",fontFamily:"inherit"},onClick:function(){setVista("hoy");}},"Ver todo →")
               ),
-              e("div",{style:{display:"grid",gridTemplateColumns:isMobile?"1fr":"repeat(12,minmax(0,1fr))",gap:isMobile?10:12,marginTop:isMobile?12:16}},
+              e("div",{style:{display:"grid",gridTemplateColumns:isMobile?"1fr":"repeat(12,minmax(0,1fr))",gap:isMobile?10:12,marginTop:isMobile?12:14}},
                 urgentes.length>0&&e("div",{style:{gridColumn:isMobile?"1/-1":pedidosAccionIni.length>0?"span 8":"1/-1",fontSize:12.5,fontWeight:800,letterSpacing:".08em",color:"#4A5068",display:"flex",gap:8,alignItems:"center",marginBottom:isMobile?-2:0}},"OPORTUNIDADES POR RETOMAR",e("span",{style:{color:C.purple}},urgentes.length)),
                 pedidosAccionIni.length>0&&e("div",{style:{gridColumn:isMobile?"1/-1":urgentes.length>0?"span 4":"1/-1",fontSize:12.5,fontWeight:800,letterSpacing:".08em",color:"#4A5068",display:"flex",gap:8,alignItems:"center",marginBottom:isMobile?-2:0}},"PEDIDOS QUE REQUIEREN ACCIÓN",e("span",{style:{color:C.purple}},pedidosAccionIni.length)),
                 urgentes.map(function(u){
                   var c=u.cliente;
                   var nota=u.recordatorioEsManualOPersonalizado&&u.recordatorioNota?u.recordatorioNota:null;
-                  return e("article",{key:u.accionId,style:{gridColumn:isMobile?"1/-1":"span 4",background:"#FFFFFF",borderRadius:28,padding:isMobile?"22px":"28px",display:"flex",flexDirection:"column",boxSizing:"border-box"}},
-                    e("div",{style:{fontSize:isMobile?21:22,fontWeight:800,letterSpacing:"-0.02em",color:C.ink}},c.nombre),
-                    e("p",{style:{margin:"8px 0 0",fontSize:16,lineHeight:1.6,color:"#4A5068"}},u.desc),
+                  return e("article",{key:u.accionId,style:{gridColumn:isMobile?"1/-1":"span 4",background:"#FFFFFF",borderRadius:isMobile?28:22,padding:isMobile?"22px":"20px",display:"flex",flexDirection:"column",boxSizing:"border-box"}},
+                    e("div",{style:{fontSize:isMobile?21:18,fontWeight:800,letterSpacing:"-0.02em",color:C.ink}},c.nombre),
+                    e("p",{style:{margin:"8px 0 0",fontSize:isMobile?16:15,lineHeight:1.6,color:"#4A5068"}},u.desc),
                     nota&&e("p",{style:{display:"flex",gap:9,alignItems:"flex-start",margin:"14px 0 0",paddingTop:14,borderTop:"1px solid #E6E8F0",fontSize:15,lineHeight:1.5,color:"#545A72"}},
                       e("svg",{width:17,height:17,viewBox:"0 0 24 24",fill:"none",stroke:"#7C8CFF",strokeWidth:1.9,strokeLinecap:"round",strokeLinejoin:"round",style:{flexShrink:0,marginTop:2}},e("path",{d:"M4 20h4L19 9l-4-4L4 16z"})),
                       e("span",null,'"'+nota+'"')
                     ),
                     e("div",{style:{flex:1,minHeight:18}}),
                     e("div",{style:{display:"flex",gap:isMobile?8:4}},
-                      e("button",{style:{cursor:"pointer",height:isMobile?50:46,padding:"0 20px",borderRadius:999,border:"0",background:C.ink,color:"#FFFFFF",fontSize:15,fontWeight:700,fontFamily:"inherit",display:"inline-flex",alignItems:"center",justifyContent:"center",gap:8,flex:1},onClick:function(){manejarClickContactar(c,u.recordatorioId,u.recordatorioNota,u.recordatorioEsManualOPersonalizado);}},
-                        e("svg",{width:18,height:18,viewBox:"0 0 24 24",fill:"none",stroke:"currentColor",strokeWidth:1.9,strokeLinecap:"round",strokeLinejoin:"round"},e("path",{d:"M4 5.5A1.5 1.5 0 0 1 5.5 4h13A1.5 1.5 0 0 1 20 5.5v9a1.5 1.5 0 0 1-1.5 1.5H9.5L4 20z"})),
+                      e("button",{style:{cursor:"pointer",height:isMobile?50:40,padding:"0 16px",borderRadius:999,border:"0",background:C.ink,color:"#FFFFFF",fontSize:isMobile?15:13,fontWeight:700,fontFamily:"inherit",display:"inline-flex",alignItems:"center",justifyContent:"center",gap:8,flex:1},onClick:function(){manejarClickContactar(c,u.recordatorioId,u.recordatorioNota,u.recordatorioEsManualOPersonalizado);}},
+                        e("svg",{width:16,height:16,viewBox:"0 0 24 24",fill:"none",stroke:"currentColor",strokeWidth:1.9,strokeLinecap:"round",strokeLinejoin:"round"},e("path",{d:"M4 5.5A1.5 1.5 0 0 1 5.5 4h13A1.5 1.5 0 0 1 20 5.5v9a1.5 1.5 0 0 1-1.5 1.5H9.5L4 20z"})),
                         "Contactar"
                       ),
-                      e("button",{style:{cursor:"pointer",height:isMobile?50:46,padding:"0 12px",borderRadius:999,border:"0",background:"transparent",color:C.ink,fontSize:15,fontWeight:700,fontFamily:"inherit",display:"inline-flex",alignItems:"center",justifyContent:"center",gap:6},onClick:function(){
+                      e("button",{style:{cursor:"pointer",height:isMobile?50:40,padding:"0 10px",borderRadius:999,border:"0",background:"transparent",color:C.ink,fontSize:isMobile?15:13,fontWeight:700,fontFamily:"inherit",display:"inline-flex",alignItems:"center",justifyContent:"center",gap:6},onClick:function(){
                         if(u.recordatorioEsManualOPersonalizado){ var res=completarRecordatorioManual(c.id,u.recordatorioId); if(res.ok) mostrarToast("✓ Marcaste tu recordatorio como atendido para "+res.nombreCliente+"."); }
                         else { setContactadoClienteId(c.id); setContactadoRecordatorioId(u.recordatorioId); }
                       }},
-                        e("svg",{width:18,height:18,viewBox:"0 0 24 24",fill:"none",stroke:"currentColor",strokeWidth:2.4,strokeLinecap:"round",strokeLinejoin:"round"},e("path",{d:"m5 12.5 4.5 4.5L19 7.5"})),
+                        e("svg",{width:16,height:16,viewBox:"0 0 24 24",fill:"none",stroke:"currentColor",strokeWidth:2.4,strokeLinecap:"round",strokeLinejoin:"round"},e("path",{d:"m5 12.5 4.5 4.5L19 7.5"})),
                         "Ya le hablé"
                       )
                     )
@@ -10637,19 +10663,19 @@ export default function CLEO(props){
                   var pagadoP=(item.ped.pagos||[]).reduce(function(s,p){ return s+Number(p.monto); },0);
                   var saldoP=Math.max(0,Number(item.ped.total||0)-pagadoP);
                   var saldoStr="$"+formatoDinero(saldoP);
-                  return e("article",{key:item.ped.id+"_"+item.tipo,style:{gridColumn:isMobile?"1/-1":"span 4",background:"#FBF1DC",borderRadius:28,padding:isMobile?"22px":"28px",display:"flex",flexDirection:"column",boxSizing:"border-box"}},
-                    e("div",{style:{fontSize:isMobile?21:22,fontWeight:800,letterSpacing:"-0.02em",color:C.ink}},clP?clP.nombre:"Cliente"),
-                    e("div",{style:{marginTop:14,fontSize:15,fontWeight:600,color:"#6E4806"}},"Saldo pendiente:"),
-                    e("div",{style:{fontSize:saldoStr.length>12?36:44,lineHeight:1.05,fontWeight:800,letterSpacing:"-0.035em",color:"#5E3D04"}},saldoStr),
+                  return e("article",{key:item.ped.id+"_"+item.tipo,style:{gridColumn:isMobile?"1/-1":"span 4",background:"#FBF1DC",borderRadius:isMobile?28:22,padding:isMobile?"22px":"20px",display:"flex",flexDirection:"column",boxSizing:"border-box"}},
+                    e("div",{style:{fontSize:isMobile?21:18,fontWeight:800,letterSpacing:"-0.02em",color:C.ink}},clP?clP.nombre:"Cliente"),
+                    e("div",{style:{marginTop:isMobile?14:10,fontSize:isMobile?15:13,fontWeight:600,color:"#6E4806"}},"Saldo pendiente:"),
+                    e("div",{style:{fontSize:isMobile?44:32,lineHeight:1.05,fontWeight:800,letterSpacing:"-0.035em",color:"#5E3D04"}},saldoStr),
                     item.ped.productos&&e("div",{style:{marginTop:6,fontSize:16,color:"#4A5068"}},item.ped.productos),
-                    e("div",{style:{flex:1,minHeight:18}}),
+                    e("div",{style:{flex:1,minHeight:isMobile?18:12}}),
                     e("div",{style:{display:"flex",gap:isMobile?8:6,flexWrap:"wrap"}},
                       clP&&e(BtnCanal,{cliente:clP,small:false}),
-                      e("button",{style:{cursor:"pointer",height:isMobile?50:46,padding:"0 20px",borderRadius:999,border:"0",background:C.ink,color:"#FFFFFF",fontSize:15,fontWeight:700,fontFamily:"inherit",display:"inline-flex",alignItems:"center",justifyContent:"center",flex:1},onClick:function(){setVista("pedidos");setHighlightPedidoId(item.ped.id);}},"Ver pedido →")
+                      e("button",{style:{cursor:"pointer",height:isMobile?50:40,padding:"0 16px",borderRadius:999,border:"0",background:C.ink,color:"#FFFFFF",fontSize:isMobile?15:13,fontWeight:700,fontFamily:"inherit",display:"inline-flex",alignItems:"center",justifyContent:"center",flex:1},onClick:function(){setVista("pedidos");setHighlightPedidoId(item.ped.id);}},"Ver pedido →")
                     )
                   );
                 }),
-                !hayItems&&e("div",{style:{gridColumn:"1/-1",padding:"24px",textAlign:"center",fontSize:14,color:C.textMuted,background:"#FFFFFF",borderRadius:20,border:"1px solid "+C.border}},"Todo importante está atendido por hoy.")
+                !hayItems&&e("div",{style:{gridColumn:"1/-1",padding:"20px",textAlign:"center",fontSize:isMobile?14:13,color:C.textMuted,background:"#FFFFFF",borderRadius:isMobile?20:16,border:"1px solid "+C.border}},"Todo importante está atendido por hoy.")
               )
             );
           })():e("div",null,
@@ -10659,21 +10685,21 @@ export default function CLEO(props){
             var totalRestantes=accionesRestantes+cobrosRestantesIni;
             var hayItemsSrv=acciones.length>0||hayCobrosPendientes;
             return e("div",null,
-              e("div",{style:{display:"flex",alignItems:"flex-start",justifyContent:"space-between",gap:16,marginTop:22,marginBottom:4}},
+              e("div",{style:{display:"flex",alignItems:"flex-start",justifyContent:"space-between",gap:16,marginTop:isMobile?22:16,marginBottom:4}},
                 e("div",null,
-                  e("div",{style:{fontSize:isMobile?23:26,fontWeight:800,letterSpacing:"-0.03em",color:C.text}},"A quién contactar hoy"),
-                  e("p",{style:{margin:"4px 0 0",fontSize:16,color:"#5A6078",lineHeight:1.5}},"Estas son las acciones que más necesitan tu atención.")
+                  e("div",{style:{fontSize:isMobile?23:20,fontWeight:800,letterSpacing:"-0.03em",color:C.text}},"A quién contactar hoy"),
+                  e("p",{style:{margin:"4px 0 0",fontSize:isMobile?16:14,color:"#5A6078",lineHeight:1.5}},"Estas son las acciones que más necesitan tu atención.")
                 ),
-                totalRestantes>0&&e("button",{style:{cursor:"pointer",background:"none",border:"none",color:C.purple,fontSize:isMobile?15:15.5,fontWeight:700,padding:"12px 0",whiteSpace:"nowrap",fontFamily:"inherit"},onClick:function(){setVista("hoy");}},"Ver todo →")
+                totalRestantes>0&&e("button",{style:{cursor:"pointer",background:"none",border:"none",color:C.purple,fontSize:isMobile?15:14,fontWeight:700,padding:"10px 0",whiteSpace:"nowrap",fontFamily:"inherit"},onClick:function(){setVista("hoy");}},"Ver todo →")
               ),
-              e("div",{style:{display:"grid",gridTemplateColumns:isMobile?"1fr":"repeat(12,minmax(0,1fr))",gap:isMobile?10:12,marginTop:isMobile?12:16}},
+              e("div",{style:{display:"grid",gridTemplateColumns:isMobile?"1fr":"repeat(12,minmax(0,1fr))",gap:isMobile?10:12,marginTop:isMobile?12:14}},
                 acciones.length>0&&e("div",{style:{gridColumn:isMobile?"1/-1":hayCobrosPendientes?"span 8":"1/-1",fontSize:12.5,fontWeight:800,letterSpacing:".08em",color:"#4A5068",display:"flex",gap:8,alignItems:"center",marginBottom:isMobile?-2:0}},"CONVERSACIONES POR RETOMAR",e("span",{style:{color:C.purple}},acciones.length)),
                 hayCobrosPendientes&&e("div",{style:{gridColumn:isMobile?"1/-1":acciones.length>0?"span 4":"1/-1",fontSize:12.5,fontWeight:800,letterSpacing:".08em",color:"#4A5068",display:"flex",gap:8,alignItems:"center",marginBottom:isMobile?-2:0}},"COBROS PENDIENTES",e("span",{style:{color:C.purple}},cobrosTodosIni.length)),
                 acciones.map(function(a,i){
                   var nota=a.recordatorioEsManualOPersonalizado&&a.recordatorioNota?a.recordatorioNota:null;
-                  return e("article",{key:a.accionId||i,style:{gridColumn:isMobile?"1/-1":"span 4",background:"#FFFFFF",borderRadius:28,padding:isMobile?"22px":"28px",display:"flex",flexDirection:"column",boxSizing:"border-box"}},
-                    e("div",{style:{fontSize:isMobile?21:22,fontWeight:800,letterSpacing:"-0.02em",color:C.ink}},a.cliente.nombre),
-                    e("p",{style:{margin:"8px 0 0",fontSize:16,lineHeight:1.6,color:"#4A5068"}},a.desc),
+                  return e("article",{key:a.accionId||i,style:{gridColumn:isMobile?"1/-1":"span 4",background:"#FFFFFF",borderRadius:isMobile?28:22,padding:isMobile?"22px":"20px",display:"flex",flexDirection:"column",boxSizing:"border-box"}},
+                    e("div",{style:{fontSize:isMobile?21:18,fontWeight:800,letterSpacing:"-0.02em",color:C.ink}},a.cliente.nombre),
+                    e("p",{style:{margin:"8px 0 0",fontSize:isMobile?16:15,lineHeight:1.6,color:"#4A5068"}},a.desc),
                     nota&&e("p",{style:{display:"flex",gap:9,alignItems:"flex-start",margin:"14px 0 0",paddingTop:14,borderTop:"1px solid #E6E8F0",fontSize:15,lineHeight:1.5,color:"#545A72"}},
                       e("svg",{width:17,height:17,viewBox:"0 0 24 24",fill:"none",stroke:"#7C8CFF",strokeWidth:1.9,strokeLinecap:"round",strokeLinejoin:"round",style:{flexShrink:0,marginTop:2}},e("path",{d:"M4 20h4L19 9l-4-4L4 16z"})),
                       e("span",null,'"'+nota+'"')
@@ -10681,21 +10707,21 @@ export default function CLEO(props){
                     e("div",{style:{flex:1,minHeight:18}}),
                     a.origenAccion==="cotizacion_independiente"
                       ? e("div",{style:{display:"flex",gap:8,flexWrap:"wrap"}},
-                          e("button",{key:"contactar",style:{cursor:"pointer",height:isMobile?50:46,padding:"0 20px",borderRadius:999,border:"0",background:C.ink,color:"#FFFFFF",fontSize:15,fontWeight:700,fontFamily:"inherit",display:"inline-flex",alignItems:"center",justifyContent:"center",gap:8,flex:1},onClick:function(){ contactarCotizacionIndependiente(a.cotizacionId); }},
-                            e("svg",{width:18,height:18,viewBox:"0 0 24 24",fill:"none",stroke:"currentColor",strokeWidth:1.9,strokeLinecap:"round",strokeLinejoin:"round"},e("path",{d:"M4 5.5A1.5 1.5 0 0 1 5.5 4h13A1.5 1.5 0 0 1 20 5.5v9a1.5 1.5 0 0 1-1.5 1.5H9.5L4 20z"})),
+                          e("button",{key:"contactar",style:{cursor:"pointer",height:isMobile?50:40,padding:"0 16px",borderRadius:999,border:"0",background:C.ink,color:"#FFFFFF",fontSize:isMobile?15:13,fontWeight:700,fontFamily:"inherit",display:"inline-flex",alignItems:"center",justifyContent:"center",gap:8,flex:1},onClick:function(){ contactarCotizacionIndependiente(a.cotizacionId); }},
+                            e("svg",{width:16,height:16,viewBox:"0 0 24 24",fill:"none",stroke:"currentColor",strokeWidth:1.9,strokeLinecap:"round",strokeLinejoin:"round"},e("path",{d:"M4 5.5A1.5 1.5 0 0 1 5.5 4h13A1.5 1.5 0 0 1 20 5.5v9a1.5 1.5 0 0 1-1.5 1.5H9.5L4 20z"})),
                             "Contactar"
                           ),
-                          e("button",{key:"atendida",style:{cursor:"pointer",height:isMobile?50:46,padding:"0 14px",borderRadius:999,border:"1.5px solid "+C.border,background:"transparent",fontSize:14,fontWeight:600,fontFamily:"inherit",color:C.textMuted},onClick:function(){ atenderSeguimientoCotizacion(a.cotizacionId); }},"✓ Ya la revisó"),
-                          e("button",{key:"reprogramar",style:{cursor:"pointer",height:isMobile?50:46,padding:"0 14px",borderRadius:999,border:"1.5px solid "+C.border,background:"transparent",fontSize:14,fontWeight:600,fontFamily:"inherit",color:C.textMuted},onClick:function(){ setModalReprogSeguimientoCot(a.cotizacionId); }},"Reprogramar"),
-                          e("button",{key:"abrir",style:{cursor:"pointer",height:isMobile?50:46,padding:"0 14px",borderRadius:999,border:"1.5px solid "+C.border,background:"transparent",fontSize:14,fontWeight:600,fontFamily:"inherit",color:C.textMuted},onClick:function(){ abrirCotizacionIndependiente(a.cotizacionId); }},"Abrir cotización")
+                          e("button",{key:"atendida",style:{cursor:"pointer",height:isMobile?50:40,padding:"0 12px",borderRadius:999,border:"1.5px solid "+C.border,background:"transparent",fontSize:isMobile?14:13,fontWeight:600,fontFamily:"inherit",color:C.textMuted},onClick:function(){ atenderSeguimientoCotizacion(a.cotizacionId); }},"✓ Ya la revisó"),
+                          e("button",{key:"reprogramar",style:{cursor:"pointer",height:isMobile?50:40,padding:"0 12px",borderRadius:999,border:"1.5px solid "+C.border,background:"transparent",fontSize:isMobile?14:13,fontWeight:600,fontFamily:"inherit",color:C.textMuted},onClick:function(){ setModalReprogSeguimientoCot(a.cotizacionId); }},"Reprogramar"),
+                          e("button",{key:"abrir",style:{cursor:"pointer",height:isMobile?50:40,padding:"0 12px",borderRadius:999,border:"1.5px solid "+C.border,background:"transparent",fontSize:isMobile?14:13,fontWeight:600,fontFamily:"inherit",color:C.textMuted},onClick:function(){ abrirCotizacionIndependiente(a.cotizacionId); }},"Abrir cotización")
                         )
                       : e("div",{style:{display:"flex",gap:isMobile?8:4,flexDirection:"column"}},
                           e("div",{style:{display:"flex",gap:isMobile?8:4}},
-                            e("button",{style:{cursor:"pointer",height:isMobile?50:46,padding:"0 20px",borderRadius:999,border:"0",background:C.ink,color:"#FFFFFF",fontSize:15,fontWeight:700,fontFamily:"inherit",display:"inline-flex",alignItems:"center",justifyContent:"center",gap:8,flex:1},onClick:function(){ manejarClickContactar(a.cliente,a.recordatorioId,a.recordatorioNota,a.recordatorioEsManualOPersonalizado); }},
-                              e("svg",{width:18,height:18,viewBox:"0 0 24 24",fill:"none",stroke:"currentColor",strokeWidth:1.9,strokeLinecap:"round",strokeLinejoin:"round"},e("path",{d:"M4 5.5A1.5 1.5 0 0 1 5.5 4h13A1.5 1.5 0 0 1 20 5.5v9a1.5 1.5 0 0 1-1.5 1.5H9.5L4 20z"})),
+                            e("button",{style:{cursor:"pointer",height:isMobile?50:40,padding:"0 16px",borderRadius:999,border:"0",background:C.ink,color:"#FFFFFF",fontSize:isMobile?15:13,fontWeight:700,fontFamily:"inherit",display:"inline-flex",alignItems:"center",justifyContent:"center",gap:8,flex:1},onClick:function(){ manejarClickContactar(a.cliente,a.recordatorioId,a.recordatorioNota,a.recordatorioEsManualOPersonalizado); }},
+                              e("svg",{width:16,height:16,viewBox:"0 0 24 24",fill:"none",stroke:"currentColor",strokeWidth:1.9,strokeLinecap:"round",strokeLinejoin:"round"},e("path",{d:"M4 5.5A1.5 1.5 0 0 1 5.5 4h13A1.5 1.5 0 0 1 20 5.5v9a1.5 1.5 0 0 1-1.5 1.5H9.5L4 20z"})),
                               "Contactar"
                             ),
-                            e("button",{style:{cursor:"pointer",height:isMobile?50:46,padding:"0 12px",borderRadius:999,border:"0",background:"transparent",color:C.ink,fontSize:15,fontWeight:700,fontFamily:"inherit",display:"inline-flex",alignItems:"center",justifyContent:"center",gap:6},onClick:function(){
+                            e("button",{style:{cursor:"pointer",height:isMobile?50:40,padding:"0 10px",borderRadius:999,border:"0",background:"transparent",color:C.ink,fontSize:isMobile?15:13,fontWeight:700,fontFamily:"inherit",display:"inline-flex",alignItems:"center",justifyContent:"center",gap:6},onClick:function(){
                               if(a.recordatorioEsManualOPersonalizado){ var res2=completarRecordatorioManual(a.cliente.id,a.recordatorioId); if(res2.ok) mostrarToast("✓ Marcaste tu recordatorio como atendido para "+res2.nombreCliente+"."); }
                               else { setContactadoClienteId(a.cliente.id); setContactadoRecordatorioId(a.recordatorioId); }
                             }},
@@ -10710,24 +10736,24 @@ export default function CLEO(props){
                 cobrosPendientes.map(function(x,i){
                   var pagado=Number(x.cot.monto)-x.saldo;
                   var saldoStr="$"+formatoDinero(x.saldo);
-                  return e("article",{key:i,style:{gridColumn:isMobile?"1/-1":"span 4",background:"#FBF1DC",borderRadius:28,padding:isMobile?"22px":"28px",display:"flex",flexDirection:"column",boxSizing:"border-box"}},
-                    e("div",{style:{fontSize:isMobile?21:22,fontWeight:800,letterSpacing:"-0.02em",color:C.ink}},x.cliente.nombre),
-                    e("div",{style:{marginTop:14,fontSize:15,fontWeight:600,color:"#6E4806"}},"Saldo pendiente:"),
-                    e("div",{style:{fontSize:saldoStr.length>12?36:44,lineHeight:1.05,fontWeight:800,letterSpacing:"-0.035em",color:"#5E3D04"}},saldoStr),
-                    x.cot.concepto&&e("div",{style:{marginTop:6,fontSize:16,color:"#4A5068"}},x.cot.concepto),
-                    e("div",{style:{flex:1,minHeight:18}}),
+                  return e("article",{key:i,style:{gridColumn:isMobile?"1/-1":"span 4",background:"#FBF1DC",borderRadius:isMobile?28:22,padding:isMobile?"22px":"20px",display:"flex",flexDirection:"column",boxSizing:"border-box"}},
+                    e("div",{style:{fontSize:isMobile?21:18,fontWeight:800,letterSpacing:"-0.02em",color:C.ink}},x.cliente.nombre),
+                    e("div",{style:{marginTop:isMobile?14:10,fontSize:isMobile?15:13,fontWeight:600,color:"#6E4806"}},"Saldo pendiente:"),
+                    e("div",{style:{fontSize:isMobile?44:32,lineHeight:1.05,fontWeight:800,letterSpacing:"-0.035em",color:"#5E3D04"}},saldoStr),
+                    x.cot.concepto&&e("div",{style:{marginTop:6,fontSize:isMobile?16:14,color:"#4A5068"}},x.cot.concepto),
+                    e("div",{style:{flex:1,minHeight:isMobile?18:12}}),
                     e("div",{style:{display:"flex",gap:isMobile?8:6,flexWrap:"wrap"}},
-                      e("button",{style:{cursor:"pointer",height:isMobile?50:46,padding:"0 20px",borderRadius:999,border:"0",background:C.ink,color:"#FFFFFF",fontSize:15,fontWeight:700,fontFamily:"inherit",display:"inline-flex",alignItems:"center",justifyContent:"center",gap:8,flex:1},onClick:function(){ var url=contactUrl(x.cliente,"Hola "+x.cliente.nombre.split(" ")[0]+", te escribo para preguntar cómo va el pago pendiente de "+(x.cot.concepto||"tu cotización")+"."); if(url) abrirEnlaceExternoSeguro(url); else setClienteCompletarId(x.cliente.id); }},
-                        e("svg",{width:18,height:18,viewBox:"0 0 24 24",fill:"none",stroke:"currentColor",strokeWidth:1.9,strokeLinecap:"round",strokeLinejoin:"round"},e("path",{d:"M4 5.5A1.5 1.5 0 0 1 5.5 4h13A1.5 1.5 0 0 1 20 5.5v9a1.5 1.5 0 0 1-1.5 1.5H9.5L4 20z"})),
+                      e("button",{style:{cursor:"pointer",height:isMobile?50:40,padding:"0 16px",borderRadius:999,border:"0",background:C.ink,color:"#FFFFFF",fontSize:isMobile?15:13,fontWeight:700,fontFamily:"inherit",display:"inline-flex",alignItems:"center",justifyContent:"center",gap:8,flex:1},onClick:function(){ var url=contactUrl(x.cliente,"Hola "+x.cliente.nombre.split(" ")[0]+", te escribo para preguntar cómo va el pago pendiente de "+(x.cot.concepto||"tu cotización")+"."); if(url) abrirEnlaceExternoSeguro(url); else setClienteCompletarId(x.cliente.id); }},
+                        e("svg",{width:16,height:16,viewBox:"0 0 24 24",fill:"none",stroke:"currentColor",strokeWidth:1.9,strokeLinecap:"round",strokeLinejoin:"round"},e("path",{d:"M4 5.5A1.5 1.5 0 0 1 5.5 4h13A1.5 1.5 0 0 1 20 5.5v9a1.5 1.5 0 0 1-1.5 1.5H9.5L4 20z"})),
                         "Contactar"
                       ),
-                      e("button",{style:{cursor:"pointer",height:isMobile?50:46,padding:"0 14px",borderRadius:999,border:"1.5px solid #E7D5AE",background:"transparent",fontSize:14,fontWeight:600,fontFamily:"inherit",color:"#6E4806"},onClick:function(){ setPagosModalTipo(x.tipo); setPagosModalId(x.cot.id); setFormPago({monto:"",fecha:FECHA_HOY,concepto:"Pago"}); }},
+                      e("button",{style:{cursor:"pointer",height:isMobile?50:40,padding:"0 12px",borderRadius:999,border:"1.5px solid #E7D5AE",background:"transparent",fontSize:isMobile?14:13,fontWeight:600,fontFamily:"inherit",color:"#6E4806"},onClick:function(){ setPagosModalTipo(x.tipo); setPagosModalId(x.cot.id); setFormPago({monto:"",fecha:FECHA_HOY,concepto:"Pago"}); }},
                         "+ Registrar pago"
                       )
                     )
                   );
                 }),
-                !hayItemsSrv&&e("div",{style:{gridColumn:"1/-1",padding:"24px",textAlign:"center",fontSize:14,color:C.textMuted,background:"#FFFFFF",borderRadius:20,border:"1px solid "+C.border}},"Todo importante está atendido por hoy.")
+                !hayItemsSrv&&e("div",{style:{gridColumn:"1/-1",padding:"20px",textAlign:"center",fontSize:isMobile?14:13,color:C.textMuted,background:"#FFFFFF",borderRadius:isMobile?20:16,border:"1px solid "+C.border}},"Todo importante está atendido por hoy.")
               )
             );
           })()

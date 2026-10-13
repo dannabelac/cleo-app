@@ -48,21 +48,44 @@ Usuario: emprendedores que venden por WhatsApp/Instagram, hoy se organizan con l
 
 Reglas: el color de estado **siempre va con texto o ícono**. Un pendiente normal **no es rojo**; el rojo (`C.red`) queda solo para errores o algo realmente vencido. El color del negocio del usuario solo aparece en el anillo de su logo (riel y menú Más), nunca en botones, estados ni selección.
 
+### Escala por viewport
+
+El objeto `sc` en `CLEO.jsx` centraliza ambas escalas. Aplicar siempre con `isMobile`:
+
+| Token | Desktop (≥768px) | Móvil (<768px) | Notas |
+|---|---|---|---|
+| `sc.text` | 14px | 16px | Texto normal de la interfaz |
+| `sc.textSec` | 13px | 15px | Texto secundario, descripciones |
+| `sc.textLabel` | 11px | 12px | Etiquetas de grupo (mayúsculas) |
+| `sc.titlePage` | 26px | 28px | Saludo / título de pantalla |
+| `sc.titleSection` | 20px | 22px | Encabezados de sección |
+| `sc.namePerson` | 17px | 18px | Nombre de persona en tarjeta |
+| `sc.btnH` | 38px | 44px | Alto de botón (mín. táctil móvil) |
+| `sc.inputFs` | 14px | 16px | Fuente de campo (16px evita zoom iOS) |
+| `sc.blockPad` | 20px | 24px | Padding interno de bloques |
+| `sc.blockR` | 22px | 28px | Radio de bloques |
+
+**Regla de oro:** en móvil, campos siempre con `fontSize:16` y botones con `minHeight:44`. En desktop, campos con `minHeight:40` y botones con `minHeight:38`.
+
 ### Tipografía
 Plus Jakarta Sans (`FONT_CLEO`), cifras tabulares (`fontVariantNumeric:"tabular-nums"`).
-- Saludo / título de pantalla: 34–36px, 800, `letter-spacing:-0.035em`.
-- Títulos de sección: 25–26px, 800, `-0.03em`.
-- Nombre de persona: 22–23px, 800.
-- Texto: 16px, line-height 1.6. Mínimo 15px para texto legible; 12–13px solo para etiquetas de grupo.
-- Etiquetas de grupo: 12.5px, 800, mayúsculas, `letter-spacing:.08em`, contador en `#3F4BD0`.
+- Saludo / título de pantalla: **26px desktop / 28px móvil**, 800, `letter-spacing:-0.035em`.
+- Títulos de sección: **20px desktop / 22px móvil**, 800, `-0.03em`.
+- Nombre de persona: **17px desktop / 18px móvil**, 800.
+- Texto: **14px desktop / 16px móvil**, line-height 1.6. Secundario: 13px/15px. Mínimo legible: 13px.
+- Etiquetas de grupo: **11px desktop / 12px móvil**, 800, mayúsculas, `letter-spacing:.08em`, contador en `#3F4BD0`.
 
 ### Formas
-- Bloques: radio 28–30px, sin borde ni sombra (la jerarquía la da el color).
-- Botones: píldora (`borderRadius:999`), alto 46px desktop / 48–50px móvil. Principal azul noche; secundario blanco con borde `#D5D8E4`; discreto sin fondo (p. ej. "Ya le hablé" con palomita).
-- Campos: radio 14, borde 1.5px `#D5D8E4`, 16px de letra.
-- Áreas táctiles ≥ 44px.
+- Bloques: radio **22px desktop / 28–30px móvil**, sin borde ni sombra (la jerarquía la da el color).
+- Botones: píldora (`borderRadius:999`), alto **38px desktop / 44px móvil**. Principal azul noche; secundario blanco con borde `#D5D8E4`; discreto sin fondo (p. ej. "Ya le hablé" con palomita).
+- Campos: radio 14, borde 1.5px `#D5D8E4`, **14px desktop / 16px móvil**.
+- Áreas táctiles ≥ 44px en móvil.
 - Sin avatares de iniciales junto a cada persona: el nombre manda.
 - Sin emojis decorativos en la interfaz (👋 🎯 📦 💬 💡 → texto o ícono SVG).
+- Padding de página: **24–32px desktop** (24 con sidebar abierto, 32 expandido) / **20px 16px móvil**.
+- Separación entre bloques: **16px desktop**, 12–20px móvil.
+- Barra lateral: **104px ancho expandido / 68px colapsada**, ítems de **52px alto**, íconos de **20px**, nombres de **11.5px**.
+- Modales: **440px de ancho, 22px de padding, título 18px** en desktop.
 
 ---
 
