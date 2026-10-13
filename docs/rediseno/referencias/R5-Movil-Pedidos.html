@@ -1,0 +1,157 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<title>CLEO · Pedidos móvil, ronda 5</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0;background:#ECEEF5}
+a{color:#3F4BD0}
+.cl{font-family:'Plus Jakarta Sans',system-ui,sans-serif;color:#0E1328;font-variant-numeric:tabular-nums;-webkit-font-smoothing:antialiased}
+.i{width:20px;height:20px;flex:none;fill:none;stroke:currentColor;stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round}
+.cnt{min-width:20px;height:20px;padding:0 6px;box-sizing:border-box;border-radius:10px;background:#0E1328;color:#FFFFFF;font-size:11.5px;font-weight:800;display:inline-grid;place-items:center}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;height:50px;padding:0 18px;border-radius:25px;font-family:inherit;font-size:16px;font-weight:700;cursor:pointer;text-decoration:none;box-sizing:border-box;white-space:nowrap}
+.p{background:#0E1328;color:#FFFFFF;border:0}
+.o{background:#FFFFFF;color:#0E1328;border:1.5px solid #D5D8E4}
+.blk{background:#FFFFFF;border-radius:26px;padding:22px;box-sizing:border-box}
+.q4{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));background:#FFFFFF;border-radius:22px;overflow:hidden}
+.q4 button{display:flex;flex-direction:column;align-items:flex-start;justify-content:space-between;gap:14px;min-height:112px;padding:16px 14px 16px 16px;background:#FFFFFF;border:0;font-family:inherit;font-size:18px;line-height:1.2;font-weight:800;letter-spacing:-0.02em;color:#0E1328;text-align:left;cursor:pointer}
+.q4 .go{width:36px;height:36px;border-radius:50%;background:#EEF0FF;color:#3F4BD0;display:grid;place-items:center;align-self:flex-end}
+.q4 .go .i{width:17px;height:17px;stroke-width:2.4}
+.nm{font-size:21px;font-weight:800;letter-spacing:-0.02em}
+.sn{margin:8px 0 0;font-size:16px;line-height:1.6;color:#4A5068}
+.dt{color:#0E1328;font-weight:700}
+.pz{color:#8A5A06;font-weight:700;white-space:nowrap}
+.pz .i{width:15px;height:15px;stroke-width:2.2;vertical-align:-2px;margin-right:3px}
+.nt{display:flex;gap:9px;align-items:flex-start;margin:14px 0 0;padding-top:14px;border-top:1px solid #E6E8F0;font-size:15px;line-height:1.5;color:#545A72}
+.nt .i{width:17px;height:17px;color:#7C8CFF;margin-top:2px}
+.two{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin-top:18px}
+.lbl{font-size:12px;font-weight:800;letter-spacing:.07em;color:#4A5068;display:flex;gap:8px;margin:22px 0 10px 4px}
+.lbl span{color:#3F4BD0}
+.tb{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;min-width:44px;min-height:58px;text-decoration:none;color:#5A6078;font-size:11.5px;font-weight:600;white-space:nowrap}
+.tb .pill{width:48px;height:30px;border-radius:15px;display:grid;place-items:center;position:relative}
+.tb.on{color:#0E1328;font-weight:800}
+.tb.on .pill{background:#E4E8FF;color:#3F4BD0}
+.pd{margin-top:4px;font-size:16px;font-weight:600;color:#0E1328;overflow-wrap:anywhere}
+.ln{display:flex;flex-wrap:wrap;align-items:center;gap:8px 12px;margin-top:12px}
+.st{display:inline-flex;align-items:center;gap:6px;height:30px;padding:0 12px;border-radius:15px;font-size:14px;font-weight:700;white-space:nowrap}
+.st .i{width:16px;height:16px;stroke-width:2.2}
+.ok{background:#E2F2E8;color:#1E5C38}.wt{background:#FBF1DC;color:#6E4806}.nu{background:#ECEEF5;color:#4A5068}
+.meta{font-size:14.5px;color:#4A5068}
+.rc{margin:16px 0 0;background:#F4F5FA;border-radius:18px;padding:4px 16px}
+.rc>div{display:flex;justify-content:space-between;align-items:baseline;gap:12px;padding:11px 0}
+.rc>div+div{border-top:1px solid #E3E6EF}
+.rc dt{font-size:14.5px;font-weight:700;color:#4A5068}
+.rc dd{margin:0;font-size:19px;font-weight:800;letter-spacing:-0.02em;text-align:right}
+.rc .z{color:#7A8096;font-weight:600}
+.rc .d{margin:2px -10px 4px;padding:12px 10px;border-radius:12px;background:#FBF1DC;border-top:0}
+.rc .d dt{color:#6E4806}.rc .d dd{color:#5E3D04;font-size:22px}
+.rc .d+div,.rc>div.d{border-top:0}
+.sm{height:46px;padding:0 10px;font-size:14px;gap:6px}
+.sm .i{width:17px;height:17px;color:#4A5068}
+.fi{display:inline-flex;align-items:center;justify-content:space-between;gap:8px;flex:1 1 auto;height:44px;padding:0 16px;border:0;border-radius:22px;background:#FFFFFF;font-family:inherit;font-size:15px;font-weight:600;color:#0E1328;white-space:nowrap}
+.fi .i{width:16px;height:16px;color:#4A5068}
+.fi.sel{flex:none;height:40px;padding:0 12px;background:#F4F5FA;font-size:14px}
+</style>
+</helmet>
+<svg width="0" height="0" style="position: absolute" aria-hidden="true">
+<symbol id="i-home" viewBox="0 0 24 24"><path d="M3.5 10.5 12 3.5l8.5 7V20h-5.5v-5.5h-6V20H3.5z"/></symbol>
+<symbol id="i-sun" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 2.5v2M12 19.5v2M2.5 12h2M19.5 12h2M5.3 5.3l1.4 1.4M17.3 17.3l1.4 1.4M5.3 18.7l1.4-1.4M17.3 6.7l1.4-1.4"/></symbol>
+<symbol id="i-users" viewBox="0 0 24 24"><circle cx="9" cy="8" r="3.5"/><path d="M2.5 20c.6-3.5 3.3-5.5 6.5-5.5s5.9 2 6.5 5.5M16 4.6a3.5 3.5 0 0 1 0 6.8M18 14.8c2 .8 3.2 2.6 3.5 5.2"/></symbol>
+<symbol id="i-bag" viewBox="0 0 24 24"><path d="M5 8h14l-1 13H6z"/><path d="M9 8V6a3 3 0 0 1 6 0v2"/></symbol>
+<symbol id="i-cash" viewBox="0 0 24 24"><rect x="3" y="6" width="18" height="12" rx="2"/><circle cx="12" cy="12" r="2.5"/></symbol>
+<symbol id="i-dots" viewBox="0 0 24 24"><path d="M5.5 12h.01M12 12h.01M18.5 12h.01" stroke-width="3"/></symbol>
+<symbol id="i-plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></symbol>
+<symbol id="i-chev" viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"/></symbol>
+<symbol id="i-arrow" viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></symbol>
+<symbol id="i-chat" viewBox="0 0 24 24"><path d="M4 5.5A1.5 1.5 0 0 1 5.5 4h13A1.5 1.5 0 0 1 20 5.5v9a1.5 1.5 0 0 1-1.5 1.5H9.5L4 20z"/></symbol>
+<symbol id="i-check" viewBox="0 0 24 24"><path d="m5 12.5 4.5 4.5L19 7.5"/></symbol>
+<symbol id="i-clock" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><path d="M12 7.5V12l3 2"/></symbol>
+<symbol id="i-pen" viewBox="0 0 24 24"><path d="M4 20h4L19 9l-4-4L4 16z"/></symbol>
+<symbol id="i-ig" viewBox="0 0 24 24"><rect x="3.5" y="3.5" width="17" height="17" rx="5"/><circle cx="12" cy="12" r="4"/><path d="M17 7h.01"/></symbol>
+<symbol id="i-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="6.5"/><path d="m16 16 4 4"/></symbol>
+<symbol id="i-attach" viewBox="0 0 24 24"><path d="m20 11.5-7.8 7.8a5 5 0 0 1-7.1-7.1l8.2-8.2a3.3 3.3 0 0 1 4.7 4.7l-8.2 8.2a1.7 1.7 0 0 1-2.4-2.4l7.6-7.6"/></symbol>
+<symbol id="i-doc" viewBox="0 0 24 24"><path d="M6 3h8l4 4v14H6z"/><path d="M14 3v4h4M9 12h6M9 16h6"/></symbol>
+<symbol id="i-receipt" viewBox="0 0 24 24"><path d="M6 3h12v18l-3-2-3 2-3-2-3 2z"/><path d="M9 8h6M9 12h6"/></symbol>
+<symbol id="i-half" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><path d="M12 5a7 7 0 0 1 0 14z" fill="currentColor" stroke="none"/></symbol>
+<symbol id="i-wa" viewBox="0 0 24 24"><path d="M4.5 19.5 5.8 16A8 8 0 1 1 8.3 18.5z"/><path d="M9.2 8.8c.2 2.7 2.4 5 5.2 5.6l1.1-1.4"/></symbol>
+</svg>
+<div class="cl" style="width: 390px; height: 2600px; position: relative; overflow: hidden; background: #ECEEF5">
+<div style="padding: 18px 14px 120px">
+<div style="display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 6px 6px 0">
+<h1 style="margin: 0; font-size: 30px; font-weight: 800; letter-spacing: -0.035em">Pedidos</h1>
+<button class="btn p" style="height: 44px; padding: 0 16px; font-size: 15px"><svg class="i" style="width: 17px; height: 17px; stroke-width: 2.5"><use href="#i-plus"></use></svg>Pedido</button>
+</div>
+<p style="margin: 4px 6px 0; font-size: 15.5px; color: #4A5068">Compras confirmadas y en proceso</p>
+
+<label style="position: relative; display: flex; margin-top: 18px">
+<span style="position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%)">Buscar</span>
+<svg class="i" style="position: absolute; left: 18px; top: 15px; color: #5A6078"><use href="#i-search"></use></svg>
+<input type="search" placeholder="Buscar cliente o producto..." style="flex: 1; height: 50px; box-sizing: border-box; padding: 0 18px 0 48px; border: 0; border-radius: 25px; background: #FFFFFF; font-family: inherit; font-size: 16px; color: #0E1328"></label>
+<div style="display: flex; flex-wrap: wrap; gap: 8px; margin: 10px 0 16px">
+<button class="fi">Todos · 13<svg class="i"><use href="#i-chev"></use></svg></button>
+<button class="fi">Todos los pagos<svg class="i"><use href="#i-chev"></use></svg></button>
+<button class="fi">Todo el tiempo<svg class="i"><use href="#i-chev"></use></svg></button>
+</div>
+
+<div style="display: flex; flex-direction: column; gap: 10px">
+<article class="blk">
+<div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 10px"><div class="nm">María Gómez</div><button class="fi sel">Entregado<svg class="i"><use href="#i-chev"></use></svg></button></div>
+<div class="pd">Kit jabones x2</div>
+<div class="ln"><span class="st ok"><svg class="i"><use href="#i-check"></use></svg>Pagado</span><span class="meta">Entrega: 30 sep 2026</span></div>
+<p class="nt"><svg class="i"><use href="#i-pen"></use></svg><span>Cliente muy feliz, pidió más para el mes que viene</span></p>
+<dl class="rc"><div><dt>Total</dt><dd>$500.00</dd></div><div><dt>Pagado</dt><dd>$500.00</dd></div><div><dt>Restante</dt><dd class="z">$0.00</dd></div></dl>
+<div class="two"><a href="#" class="btn o sm"><svg class="i"><use href="#i-wa"></use></svg>WhatsApp</a><button class="btn o sm"><svg class="i"><use href="#i-attach"></use></svg>Adjuntar archivo</button><button class="btn o sm"><svg class="i"><use href="#i-doc"></use></svg>Cotización</button><button class="btn o sm"><svg class="i"><use href="#i-receipt"></use></svg>Pagos (2)</button></div>
+</article>
+
+<article class="blk">
+<div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 10px"><div class="nm">Andrea Vega</div><button class="fi sel">Entregado<svg class="i"><use href="#i-chev"></use></svg></button></div>
+<div class="pd">Collar perlas</div>
+<div class="ln"><span class="st ok"><svg class="i"><use href="#i-check"></use></svg>Pagado</span><span class="meta">Entrega: 1 oct 2026</span></div>
+<dl class="rc"><div><dt>Total</dt><dd>$850.00</dd></div><div><dt>Pagado</dt><dd>$850.00</dd></div><div><dt>Restante</dt><dd class="z">$0.00</dd></div></dl>
+<div class="two"><a href="#" class="btn o sm"><svg class="i"><use href="#i-wa"></use></svg>WhatsApp</a><button class="btn o sm"><svg class="i"><use href="#i-attach"></use></svg>Adjuntar archivo</button><button class="btn o sm"><svg class="i"><use href="#i-doc"></use></svg>Cotización</button><button class="btn o sm"><svg class="i"><use href="#i-receipt"></use></svg>Pagos (1)</button></div>
+</article>
+
+<article class="blk">
+<div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 10px"><div class="nm">Sofía Herrera</div><button class="fi sel">Preparando<svg class="i"><use href="#i-chev"></use></svg></button></div>
+<div class="pd">Pulseras boda x6</div>
+<div class="ln"><span class="st wt"><svg class="i"><use href="#i-half"></use></svg>Anticipo recibido</span><span class="st nu"><svg class="i"><use href="#i-clock"></use></svg>12d preparando</span></div>
+<button class="btn" style="height: 44px; padding: 0; margin-top: 4px; border: 0; background: transparent; color: #3F4BD0; font-size: 15px"><svg class="i" style="width: 17px; height: 17px; stroke-width: 2.4"><use href="#i-plus"></use></svg>Agregar fecha de entrega</button>
+<p class="nt"><svg class="i"><use href="#i-pen"></use></svg><span>Boda en Mérida, entrega en una semana</span></p>
+<dl class="rc"><div><dt>Total</dt><dd>$1,800.00</dd></div><div><dt>Pagado</dt><dd>$900.00</dd></div><div class="d"><dt>Restante</dt><dd>$900.00</dd></div></dl>
+<button class="btn p" style="width: 100%; margin-top: 14px"><svg class="i" style="width: 18px; height: 18px; stroke-width: 2.4"><use href="#i-plus"></use></svg>Registrar pago</button>
+<div class="two" style="margin-top: 8px"><a href="#" class="btn o sm"><svg class="i"><use href="#i-ig"></use></svg>Instagram</a><button class="btn o sm"><svg class="i"><use href="#i-attach"></use></svg>Adjuntar archivo</button><button class="btn o sm"><svg class="i"><use href="#i-doc"></use></svg>Cotización</button><button class="btn o sm"><svg class="i"><use href="#i-receipt"></use></svg>Pagos (1)</button></div>
+</article>
+
+<article class="blk" style="box-shadow: inset 0 0 0 2px #0E1328">
+<span style="display: inline-flex; align-items: center; height: 26px; padding: 0 10px; border-radius: 13px; background: #0E1328; color: #FFFFFF; font-size: 12px; font-weight: 700; margin-bottom: 12px">Prueba: nombre largo e importes altos</span>
+<div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 10px"><div class="nm">Distribuidora Hermanos Canché y Asociados</div><button class="fi sel">Preparando<svg class="i"><use href="#i-chev"></use></svg></button></div>
+<div class="pd">Uniformes bordados para personal de tienda x480</div>
+<dl class="rc"><div><dt>Total</dt><dd>$2,500,000.00</dd></div><div><dt>Pagado</dt><dd>$1,250,000.00</dd></div><div class="d"><dt>Restante</dt><dd>$1,250,000.00</dd></div></dl>
+</article>
+</div>
+</div>
+
+<nav aria-label="Principal" style="position: absolute; left: 0; right: 0; bottom: 0; background: #FFFFFF; border-top: 1px solid #DADDE8; padding: 6px 10px 22px; display: flex; justify-content: space-between">
+<a href="#" class="tb"><span class="pill"><svg class="i"><use href="#i-home"></use></svg></span>Inicio</a>
+<a href="#" class="tb"><span class="pill"><svg class="i"><use href="#i-sun"></use></svg><span class="cnt" style="position: absolute; top: -6px; right: 0">6</span></span>Hoy</a>
+<a href="#" class="tb"><span class="pill"><svg class="i"><use href="#i-users"></use></svg></span>Oportunidades</a>
+<a href="#" class="tb on" aria-current="page"><span class="pill"><svg class="i" style="stroke-width: 2.1"><use href="#i-bag"></use></svg></span>Pedidos</a>
+<a href="#" class="tb"><span class="pill"><svg class="i"><use href="#i-cash"></use></svg></span>Ingresos</a>
+<a href="#" class="tb"><span class="pill"><svg class="i"><use href="#i-dots"></use></svg></span>Más</a>
+</nav>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":390,"height":2600}}'>
+class Component extends DCLogic {
+  renderVals() { return {}; }
+}
+</script>
+</body>
+</html>

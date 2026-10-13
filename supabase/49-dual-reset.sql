@@ -43,6 +43,9 @@ begin
   end if;
 
   -- ── Borrar datos relacionales del negocio ─────────────────────────────────
+  -- Bypasear cleo_guard_cotizacion_delete: requiere deleting_negocio_id = negocio_id
+  perform set_config('cleo.deleting_negocio_id', v_neg_id::text, true);
+
   -- Pagos (referencia a pedidos/cotizaciones/ventas)
   delete from public.pagos               where negocio_id = v_neg_id;
   -- Eventos (gastos, productos vendidos, inventario llevado)

@@ -1,0 +1,172 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<title>CLEO · A quién contactar hoy</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0;background:#ECEEF5}
+a{color:#3F4BD0}a:hover{color:#0E1328}
+.cl{font-family:'Plus Jakarta Sans',system-ui,sans-serif;color:#0E1328;font-variant-numeric:tabular-nums;-webkit-font-smoothing:antialiased}
+.i{width:18px;height:18px;flex:none;fill:none;stroke:currentColor;stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round}
+.rail{width:104px;box-sizing:border-box;background:#0E1328;border-radius:26px;padding:14px 8px 10px;display:flex;flex-direction:column;align-items:center;gap:2px}
+.rl{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:5px;width:88px;min-height:54px;padding:7px 4px;box-sizing:border-box;border-radius:16px;text-decoration:none;color:#B9BED3;font-size:11.5px;font-weight:600;line-height:1.2;text-align:center}
+.rl .i{width:20px;height:20px}
+.rl.on{background:rgba(141,155,255,0.22);color:#FFFFFF;font-weight:800}
+.rl.on .i{color:#AEB8FF}
+.dv{width:44px;height:1px;background:rgba(255,255,255,0.13);margin:6px 0}
+.cnt{min-width:18px;height:18px;padding:0 5px;box-sizing:border-box;border-radius:9px;background:#9AA7FF;color:#0E1328;font-size:11px;font-weight:800;display:inline-grid;place-items:center}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:7px;height:38px;padding:0 16px;border-radius:999px;font-family:inherit;font-size:14px;font-weight:700;cursor:pointer;text-decoration:none;box-sizing:border-box;white-space:nowrap}
+.btn .i{width:16px;height:16px}
+.p{background:#0E1328;color:#FFFFFF;border:0}
+.q{background:transparent;color:#0E1328;border:0;padding:0 10px}
+.o{background:#FFFFFF;color:#0E1328;border:1.5px solid #D5D8E4}
+.grp{background:#FFFFFF;border-radius:22px;padding:4px 20px}
+.lbl{display:flex;align-items:center;gap:8px;margin:22px 0 10px 4px;font-size:11.5px;font-weight:800;letter-spacing:.08em;color:#4A5068}
+.lbl span{color:#3F4BD0}
+.row{display:grid;grid-template-columns:minmax(0,1fr) auto;column-gap:24px;align-items:center;padding:16px 0}
+.row+.row{border-top:1px solid #E6E8F0}
+.nm{font-size:16px;font-weight:800;letter-spacing:-0.01em}
+.sn{margin:3px 0 0;font-size:14px;line-height:1.55;color:#4A5068}
+.dt{color:#0E1328;font-weight:700}
+.pz{font-weight:700;white-space:nowrap}
+.pz .i{width:14px;height:14px;stroke-width:2.2;vertical-align:-2px;margin-right:3px}
+.at{color:#8A5A06}
+.ur{color:#B23A24}
+.nt{display:flex;gap:7px;align-items:flex-start;margin:6px 0 0;font-size:13.5px;line-height:1.5;color:#545A72}
+.nt .i{width:15px;height:15px;color:#7C8CFF;margin-top:2px}
+.acts{display:flex;gap:4px}
+.head{display:flex;align-items:center;gap:14px;padding:16px 20px;border-radius:22px}
+.big{font-size:44px;line-height:1;font-weight:800;letter-spacing:-0.04em}
+.hl{font-size:15px;line-height:1.25;font-weight:800;color:#0E1328}
+.card{background:#FFFFFF;border-radius:22px;padding:18px 20px}
+.due{background:#FBF1DC}
+.due .k{margin-top:8px;font-size:13.5px;font-weight:600;color:#6E4806}
+.due .v{font-size:30px;line-height:1.1;font-weight:800;letter-spacing:-0.03em;color:#5E3D04}
+.card .acts{margin-top:14px}
+</style>
+</helmet>
+<svg width="0" height="0" style="position: absolute" aria-hidden="true">
+<symbol id="i-home" viewBox="0 0 24 24"><path d="M3.5 10.5 12 3.5l8.5 7V20h-5.5v-5.5h-6V20H3.5z"/></symbol>
+<symbol id="i-sun" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 2.5v2M12 19.5v2M2.5 12h2M19.5 12h2M5.3 5.3l1.4 1.4M17.3 17.3l1.4 1.4M5.3 18.7l1.4-1.4M17.3 6.7l1.4-1.4"/></symbol>
+<symbol id="i-users" viewBox="0 0 24 24"><circle cx="9" cy="8" r="3.5"/><path d="M2.5 20c.6-3.5 3.3-5.5 6.5-5.5s5.9 2 6.5 5.5M16 4.6a3.5 3.5 0 0 1 0 6.8M18 14.8c2 .8 3.2 2.6 3.5 5.2"/></symbol>
+<symbol id="i-bag" viewBox="0 0 24 24"><path d="M5 8h14l-1 13H6z"/><path d="M9 8V6a3 3 0 0 1 6 0v2"/></symbol>
+<symbol id="i-user" viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 21c.8-4 4-6 8-6s7.2 2 8 6"/></symbol>
+<symbol id="i-db" viewBox="0 0 24 24"><ellipse cx="12" cy="5.5" rx="7.5" ry="2.5"/><path d="M4.5 5.5v13c0 1.4 3.4 2.5 7.5 2.5s7.5-1.1 7.5-2.5v-13M4.5 12c0 1.4 3.4 2.5 7.5 2.5s7.5-1.1 7.5-2.5"/></symbol>
+<symbol id="i-cash" viewBox="0 0 24 24"><rect x="3" y="6" width="18" height="12" rx="2"/><circle cx="12" cy="12" r="2.5"/></symbol>
+<symbol id="i-chart" viewBox="0 0 24 24"><path d="M5 20v-8M11 20V5M17 20v-6M3 20h18"/></symbol>
+<symbol id="i-book" viewBox="0 0 24 24"><rect x="5" y="4" width="14" height="17" rx="2"/><path d="M9 4V2.8h6V4M9 10h6M9 14h4"/></symbol>
+<symbol id="i-chev" viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"/></symbol>
+<symbol id="i-chat" viewBox="0 0 24 24"><path d="M4 5.5A1.5 1.5 0 0 1 5.5 4h13A1.5 1.5 0 0 1 20 5.5v9a1.5 1.5 0 0 1-1.5 1.5H9.5L4 20z"/></symbol>
+<symbol id="i-check" viewBox="0 0 24 24"><path d="m5 12.5 4.5 4.5L19 7.5"/></symbol>
+<symbol id="i-clock" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><path d="M12 7.5V12l3 2"/></symbol>
+<symbol id="i-alert" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><path d="M12 7.5v5M12 16h.01"/></symbol>
+<symbol id="i-pen" viewBox="0 0 24 24"><path d="M4 20h4L19 9l-4-4L4 16z"/></symbol>
+<symbol id="i-ig" viewBox="0 0 24 24"><rect x="3.5" y="3.5" width="17" height="17" rx="5"/><circle cx="12" cy="12" r="4"/><path d="M17 7h.01"/></symbol>
+<symbol id="i-wa" viewBox="0 0 24 24"><path d="M4.5 19.5 5.8 16A8 8 0 1 1 8.3 18.5z"/><path d="M9.2 8.8c.2 2.7 2.4 5 5.2 5.6l1.1-1.4"/></symbol>
+<symbol id="i-fb" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M13.5 20v-7h2.3l.4-2.7h-2.7V8.6c0-.8.3-1.3 1.4-1.3h1.4V4.9a18 18 0 0 0-2-.1c-2 0-3.4 1.2-3.4 3.5v2H8.6V13h2.3v7"/></symbol>
+<symbol id="i-img" viewBox="0 0 24 24"><rect x="3.5" y="4.5" width="17" height="15" rx="2.5"/><circle cx="9" cy="10" r="1.6"/><path d="m4 18 5.5-5 4 3.5 2.5-2 4 3.5"/></symbol>
+</svg>
+<div class="cl" style="min-height: 1100px; background: #ECEEF5; display: flex; flex-wrap: wrap">
+
+<div style="flex: 0 0 auto; padding: 14px 0 14px 14px; display: flex">
+<nav class="rail" aria-label="Principal">
+<span style="color: #FFFFFF; font-size: 16px; font-weight: 800; letter-spacing: 0.02em; margin: 2px 0 12px">CLEO</span>
+<a href="#" class="rl"><svg class="i"><use href="#i-home"></use></svg>Inicio</a>
+<a href="#" class="rl on" aria-current="page"><span style="position: relative; display: grid"><svg class="i"><use href="#i-sun"></use></svg><span class="cnt" style="position: absolute; top: -6px; right: -13px">6</span></span>Hoy</a>
+<span class="dv"></span>
+<a href="#" class="rl"><svg class="i"><use href="#i-users"></use></svg>Oportunidades</a>
+<a href="#" class="rl"><svg class="i"><use href="#i-bag"></use></svg>Pedidos</a>
+<a href="#" class="rl"><svg class="i"><use href="#i-user"></use></svg>Clientes</a>
+<a href="#" class="rl"><svg class="i"><use href="#i-db"></use></svg>Inventario y costos</a>
+<span class="dv"></span>
+<a href="#" class="rl"><svg class="i"><use href="#i-cash"></use></svg>Ingresos</a>
+<a href="#" class="rl"><svg class="i"><use href="#i-chart"></use></svg>Resumen</a>
+<div style="flex: 1; min-height: 16px"></div>
+<a href="#" class="rl"><svg class="i"><use href="#i-book"></use></svg><span>Mi catálogo<span style="display: block; font-size: 10.5px; font-weight: 500; color: #8E94AE; margin-top: 2px">12 productos</span></span></a>
+<button aria-haspopup="menu" style="display: flex; flex-direction: column; align-items: center; gap: 5px; width: 88px; padding: 8px 4px; margin-top: 4px; border: 0; border-radius: 16px; background: rgba(255,255,255,0.06); color: #FFFFFF; font-family: inherit; cursor: pointer">
+<span style="width: 34px; height: 34px; border-radius: 11px; background: #FFFFFF; box-shadow: inset 0 0 0 2px {{negocio}}; display: grid; place-items: center; color: {{negocio}}"><svg class="i"><use href="#i-img"></use></svg></span>
+<span style="font-size: 11.5px; font-weight: 700; line-height: 1.2">Racing Rush</span>
+<span style="display: inline-flex; align-items: center; gap: 2px; font-size: 10.5px; color: #8E94AE">Danna<svg class="i" style="width: 12px; height: 12px"><use href="#i-chev"></use></svg></span>
+</button>
+</nav>
+</div>
+
+<main style="flex: 999 1 600px; min-width: 0; box-sizing: border-box; padding: 28px 32px 40px">
+<div style="max-width: 1160px; margin: 0 auto">
+<h1 style="margin: 0; font-size: 26px; font-weight: 800; letter-spacing: -0.03em">A quién contactar hoy</h1>
+<p style="margin: 4px 0 20px; font-size: 14.5px; color: #4A5068">Todas tus oportunidades y pedidos pendientes, ordenados por urgencia.</p>
+
+<div style="display: grid; grid-template-columns: repeat(12, minmax(0, 1fr)); gap: 16px; align-items: start">
+
+<section aria-label="Oportunidades por retomar" style="grid-column: span 7; display: flex; flex-direction: column; gap: 12px">
+<div class="head" style="background: #8D9BFF">
+<span class="big">3</span><span class="hl">Oportunidades<br>por retomar</span>
+</div>
+<article class="card">
+<div class="nm">Roberto Cauich</div>
+<p class="sn">Ya le vendiste <span class="dt">Set collar y aretes</span>. <span class="pz ur"><svg class="i"><use href="#i-alert"></use></svg>Hoy</span> habías programado retomar contacto — buen momento para ver si hay una posible recompra.</p>
+<p class="nt"><svg class="i"><use href="#i-pen"></use></svg><span>"Revisar satisfacción y dar seguimiento al saldo pendiente."</span></p>
+<div class="acts"><button class="btn p"><svg class="i"><use href="#i-chat"></use></svg>Contactar</button><button class="btn q"><svg class="i" style="stroke-width: 2.4"><use href="#i-check"></use></svg>Ya le hablé</button></div>
+</article>
+<article class="card">
+<div class="nm">Carlos Ruiz</div>
+<p class="sn">Preguntó por <span class="dt">Collar dorado + 1 concepto más ($660.00)</span> <span class="pz at"><svg class="i"><use href="#i-clock"></use></svg>hace 9 días</span> y todavía no le has dado seguimiento.</p>
+<div class="acts"><button class="btn p"><svg class="i"><use href="#i-chat"></use></svg>Contactar</button><button class="btn q"><svg class="i" style="stroke-width: 2.4"><use href="#i-check"></use></svg>Ya le hablé</button></div>
+</article>
+<article class="card">
+<div class="nm">Ximena Cab</div>
+<p class="sn">Ya le vendiste <span class="dt">Collar dorado</span>. <span class="pz ur"><svg class="i"><use href="#i-alert"></use></svg>Hoy</span> habías programado retomar contacto — buen momento para ver si hay una posible recompra.</p>
+<p class="nt"><svg class="i"><use href="#i-pen"></use></svg><span>"Confirmar avance del pedido y dar seguimiento."</span></p>
+<div class="acts"><button class="btn p"><svg class="i"><use href="#i-chat"></use></svg>Contactar</button><button class="btn q"><svg class="i" style="stroke-width: 2.4"><use href="#i-check"></use></svg>Ya le hablé</button></div>
+</article>
+</section>
+
+<section aria-label="Pedidos que requieren acción" style="grid-column: span 5; display: flex; flex-direction: column; gap: 12px">
+<div class="head" style="color: #FFFFFF; background: radial-gradient(110% 90% at 100% 0%, #24307A 0%, rgba(36,48,122,0) 62%), #0E1328">
+<span class="big" style="color: #FFD36B">5</span><span class="hl" style="color: #FFFFFF">Pedidos que<br>requieren acción</span>
+</div>
+<article class="card due">
+<div class="nm">Sofía Herrera</div>
+<div class="k">Saldo pendiente:</div>
+<div class="v">$900.00</div>
+<div style="font-size: 14px; color: #4A5068">Pulseras boda x6</div>
+<div class="acts"><a href="#" class="btn o" style="border-color: #E7D5AE"><svg class="i"><use href="#i-ig"></use></svg>Instagram</a><a href="#" class="btn p">Ver pedido →</a></div>
+</article>
+<article class="card">
+<div class="nm">Sofía Herrera</div>
+<p class="sn" style="margin-top: 2px"><span class="pz ur"><svg class="i"><use href="#i-alert"></use></svg>Lleva 12 días sin marcarse como entregado</span> · Pulseras boda x6</p>
+<div class="acts"><a href="#" class="btn o"><svg class="i"><use href="#i-ig"></use></svg>Instagram</a><a href="#" class="btn p">Ver pedido →</a></div>
+</article>
+<article class="card">
+<div class="nm">Renata Flores</div>
+<p class="sn" style="margin-top: 2px"><span class="pz ur"><svg class="i"><use href="#i-alert"></use></svg>Lleva 9 días sin marcarse como entregado</span> · Aretes dorados + 1 concepto más</p>
+<div class="acts"><a href="#" class="btn o"><svg class="i"><use href="#i-wa"></use></svg>WhatsApp</a><a href="#" class="btn p">Ver pedido →</a></div>
+</article>
+<article class="card due">
+<div class="nm">Ximena Cab</div>
+<div class="k">Saldo pendiente:</div>
+<div class="v">$1,500.00</div>
+<div style="font-size: 14px; color: #4A5068">Collar dorado</div>
+<div class="acts"><a href="#" class="btn o" style="border-color: #E7D5AE"><svg class="i"><use href="#i-fb"></use></svg>Facebook</a><a href="#" class="btn p">Ver pedido →</a></div>
+</article>
+<div style="padding: 12px 16px; border-radius: 18px; border: 1.5px dashed #D5D8E4; font-size: 13px; color: #6E7489">[5º pedido: no se ve en la captura]</div>
+</section>
+</div>
+</div>
+</main>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"negocio":{"editor":"color","default":"#0F7C80"},"$preview":{"width":1440,"height":1100}}'>
+class Component extends DCLogic {
+  renderVals() { return { negocio: this.props.negocio ?? '#0F7C80' }; }
+}
+</script>
+</body>
+</html>
