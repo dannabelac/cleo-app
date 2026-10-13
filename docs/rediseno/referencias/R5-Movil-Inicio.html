@@ -1,0 +1,137 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<title>CLEO · Inicio móvil con idea del día</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0;background:#ECEEF5}
+a{color:#3F4BD0}
+.cl{font-family:'Plus Jakarta Sans',system-ui,sans-serif;color:#0E1328;font-variant-numeric:tabular-nums;-webkit-font-smoothing:antialiased}
+.i{width:20px;height:20px;flex:none;fill:none;stroke:currentColor;stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round}
+.cnt{min-width:20px;height:20px;padding:0 6px;box-sizing:border-box;border-radius:10px;background:#0E1328;color:#FFFFFF;font-size:11.5px;font-weight:800;display:inline-grid;place-items:center}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;height:50px;padding:0 18px;border-radius:25px;font-family:inherit;font-size:16px;font-weight:700;cursor:pointer;text-decoration:none;box-sizing:border-box;white-space:nowrap}
+.p{background:#0E1328;color:#FFFFFF;border:0}
+.o{background:#FFFFFF;color:#0E1328;border:1.5px solid #D5D8E4}
+.blk{background:#FFFFFF;border-radius:26px;padding:22px;box-sizing:border-box}
+.q4{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));background:#FFFFFF;border-radius:22px;overflow:hidden}
+.q4 button{display:flex;align-items:center;justify-content:space-between;gap:8px;min-height:74px;padding:12px 10px 12px 14px;background:#FFFFFF;border:0;font-family:inherit;font-size:16.5px;line-height:1.2;font-weight:800;letter-spacing:-0.02em;color:#0E1328;text-align:left;cursor:pointer}
+.q4 .go{width:32px;height:32px;flex:none;border-radius:50%;background:#EEF0FF;color:#3F4BD0;display:grid;place-items:center}
+.q4 .go .i{width:17px;height:17px;stroke-width:2.4}
+.nm{font-size:21px;font-weight:800;letter-spacing:-0.02em}
+.sn{margin:8px 0 0;font-size:16px;line-height:1.6;color:#4A5068}
+.dt{color:#0E1328;font-weight:700}
+.pz{color:#8A5A06;font-weight:700;white-space:nowrap}
+.pz .i{width:15px;height:15px;stroke-width:2.2;vertical-align:-2px;margin-right:3px}
+.nt{display:flex;gap:9px;align-items:flex-start;margin:14px 0 0;padding-top:14px;border-top:1px solid #E6E8F0;font-size:15px;line-height:1.5;color:#545A72}
+.nt .i{width:17px;height:17px;color:#7C8CFF;margin-top:2px}
+.two{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin-top:18px}
+.lbl{font-size:12px;font-weight:800;letter-spacing:.07em;color:#4A5068;display:flex;gap:8px;margin:22px 0 10px 4px}
+.lbl span{color:#3F4BD0}
+.tb{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;min-width:44px;min-height:58px;text-decoration:none;color:#5A6078;font-size:11.5px;font-weight:600;white-space:nowrap}
+.tb .pill{width:48px;height:30px;border-radius:15px;display:grid;place-items:center;position:relative}
+.tb.on{color:#0E1328;font-weight:800}
+.tb.on .pill{background:#E4E8FF;color:#3F4BD0}
+</style>
+</helmet>
+<svg width="0" height="0" style="position: absolute" aria-hidden="true">
+<symbol id="i-home" viewBox="0 0 24 24"><path d="M3.5 10.5 12 3.5l8.5 7V20h-5.5v-5.5h-6V20H3.5z"/></symbol>
+<symbol id="i-sun" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 2.5v2M12 19.5v2M2.5 12h2M19.5 12h2M5.3 5.3l1.4 1.4M17.3 17.3l1.4 1.4M5.3 18.7l1.4-1.4M17.3 6.7l1.4-1.4"/></symbol>
+<symbol id="i-users" viewBox="0 0 24 24"><circle cx="9" cy="8" r="3.5"/><path d="M2.5 20c.6-3.5 3.3-5.5 6.5-5.5s5.9 2 6.5 5.5M16 4.6a3.5 3.5 0 0 1 0 6.8M18 14.8c2 .8 3.2 2.6 3.5 5.2"/></symbol>
+<symbol id="i-bag" viewBox="0 0 24 24"><path d="M5 8h14l-1 13H6z"/><path d="M9 8V6a3 3 0 0 1 6 0v2"/></symbol>
+<symbol id="i-cash" viewBox="0 0 24 24"><rect x="3" y="6" width="18" height="12" rx="2"/><circle cx="12" cy="12" r="2.5"/></symbol>
+<symbol id="i-dots" viewBox="0 0 24 24"><path d="M5.5 12h.01M12 12h.01M18.5 12h.01" stroke-width="3"/></symbol>
+<symbol id="i-bulb" viewBox="0 0 24 24"><path d="M9 18h6M10 21h4M12 3a6 6 0 0 0-3.6 10.8c.6.5 1 1.2 1 2V16h5.2v-.2c0-.8.4-1.5 1-2A6 6 0 0 0 12 3z"/></symbol>
+<symbol id="i-plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></symbol>
+<symbol id="i-chev" viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"/></symbol>
+<symbol id="i-arrow" viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></symbol>
+<symbol id="i-chat" viewBox="0 0 24 24"><path d="M4 5.5A1.5 1.5 0 0 1 5.5 4h13A1.5 1.5 0 0 1 20 5.5v9a1.5 1.5 0 0 1-1.5 1.5H9.5L4 20z"/></symbol>
+<symbol id="i-check" viewBox="0 0 24 24"><path d="m5 12.5 4.5 4.5L19 7.5"/></symbol>
+<symbol id="i-clock" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><path d="M12 7.5V12l3 2"/></symbol>
+<symbol id="i-pen" viewBox="0 0 24 24"><path d="M4 20h4L19 9l-4-4L4 16z"/></symbol>
+<symbol id="i-ig" viewBox="0 0 24 24"><rect x="3.5" y="3.5" width="17" height="17" rx="5"/><circle cx="12" cy="12" r="4"/><path d="M17 7h.01"/></symbol>
+</svg>
+<div class="cl" style="width: 390px; height: 2180px; position: relative; overflow: hidden; background: #ECEEF5">
+<div style="padding: 18px 14px 120px">
+<header style="padding: 4px 6px 18px">
+<div style="display: flex; justify-content: space-between; align-items: center; gap: 12px">
+<div style="font-size: 14px; color: #5A6078; font-weight: 500">lunes 12 de octubre</div>
+<button class="btn p" style="height: 44px; padding: 0 16px; font-size: 15px"><svg class="i" style="width: 17px; height: 17px; stroke-width: 2.5"><use href="#i-plus"></use></svg>Nuevo<svg class="i" style="width: 15px; height: 15px; stroke-width: 2.5"><use href="#i-chev"></use></svg></button>
+</div>
+<h1 style="margin: 6px 0 0; font-size: 28px; line-height: 1.12; font-weight: 800; letter-spacing: -0.035em">Buenas tardes, emprendedor</h1>
+</header>
+
+<section aria-label="Tu día" class="blk" style="color: #FFFFFF; padding: 22px 18px 18px; background: radial-gradient(120% 80% at 100% 0%, #24307A 0%, rgba(36,48,122,0) 62%), #0E1328">
+<p style="margin: 0 4px; font-size: 24px; line-height: 1.18; font-weight: 800; letter-spacing: -0.03em"><span style="color: #A9AFC6; font-weight: 600">Hoy tienes</span> <span style="color: #9AA7FF">3 oportunidades por retomar</span> <span style="color: #A9AFC6; font-weight: 600">y</span> <span style="color: #9AA7FF">4 pedidos</span> que requieren tu atención.</p>
+<aside aria-label="Idea del día" style="margin-top: 18px; padding: 14px 16px 16px; border-radius: 18px; background: rgba(255,255,255,0.07); box-shadow: inset 0 0 0 1px rgba(154,167,255,0.28)">
+<div style="display: flex; align-items: center; gap: 8px; font-size: 12px; font-weight: 800; letter-spacing: .1em; color: #FFD36B"><svg class="i" style="width: 17px; height: 17px"><use href="#i-bulb"></use></svg>IDEA DEL DÍA</div>
+<p style="margin: 8px 0 0; font-size: 15.5px; line-height: 1.55; color: #D6D9E6">Carlos preguntó por <span style="color: #FFFFFF; font-weight: 700">Collar dorado + 1 concepto más</span> hace <span style="color: #FFFFFF; font-weight: 700">9 días</span> y aún no tiene precio. Entre más rápido le respondas, más probable es que compre.</p>
+</aside>
+<a href="#" style="display: flex; align-items: center; justify-content: space-between; gap: 12px; height: 52px; margin-top: 14px; padding: 0 7px 0 18px; border-radius: 26px; background: rgba(255,255,255,0.09); color: #FFFFFF; text-decoration: none; font-size: 16px; font-weight: 700"><span style="display: inline-flex; align-items: center; gap: 10px"><svg class="i" style="color: #FFD36B"><use href="#i-sun"></use></svg>Hoy <span class="cnt" style="background: #9AA7FF; color: #0E1328">6</span></span><span style="width: 38px; height: 38px; border-radius: 50%; background: #FFFFFF; color: #0E1328; display: grid; place-items: center"><svg class="i" style="width: 18px; height: 18px; stroke-width: 2.4"><use href="#i-arrow"></use></svg></span></a>
+</section>
+
+<section aria-labelledby="reg" class="blk" style="margin-top: 12px; background: #8D9BFF; padding: 20px 12px 12px">
+<h2 id="reg" style="margin: 0 8px; font-size: 22px; line-height: 1.2; font-weight: 800; letter-spacing: -0.03em">¿Qué ha pasado en tu negocio?</h2>
+<p style="margin: 6px 8px 14px; font-size: 15px; line-height: 1.45; color: #1E2547; font-weight: 500">Registra algo nuevo para mantener tus ventas al día.</p>
+<div class="q4">
+<button style="border-right: 1px solid #E4E6F2; border-bottom: 1px solid #E4E6F2">Alguien preguntó<span class="go"><svg class="i"><use href="#i-arrow"></use></svg></span></button>
+<button style="border-bottom: 1px solid #E4E6F2">Envié un precio<span class="go"><svg class="i"><use href="#i-arrow"></use></svg></span></button>
+<button style="border-right: 1px solid #E4E6F2">Cerré una venta<span class="go"><svg class="i"><use href="#i-arrow"></use></svg></span></button>
+<button>Recibí un pago<span class="go"><svg class="i"><use href="#i-arrow"></use></svg></span></button>
+</div>
+</section>
+
+<div style="display: flex; align-items: baseline; justify-content: space-between; gap: 12px; margin: 34px 6px 0">
+<h2 style="margin: 0; font-size: 23px; font-weight: 800; letter-spacing: -0.03em">A quién contactar hoy</h2>
+<a href="#" style="font-size: 15px; font-weight: 700; text-decoration: none; padding: 12px 0">Ver todo →</a>
+</div>
+<p style="margin: 0 6px; font-size: 15px; line-height: 1.45; color: #5A6078">Estas son las acciones que más necesitan tu atención.</p>
+
+<div class="lbl">OPORTUNIDADES POR RETOMAR <span>2</span></div>
+<div style="display: flex; flex-direction: column; gap: 10px">
+<article class="blk">
+<div class="nm">Roberto Cauich</div>
+<p class="sn">Ya le vendiste <span class="dt">Set collar y aretes</span>. <span class="pz"><svg class="i"><use href="#i-clock"></use></svg>Hoy</span> habías programado retomar contacto — buen momento para ver si hay una posible recompra.</p>
+<p class="nt"><svg class="i"><use href="#i-pen"></use></svg><span>"Revisar satisfacción y dar seguimiento al saldo pendiente."</span></p>
+<div class="two"><button class="btn p"><svg class="i" style="width: 18px; height: 18px"><use href="#i-chat"></use></svg>Contactar</button><button class="btn o"><svg class="i" style="width: 18px; height: 18px; stroke-width: 2.4"><use href="#i-check"></use></svg>Ya le hablé</button></div>
+</article>
+<article class="blk">
+<div class="nm">Carlos Ruiz</div>
+<p class="sn">Preguntó por <span class="dt">Collar dorado + 1 concepto más ($660.00)</span> <span class="pz"><svg class="i"><use href="#i-clock"></use></svg>hace 9 días</span> y todavía no le has dado seguimiento.</p>
+<div class="two"><button class="btn p"><svg class="i" style="width: 18px; height: 18px"><use href="#i-chat"></use></svg>Contactar</button><button class="btn o"><svg class="i" style="width: 18px; height: 18px; stroke-width: 2.4"><use href="#i-check"></use></svg>Ya le hablé</button></div>
+</article>
+</div>
+
+<div class="lbl">PEDIDOS QUE REQUIEREN ACCIÓN <span>1</span></div>
+<article class="blk" style="background: #FBF1DC">
+<div class="nm">Sofía Herrera</div>
+<div style="margin-top: 12px; font-size: 15px; font-weight: 600; color: #6E4806">Saldo pendiente:</div>
+<div style="font-size: 40px; line-height: 1.05; font-weight: 800; letter-spacing: -0.035em; color: #5E3D04">$900.00</div>
+<div style="margin-top: 6px; font-size: 16px; color: #4A5068">Pulseras boda x6</div>
+<div class="two"><a href="#" class="btn o" style="border-color: #E7D5AE"><svg class="i" style="width: 18px; height: 18px"><use href="#i-ig"></use></svg>Instagram</a><a href="#" class="btn p">Ver pedido →</a></div>
+</article>
+</div>
+
+<nav aria-label="Principal" style="position: absolute; left: 0; right: 0; bottom: 0; background: #FFFFFF; border-top: 1px solid #DADDE8; padding: 6px 10px 22px; display: flex; justify-content: space-between">
+<a href="#" class="tb on" aria-current="page"><span class="pill"><svg class="i" style="stroke-width: 2.1"><use href="#i-home"></use></svg></span>Inicio</a>
+<a href="#" class="tb"><span class="pill"><svg class="i"><use href="#i-sun"></use></svg><span class="cnt" style="position: absolute; top: -6px; right: 0">6</span></span>Hoy</a>
+<a href="#" class="tb"><span class="pill"><svg class="i"><use href="#i-users"></use></svg></span>Oportunidades</a>
+<a href="#" class="tb"><span class="pill"><svg class="i"><use href="#i-bag"></use></svg></span>Pedidos</a>
+<a href="#" class="tb"><span class="pill"><svg class="i"><use href="#i-cash"></use></svg></span>Ingresos</a>
+<a href="#" class="tb"><span class="pill"><svg class="i"><use href="#i-dots"></use></svg></span>Más</a>
+</nav>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":390,"height":2180}}'>
+class Component extends DCLogic {
+  renderVals() { return {}; }
+}
+</script>
+</body>
+</html>
