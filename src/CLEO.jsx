@@ -11605,17 +11605,35 @@ export default function CLEO(props){
                   onCot:function(){ setModalCot(true); },
                   onVenta:abrirModalVenta})
           ),
-          e("div",{style:{paddingTop:20,marginBottom:20}},
-            e("div",{style:{fontSize:28,fontWeight:700,color:C.text,lineHeight:1.1,marginBottom:6}},"Tus clientes"),
-            e("div",{style:{fontSize:14,color:C.textMuted,marginBottom:6}},esProductos?"Las personas que se han interesado en lo que ofreces o ya te han comprado.":"Las personas que se han interesado en tus servicios o te han contratado.")
+          e("header",null,
+            e("h1",{style:{margin:0,fontSize:isMobile?24:28,fontWeight:800,letterSpacing:"-0.03em",color:C.ink,lineHeight:1.2}},"Tus clientes"),
+            e("p",{style:{margin:"6px 0 0",fontSize:14,lineHeight:1.45,color:"#5A6078"}},
+              esProductos?"Las personas que se han interesado en lo que ofreces o ya te han comprado.":"Las personas que se han interesado en tus servicios o te han contratado."
+            )
           ),
-          e("div",{style:{display:"flex",gap:8,marginBottom:16,flexWrap:"wrap"}},
-            e("input",{placeholder:"Buscar...",style:Object.assign({},st.inp,{flex:1,minWidth:120}),value:busqueda,onChange:function(ev){ setBusqueda(ev.target.value); }}),
-            e("select",{value:filtroGanados.etapaClientes||"",onChange:function(ev){ setFiltroGanados(Object.assign({},filtroGanados,{etapaClientes:ev.target.value})); },style:Object.assign({},st.inp,{width:160})},
-              e("option",{value:""},"Todos"),
-              e("option",{value:"activos"},"Activos"),
-              e("option",{value:"Ganado"},"Ganados"),
-              e("option",{value:"Perdido"},"Perdidos")
+          e("div",{style:{marginTop:isMobile?24:32}},
+            e("label",{style:{display:"flex",alignItems:"center",gap:10,height:isMobile?46:44,padding:isMobile?"0 16px":"0 18px",borderRadius:isMobile?23:22,background:"#FFFFFF",color:"#6E7489",boxSizing:"border-box"}},
+              e("svg",{width:18,height:18,viewBox:"0 0 24 24",fill:"none",stroke:"currentColor",strokeWidth:1.9,strokeLinecap:"round",strokeLinejoin:"round",style:{flexShrink:0}},
+                e("circle",{cx:11,cy:11,r:6.5}),
+                e("path",{d:"m16 16 4.5 4.5"})
+              ),
+              e("input",{type:"search",placeholder:"Buscar...",value:busqueda,
+                onChange:function(ev){ setBusqueda(ev.target.value); },
+                style:{flex:1,minWidth:0,border:0,outline:"none",background:"transparent",fontFamily:"inherit",fontSize:isMobile?15:14,color:C.ink}})
+            ),
+            e("div",{style:{display:"flex",gap:isMobile?2:4,padding:4,borderRadius:22,background:"#FFFFFF",marginTop:10}},
+              [
+                {label:"Todos",value:""},
+                {label:"Activos",value:"activos"},
+                {label:"Ganados",value:"Ganado"},
+                {label:"Perdidos",value:"Perdido"},
+              ].map(function(opt){
+                var activo=(filtroGanados.etapaClientes||"")===opt.value;
+                return e("button",{key:opt.value,type:"button",
+                  style:{cursor:"pointer",flex:1,height:36,padding:isMobile?"0 6px":"0 16px",border:0,borderRadius:18,background:activo?"#E4E8FF":"transparent",fontFamily:"inherit",fontSize:isMobile?13:13.5,fontWeight:activo?800:600,color:activo?C.ink:"#4A5068"},
+                  onClick:function(){ setFiltroGanados(Object.assign({},filtroGanados,{etapaClientes:opt.value})); }
+                },opt.label);
+              })
             )
           ),
           (function(){
@@ -11625,27 +11643,51 @@ export default function CLEO(props){
               if(filtroEtapa==="activos") return c.etapa!=="Ganado"&&c.etapa!=="Perdido";
               return c.etapa===filtroEtapa;
             });
-            return lista.map(function(c){
-              var ec=ETAPA_COLOR[c.etapa]||C.purple;
-              var segBL=null;
-              if(c.seguimientoFecha){
-                var dBL=diasHastaFechaCalendario(c.seguimientoFecha);
-                segBL=dBL<=0?"Hoy":dBL===1?"Mañana":"En "+dBL+" días";
-              }
-              return e("div",{key:c.id,style:{background:C.surface,border:"1px solid "+C.border,borderLeft:"3px solid "+ec,borderRadius:16,padding:"14px 18px",marginBottom:8,display:"flex",alignItems:"center",gap:14,cursor:"pointer",boxShadow:"0 1px 4px rgba(0,0,0,0.04)"},onClick:function(){ setClienteAbierto(c.id); setTabCliente("perfil"); }},
-                e("div",{style:{width:38,height:38,borderRadius:"50%",background:ec+"18",display:"flex",alignItems:"center",justifyContent:"center",fontWeight:700,fontSize:12,color:ec,flexShrink:0}},iniciales(c.nombre)),
-                e("div",{style:{flex:1,minWidth:0}},
-                  e("div",{style:{display:"flex",alignItems:"center",gap:8,flexWrap:"wrap"}},
-                    e("span",{style:{fontWeight:600,fontSize:14,color:C.text}},c.nombre),
-                    segBL&&e("span",{style:{fontSize:10,color:"#fff",fontWeight:600,whiteSpace:"nowrap",background:"#5B5CF6",padding:"3px 10px",borderRadius:20}},"Seg: "+segBL)
+            var ultimaLetra="";
+            return e("section",{"aria-label":"Lista de clientes",style:{marginTop:isMobile?20:24,padding:isMobile?"4px 16px 4px 18px":"6px 24px 14px",borderRadius:isMobile?24:22,background:"#FFFFFF"}},
+              lista.map(function(c,idx){
+                var primeraLetra=(c.nombre||"").charAt(0).toUpperCase();
+                var esNuevaLetra=primeraLetra!==ultimaLetra;
+                ultimaLetra=primeraLetra;
+                var segBL=null;
+                if(c.seguimientoFecha){
+                  var dBL=diasHastaFechaCalendario(c.seguimientoFecha);
+                  var esVencido=dBL<0;
+                  var esHoy=dBL===0;
+                  segBL={texto:esVencido?"Vencido":esHoy?"Hoy":dBL===1?"Mañana":"En "+dBL+" días",esHoy:esHoy,esVencido:esVencido};
+                }
+                var segBg=segBL?(segBL.esVencido?"#FEE2E2":segBL.esHoy?"#FEF3C7":"#EEF0FF"):"#EEF0FF";
+                var segColor=segBL?(segBL.esVencido?"#991B1B":segBL.esHoy?"#92400E":"#3F4BD0"):"#3F4BD0";
+                return e("div",{key:c.id,
+                  style:{display:"flex",alignItems:"center",gap:isMobile?12:16,minHeight:isMobile?62:64,padding:isMobile?"0":"0 4px",borderTop:idx===0?"0":"1px solid #EDEFF5",cursor:"pointer"},
+                  onClick:function(){ setClienteAbierto(c.id); setTabCliente("perfil"); }
+                },
+                  e("span",{style:{width:isMobile?16:22,flexShrink:0,fontSize:isMobile?12.5:13,fontWeight:800,color:"#3F4BD0"}},esNuevaLetra?primeraLetra:""),
+                  isMobile
+                    ? e("div",{style:{flex:1,minWidth:0}},
+                        e("div",{style:{fontSize:15,fontWeight:700,color:C.ink,letterSpacing:"-0.01em",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}},c.nombre),
+                        segBL&&e("span",{style:{display:"inline-flex",alignItems:"center",gap:5,marginTop:4,height:24,padding:"0 9px",borderRadius:12,background:segBg,color:segColor,fontSize:12,fontWeight:700,whiteSpace:"nowrap"}},
+                          e("svg",{width:13,height:13,viewBox:"0 0 24 24",fill:"none",stroke:"currentColor",strokeWidth:2.2,strokeLinecap:"round",strokeLinejoin:"round"},e("circle",{cx:12,cy:12,r:8.5}),e("path",{d:"M12 7.5V12l3 2"})),
+                          segBL.texto
+                        )
+                      )
+                    : e("div",{style:{flex:1,minWidth:0}},
+                        e("div",{style:{fontSize:15.5,fontWeight:700,color:C.ink,letterSpacing:"-0.01em",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}},c.nombre),
+                        c.negocio&&e("small",{style:{display:"block",fontSize:13,fontWeight:500,color:"#6E7489",marginTop:1,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}},c.negocio)
+                      ),
+                  !isMobile&&segBL&&e("span",{style:{display:"inline-flex",alignItems:"center",gap:6,height:28,padding:"0 11px",borderRadius:14,background:segBg,color:segColor,fontSize:12.5,fontWeight:700,whiteSpace:"nowrap",flexShrink:0}},
+                    e("svg",{width:14,height:14,viewBox:"0 0 24 24",fill:"none",stroke:"currentColor",strokeWidth:2.2,strokeLinecap:"round",strokeLinejoin:"round"},e("circle",{cx:12,cy:12,r:8.5}),e("path",{d:"M12 7.5V12l3 2"})),
+                    segBL.texto
                   ),
-                  e("div",{style:{fontSize:12,color:C.textMuted,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}},c.negocio||"\u00a0")
-                ),
-                e("div",{style:{flexShrink:0},onClick:function(ev){ ev.stopPropagation(); }},
-                  e(BtnCanal,{cliente:c,small:true})
-                )
-              );
-            });
+                  e("div",{style:{flexShrink:0},onClick:function(ev){ ev.stopPropagation(); }},
+                    e(BtnCanal,{cliente:c,iconOnly:isMobile})
+                  ),
+                  !isMobile&&e("svg",{width:18,height:18,viewBox:"0 0 24 24",fill:"none",stroke:"#9AA0B8",strokeWidth:1.9,strokeLinecap:"round",strokeLinejoin:"round",style:{flexShrink:0}},
+                    e("path",{d:"m9 6 6 6-6 6"})
+                  )
+                );
+              })
+            );
           })()
         );
       })(),
