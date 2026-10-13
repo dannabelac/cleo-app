@@ -9839,7 +9839,7 @@ export default function CLEO(props){
               icono(iconPath,activo),
               opts.badge>0&&e("span",{style:{position:"absolute",top:-6,right:-13,minWidth:16,height:16,padding:"0 4px",boxSizing:"border-box",borderRadius:8,background:"#9AA7FF",color:C.ink,fontSize:9.5,fontWeight:800,display:"grid",placeItems:"center"}},opts.badge>99?"99+":opts.badge)
             ),
-            sbOpen&&e("span",null,label),
+            sbOpen&&e("span",{style:{display:"block",width:"100%",overflow:"hidden",textOverflow:"ellipsis"}},label),
             sbOpen&&opts.sub&&e("span",{style:{display:"block",marginTop:-1,fontSize:10,fontWeight:500,color:"#8E94AE",whiteSpace:"nowrap"}},opts.sub)
           );
         }
