@@ -12333,8 +12333,8 @@ export default function CLEO(props){
                       )
                     )
                   ),
-                  // FOOTER ACTIONS (desktop + mobile compartido)
-                  !esPerdido&&e("div",{style:{display:"flex",flexWrap:"wrap",alignItems:"center",justifyContent:"space-between",gap:8,paddingTop:12,borderTop:"1px solid #EDEFF5",marginTop:14}},
+                  // FOOTER ACTIONS (solo desktop; móvil lo incluye arriba)
+                  !isMobile&&!esPerdido&&e("div",{style:{display:"flex",flexWrap:"wrap",alignItems:"center",justifyContent:"space-between",gap:8,paddingTop:12,borderTop:"1px solid #EDEFF5",marginTop:14}},
                     e("div",{style:{display:"flex",gap:6}},
                       e(BtnCanal,{cliente:c,small:true}),
                       (c.productoInteres&&tienePrecioReal(c))&&e("button",{style:btnOpoS,onClick:abrirCotizacionDesdeOpo},
