@@ -12839,7 +12839,8 @@ export default function CLEO(props){
                     e("div",{style:{display:"flex",alignItems:"flex-start",justifyContent:"space-between",gap:10}},
                       e("div",{style:{flex:1,minWidth:0}},
                         e("div",{style:{fontSize:sc.namePerson,fontWeight:800,letterSpacing:"-0.015em",color:C.ink,overflowWrap:"anywhere"}},cl?cl.nombre:"Cliente"),
-                        e("div",{style:{marginTop:3,fontSize:sc.textSec,fontWeight:600,color:C.ink}},ped.productos||"Sin producto")
+                        e("div",{style:{marginTop:3,fontSize:sc.textSec,fontWeight:600,color:C.ink}},ped.productos||"Sin producto"),
+                        ped.etiqueta&&e("div",{style:{marginTop:2,fontSize:sc.textLabel,color:C.textDim,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}},"📍 "+ped.etiqueta)
                       ),
                       totalPedido>0&&e("div",{style:{textAlign:"right",flexShrink:0}},
                         e("small",{style:{display:"block",fontSize:11.5,fontWeight:600,color:"#5A6078"}},restante>0?"Resta":"Total"),
@@ -12873,7 +12874,8 @@ export default function CLEO(props){
                             !esEntregado&&!esCancelado&&e("button",{type:"button",style:{cursor:"pointer",color:C.purple,fontWeight:700,marginLeft:5,background:"none",border:"none",padding:0,fontSize:12.5,fontFamily:"inherit"},onClick:function(ev){ ev.stopPropagation(); setModalCambiarFechaPedidoId(ped.id); setNuevaFechaPedido(ped.fechaEntrega); }},"· Cambiar")
                           )
                         : !esEntregado&&!esCancelado&&e("a",{href:"#",style:{fontSize:12.5,fontWeight:700,color:"#3F4BD0",textDecoration:"none"},onClick:function(ev){ ev.preventDefault(); ev.stopPropagation(); setModalCambiarFechaPedidoId(ped.id); setNuevaFechaPedido(""); }},"+ Agregar fecha"),
-                      alertaDias&&e("span",{role:"status",style:{fontSize:12,fontWeight:700,color:"#8A5A06"}},diasPreparando+" días")
+                      alertaDias&&e("span",{role:"status",style:{fontSize:12,fontWeight:700,color:"#8A5A06"}},diasPreparando+" días"),
+                      ped.origenVenta==="venta_rapida"&&e("span",{style:{fontSize:sc.textLabel,padding:"2px 8px",borderRadius:10,background:C.amberBg,color:"#92400E",fontWeight:600}},"Venta rápida")
                     ),
                     // nota
                     typeof ped.notas==="string"&&ped.notas.trim()&&e("p",{style:{display:"flex",gap:7,alignItems:"flex-start",margin:"8px 0 0",fontSize:13,lineHeight:1.5,color:"#545A72"}},
@@ -12944,6 +12946,7 @@ export default function CLEO(props){
                       ),
                       // producto
                       e("div",{style:{marginTop:4,fontSize:sc.text,fontWeight:600,color:C.ink}},ped.productos||"Sin producto"),
+                      ped.etiqueta&&e("div",{style:{marginTop:2,fontSize:sc.textLabel,color:C.textDim,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}},"📍 "+ped.etiqueta),
                       // fecha + tiempo
                       e("div",{style:{display:"flex",flexWrap:"wrap",alignItems:"center",gap:"6px 14px",marginTop:8,fontSize:sc.textSec,color:"#5A6078"}},
                         ped.fechaEntrega
@@ -12953,7 +12956,8 @@ export default function CLEO(props){
                               !esEntregado&&!esCancelado&&e("button",{type:"button",style:{cursor:"pointer",color:C.purple,fontWeight:700,marginLeft:6,background:"none",border:"none",padding:0,fontSize:sc.textSec,fontFamily:"inherit"},onClick:function(ev){ ev.stopPropagation(); setModalCambiarFechaPedidoId(ped.id); setNuevaFechaPedido(ped.fechaEntrega); }},"· Cambiar")
                             )
                           : !esEntregado&&!esCancelado&&e("a",{href:"#",style:{fontWeight:700,textDecoration:"none",color:"#3F4BD0"},onClick:function(ev){ ev.preventDefault(); ev.stopPropagation(); setModalCambiarFechaPedidoId(ped.id); setNuevaFechaPedido(""); }},"+ Agregar fecha de entrega"),
-                        alertaDias&&e("span",{style:{color:"#8A5A06",fontWeight:700}},diasPreparando+" días preparando")
+                        alertaDias&&e("span",{style:{color:"#8A5A06",fontWeight:700}},diasPreparando+" días preparando"),
+                        ped.origenVenta==="venta_rapida"&&e("span",{style:{fontSize:sc.textLabel,padding:"2px 8px",borderRadius:10,background:C.amberBg,color:"#92400E",fontWeight:600}},"Venta rápida")
                       ),
                       // nota
                       typeof ped.notas==="string"&&ped.notas.trim()&&e("p",{style:{display:"flex",gap:8,alignItems:"flex-start",margin:"10px 0 0",fontSize:sc.textSec,lineHeight:1.5,color:"#545A72"}},
