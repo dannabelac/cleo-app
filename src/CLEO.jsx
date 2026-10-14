@@ -11286,6 +11286,7 @@ export default function CLEO(props){
                       var itemsInteresHist=obtenerItemsInteres(c);
                       setNuevoPedidoForm(Object.assign({},pedidoVacio,{clienteId:String(c.id),items:itemsInteresHist.length>0?itemsInteresHist:pedidoVacio.items}));
                       setBuscaCliPed("");
+                      setVista("pedidos");
                       setNuevoPedidoModal(true);
                     }},"+ Pedido")
                   : e("button",{style:Object.assign({},st.btn,{fontSize:12,padding:"5px 12px"}),onClick:function(){ setFormCot(Object.assign({},cotVacio,{clienteId:String(c.id)})); setModalCot(true); }},"+ "+TXT.cotizacion),
@@ -12839,7 +12840,8 @@ export default function CLEO(props){
                     e("div",{style:{display:"flex",alignItems:"flex-start",justifyContent:"space-between",gap:10}},
                       e("div",{style:{flex:1,minWidth:0}},
                         e("div",{style:{fontSize:sc.namePerson,fontWeight:800,letterSpacing:"-0.015em",color:C.ink,overflowWrap:"anywhere"}},cl?cl.nombre:"Cliente"),
-                        e("div",{style:{marginTop:3,fontSize:sc.textSec,fontWeight:600,color:C.ink}},ped.productos||"Sin producto")
+                        e("div",{style:{marginTop:3,fontSize:sc.textSec,fontWeight:600,color:C.ink}},ped.productos||"Sin producto"),
+                        ped.etiqueta&&e("div",{style:{marginTop:2,fontSize:sc.textLabel,color:C.textDim,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}},"📍 "+ped.etiqueta)
                       ),
                       totalPedido>0&&e("div",{style:{textAlign:"right",flexShrink:0}},
                         e("small",{style:{display:"block",fontSize:11.5,fontWeight:600,color:"#5A6078"}},restante>0?"Resta":"Total"),
@@ -12873,7 +12875,8 @@ export default function CLEO(props){
                             !esEntregado&&!esCancelado&&e("button",{type:"button",style:{cursor:"pointer",color:C.purple,fontWeight:700,marginLeft:5,background:"none",border:"none",padding:0,fontSize:12.5,fontFamily:"inherit"},onClick:function(ev){ ev.stopPropagation(); setModalCambiarFechaPedidoId(ped.id); setNuevaFechaPedido(ped.fechaEntrega); }},"· Cambiar")
                           )
                         : !esEntregado&&!esCancelado&&e("a",{href:"#",style:{fontSize:12.5,fontWeight:700,color:"#3F4BD0",textDecoration:"none"},onClick:function(ev){ ev.preventDefault(); ev.stopPropagation(); setModalCambiarFechaPedidoId(ped.id); setNuevaFechaPedido(""); }},"+ Agregar fecha"),
-                      alertaDias&&e("span",{role:"status",style:{fontSize:12,fontWeight:700,color:"#8A5A06"}},diasPreparando+" días")
+                      alertaDias&&e("span",{role:"status",style:{fontSize:12,fontWeight:700,color:"#8A5A06"}},diasPreparando+" días"),
+                      ped.origenVenta==="venta_rapida"&&e("span",{style:{fontSize:sc.textLabel,padding:"2px 8px",borderRadius:10,background:C.amberBg,color:"#92400E",fontWeight:600}},"Venta rápida")
                     ),
                     // nota
                     typeof ped.notas==="string"&&ped.notas.trim()&&e("p",{style:{display:"flex",gap:7,alignItems:"flex-start",margin:"8px 0 0",fontSize:13,lineHeight:1.5,color:"#545A72"}},
@@ -12944,6 +12947,7 @@ export default function CLEO(props){
                       ),
                       // producto
                       e("div",{style:{marginTop:4,fontSize:sc.text,fontWeight:600,color:C.ink}},ped.productos||"Sin producto"),
+                      ped.etiqueta&&e("div",{style:{marginTop:2,fontSize:sc.textLabel,color:C.textDim,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}},"📍 "+ped.etiqueta),
                       // fecha + tiempo
                       e("div",{style:{display:"flex",flexWrap:"wrap",alignItems:"center",gap:"6px 14px",marginTop:8,fontSize:sc.textSec,color:"#5A6078"}},
                         ped.fechaEntrega
@@ -12953,7 +12957,8 @@ export default function CLEO(props){
                               !esEntregado&&!esCancelado&&e("button",{type:"button",style:{cursor:"pointer",color:C.purple,fontWeight:700,marginLeft:6,background:"none",border:"none",padding:0,fontSize:sc.textSec,fontFamily:"inherit"},onClick:function(ev){ ev.stopPropagation(); setModalCambiarFechaPedidoId(ped.id); setNuevaFechaPedido(ped.fechaEntrega); }},"· Cambiar")
                             )
                           : !esEntregado&&!esCancelado&&e("a",{href:"#",style:{fontWeight:700,textDecoration:"none",color:"#3F4BD0"},onClick:function(ev){ ev.preventDefault(); ev.stopPropagation(); setModalCambiarFechaPedidoId(ped.id); setNuevaFechaPedido(""); }},"+ Agregar fecha de entrega"),
-                        alertaDias&&e("span",{style:{color:"#8A5A06",fontWeight:700}},diasPreparando+" días preparando")
+                        alertaDias&&e("span",{style:{color:"#8A5A06",fontWeight:700}},diasPreparando+" días preparando"),
+                        ped.origenVenta==="venta_rapida"&&e("span",{style:{fontSize:sc.textLabel,padding:"2px 8px",borderRadius:10,background:C.amberBg,color:"#92400E",fontWeight:600}},"Venta rápida")
                       ),
                       // nota
                       typeof ped.notas==="string"&&ped.notas.trim()&&e("p",{style:{display:"flex",gap:8,alignItems:"flex-start",margin:"10px 0 0",fontSize:sc.textSec,lineHeight:1.5,color:"#545A72"}},
@@ -14477,7 +14482,7 @@ export default function CLEO(props){
                   e("input",{type:"search",placeholder:"Buscar...",value:filtroVP.busqueda,onChange:function(ev){ setFiltroVP(Object.assign({},filtroVP,{busqueda:ev.target.value})); },style:{flex:1,minWidth:0,border:0,outline:"none",background:"transparent",fontFamily:"inherit",fontSize:sc.text,color:C.ink}})
                 ),
                 e("div",{role:"tablist",style:{margin:"8px 0 6px",display:"flex",gap:2,padding:3,borderRadius:21,background:"#F4F5FA"}},
-                  [{k:"todos",label:"Todos"},{k:"cotizacion",label:"Pedidos"},{k:"venta_rapida",label:"Ventas rápidas"}].map(function(tab){
+                  [{k:"todos",label:"Todos"},{k:"pedido",label:"Pedidos"},{k:"venta_rapida",label:"Ventas rápidas"}].map(function(tab){
                     var activo=filtroVP.origen===tab.k;
                     return e("button",{key:tab.k,role:"tab","aria-selected":activo,style:{flex:1,height:sc.btnSmH,padding:"0 6px",border:0,borderRadius:18,background:activo?"#E4E8FF":"transparent",fontFamily:"inherit",fontSize:12.5,fontWeight:activo?800:600,color:activo?C.ink:"#4A5068",cursor:"pointer"},onClick:function(){ setFiltroVP(Object.assign({},filtroVP,{origen:tab.k})); }},tab.label);
                   })
@@ -14528,7 +14533,7 @@ export default function CLEO(props){
                     e("input",{type:"search",placeholder:"Buscar...",value:filtroVP.busqueda,onChange:function(ev){ setFiltroVP(Object.assign({},filtroVP,{busqueda:ev.target.value})); },style:{flex:1,minWidth:0,border:0,outline:"none",background:"transparent",fontFamily:"inherit",fontSize:14,color:C.ink}})
                   ),
                   e("div",{role:"tablist",style:{display:"inline-flex",gap:2,padding:3,borderRadius:21,background:"#F4F5FA"}},
-                    [{k:"todos",label:"Todos"},{k:"cotizacion",label:"Pedidos"},{k:"venta_rapida",label:"Ventas rápidas"}].map(function(tab){
+                    [{k:"todos",label:"Todos"},{k:"pedido",label:"Pedidos"},{k:"venta_rapida",label:"Ventas rápidas"}].map(function(tab){
                       var activo=filtroVP.origen===tab.k;
                       return e("button",{key:tab.k,role:"tab","aria-selected":activo,style:{height:sc.btnSmH,padding:"0 16px",border:0,borderRadius:18,background:activo?"#E4E8FF":"transparent",fontFamily:"inherit",fontSize:sc.textSec,fontWeight:activo?800:600,color:activo?C.ink:"#4A5068",cursor:"pointer"},onClick:function(){ setFiltroVP(Object.assign({},filtroVP,{origen:tab.k})); }},tab.label);
                     })
@@ -15245,12 +15250,12 @@ export default function CLEO(props){
                   })
                 ),
                 e("div",{style:{borderRadius:12,border:"1px solid "+C.border,overflow:"hidden",marginBottom:12}},
-                  e("div",{style:{display:"grid",gridTemplateColumns:"1fr 56px 56px 56px",background:C.surfaceUp,padding:"6px 12px",borderBottom:"1px solid "+C.border}},
-                    ["Producto","Llevas","Vendidas","Quedan"].map(function(h,i){ return e("span",{key:h,style:{fontSize:sc.textLabel,fontWeight:700,textTransform:"uppercase",letterSpacing:"0.5px",color:C.textMuted,textAlign:i>0?"center":"left"}},h); })
+                  e("div",{style:{display:"grid",gridTemplateColumns:"1fr 56px 68px 60px",background:C.surfaceUp,padding:"6px 12px",borderBottom:"1px solid "+C.border}},
+                    ["Producto","Llevas","Vendidas","Quedan"].map(function(h,i){ return e("span",{key:h,style:{fontSize:sc.textLabel,fontWeight:700,textTransform:"uppercase",letterSpacing:"0.4px",color:C.textMuted,textAlign:i>0?"center":"left"}},h); })
                   ),
                   (evActual.productos||[]).map(function(ep,idx){
                     var quedan=Math.max(0,(ep.cantidadLlevada||0)-(ep.cantidadVendida||0));
-                    return e("div",{key:ep.catalogoId||idx,style:{display:"grid",gridTemplateColumns:"1fr 56px 56px 56px",padding:"8px 12px",borderBottom:idx<(evActual.productos||[]).length-1?"1px solid "+C.border:"none",alignItems:"center",background:C.surface}},
+                    return e("div",{key:ep.catalogoId||idx,style:{display:"grid",gridTemplateColumns:"1fr 56px 68px 60px",padding:"8px 12px",borderBottom:idx<(evActual.productos||[]).length-1?"1px solid "+C.border:"none",alignItems:"center",background:C.surface}},
                       e("div",null,
                         e("div",{style:{fontSize:13,fontWeight:500}},ep.nombre),
                         !ep.tieneInventario&&e("span",{style:{fontSize:sc.textLabel,color:C.textDim}},"solo registro")
@@ -15281,6 +15286,8 @@ export default function CLEO(props){
                   var _pedEvtIds=[...(new Set([...(evActual.pedidosIds||[]).map(String),...(pedidos||[]).filter(function(p){ return p.eventoId&&String(p.eventoId)===String(evActual.id); }).map(function(p){ return String(p.id); })]))];
                   var pedEvt=_pedEvtIds.map(function(pid){ return (pedidos||[]).find(function(p){ return String(p.id)===pid&&p.estadoPedido!=="cancelado"; }); }).filter(Boolean);
                   var inicioEvt=evActual.fecha||FECHA_HOY;
+                  // Si el evento ya está abierto pero aún no llega su fecha oficial, incluir desde hoy
+                  if(evActual.estado==="abierto"&&FECHA_HOY<inicioEvt) inicioEvt=FECHA_HOY;
                   var finEvt=evActual.estado==="abierto"?FECHA_HOY:(evActual.fechaFin||evActual.fecha||FECHA_HOY);
                   var diasEvt=[];
                   var cur=new Date(inicioEvt+"T12:00:00"); var fin=new Date(finEvt+"T12:00:00");

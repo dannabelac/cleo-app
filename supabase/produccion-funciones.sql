@@ -685,6 +685,33 @@ begin
        and cleo_id    = any(v_del_eventos);
   end if;
 
+  -- ── 5b. FIX 50: BORRAR ITEMS DE CATÁLOGO ELIMINADOS ──────────────────────
+  -- El catálogo usa REPLACE (no tombstones): si un item ya no aparece en el
+  -- arreglo entrante, se borra de la tabla. ON DELETE CASCADE elimina también
+  -- sus inventario_movimientos.
+  -- La guarda `is not null` evita borrar todo si la clave está ausente del payload.
+  if (p_data -> 'cleo_servicios') is not null then
+    delete from public.catalogo_items
+     where negocio_id = v_neg_id
+       and modo       = 'servicios'
+       and cleo_id not in (
+         select value ->> 'id'
+           from jsonb_array_elements(p_data -> 'cleo_servicios')
+          where (value ->> 'id') is not null
+       );
+  end if;
+
+  if (p_data -> 'cleo_productos_cat') is not null then
+    delete from public.catalogo_items
+     where negocio_id = v_neg_id
+       and modo       = 'productos'
+       and cleo_id not in (
+         select value ->> 'id'
+           from jsonb_array_elements(p_data -> 'cleo_productos_cat')
+          where (value ->> 'id') is not null
+       );
+  end if;
+
   -- ── 6. UPSERT CATÁLOGO SERVICIOS ─────────────────────────────────────────
   for v_it in
     select value from jsonb_array_elements(coalesce(p_data -> 'cleo_servicios', '[]'))
