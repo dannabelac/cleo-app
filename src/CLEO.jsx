@@ -10497,7 +10497,7 @@ export default function CLEO(props){
           e("section",{style:{marginTop:isMobile?36:32}},
             e("h2",{style:{margin:isMobile?"0 2px":"0",fontSize:isMobile?18:20,fontWeight:800,letterSpacing:"-0.025em",color:C.ink}},"¿Qué ha pasado en "+empresa+"?"),
             e("p",{style:{margin:isMobile?"4px 2px 14px":"4px 0 0",fontSize:14,lineHeight:1.45,color:"#5A6078"}},"Registra algo nuevo para mantener tus ventas al día."),
-            e("div",{style:{marginTop:isMobile?0:14,display:"grid",gridTemplateColumns:isMobile?"repeat(2,minmax(0,1fr))":"repeat(4,minmax(0,1fr))",gap:10}},
+            e("div",{style:{marginTop:isMobile?0:14,display:"grid",gridTemplateColumns:isMobile?"repeat(2,minmax(0,1fr))":"repeat(4,minmax(0,1fr))",gap:10,padding:isMobile?12:10,borderRadius:isMobile?24:22,background:"#8D9BFF"}},
               [
                 {label:"Alguien preguntó",onClick:function(){ if(esProductos){ setPasoPreguntoP(1); } else { setPasoPregunto(1); } }},
                 {label:"Envié un precio",onClick:function(){ if(esProductos){ setModalEnvieP(true); } else { setFormCot(Object.assign({},cotVacio,{nuevoNombre:""})); setModalCot(true); } }},
