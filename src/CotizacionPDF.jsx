@@ -355,7 +355,7 @@ function formatearMonto(n) {
   return "$" + x.toLocaleString("es-MX", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
 
-function crearEstilos(pc, ps) {
+function crearEstilos(pc, ps, pt) {
   return StyleSheet.create({
     pagina: {
       paddingTop: 48,
@@ -377,14 +377,14 @@ function crearEstilos(pc, ps) {
     // y se mezclan con este estilo base al renderizar , nunca un tamaño fijo
     // igual para un isotipo cuadrado y un logo horizontal con letras.
     logo: { objectFit: "contain", marginBottom: 8, borderRadius: 4 },
-    bizName: { fontSize: 14, fontFamily: "Helvetica-Bold" },
+    bizName: { fontSize: 14, fontFamily: "Helvetica-Bold", color: pt },
     bizMeta: { fontSize: 9, color: "#888888", marginTop: 2 },
     headerDer: { alignItems: "flex-end" },
     docLabel: { fontSize: 8, fontFamily: "Helvetica-Bold", letterSpacing: 1.5, color: pc, textTransform: "uppercase", marginBottom: 3 },
-    docFolio: { fontSize: 22, fontFamily: "Helvetica-Bold", color: "#1a1a2e" },
+    docFolio: { fontSize: 22, fontFamily: "Helvetica-Bold", color: pt },
     docFechas: { flexDirection: "row", marginTop: 8 },
     fechaCol: { marginLeft: 16, alignItems: "center" },
-    fechaVal: { fontSize: 10, fontFamily: "Helvetica-Bold", color: "#1a1a2e", textAlign: "center" },
+    fechaVal: { fontSize: 10, fontFamily: "Helvetica-Bold", color: pt, textAlign: "center" },
     fechaLbl: { fontSize: 7, color: "#aaaaaa", textAlign: "center", marginTop: 1 },
     divider: { height: 1.5, backgroundColor: pc, marginBottom: 20 },
     paraBlock: { flexDirection: "row", alignItems: "center", backgroundColor: ps, borderRadius: 6, padding: 12, marginBottom: 20 },
@@ -604,6 +604,7 @@ export async function crearCotizacionPDF(cot, cliente, perfil) {
 
   var pc = colorHexSeguroPDF(perfil.color, "#534AB7");
   var ps = colorHexSeguroPDF(perfil.colorSecundario, "#F0EEFF");
+  var pt = colorHexSeguroPDF(perfil.colorTexto, "#1A1635");
 
   var folio = "COT-" + String(cot.id || "").slice(-4).padStart(4, "0");
 
@@ -656,7 +657,7 @@ export async function crearCotizacionPDF(cot, cliente, perfil) {
     .join(" · ");
 
   var datos = {
-    estilos: crearEstilos(pc, ps),
+    estilos: crearEstilos(pc, ps, pt),
     folio: folio,
     fecha: textoPlanoSeguro(cot.fecha, 40),
     vigencia: textoPlanoSeguro(cot.vigencia, 40),
