@@ -21338,7 +21338,7 @@ export default function CLEO(props){
       )
     ),
 
-    modalPerfil&&e("div",{style:st.ov,onClick:function(){ setModalPerfil(false); }},
+    modalPerfil&&e("div",{style:st.ov,onClick:function(){ setPerfil(formPerfil); setModalPerfil(false); }},
       e("div",{style:Object.assign({},st.modal,{padding:0,overflow:"hidden",maxWidth:isMobile?"100%":720,width:isMobile?"100%":"calc(100% - 32px)",borderRadius:isMobile?"20px 20px 0 0":24,display:"flex",flexDirection:"column",overflowY:"hidden",maxHeight:"90vh"}),onClick:function(ev){ ev.stopPropagation(); }},
 
         // ── HEADER ──
@@ -21349,7 +21349,7 @@ export default function CLEO(props){
               e("div",{style:{fontWeight:700,fontSize:18,color:C.text,lineHeight:1.2}},"Mi negocio"),
               e("div",{style:{fontSize:12,color:C.textMuted,marginTop:3}},"Datos de tu negocio y apariencia de documentos")
             ),
-            e("button",{style:{background:"transparent",border:"1px solid "+C.border,cursor:"pointer",color:C.textDim,fontSize:16,width:28,height:28,borderRadius:8,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,marginLeft:12,marginTop:2},onClick:function(){ setModalPerfil(false); }},"×")
+            e("button",{style:{background:"transparent",border:"1px solid "+C.border,cursor:"pointer",color:C.textDim,fontSize:16,width:28,height:28,borderRadius:8,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,marginLeft:12,marginTop:2},onClick:function(){ setPerfil(formPerfil); setModalPerfil(false); }},"×")
           ),
           // Progress bar (solo si < 80%)
           (function(){
