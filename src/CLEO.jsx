@@ -9874,7 +9874,7 @@ export default function CLEO(props){
               ),
               menuUsuario&&e("div",{role:"menu",style:{position:"absolute",left:"calc(100% + 18px)",bottom:0,minWidth:210,background:C.dark,borderRadius:20,padding:8,boxShadow:C.shadowFloat,zIndex:60}},
                 [
-                  {k:"neg",label:"Mi negocio",d:"M3 7h18v13H3zM9 7V4.5h6V7M3 12.5h18",fn:function(){ setFormPerfil(Object.assign({},perfil)); setModalPerfil(true); }},
+                  {k:"neg",label:"Mi negocio",d:"M3 7h18v13H3zM9 7V4.5h6V7M3 12.5h18",fn:function(){ setFormPerfil(Object.assign({color:C.purple,colorSecundario:"#E4E2F8",colorTexto:"#1A1635"},perfil)); setModalPerfil(true); }},
                   {k:"cta",label:"Mi cuenta",d:"M12 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM4 21c.8-4 4-6 8-6s7.2 2 8 6",fn:function(){ setModalCuenta(true); }},
                 ].map(function(op){
                   return e("button",{key:op.k,type:"button",role:"menuitem",style:{cursor:"pointer",width:"100%",textAlign:"left",minHeight:44,padding:"0 12px",borderRadius:14,border:"none",background:"transparent",fontFamily:"inherit",fontSize:15,fontWeight:600,color:"#FFFFFF",display:"flex",alignItems:"center",gap:10},onClick:function(){ op.fn(); setMenuUsuario(false); }},
@@ -17295,7 +17295,7 @@ export default function CLEO(props){
           }).concat([
             e("div",{key:"sep",style:{height:1,background:C.darkBorder,margin:"6px 16px"}}),
             fila("cat",esProductos?"Mis productos":"Mi catálogo","M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2",false,function(){ setFormPerfil(Object.assign({},perfil)); setModalCatalogo(true); },catActivo.length>0?catActivo.length+(esProductos?" productos":" servicios"):null),
-            fila("neg","Mi negocio","M3 7h18v13H3zM9 7V4.5h6V7M3 12.5h18",false,function(){ setFormPerfil(Object.assign({},perfil)); setModalPerfil(true); }),
+            fila("neg","Mi negocio","M3 7h18v13H3zM9 7V4.5h6V7M3 12.5h18",false,function(){ setFormPerfil(Object.assign({color:C.purple,colorSecundario:"#E4E2F8",colorTexto:"#1A1635"},perfil)); setModalPerfil(true); }),
             fila("cta","Mi cuenta","M12 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM4 21c.8-4 4-6 8-6s7.2 2 8 6",false,function(){ setModalCuenta(true); })
           ]);
         })()
@@ -21338,7 +21338,7 @@ export default function CLEO(props){
       )
     ),
 
-    modalPerfil&&e("div",{style:st.ov,onClick:function(){ setPerfil(formPerfil); setModalPerfil(false); }},
+    modalPerfil&&e("div",{style:st.ov,onClick:function(){ setPerfil(formPerfil); setModalPerfil(false); if(props.forzarSync) props.forzarSync(); }},
       e("div",{style:Object.assign({},st.modal,{padding:0,overflow:"hidden",maxWidth:isMobile?"100%":720,width:isMobile?"100%":"calc(100% - 32px)",borderRadius:isMobile?"20px 20px 0 0":24,display:"flex",flexDirection:"column",overflowY:"hidden",maxHeight:"90vh"}),onClick:function(ev){ ev.stopPropagation(); }},
 
         // ── HEADER ──
@@ -21349,7 +21349,7 @@ export default function CLEO(props){
               e("div",{style:{fontWeight:700,fontSize:18,color:C.text,lineHeight:1.2}},"Mi negocio"),
               e("div",{style:{fontSize:12,color:C.textMuted,marginTop:3}},"Datos de tu negocio y apariencia de documentos")
             ),
-            e("button",{style:{background:"transparent",border:"1px solid "+C.border,cursor:"pointer",color:C.textDim,fontSize:16,width:28,height:28,borderRadius:8,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,marginLeft:12,marginTop:2},onClick:function(){ setPerfil(formPerfil); setModalPerfil(false); }},"×")
+            e("button",{style:{background:"transparent",border:"1px solid "+C.border,cursor:"pointer",color:C.textDim,fontSize:16,width:28,height:28,borderRadius:8,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,marginLeft:12,marginTop:2},onClick:function(){ setPerfil(formPerfil); setModalPerfil(false); if(props.forzarSync) props.forzarSync(); }},"×")
           ),
           // Progress bar (solo si < 80%)
           (function(){
@@ -21570,7 +21570,7 @@ export default function CLEO(props){
         // ── FOOTER con botones ──
         e("div",{style:{padding:"14px 24px",borderTop:"1px solid "+C.border,display:"flex",gap:8,justifyContent:"flex-end",background:C.surfaceUp,flexShrink:0}},
           e("button",{style:st.btn,onClick:function(){ setModalPerfil(false); }},"Cancelar"),
-          e("button",{style:st.btnP,onClick:function(){ setPerfil(formPerfil); setModalPerfil(false); }},"Guardar cambios")
+          e("button",{style:st.btnP,onClick:function(){ setPerfil(formPerfil); setModalPerfil(false); if(props.forzarSync) props.forzarSync(); }},"Guardar cambios")
         )
       )
     ),
