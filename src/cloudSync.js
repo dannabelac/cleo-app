@@ -778,9 +778,15 @@ export function startCloudSync(userId, onEstadoCambia, baselineInicial) {
 
     // ── DUAL MODE ─────────────────────────────────────────────────────────────
     if (schemaVer === 'dual') {
+      // Garantizar claves requeridas para usuarios nuevos que aún no tienen
+      // oportunidades ni tombstones en localStorage (serían omitidas por
+      // leerSnapshotLocalStorage, y cleo_dual_flush rechazaría con formato_antiguo).
+      var snapDual = snap;
+      if (!snapDual.cleo_oportunidades) snapDual = Object.assign({}, snapDual, { cleo_oportunidades: [] });
+      if (!snapDual.cleo_tombstones)    snapDual = Object.assign({}, snapDual, { cleo_tombstones: [] });
       return supabase
         .rpc('cleo_dual_flush', {
-          p_data:              snap,
+          p_data:              snapDual,
           p_tipo_perfil:       tipoPerfilActual(),
           p_ultimo_updated_at: ultimoUpdatedAt || null,
         })
