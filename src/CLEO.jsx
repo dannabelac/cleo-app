@@ -20282,17 +20282,13 @@ export default function CLEO(props){
             },seguimientoLost.fecha?"Programar seguimiento":"Recuérdamelo después"),
             e("button",{style:{cursor:"pointer",padding:"8px",borderRadius:14,border:"none",background:"transparent",fontSize:12,color:C.textDim,width:"100%"},
               onClick:function(){
-                var diasAuto=Number(motivoData?motivoData.seg:30)||30;
-                var fecha=new Date(); fecha.setDate(fecha.getDate()+diasAuto);
                 var targetId=motivoPipelineId;
                 var _lostOpId2=motivoPipelineOpId;
                 var _motivoCierre2=consejoMotivo==="Otro"?motivoLibre:consejoMotivo;
-                var mensajeSugeridoPerdida2=(seguimientoLost.nota&&seguimientoLost.nota.trim())||(motivoData?motivoData.sugerencia.replace("[nombre]",cl?cl.nombre.split(" ")[0]:"[nombre]"):"");
                 if(esOpoProductos){
                   setClientes(clientes.map(function(c){
                     if(Number(c.id)!==Number(targetId)) return c;
-                    var base2=marcarOportunidadPerdidaProductos(c,_motivoCierre2);
-                    return conRecordatoriosActualizados(base2,recordatoriosDe(base2).concat([{id:"r_"+Date.now(),fecha:fmtFechaLocal(fecha),nota:mensajeSugeridoPerdida2,esPersonalizada:!!(seguimientoLost.nota&&seguimientoLost.nota.trim()),origen:"cleo",categoria:"reactivacion"}]));
+                    return marcarOportunidadPerdidaProductos(c,_motivoCierre2);
                   }));
                 } else {
                   var cotP2=cotizaciones.find(function(c){ return Number(c.clienteId)===Number(targetId)&&(c.estatus==="Pendiente"||c.estatus==="Aceptada")&&cotizacionVinculadaOportunidad(c); });
@@ -20302,8 +20298,7 @@ export default function CLEO(props){
                   if(cotP2) setCotizaciones(cotizaciones.map(function(c){ return c.id===cotP2.id?Object.assign({},c,{estatus:"Rechazada",motivoPerdida:_motivoCierre2,fechaRechazo:FECHA_HOY,fechaHoraRechazo:new Date().toISOString()}):c; }));
                   setClientes(clientes.map(function(c){
                     if(Number(c.id)!==Number(targetId)) return c;
-                    var limpio2=cancelarRecordatoriosPipeline(c);
-                    return conRecordatoriosActualizados(limpio2,recordatoriosDe(limpio2).concat([{id:"r_"+Date.now(),fecha:fmtFechaLocal(fecha),nota:mensajeSugeridoPerdida2,esPersonalizada:!!(seguimientoLost.nota&&seguimientoLost.nota.trim()),origen:"cleo",categoria:"reactivacion"}]));
+                    return cancelarRecordatoriosPipeline(c);
                   }));
                   if(multiOpEnabled){
                     setOportunidades(function(prevOps){
