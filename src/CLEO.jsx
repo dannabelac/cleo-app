@@ -11862,7 +11862,8 @@ export default function CLEO(props){
                               e("div",{style:{fontSize:sc.text,fontWeight:700,color:C.ink}},ing.clienteNombre||"Sin cliente"),
                               e("div",{style:{marginTop:2,fontSize:12.5,color:"#5A6078",lineHeight:1.4}},
                                 e("b",{style:{fontWeight:700,color:esNeg?"#B23A24":"#4A5068"}},tipoLabel),
-                                " · "+(ing.concepto||"")
+                                " · "+(ing.concepto||""),
+                                ing.fechaHora&&e("span",{style:{color:"#A9B0C4"}}," · "+(function(){ var d=new Date(ing.fechaHora); return d.getHours()+":"+d.getMinutes().toString().padStart(2,"0"); })())
                               )
                             ),
                             e("span",{style:{fontSize:sc.text,fontWeight:800,letterSpacing:"-0.01em",color:esNeg?"#B23A24":C.ink,whiteSpace:"nowrap",paddingTop:2}},(esNeg?"−":"")+"$"+formatoDinero(Math.abs(ing.monto)))
@@ -11914,7 +11915,8 @@ export default function CLEO(props){
                               e("div",{style:{fontSize:sc.namePerson,fontWeight:700,color:C.ink}},ing.clienteNombre||"Sin cliente"),
                               e("div",{style:{marginTop:2,fontSize:13,color:"#5A6078",whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}},
                                 e("b",{style:{fontWeight:700,color:esNeg?"#B23A24":"#4A5068"}},tipoLabel),
-                                " · "+(ing.concepto||"")
+                                " · "+(ing.concepto||""),
+                                ing.fechaHora&&e("span",{style:{color:"#A9B0C4"}}," · "+(function(){ var d=new Date(ing.fechaHora); return d.getHours()+":"+d.getMinutes().toString().padStart(2,"0"); })())
                               )
                             ),
                             e("span",{style:{fontSize:sc.namePerson,fontWeight:800,letterSpacing:"-0.01em",color:esNeg?"#B23A24":C.ink,whiteSpace:"nowrap"}},(esNeg?"−":"")+"$"+formatoDinero(Math.abs(ing.monto)))
@@ -14513,7 +14515,8 @@ export default function CLEO(props){
                               e("div",{style:{fontSize:sc.text,fontWeight:700,color:C.ink}},ing.clienteNombre||"Sin cliente"),
                               e("div",{style:{marginTop:2,fontSize:12.5,color:"#5A6078",lineHeight:1.4}},
                                 e("b",{style:{fontWeight:700,color:esNeg?"#B23A24":"#4A5068"}},tipoLabel),
-                                " · "+(ing.concepto||"")
+                                " · "+(ing.concepto||""),
+                                ing.fechaHora&&e("span",{style:{color:"#A9B0C4"}}," · "+(function(){ var d=new Date(ing.fechaHora); return d.getHours()+":"+d.getMinutes().toString().padStart(2,"0"); })())
                               )
                             ),
                             e("span",{style:{fontSize:sc.text,fontWeight:800,letterSpacing:"-0.01em",color:esNeg?"#B23A24":C.ink,whiteSpace:"nowrap",paddingTop:2}},(esNeg?"−":"")+"$"+formatoDinero(Math.abs(ing.monto)))
@@ -14565,7 +14568,8 @@ export default function CLEO(props){
                               e("div",{style:{fontSize:sc.namePerson,fontWeight:700,color:C.ink}},ing.clienteNombre||"Sin cliente"),
                               e("div",{style:{marginTop:2,fontSize:13,color:"#5A6078",whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}},
                                 e("b",{style:{fontWeight:700,color:esNeg?"#B23A24":"#4A5068"}},tipoLabel),
-                                " · "+(ing.concepto||"")
+                                " · "+(ing.concepto||""),
+                                ing.fechaHora&&e("span",{style:{color:"#A9B0C4"}}," · "+(function(){ var d=new Date(ing.fechaHora); return d.getHours()+":"+d.getMinutes().toString().padStart(2,"0"); })())
                               )
                             ),
                             e("span",{style:{fontSize:sc.namePerson,fontWeight:800,letterSpacing:"-0.01em",color:esNeg?"#B23A24":C.ink,whiteSpace:"nowrap"}},(esNeg?"−":"")+"$"+formatoDinero(Math.abs(ing.monto)))
@@ -15292,11 +15296,12 @@ export default function CLEO(props){
                   var diasEvt=[];
                   var cur=new Date(inicioEvt+"T12:00:00"); var fin=new Date(finEvt+"T12:00:00");
                   while(cur<=fin){ diasEvt.push(cur.toISOString().slice(0,10)); cur=new Date(cur); cur.setDate(cur.getDate()+1); }
-                  var porDia={}; diasEvt.forEach(function(d){ porDia[d]={total:0,n:0,metodos:{}}; });
-                  pedEvt.forEach(function(ped){ var d=ped.fecha||FECHA_HOY; if(porDia[d]){ porDia[d].total+=Number(ped.total||0); porDia[d].n++; (ped.pagos||[]).forEach(function(pg){ var m=pg.metodoPago||"efectivo"; porDia[d].metodos[m]=(porDia[d].metodos[m]||0)+Number(pg.monto||0); }); } });
+                  var porDia={}; diasEvt.forEach(function(d){ porDia[d]={total:0,n:0,metodos:{},productos:{}}; });
+                  pedEvt.forEach(function(ped){ var d=ped.fecha||FECHA_HOY; if(porDia[d]){ porDia[d].total+=Number(ped.total||0); porDia[d].n++; (ped.pagos||[]).forEach(function(pg){ var m=pg.metodoPago||"efectivo"; porDia[d].metodos[m]=(porDia[d].metodos[m]||0)+Number(pg.monto||0); }); (ped.items||[]).forEach(function(it){ var nom=it.nombre||it.concepto||""; if(!nom) return; var cant=Number(it.cantidad||1); var sub=Number(it.total||0)||Number(it.precioUnitario||0)*cant; if(!porDia[d].productos[nom]) porDia[d].productos[nom]={cantidad:0,total:0}; porDia[d].productos[nom].cantidad+=cant; porDia[d].productos[nom].total+=sub; }); } });
                   var maxTotal=diasEvt.reduce(function(m,d){ return Math.max(m,porDia[d].total); },0);
                   var DIAS=["Dom","Lun","Mar","Mié","Jue","Vie","Sáb"]; var MESES=["ene","feb","mar","abr","may","jun","jul","ago","sep","oct","nov","dic"];
                   function fmtDia(s){ var f=new Date(s+"T12:00:00"); return DIAS[f.getDay()]+" "+f.getDate()+" "+MESES[f.getMonth()]; }
+                  function fmtHora(iso){ if(!iso) return ""; var d=new Date(iso); var h=d.getHours(); var mn=d.getMinutes().toString().padStart(2,"0"); return h+":"+mn; }
                   function toggleDia(d,wasExp){
                     var k=evActual.id+"_"+d;
                     setEvtDiasExp(function(prev){ var n=Object.assign({},prev); n[k]=!wasExp; return n; });
@@ -15366,6 +15371,15 @@ export default function CLEO(props){
                                 )
                               ),
                               isExp&&dat.n>0&&e("div",{style:{background:C.surfaceUp,borderTop:"1px solid "+C.border}},
+                                Object.keys(dat.productos).length>0&&e("div",{style:{padding:"7px 12px 6px",borderBottom:"1px solid "+C.border,display:"flex",gap:4,flexWrap:"wrap",alignItems:"center"}},
+                                  e("span",{style:{fontSize:10,fontWeight:700,color:C.textDim,textTransform:"uppercase",letterSpacing:"0.5px",marginRight:2,flexShrink:0}},"Productos"),
+                                  Object.keys(dat.productos).map(function(nom){
+                                    var pd=dat.productos[nom];
+                                    return e("span",{key:nom,style:{fontSize:11,fontWeight:600,padding:"1px 7px",borderRadius:8,background:"rgba(75,94,252,0.07)",color:C.purple,whiteSpace:"nowrap"}},
+                                      "×"+pd.cantidad+" "+nom+(pd.total>0?" · $"+formatoDinero(pd.total):"")
+                                    );
+                                  })
+                                ),
                                 pedsDia.map(function(ped,pidx){
                                   var items=(ped.items||[]).filter(function(it){ return it.nombre||it.concepto; });
                                   var isAnulando=evtAnularId===String(ped.id);
@@ -15377,7 +15391,8 @@ export default function CLEO(props){
                                               e("span",{style:{fontSize:11,fontWeight:700,color:C.purple,background:"rgba(75,94,252,0.08)",padding:"0 5px",borderRadius:4,flexShrink:0}},"×"+(it.cantidad||1)),
                                               e("span",{style:{fontSize:13,color:C.text,lineHeight:1.3}},it.nombre||it.concepto||"")
                                             ); })
-                                          : e("span",{style:{fontSize:13,color:C.textMuted}},ped.productos||"Venta")
+                                          : e("span",{style:{fontSize:13,color:C.textMuted}},ped.productos||"Venta"),
+                                        ped.fechaCreado&&e("div",{style:{fontSize:10,color:C.textDim,marginTop:2}},fmtHora(ped.fechaCreado))
                                       ),
                                       e("div",{style:{display:"flex",alignItems:"center",gap:6,flexShrink:0}},
                                         (function(){
@@ -20282,17 +20297,13 @@ export default function CLEO(props){
             },seguimientoLost.fecha?"Programar seguimiento":"Recuérdamelo después"),
             e("button",{style:{cursor:"pointer",padding:"8px",borderRadius:14,border:"none",background:"transparent",fontSize:12,color:C.textDim,width:"100%"},
               onClick:function(){
-                var diasAuto=Number(motivoData?motivoData.seg:30)||30;
-                var fecha=new Date(); fecha.setDate(fecha.getDate()+diasAuto);
                 var targetId=motivoPipelineId;
                 var _lostOpId2=motivoPipelineOpId;
                 var _motivoCierre2=consejoMotivo==="Otro"?motivoLibre:consejoMotivo;
-                var mensajeSugeridoPerdida2=(seguimientoLost.nota&&seguimientoLost.nota.trim())||(motivoData?motivoData.sugerencia.replace("[nombre]",cl?cl.nombre.split(" ")[0]:"[nombre]"):"");
                 if(esOpoProductos){
                   setClientes(clientes.map(function(c){
                     if(Number(c.id)!==Number(targetId)) return c;
-                    var base2=marcarOportunidadPerdidaProductos(c,_motivoCierre2);
-                    return conRecordatoriosActualizados(base2,recordatoriosDe(base2).concat([{id:"r_"+Date.now(),fecha:fmtFechaLocal(fecha),nota:mensajeSugeridoPerdida2,esPersonalizada:!!(seguimientoLost.nota&&seguimientoLost.nota.trim()),origen:"cleo",categoria:"reactivacion"}]));
+                    return marcarOportunidadPerdidaProductos(c,_motivoCierre2);
                   }));
                 } else {
                   var cotP2=cotizaciones.find(function(c){ return Number(c.clienteId)===Number(targetId)&&(c.estatus==="Pendiente"||c.estatus==="Aceptada")&&cotizacionVinculadaOportunidad(c); });
@@ -20302,8 +20313,7 @@ export default function CLEO(props){
                   if(cotP2) setCotizaciones(cotizaciones.map(function(c){ return c.id===cotP2.id?Object.assign({},c,{estatus:"Rechazada",motivoPerdida:_motivoCierre2,fechaRechazo:FECHA_HOY,fechaHoraRechazo:new Date().toISOString()}):c; }));
                   setClientes(clientes.map(function(c){
                     if(Number(c.id)!==Number(targetId)) return c;
-                    var limpio2=cancelarRecordatoriosPipeline(c);
-                    return conRecordatoriosActualizados(limpio2,recordatoriosDe(limpio2).concat([{id:"r_"+Date.now(),fecha:fmtFechaLocal(fecha),nota:mensajeSugeridoPerdida2,esPersonalizada:!!(seguimientoLost.nota&&seguimientoLost.nota.trim()),origen:"cleo",categoria:"reactivacion"}]));
+                    return cancelarRecordatoriosPipeline(c);
                   }));
                   if(multiOpEnabled){
                     setOportunidades(function(prevOps){
