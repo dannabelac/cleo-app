@@ -847,6 +847,12 @@ begin
       );
     end loop;
 
+    -- CAMBIO 54: borrar gastos eliminados antes de reinsertar, mismo patrón
+    -- que eventos_productos arriba. Sin esto, un gasto borrado localmente
+    -- nunca se borraba de la tabla y reaparecía en el siguiente cleo_dual_read.
+    delete from public.eventos_gastos
+     where negocio_id = v_neg_id and evento_id = v_ev_id;
+
     for v_sub in
       select value from jsonb_array_elements(coalesce(v_it -> 'gastos', '[]'))
     loop
