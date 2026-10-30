@@ -195,6 +195,17 @@ Referencia: `docs/rediseno/referencias/R12-Comparar.html` (desktop y móvil en e
 - "Siguiente →": botón principal azul noche #0E1328 de 36px (44px a lo ancho en móvil), abajo a la derecha.
 - Paso 2 y resultado: aplicar el mismo sistema (casillas de paso, pastillas, botón azul noche) sin cambiar su contenido.
 
+## 4g. Ronda 13 — Resumen, parte baja (aprobada)
+Referencia: `docs/rediseno/referencias/R13-Resumen-Abajo.html` (desktop y móvil). Aplica la escala v2. Mismos textos, datos y acciones; solo cambia el diseño.
+- Títulos: las 4 secciones usan título de sección 18px/800 (17 móvil) con ícono en cuadro de 36px radio 12. Se quitan las etiquetas en mayúsculas de color ("LO QUE CLEO APRENDIÓ DE TU NEGOCIO", "TU PRÓXIMO PASO").
+- Sin emojis: 📦 → bolsa, 📣 → personas, ❌ → ×, 💰 → billete (íconos de línea de CLEO).
+- De dónde llegan tus clientes: ícono personas en #EEF0FF/#3F4BD0. Subtítulo 13.5px y nota "Incluye todo tu historial…" 12px #8E94AE. "Ver clientes →" como botón secundario de contorno de 32px a la derecha del título (móvil: abajo, a lo ancho, 40px). Cada canal es una fila separada por línea #EDEFF5 (sin cajas grises): ícono del canal en cuadro #F4F5FA de 34px; nombre 15px/800 con "N clientes" al lado en 13px #6E7489; debajo "3 compraron · 3 sin comprar aún" 13px #5A6078. A la derecha (columna de 260px; en móvil debajo a lo ancho) barra de 6px #EEF0F5 con relleno #3E9A64 y "50% compraron" (porcentaje 13px/800 #1E5C38 + "compraron" #5A6078).
+- Lo que CLEO aprendió de tu negocio: ícono foco en #FBF1DC/#8A5A06. Filas separadas por línea (sin cajas): ícono de 34px en #EEF0FF/#3F4BD0 (cancelados en #FBE6E1/#B23A24), título 14px/700 y detalle 12.5px #6E7489. "Ver 1 más" como enlace 13px/700 #3F4BD0.
+- Tu próximo paso: tarjeta completa en ocre #FBF1DC. Encabezado chico con ícono de bandera "Tu próximo paso" 12.5px/800 #8A5A06 y "Lo que más impacto tendría hoy." 13px #6E4806. Debajo, ícono billete en cuadro blanco de 40px + mensaje 20px/800 #5E3D04 (18 móvil) + detalle 13.5px #6E4806. Se quita el cuadro verde interno.
+- Desktop: canales a lo ancho; debajo grid 7fr/5fr (aprendió | próximo paso) con la misma altura; debajo el reporte. Gap 16px.
+- Móvil: orden canales → tu próximo paso → lo que CLEO aprendió → reporte. Gap 12px.
+- Reporte comercial: ícono documento en #F4F5FA; botón "Generar reporte PDF" azul noche de 36px con ícono de descarga (móvil 44px a lo ancho).
+
 ## 5. Fase 3 — Pedidos (y el resto de secciones)
 
 Referencias: `R5-Pedidos.html`, `R5-Movil-Pedidos.html`.
