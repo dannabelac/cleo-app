@@ -2317,7 +2317,13 @@ export default function AuthGate() {
         ".cleo-auth-greeting{font-size:30px!important;line-height:1.08!important;margin-top:28px!important}" +
         ".cleo-auth-sub{font-size:15px!important}" +
         ".cleo-auth-momentos{display:none!important}" +
-        ".cleo-auth-form{flex:none!important;padding:26px 22px 32px!important;justify-content:flex-start!important}" +
+        // formInner tiene max-width:380 para centrarse en el panel ancho de
+        // escritorio , en la vista apilada eso lo dejaba como una columna
+        // angosta centrada con más aire a la derecha que a la izquierda,
+        // desalineado del encabezado (que sí usa todo el ancho). En móvil
+        // debe llenar el ancho completo, igual que el encabezado.
+        ".cleo-auth-form{flex:none!important;padding:26px 22px 32px!important;justify-content:flex-start!important;align-items:stretch!important}" +
+        ".cleo-auth-form-inner{max-width:none!important}" +
         ".cleo-input-wrap{height:48px!important}" +
         ".cleo-input-wrap input{font-size:16px!important}" +
         ".cleo-btn-google{height:48px!important}" +
@@ -2423,7 +2429,7 @@ export default function AuthGate() {
         { style: st.formPanel, className: "cleo-auth-form" },
         React.createElement(
           "div",
-          { style: st.formInner },
+          { style: st.formInner, className: "cleo-auth-form-inner" },
           modo === "recuperar"
             ? React.createElement(
                 React.Fragment,
