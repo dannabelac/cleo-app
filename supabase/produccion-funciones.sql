@@ -345,6 +345,9 @@ begin
             'entregado',              ct.entregado,
             'fechaEntrega',           ct.fecha_entrega,
             'vinculadaOportunidadActual', ct.oportunidad_vinculada,
+            -- CAMBIO 56: fechaHoraCreacion nunca se devolvía , cotizaciones no
+            -- tiene columna dedicada, se usa created_at como mejor aproximación.
+            'fechaHoraCreacion',      ct.created_at,
             'pagos',
               coalesce(
                 (select jsonb_agg(jsonb_build_object(
@@ -379,6 +382,9 @@ begin
             'tipoPago',    vt.tipo_pago,
             'entregado',   vt.entregado,
             'fechaEntrega',vt.fecha_entrega,
+            -- CAMBIO 56: fecha_hora existía en la tabla pero nunca se leía
+            -- (ni se escribía, ver UPSERT VENTAS más abajo).
+            'fechaHoraCreacion', vt.fecha_hora,
             'configPostVenta', case
               when vt.postv_pago is not null or vt.postv_seguimiento is not null
               then jsonb_build_object('pago', vt.postv_pago,
@@ -420,6 +426,10 @@ begin
             'anticipoConservado',  pd.anticipo_conservado,
             'motivoCancelacion',   pd.motivo_cancelacion,
             'motivoCancelacionLado', pd.motivo_cancelacion_lado,
+            -- CAMBIO 56: fechaCreado nunca se devolvía , pedidos no tiene columna
+            -- dedicada, se usa created_at. Esto es lo que alimenta la hora de venta
+            -- en "Ventas por día" de Eventos y "A qué hora vendiste" de Resumen.
+            'fechaCreado',         pd.created_at,
             'configPostVenta', case
               when pd.postv_pago is not null or pd.postv_seguimiento is not null
               then jsonb_build_object('pago', pd.postv_pago,
@@ -464,9 +474,19 @@ begin
                     'precio',          ep.precio,
                     'cantidadLlevada', ep.cantidad,
                     'cantidadVendida', ep.cantidad_vendida,
-                    'reserva',         ep.reserva
+                    'reserva',         ep.reserva,
+                    -- CAMBIO 55: eventos_productos no guarda tieneInventario (no hay
+                    -- columna para eso) , se deriva en vivo del catálogo actual. Antes
+                    -- esta clave faltaba por completo, así que en JS !ep.tieneInventario
+                    -- siempre daba true tras cualquier sync en dual, aunque el producto
+                    -- sí tuviera inventario activo en el catálogo.
+                    'tieneInventario', coalesce(ci.inventario_activo, false)
                   ) order by ep.created_at)
                  from public.eventos_productos ep
+                 left join public.catalogo_items ci
+                        on ci.negocio_id = v_neg_id
+                       and ci.modo       = 'productos'
+                       and ci.cleo_id    = ep.catalogo_id
                 where ep.evento_id = ei.id),
                 '[]'::jsonb
               ),
@@ -1207,7 +1227,7 @@ begin
 
     insert into public.ventas (
       negocio_id, cleo_id, cliente_id,
-      concepto, items, monto, tipo, notas, etiqueta, fecha,
+      concepto, items, monto, tipo, notas, etiqueta, fecha, fecha_hora,
       tipo_pago, entregado, fecha_entrega,
       postv_pago, postv_seguimiento
     )
@@ -1218,6 +1238,10 @@ begin
       case when v_it ->> 'tipo' = 'especifico' then 'normal' else 'rapida' end,
       v_it ->> 'notas', v_it ->> 'etiqueta',
       nullif(v_it ->> 'fecha','')::date,
+      -- CAMBIO 56: fecha_hora nunca se guardaba (columna existía, sin usar) , se
+      -- fija solo al insertar (no en el "do update set", es inmutable como
+      -- created_at) para preservar la hora real de creación.
+      nullif(v_it ->> 'fechaHoraCreacion','')::timestamptz,
       v_it ->> 'tipoPago',
       coalesce((v_it ->> 'entregado')::boolean, false),
       nullif(v_it ->> 'fechaEntrega','')::date,

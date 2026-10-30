@@ -1,0 +1,82 @@
+<!doctype html>
+<html lang="es"><head><meta charset="utf-8"><title>CLEO · Resumen, parte baja</title><script src="./support.js"></script></head><body>
+<x-dc><helmet><link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&amp;display=swap" rel="stylesheet"><style>body{margin:0;background:#ECEEF5}
+.cl{font-family:'Plus Jakarta Sans',system-ui,sans-serif;color:#0E1328;font-size:14px;-webkit-font-smoothing:antialiased;font-variant-numeric:tabular-nums}
+.i{width:16px;height:16px;flex:none;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.cap{font-size:11px;font-weight:800;letter-spacing:.08em;color:#6E7489;margin-bottom:10px}
+.card{background:#FFFFFF;border-radius:20px;padding:22px 24px;box-sizing:border-box}
+.hd{display:flex;gap:12px;align-items:flex-start}
+.hi{width:36px;height:36px;flex:none;border-radius:12px;display:grid;place-items:center}
+.hi .i{width:18px;height:18px}
+.h2{margin:0;font-size:18px;font-weight:800;letter-spacing:-0.02em}
+.sub{margin:3px 0 0;font-size:13.5px;line-height:1.5;color:#5A6078}
+.fn{margin:2px 0 0;font-size:12px;color:#8E94AE}
+.ch{display:grid;grid-template-columns:minmax(0,1fr) 260px;align-items:center;gap:24px;padding:14px 0;border-top:1px solid #EDEFF5}
+.ch:first-child{border-top:0}
+.cn{display:flex;align-items:center;gap:12px;min-width:0}
+.ci{width:34px;height:34px;flex:none;border-radius:11px;background:#F4F5FA;color:#0E1328;display:grid;place-items:center}
+.cn b{font-size:15px;font-weight:800}
+.cn b small{font-size:13px;font-weight:600;color:#6E7489;margin-left:6px}
+.cn p{margin:2px 0 0;font-size:13px;color:#5A6078}
+.pc{display:flex;align-items:center;gap:12px}
+.bar{flex:1;height:6px;border-radius:3px;background:#EEF0F5;overflow:hidden}
+.bar span{display:block;height:100%;border-radius:3px;background:#3E9A64}
+.pc strong{font-size:13px;font-weight:800;color:#1E5C38;white-space:nowrap}
+.pc strong small{font-weight:600;color:#5A6078;margin-left:4px}
+.b2{display:inline-flex;align-items:center;gap:7px;height:32px;padding:0 14px;border-radius:16px;border:1.5px solid #E3E6EF;background:#FFFFFF;color:#0E1328;font-family:inherit;font-size:12.5px;font-weight:700;text-decoration:none;cursor:pointer}
+.b2 .i{width:14px;height:14px;stroke-width:2.4}
+.bp{display:inline-flex;align-items:center;gap:8px;height:36px;padding:0 18px;border:0;border-radius:18px;background:#0E1328;color:#FFFFFF;font-family:inherit;font-size:13px;font-weight:700;cursor:pointer;white-space:nowrap}
+.bp .i{width:15px;height:15px}
+.ln{display:flex;gap:12px;align-items:flex-start;padding:12px 0;border-top:1px solid #EDEFF5}
+.ln:first-child{border-top:0}
+.ti{width:34px;height:34px;flex:none;border-radius:11px;display:grid;place-items:center}
+.t-b{background:#EEF0FF;color:#3F4BD0}.t-r{background:#FBE6E1;color:#B23A24}
+.ln b{display:block;font-size:14px;font-weight:700;line-height:1.4}
+.ln>div>span{display:block;margin-top:1px;font-size:12.5px;color:#6E7489}
+.more{display:inline-block;margin-top:6px;font-size:13px;font-weight:700;color:#3F4BD0;text-decoration:none}
+</style></helmet>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+<symbol id="i-users" viewBox="0 0 24 24"><circle cx="9" cy="8" r="3.5"/><path d="M2.5 20c.6-3.5 3.3-5.5 6.5-5.5s5.9 2 6.5 5.5M16 4.6a3.5 3.5 0 0 1 0 6.8M18 14.8c2 .8 3.2 2.6 3.5 5.2"/></symbol>
+<symbol id="i-ig" viewBox="0 0 24 24"><rect x="3.5" y="3.5" width="17" height="17" rx="5"/><circle cx="12" cy="12" r="4"/><path d="M17 7h.01"/></symbol>
+<symbol id="i-fb" viewBox="0 0 24 24"><path d="M14 8.5h3V5h-3a4 4 0 0 0-4 4v2H7.5v3.5H10V21h3.5v-6.5H16l.5-3.5h-3V9a.5.5 0 0 1 .5-.5z"/></symbol>
+<symbol id="i-ref" viewBox="0 0 24 24"><circle cx="8" cy="8" r="3.2"/><circle cx="17" cy="10" r="2.6"/><path d="M2.5 19.5c.5-3 2.8-4.8 5.5-4.8s5 1.8 5.5 4.8M14.5 15.2c.7-.4 1.6-.7 2.5-.7 2.3 0 4.1 1.5 4.5 4"/></symbol>
+<symbol id="i-arrow" viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></symbol>
+<symbol id="i-bulb" viewBox="0 0 24 24"><path d="M9 18h6M10 21h4M12 3a6 6 0 0 0-3.6 10.8c.6.5 1 1.2 1 2V16h5.2v-.2c0-.8.4-1.5 1-2A6 6 0 0 0 12 3z"/></symbol>
+<symbol id="i-bag" viewBox="0 0 24 24"><path d="M5 8h14l-1 13H6z"/><path d="M9 8V6a3 3 0 0 1 6 0v2"/></symbol>
+<symbol id="i-x" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18"/></symbol>
+<symbol id="i-cash" viewBox="0 0 24 24"><rect x="3" y="6" width="18" height="12" rx="2"/><circle cx="12" cy="12" r="2.5"/></symbol>
+<symbol id="i-flag" viewBox="0 0 24 24"><path d="M5 21V4M5 4h11l-2 4 2 4H5"/></symbol>
+<symbol id="i-down" viewBox="0 0 24 24"><path d="M12 4v11M7 10l5 5 5-5M5 20h14"/></symbol>
+<symbol id="i-doc" viewBox="0 0 24 24"><path d="M7 3.5h7l4 4V20a.5.5 0 0 1-.5.5h-10A.5.5 0 0 1 7 20z"/><path d="M14 3.5V8h4M9.5 12.5h5M9.5 16h5"/></symbol>
+</svg>
+<div class="cl" style="width:1600px;min-height:1500px;background:#ECEEF5;padding:48px 64px;box-sizing:border-box;display:flex;gap:64px;align-items:flex-start">
+<div style="flex:1;min-width:0;max-width:1000px"><div class="cap">DESKTOP · RESUMEN, DEBAJO DE “COMPARAR VENTAS”</div>
+<div style="display:flex;flex-direction:column;gap:16px"><section class="card">
+<div class="hd" style="justify-content:space-between;flex-wrap:wrap"><div class="hd"><span class="hi t-b"><svg class="i"><use href="#i-users"></use></svg></span><div><h2 class="h2">De dónde llegan tus clientes</h2><p class="sub">Clientes registrados por canal y cuántos compraron.</p><p class="fn">Incluye todo tu historial — no cambia si ajustas las fechas en “Explora tus ventas”.</p></div></div><a href="#" class="b2">Ver clientes<svg class="i"><use href="#i-arrow"></use></svg></a></div>
+<div style="margin-top:12px"><div class="ch"><div class="cn"><span class="ci"><svg class="i"><use href="#i-ig"></use></svg></span><div style="min-width:0"><b>Instagram<small>6 clientes</small></b><p>3 compraron · 3 sin comprar aún</p></div></div><div class="pc"><div class="bar"><span style="width:50%"></span></div><strong>50%<small>compraron</small></strong></div></div><div class="ch"><div class="cn"><span class="ci"><svg class="i"><use href="#i-ref"></use></svg></span><div style="min-width:0"><b>Referido<small>4 clientes</small></b><p>3 compraron · 1 sin comprar aún</p></div></div><div class="pc"><div class="bar"><span style="width:75%"></span></div><strong>75%<small>compraron</small></strong></div></div><div class="ch"><div class="cn"><span class="ci"><svg class="i"><use href="#i-fb"></use></svg></span><div style="min-width:0"><b>Facebook<small>2 clientes</small></b><p>1 compró · 1 sin comprar aún</p></div></div><div class="pc"><div class="bar"><span style="width:50%"></span></div><strong>50%<small>compraron</small></strong></div></div></div>
+
+</section>
+<div style="display:grid;grid-template-columns:minmax(0,7fr) minmax(0,5fr);gap:16px;align-items:stretch"><section class="card">
+<div class="hd"><span class="hi" style="background:#FBF1DC;color:#8A5A06"><svg class="i"><use href="#i-bulb"></use></svg></span><div><h2 class="h2">Lo que CLEO aprendió de tu negocio</h2></div></div>
+<div style="margin-top:10px"><div class="ln"><span class="ti t-b"><svg class="i"><use href="#i-bag"></use></svg></span><div><b>Tu producto más pedido: Aretes plata</b><span>4 veces pedido — todo tu historial</span></div></div><div class="ln"><span class="ti t-b"><svg class="i"><use href="#i-users"></use></svg></span><div><b>Canal con más clientes: Instagram</b><span>6 clientes llegaron por ahí — todo tu historial</span></div></div><div class="ln"><span class="ti t-r"><svg class="i"><use href="#i-x"></use></svg></span><div><b>3 pedidos cancelados este mes</b><span>Motivo más común: “No conseguí insumo”</span></div></div></div><a href="#" class="more">Ver 1 más</a>
+</section><section class="card" style="display:flex;flex-direction:column;background:#FBF1DC">
+<div style="display:flex;align-items:center;gap:8px;font-size:12.5px;font-weight:800;color:#8A5A06"><svg class="i" style="width:15px;height:15px"><use href="#i-flag"></use></svg>Tu próximo paso</div>
+<p style="margin:4px 0 0;font-size:13px;color:#6E4806">Lo que más impacto tendría hoy.</p>
+<div style="margin-top:20px;display:flex;gap:12px;align-items:flex-start"><span class="ti" style="background:#FFFFFF;color:#8A5A06;width:40px;height:40px;border-radius:13px"><svg class="i" style="width:18px;height:18px"><use href="#i-cash"></use></svg></span><div><div style="font-size:20px;line-height:1.25;font-weight:800;letter-spacing:-0.02em;color:#5E3D04">Cobra los $4,400.00 pendientes</div><p style="margin:6px 0 0;font-size:13.5px;line-height:1.5;color:#6E4806">Ya entregaste o tienes pedidos activos con saldo.</p></div></div>
+</section></div>
+<section class="card" style="display:flex;align-items:center;justify-content:space-between;gap:20px;flex-wrap:wrap"><div class="hd"><span class="hi" style="background:#F4F5FA;color:#0E1328"><svg class="i"><use href="#i-doc"></use></svg></span><div><h2 class="h2">Reporte comercial</h2><p class="sub">Elige un período y descarga un resumen de tus ventas, cobros, pendientes y oportunidades.</p></div></div><button class="bp"><svg class="i"><use href="#i-down"></use></svg>Generar reporte PDF</button></section></div></div>
+<div style="width:390px;flex:none"><div class="cap">MÓVIL</div><div style="display:flex;flex-direction:column;gap:12px"><section class="card" style="padding:18px;border-radius:22px">
+<div class="hd" style="justify-content:space-between;flex-wrap:wrap"><div class="hd"><span class="hi t-b"><svg class="i"><use href="#i-users"></use></svg></span><div><h2 class="h2" style="font-size:17px">De dónde llegan tus clientes</h2><p class="sub">Clientes registrados por canal y cuántos compraron.</p><p class="fn">Incluye todo tu historial — no cambia si ajustas las fechas en “Explora tus ventas”.</p></div></div></div>
+<div style="margin-top:12px"><div class="ch" style="grid-template-columns:1fr;gap:10px"><div class="cn"><span class="ci"><svg class="i"><use href="#i-ig"></use></svg></span><div style="min-width:0"><b>Instagram<small>6 clientes</small></b><p>3 compraron · 3 sin comprar aún</p></div></div><div class="pc"><div class="bar"><span style="width:50%"></span></div><strong>50%<small>compraron</small></strong></div></div><div class="ch" style="grid-template-columns:1fr;gap:10px"><div class="cn"><span class="ci"><svg class="i"><use href="#i-ref"></use></svg></span><div style="min-width:0"><b>Referido<small>4 clientes</small></b><p>3 compraron · 1 sin comprar aún</p></div></div><div class="pc"><div class="bar"><span style="width:75%"></span></div><strong>75%<small>compraron</small></strong></div></div><div class="ch" style="grid-template-columns:1fr;gap:10px"><div class="cn"><span class="ci"><svg class="i"><use href="#i-fb"></use></svg></span><div style="min-width:0"><b>Facebook<small>2 clientes</small></b><p>1 compró · 1 sin comprar aún</p></div></div><div class="pc"><div class="bar"><span style="width:50%"></span></div><strong>50%<small>compraron</small></strong></div></div></div>
+<a href="#" class="b2" style="margin-top:8px;width:100%;justify-content:center;height:40px;box-sizing:border-box">Ver clientes<svg class="i"><use href="#i-arrow"></use></svg></a>
+</section><section class="card" style="display:flex;flex-direction:column;background:#FBF1DC;padding:18px;border-radius:22px">
+<div style="display:flex;align-items:center;gap:8px;font-size:12.5px;font-weight:800;color:#8A5A06"><svg class="i" style="width:15px;height:15px"><use href="#i-flag"></use></svg>Tu próximo paso</div>
+<p style="margin:4px 0 0;font-size:13px;color:#6E4806">Lo que más impacto tendría hoy.</p>
+<div style="margin-top:16px;display:flex;gap:12px;align-items:flex-start"><span class="ti" style="background:#FFFFFF;color:#8A5A06;width:40px;height:40px;border-radius:13px"><svg class="i" style="width:18px;height:18px"><use href="#i-cash"></use></svg></span><div><div style="font-size:18px;line-height:1.25;font-weight:800;letter-spacing:-0.02em;color:#5E3D04">Cobra los $4,400.00 pendientes</div><p style="margin:6px 0 0;font-size:13.5px;line-height:1.5;color:#6E4806">Ya entregaste o tienes pedidos activos con saldo.</p></div></div>
+</section><section class="card" style="padding:18px;border-radius:22px">
+<div class="hd"><span class="hi" style="background:#FBF1DC;color:#8A5A06"><svg class="i"><use href="#i-bulb"></use></svg></span><div><h2 class="h2" style="font-size:17px">Lo que CLEO aprendió de tu negocio</h2></div></div>
+<div style="margin-top:10px"><div class="ln"><span class="ti t-b"><svg class="i"><use href="#i-bag"></use></svg></span><div><b>Tu producto más pedido: Aretes plata</b><span>4 veces pedido — todo tu historial</span></div></div><div class="ln"><span class="ti t-b"><svg class="i"><use href="#i-users"></use></svg></span><div><b>Canal con más clientes: Instagram</b><span>6 clientes llegaron por ahí — todo tu historial</span></div></div><div class="ln"><span class="ti t-r"><svg class="i"><use href="#i-x"></use></svg></span><div><b>3 pedidos cancelados este mes</b><span>Motivo más común: “No conseguí insumo”</span></div></div></div><a href="#" class="more">Ver 1 más</a>
+</section><section class="card" style="padding:18px;border-radius:22px"><div class="hd"><span class="hi" style="background:#F4F5FA;color:#0E1328"><svg class="i"><use href="#i-doc"></use></svg></span><div><h2 class="h2" style="font-size:17px">Reporte comercial</h2><p class="sub">Elige un período y descarga un resumen de tus ventas, cobros, pendientes y oportunidades.</p></div></div><button class="bp" style="margin-top:14px;width:100%;height:44px;justify-content:center;font-size:14px;border-radius:22px"><svg class="i"><use href="#i-down"></use></svg>Generar reporte PDF</button></section></div></div>
+</div></x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1600,"height":1500}}'>class Component extends DCLogic { renderVals() { return {}; } }</script>
+</body></html>

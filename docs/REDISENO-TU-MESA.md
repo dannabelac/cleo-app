@@ -184,6 +184,43 @@ Referencias: `docs/rediseno/referencias/R10-Ingresos.html` (desktop) y `R10-Movi
 - Grupos por día (AYER, 10 OCT…) en pervinca 12px/800, como hoy.
 - Movimiento: ícono de 40px (36px móvil) radio 13: pedido = bolsa en #EEF0FF/#3F4BD0; venta rápida = rayo en #FBF1DC/#8A5A06; pedido cancelado = × en #FBE6E1/#B23A24. Nombre 15px/700; debajo, en 13px #5A6078: tipo en negritas ("Pedido", "Venta rápida", "Pedido cancelado" en rojo) + " · " + concepto. En móvil el texto se ajusta en varias líneas, sin cortar. Importe 15.5px/800 a la derecha; negativos en rojo con "−". Se quitan las etiquetas en mayúsculas.
 
+## 4f. Ronda 12 — Comparar ventas (aprobada)
+Referencia: `docs/rediseno/referencias/R12-Comparar.html` (desktop y móvil en el mismo archivo). Aplica la escala v2.
+- Encabezado: ícono de barras en cuadro #EEF0FF/#3F4BD0 (36px, radio 12) + título de sección "Comparar ventas" (18px/800) + el subtítulo actual (13.5px #5A6078). Se quita la etiqueta azul en mayúsculas "COMPARAR VENTAS".
+- Selector Día · Semana · Mes: pista #F4F5FA, botones de 32px, el elegido en blanco con sombra suave y texto 800. Desktop: arriba a la derecha del encabezado. Móvil: a lo ancho (36px).
+- Pasos: dos casillas lado a lado. La del paso actual en #EEF0FF/#3F4BD0 con círculo numerado relleno; la otra en #F4F5FA con círculo en contorno. Texto: "Primer día / Segundo día" (o "Primera semana / Primer mes"… según el tipo, usando los textos del flujo) y debajo lo elegido o "Por elegir".
+- Pregunta (ej. "¿Qué día quieres revisar?") en 15px/800, separada por una línea #EDEFF5.
+- Opciones como pastillas de 38px (44px móvil) con contorno #E3E6EF: "Hoy 29 oct", "Ayer 28 oct" (la fecha en gris, 13px). La elegida en #E4E8FF con ✓ y la fecha en #3F4BD0.
+- "Otra fecha": pastilla con ícono de calendario que abre el selector de fecha nativo; ya no se muestra un campo con la fecha de hoy. Al elegir, la pastilla queda seleccionada con la fecha escrita ("Otra fecha 15 oct 2026").
+- "Siguiente →": botón principal azul noche #0E1328 de 36px (44px a lo ancho en móvil), abajo a la derecha.
+- Paso 2 y resultado: aplicar el mismo sistema (casillas de paso, pastillas, botón azul noche) sin cambiar su contenido.
+
+## 4g. Ronda 13 — Resumen, parte baja (aprobada)
+Referencia: `docs/rediseno/referencias/R13-Resumen-Abajo.html` (desktop y móvil). Aplica la escala v2. Mismos textos, datos y acciones; solo cambia el diseño.
+- Títulos: las 4 secciones usan título de sección 18px/800 (17 móvil) con ícono en cuadro de 36px radio 12. Se quitan las etiquetas en mayúsculas de color ("LO QUE CLEO APRENDIÓ DE TU NEGOCIO", "TU PRÓXIMO PASO").
+- Sin emojis: 📦 → bolsa, 📣 → personas, ❌ → ×, 💰 → billete (íconos de línea de CLEO).
+- De dónde llegan tus clientes: ícono personas en #EEF0FF/#3F4BD0. Subtítulo 13.5px y nota "Incluye todo tu historial…" 12px #8E94AE. "Ver clientes →" como botón secundario de contorno de 32px a la derecha del título (móvil: abajo, a lo ancho, 40px). Cada canal es una fila separada por línea #EDEFF5 (sin cajas grises): ícono del canal en cuadro #F4F5FA de 34px; nombre 15px/800 con "N clientes" al lado en 13px #6E7489; debajo "3 compraron · 3 sin comprar aún" 13px #5A6078. A la derecha (columna de 260px; en móvil debajo a lo ancho) barra de 6px #EEF0F5 con relleno #3E9A64 y "50% compraron" (porcentaje 13px/800 #1E5C38 + "compraron" #5A6078).
+- Lo que CLEO aprendió de tu negocio: ícono foco en #FBF1DC/#8A5A06. Filas separadas por línea (sin cajas): ícono de 34px en #EEF0FF/#3F4BD0 (cancelados en #FBE6E1/#B23A24), título 14px/700 y detalle 12.5px #6E7489. "Ver 1 más" como enlace 13px/700 #3F4BD0.
+- Tu próximo paso: tarjeta completa en ocre #FBF1DC. Encabezado chico con ícono de bandera "Tu próximo paso" 12.5px/800 #8A5A06 y "Lo que más impacto tendría hoy." 13px #6E4806. Debajo, ícono billete en cuadro blanco de 40px + mensaje 20px/800 #5E3D04 (18 móvil) + detalle 13.5px #6E4806. Se quita el cuadro verde interno.
+- Desktop: canales a lo ancho; debajo grid 7fr/5fr (aprendió | próximo paso) con la misma altura; debajo el reporte. Gap 16px.
+- Móvil: orden canales → tu próximo paso → lo que CLEO aprendió → reporte. Gap 12px.
+- Reporte comercial: ícono documento en #F4F5FA; botón "Generar reporte PDF" azul noche de 36px con ícono de descarga (móvil 44px a lo ancho).
+
+## 4h. Ronda 14 — Crear cuenta / Iniciar sesión (aprobada)
+Referencias: `docs/rediseno/referencias/R14-Login.html` (desktop) y `R14-Movil-Login.html` (móvil). Aplica también a Iniciar sesión y demás vistas de acceso de AuthGate, con sus campos y textos actuales.
+Cambios de texto aprobados:
+- Título del panel: "Tu negocio ya es un negocio." → "Para emprendedores como tú." ("como tú." en #A3AFFF).
+- Texto bajo el título: "Organiza lo que vendes, cobras y entregas en un solo lugar, sin complicarte." Reemplaza los dos textos anteriores ("Todo lo que pasa en él…" y "Pedidos, cotizaciones, inventario y cobros sin complicarte.").
+- Separador "o" → "o con tu correo".
+Desktop (pantalla completa, ya no tarjeta flotante):
+- Panel izquierdo de 760px (o ~53%) a toda la altura: fondo #0E1328 con degradados radiales (#24307A arriba a la derecha, #1B2560 abajo a la izquierda); se quitan los círculos decorativos. Padding 44px 64px 56px.
+- Arriba "CLEO" 15px/800, letter-spacing .14em. El título y el texto se alinean hacia abajo: título 46px/800, -0.04em, line-height 1.05; texto 17px #C9CDE0.
+- Debajo, la mini lista "A quién contactar hoy" integrada al fondo (aria-hidden, decorativa, datos de ejemplo fijos): etiqueta 11.5px/800 #C9CDE0 con sol #FFD36B y contador "3" en #A3AFFF; 3 filas con fondo rgba(255,255,255,.06), borde interior rgba(255,255,255,.07), radio 16, padding 13px 16px, separadas 8px. Filas: Roberto Cauich ("Hoy" en #FF9C85 + "habías programado retomar contacto") con pastilla "Contactar"; Carlos Ruiz ("Preguntó por Collar dorado · " + "hace 9 días" en #FFD36B) con "Contactar"; Sofía Herrera ("Saldo pendiente · Pulseras boda x6") con "$900.00" en #FFD36B y opacidad .55. Nombres 14.5px/800 blanco, detalle 13px #A9AFC6. Pastilla "Contactar": 30px, fondo rgba(141,155,255,.16), texto #C7CEFF 12px/700. No son botones reales.
+- Lado derecho blanco, formulario centrado de 380px: título 26px/800, subtítulo 14.5px #5A6078. Google: botón de contorno #E3E6EF de 44px, radio 22. Campos de 44px, radio 14, borde 1.5px #E3E6EF, ícono a la izquierda (correo / candado) y ojo a la derecha; foco con borde #8D9BFF y halo 4px #EEF0FF. Etiquetas 13px/700. "Crear cuenta →" azul noche #0E1328 lleno, 46px (antes contorno azul). Enlace "Inicia sesión" #3F4BD0/700.
+Móvil:
+- Encabezado azul (mismo degradado) a lo ancho, sin esquinas redondeadas y sin tarjetas: "CLEO" 13px, título 30px y texto 15px. Formulario debajo con padding 26px 22px: campos y botones de 48px, texto de campo 16px, "Crear cuenta" de 50px.
+No cambies la lógica de autenticación, validaciones, Google ni mensajes de error.
+
 ## 5. Fase 3 — Pedidos (y el resto de secciones)
 
 Referencias: `R5-Pedidos.html`, `R5-Movil-Pedidos.html`.

@@ -1,0 +1,75 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<title>CLEO · Crear cuenta móvil</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0;background:#ECEEF5}
+.cl{font-family:'Plus Jakarta Sans',system-ui,sans-serif;color:#0E1328;-webkit-font-smoothing:antialiased;font-variant-numeric:tabular-nums}
+.i{width:16px;height:16px;flex:none;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.dark{background:radial-gradient(90% 70% at 85% 10%, #24307A 0%, rgba(36,48,122,0) 60%), radial-gradient(70% 60% at 0% 100%, #1B2560 0%, rgba(27,37,96,0) 70%), #0E1328;color:#FFFFFF}
+.lbl{display:block;font-size:13px;font-weight:700;color:#0E1328;margin-bottom:6px}
+.inp{display:flex;align-items:center;gap:10px;height:44px;padding:0 14px;border-radius:14px;border:1.5px solid #E3E6EF;background:#FFFFFF;box-sizing:border-box;font-size:14.5px;color:#0E1328}
+.inp.ph{color:#8E94AE}
+.inp .i{color:#8E94AE}
+.inp.focus{border-color:#8D9BFF;box-shadow:0 0 0 4px #EEF0FF}
+.bG{display:flex;align-items:center;justify-content:center;gap:10px;width:100%;height:44px;border-radius:22px;border:1.5px solid #E3E6EF;background:#FFFFFF;font-family:inherit;font-size:14px;font-weight:700;color:#0E1328;cursor:pointer}
+.bP{display:flex;align-items:center;justify-content:center;gap:8px;width:100%;height:46px;border:0;border-radius:23px;background:#0E1328;color:#FFFFFF;font-family:inherit;font-size:14.5px;font-weight:700;cursor:pointer}
+.or{display:flex;align-items:center;gap:12px;font-size:12.5px;color:#8E94AE;margin:18px 0}
+.or:before,.or:after{content:"";flex:1;height:1px;background:#E3E6EF}
+/* momentos */
+.bub{max-width:250px;padding:11px 14px;border-radius:18px 18px 18px 6px;background:rgba(255,255,255,0.10);box-shadow:inset 0 0 0 1px rgba(255,255,255,0.08);font-size:14px;line-height:1.45;color:#E7E9F3}
+.bub small{display:block;margin-top:4px;font-size:11px;color:#9AA0BC}
+.mc{width:300px;padding:14px 16px;border-radius:18px;background:#FFFFFF;color:#0E1328;box-shadow:0 18px 40px rgba(5,8,25,0.35)}
+.mc .t{display:flex;align-items:center;gap:8px;font-size:11px;font-weight:800;letter-spacing:.06em}
+.mc .n{margin-top:6px;font-size:15px;font-weight:800}
+.mc .d{margin-top:2px;font-size:13px;color:#5A6078}
+.ar{display:flex;align-items:center;gap:8px;font-size:12px;font-weight:600;color:#9AA7FF;padding-left:10px}
+.ar .i{width:14px;height:14px}
+</style>
+</helmet>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+<symbol id="i-eye" viewBox="0 0 24 24"><path d="M2.5 12S6 5.5 12 5.5 21.5 12 21.5 12 18 18.5 12 18.5 2.5 12 2.5 12z"/><circle cx="12" cy="12" r="3"/></symbol>
+<symbol id="i-mail" viewBox="0 0 24 24"><rect x="3.5" y="5.5" width="17" height="13" rx="2.5"/><path d="m4 7 8 6 8-6"/></symbol>
+<symbol id="i-lock" viewBox="0 0 24 24"><rect x="5" y="10.5" width="14" height="10" rx="2.5"/><path d="M8 10.5V8a4 4 0 0 1 8 0v2.5"/></symbol>
+<symbol id="i-arrow" viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></symbol>
+<symbol id="i-down" viewBox="0 0 24 24"><path d="M12 5v14M6 13l6 6 6-6"/></symbol>
+<symbol id="i-users" viewBox="0 0 24 24"><circle cx="9" cy="8" r="3.5"/><path d="M2.5 20c.6-3.5 3.3-5.5 6.5-5.5s5.9 2 6.5 5.5M16 4.6a3.5 3.5 0 0 1 0 6.8M18 14.8c2 .8 3.2 2.6 3.5 5.2"/></symbol>
+<symbol id="i-check" viewBox="0 0 24 24"><path d="m5 12.5 4.5 4.5L19 7.5"/></symbol>
+<symbol id="i-bag" viewBox="0 0 24 24"><path d="M5 8h14l-1 13H6z"/><path d="M9 8V6a3 3 0 0 1 6 0v2"/></symbol>
+</svg>
+<div class="cl" style="width: 390px; min-height: 900px; background: #FFFFFF">
+<header class="dark" style="padding: 22px 22px 28px">
+<div style="font-size: 13px; font-weight: 800; letter-spacing: 0.14em">CLEO</div>
+<h1 style="margin: 28px 0 0; font-size: 30px; line-height: 1.08; font-weight: 800; letter-spacing: -0.04em">Para emprendedores <span style="color: #A3AFFF; white-space: nowrap">como tú.</span></h1>
+<p style="margin: 10px 0 0; font-size: 15px; line-height: 1.5; color: #C9CDE0">Organiza lo que vendes, cobras y entregas en un solo lugar, sin complicarte.</p>
+</header>
+<div style="padding: 26px 22px 32px">
+<h2 style="margin: 0; font-size: 22px; font-weight: 800; letter-spacing: -0.03em">Crea tu cuenta</h2>
+<p style="margin: 6px 0 0; font-size: 14.5px; color: #5A6078">Regístrate para empezar a organizar tu negocio.</p>
+
+<button class="bG" style="height:48px;margin-top:22px"><svg width="18" height="18" viewBox="0 0 48 48" aria-hidden="true"><path fill="#EA4335" d="M24 9.5c3.5 0 6.6 1.2 9.1 3.6l6.8-6.8C35.8 2.4 30.3 0 24 0 14.6 0 6.6 5.4 2.7 13.3l7.9 6.1C12.5 13.7 17.8 9.5 24 9.5z"/><path fill="#4285F4" d="M46.1 24.5c0-1.6-.1-3.1-.4-4.5H24v9h12.4c-.5 2.9-2.2 5.3-4.6 6.9l7.4 5.7c4.3-4 6.9-9.9 6.9-17.1z"/><path fill="#FBBC05" d="M10.6 28.6c-.5-1.4-.8-3-.8-4.6s.3-3.2.8-4.6l-7.9-6.1C1 16.6 0 20.2 0 24s1 7.4 2.7 10.7l7.9-6.1z"/><path fill="#34A853" d="M24 48c6.5 0 11.9-2.1 15.9-5.8l-7.4-5.7c-2.1 1.4-4.8 2.3-8.5 2.3-6.2 0-11.5-4.2-13.4-9.9l-7.9 6.1C6.6 42.6 14.6 48 24 48z"/></svg>Continuar con Google</button>
+
+<div class="or">o con tu correo</div>
+
+<label class="lbl">Correo</label>
+<div class="inp" style="height:48px;font-size:16px" ><svg class="i"><use href="#i-mail"></use></svg>tu@correo.com</div>
+<label class="lbl" style="margin-top: 14px">Contraseña</label>
+<div class="inp" style="height:48px;font-size:16px" ><svg class="i"><use href="#i-lock"></use></svg><span style="flex: 1; letter-spacing: 3px">••••••••</span><svg class="i"><use href="#i-eye"></use></svg></div>
+<label class="lbl" style="margin-top: 14px">Confirmar contraseña</label>
+<div class="inp" style="height:48px;font-size:16px" ><svg class="i"><use href="#i-lock"></use></svg><span style="flex: 1; letter-spacing: 3px">••••••••</span><svg class="i"><use href="#i-eye"></use></svg></div>
+
+<button class="bP" style="height:50px;border-radius:25px;margin-top:22px">Crear cuenta<svg class="i"><use href="#i-arrow"></use></svg></button>
+<p style="margin: 18px 0 0; text-align: center; font-size: 13.5px; color: #5A6078">¿Ya tienes cuenta? <a href="#" style="color: #3F4BD0; font-weight: 700; text-decoration: none">Inicia sesión</a></p>
+</div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":390,"height":900}}'>class Component extends DCLogic { renderVals() { return {}; } }</script>
+</body>
+</html>
