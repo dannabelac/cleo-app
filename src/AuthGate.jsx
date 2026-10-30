@@ -8,110 +8,120 @@ import { identificarUsuario, resetearIdentidad, registrarEvento, marcarModoDemo,
 import CLEO from "./CLEO.jsx";
 import { PRIVACY_VERSION, TERMS_VERSION, LegalModal, useDocumentoLegal } from "./LegalDocuments.jsx";
 
+// Ronda 14: mismos tokens que ya usa el resto de la app rediseñada
+// (docs/REDISENO-TU-MESA.md, sección 3) , antes AuthGate tenía su propia
+// paleta/tipografía aparte (índigo #4B5EFC, fuente de sistema).
 var C = {
-  bg: "#F7F7FB",
+  bg: "#ECEEF5",
   surface: "#FFFFFF",
-  border: "#E7E7F1",
-  text: "#15122B",
-  textMuted: "#65637A",
-  textDim: "#9C9AB0",
-  purple: "#4B5EFC",
-  purpleDeep: "#2E3AC7",
-  purpleInk: "#1A1440",
-  purplePale: "rgba(75,94,252,0.08)",
+  border: "#E3E6EF",
+  text: "#0E1328",
+  textMuted: "#5A6078",
+  textDim: "#8E94AE",
+  purple: "#3F4BD0",
+  purplePale: "#EEF0FF",
   red: "#EF4444",
   redBg: "#FEF2F2",
 };
 
 var FONT =
-  "-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif";
+  "'Plus Jakarta Sans',-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif";
 
 var st = {
   page: {
     fontFamily: FONT,
     minHeight: "100vh",
-    background: C.bg,
+    background: "#FFFFFF",
     display: "flex",
-    alignItems: "stretch",
-    justifyContent: "center",
-    padding: 24,
     boxSizing: "border-box",
   },
+  // Pantalla completa (Ronda 14) , ya no una tarjeta flotante sobre fondo
+  // tenue: sin maxWidth, radio, sombra ni margen propio.
   shell: {
     width: "100%",
-    maxWidth: 940,
-    margin: "auto",
+    minHeight: "100vh",
     display: "flex",
-    minHeight: 580,
-    borderRadius: 20,
-    overflow: "hidden",
-    boxShadow: "0 32px 80px rgba(11,16,32,0.22), 0 2px 8px rgba(11,16,32,0.08)",
-    background: C.surface,
-    flexWrap: "wrap",
   },
   brandPanel: {
-    flex: "1 1 340px",
-    background: "radial-gradient(ellipse at 15% 85%, rgba(75,94,252,0.38) 0%, transparent 52%), radial-gradient(ellipse at 85% 15%, rgba(43,59,200,0.22) 0%, transparent 48%), #0B1020",
+    flex: "0 0 760px",
+    background: "radial-gradient(90% 70% at 85% 10%, #24307A 0%, rgba(36,48,122,0) 60%), radial-gradient(70% 60% at 0% 100%, #1B2560 0%, rgba(27,37,96,0) 70%), #0E1328",
     color: "#fff",
     display: "flex",
     flexDirection: "column",
-    justifyContent: "space-between",
     position: "relative",
-    minHeight: 280,
     overflow: "hidden",
+    boxSizing: "border-box",
   },
   formPanel: {
-    flex: "1 1 380px",
+    flex: 1,
     display: "flex",
-    flexDirection: "column",
+    alignItems: "center",
     justifyContent: "center",
+    boxSizing: "border-box",
   },
-  formInner: { width: "100%", maxWidth: 340, margin: "0 auto" },
+  formInner: { width: "100%", maxWidth: 380 },
   label: {
     display: "block",
-    fontSize: 12,
-    fontWeight: 600,
-    color: C.textMuted,
-    marginBottom: 7,
-  },
-  fieldWrap: { position: "relative", marginBottom: 16 },
-  input: {
-    width: "100%",
-    padding: "12px 14px",
-    borderRadius: 12,
-    border: "1.5px solid " + C.border,
-    background: C.surface,
+    fontSize: 13,
+    fontWeight: 700,
     color: C.text,
-    fontSize: 16,
+    marginBottom: 6,
+  },
+  fieldWrap: { marginBottom: 14 },
+  // Ahora es el contenedor visual (ícono + campo) , el <input> real va
+  // dentro, sin su propio borde (ver st.inputBare).
+  input: {
+    display: "flex",
+    alignItems: "center",
+    gap: 10,
+    height: 44,
+    padding: "0 14px",
+    borderRadius: 14,
+    border: "1.5px solid " + C.border,
+    background: "#FFFFFF",
     boxSizing: "border-box",
     fontFamily: FONT,
-    outline: "none",
-    transition: "border-color 0.15s, box-shadow 0.15s",
   },
   inputFocus: {
-    borderColor: C.purple,
-    boxShadow: "0 0 0 3px " + C.purplePale,
+    borderColor: "#8D9BFF",
+    boxShadow: "0 0 0 4px " + C.purplePale,
   },
+  inputBare: {
+    flex: 1,
+    minWidth: 0,
+    border: "none",
+    outline: "none",
+    background: "transparent",
+    fontSize: 14.5,
+    color: C.text,
+    fontFamily: FONT,
+    padding: 0,
+  },
+  inputIcon: { color: C.textDim, flexShrink: 0, display: "flex" },
   btnPrimary: {
     cursor: "pointer",
     width: "100%",
-    padding: "13px",
-    borderRadius: 12,
+    height: 46,
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
+    borderRadius: 23,
     border: "none",
-    background: C.purple,
+    background: "#0E1328",
     color: "#fff",
     fontSize: 14.5,
-    fontWeight: 600,
+    fontWeight: 700,
     marginTop: 6,
+    fontFamily: FONT,
     transition: "opacity 0.15s",
-    boxShadow: "0 6px 16px rgba(75,94,252,0.28)",
   },
   toggleRow: {
     display: "flex",
     justifyContent: "center",
     gap: 6,
     marginTop: 22,
-    fontSize: 13,
+    fontSize: 13.5,
     color: C.textMuted,
   },
   btnLink: {
@@ -119,9 +129,10 @@ var st = {
     background: "none",
     border: "none",
     color: C.purple,
-    fontSize: 13,
-    fontWeight: 600,
+    fontSize: 13.5,
+    fontWeight: 700,
     padding: 0,
+    fontFamily: FONT,
   },
 };
 
@@ -254,6 +265,40 @@ function iconoOjoSvg(visible) {
           strokeWidth: 1.7,
         })
       );
+}
+
+// Íconos de línea (Ronda 14) , mismo lenguaje que el resto de la app
+// rediseñada: trazo 2, extremos redondeados, viewBox 24x24.
+function iconoCorreoSvg() {
+  return React.createElement(
+    "svg",
+    { width: 16, height: 16, viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", strokeWidth: 2, strokeLinecap: "round", strokeLinejoin: "round" },
+    React.createElement("rect", { x: 3.5, y: 5.5, width: 17, height: 13, rx: 2.5 }),
+    React.createElement("path", { d: "m4 7 8 6 8-6" })
+  );
+}
+function iconoCandadoSvg() {
+  return React.createElement(
+    "svg",
+    { width: 16, height: 16, viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", strokeWidth: 2, strokeLinecap: "round", strokeLinejoin: "round" },
+    React.createElement("rect", { x: 5, y: 10.5, width: 14, height: 10, rx: 2.5 }),
+    React.createElement("path", { d: "M8 10.5V8a4 4 0 0 1 8 0v2.5" })
+  );
+}
+function iconoFlechaSvg() {
+  return React.createElement(
+    "svg",
+    { width: 15, height: 15, viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", strokeWidth: 2.4, strokeLinecap: "round", strokeLinejoin: "round" },
+    React.createElement("path", { d: "M5 12h14M13 6l6 6-6 6" })
+  );
+}
+function iconoSolSvg() {
+  return React.createElement(
+    "svg",
+    { width: 15, height: 15, viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", strokeWidth: 2, strokeLinecap: "round", strokeLinejoin: "round" },
+    React.createElement("circle", { cx: 12, cy: 12, r: 4 }),
+    React.createElement("path", { d: "M12 2.5v2M12 19.5v2M2.5 12h2M19.5 12h2M5.3 5.3l1.4 1.4M17.3 17.3l1.4 1.4M5.3 18.7l1.4-1.4M17.3 6.7l1.4-1.4" })
+  );
 }
 
 function useFocusRing() {
@@ -1374,7 +1419,8 @@ export default function AuthGate() {
     function campoPassword(valor, onChange, verValor, onToggleVer, placeholder, autoComplete) {
       return React.createElement(
         "div",
-        { style: { position: "relative" } },
+        { style: st.input, className: "cleo-input-wrap" },
+        React.createElement("span", { style: st.inputIcon }, iconoCandadoSvg()),
         React.createElement("input", {
           type: verValor ? "text" : "password",
           autoComplete: autoComplete,
@@ -1383,7 +1429,7 @@ export default function AuthGate() {
           onChange: function (ev) {
             onChange(ev.target.value);
           },
-          style: Object.assign({}, st.input, { paddingRight: 44 }),
+          style: st.inputBare,
         }),
         React.createElement(
           "button",
@@ -1392,10 +1438,7 @@ export default function AuthGate() {
             onClick: onToggleVer,
             "aria-label": verValor ? "Ocultar contraseña" : "Mostrar contraseña",
             style: {
-              position: "absolute",
-              right: 6,
-              top: "50%",
-              transform: "translateY(-50%)",
+              flexShrink: 0,
               background: "none",
               border: "none",
               cursor: "pointer",
@@ -1403,7 +1446,7 @@ export default function AuthGate() {
               alignItems: "center",
               justifyContent: "center",
               color: C.textDim,
-              padding: 6,
+              padding: 0,
             },
           },
           iconoOjoSvg(verValor)
@@ -2239,16 +2282,24 @@ export default function AuthGate() {
     React.createElement(
       "style",
       null,
-      ".cleo-auth-brand{padding:44px 40px}" +
-        ".cleo-auth-form{padding:44px 48px}" +
-        ".cleo-btn-google:hover:not(:disabled){box-shadow:0 4px 16px rgba(11,16,32,0.15),0 1px 4px rgba(11,16,32,0.08)!important}" +
-        ".cleo-btn-email:hover:not(:disabled){background:rgba(75,94,252,0.07)!important}" +
+      ".cleo-auth-brand{padding:44px 64px 56px}" +
+        ".cleo-auth-form{padding:40px}" +
+        ".cleo-btn-google:hover:not(:disabled){box-shadow:0 4px 16px rgba(14,19,40,0.15),0 1px 4px rgba(14,19,40,0.08)!important}" +
+        ".cleo-btn-email:hover:not(:disabled){opacity:0.9!important}" +
+        ".cleo-input-wrap input{font-family:inherit}" +
         "@media(max-width:640px){" +
-        ".cleo-auth-page{padding:0!important}" +
-        ".cleo-auth-shell{border-radius:0!important;min-height:100vh!important;box-shadow:none!important}" +
-        ".cleo-auth-brand{padding:32px 24px 28px!important;min-height:0!important}" +
-        ".cleo-auth-form{padding:32px 24px 40px!important}" +
-        ".cleo-auth-greeting{font-size:30px!important}" +
+        ".cleo-auth-shell{flex-direction:column!important;min-height:100vh!important}" +
+        ".cleo-auth-brand{flex:0 0 auto!important;padding:22px 22px 28px!important}" +
+        ".cleo-auth-logo{font-size:13px!important}" +
+        ".cleo-auth-spacer{display:none!important}" +
+        ".cleo-auth-greeting{font-size:30px!important;line-height:1.08!important;margin-top:28px!important}" +
+        ".cleo-auth-sub{font-size:15px!important}" +
+        ".cleo-auth-momentos{display:none!important}" +
+        ".cleo-auth-form{flex:none!important;padding:26px 22px 32px!important;justify-content:flex-start!important}" +
+        ".cleo-input-wrap{height:48px!important}" +
+        ".cleo-input-wrap input{font-size:16px!important}" +
+        ".cleo-btn-google{height:48px!important}" +
+        ".cleo-btn-email{height:50px!important;border-radius:25px!important}" +
         "}"
     ),
     React.createElement(
@@ -2259,80 +2310,88 @@ export default function AuthGate() {
         "div",
         { style: st.brandPanel, className: "cleo-auth-brand" },
         React.createElement(
-          "svg",
+          "div",
+          { className: "cleo-auth-logo", style: { fontSize: 15, fontWeight: 800, letterSpacing: "0.14em" } },
+          "CLEO"
+        ),
+        React.createElement("div", { className: "cleo-auth-spacer", style: { flex: 1, minHeight: 40 } }),
+        React.createElement(
+          "h1",
           {
-            "aria-hidden": "true",
-            style: { position: "absolute", bottom: -60, right: -60, opacity: 0.08, pointerEvents: "none" },
-            width: 340, height: 340, viewBox: "0 0 340 340", fill: "none",
+            className: "cleo-auth-greeting",
+            style: {
+              margin: 0,
+              fontFamily: FONT,
+              fontSize: 46,
+              fontWeight: 800,
+              lineHeight: 1.05,
+              letterSpacing: "-0.04em",
+              maxWidth: 560,
+            },
           },
-          React.createElement("circle", { cx: 170, cy: 170, r: 160, stroke: "#4B5EFC", strokeWidth: 1.5 }),
-          React.createElement("circle", { cx: 170, cy: 170, r: 120, stroke: "#4B5EFC", strokeWidth: 1 }),
-          React.createElement("circle", { cx: 170, cy: 170, r: 80, stroke: "#4B5EFC", strokeWidth: 0.75 })
+          "Para emprendedores ",
+          React.createElement("span", { style: { color: "#A3AFFF", whiteSpace: "nowrap" } }, "como tú.")
         ),
         React.createElement(
-          "div",
-          { style: { position: "relative", zIndex: 1, marginBottom: 28 } },
-          React.createElement(
-            "div",
-            { style: { fontSize: 13, fontWeight: 700, color: "rgba(255,255,255,0.9)", letterSpacing: "2px", textTransform: "uppercase" } },
-            "CLEO"
-          )
+          "p",
+          { className: "cleo-auth-sub", style: { margin: "16px 0 0", fontSize: 17, lineHeight: 1.55, color: "#C9CDE0", maxWidth: 470 } },
+          "Organiza lo que vendes, cobras y entregas en un solo lugar, sin complicarte."
         ),
+
+        // Decorativa (aria-hidden, datos de ejemplo fijos, sin botones
+        // reales) — se oculta en móvil, igual que la referencia.
         React.createElement(
           "div",
-          { style: { position: "relative", zIndex: 1 } },
-          // Bloque editorial: título en sans-serif grande/grueso (FONT, la
-          // misma familia que ya usa el resto de AuthGate , antes usaba
-          // 'Caveat' cursiva, un estilo de firma manuscrita que ya no
-          // aplica aquí) + párrafo + cierre resaltado en negritas. Mismo
-          // fondo/logo/estructura del panel , solo cambia el contenido y la
-          // tipografía del título. maxWidth:340 (antes 300) para que las
-          // oraciones nuevas, más largas, no fuercen quiebres de línea
-          // extraños en pantallas angostas , la media query de abajo
-          // (.cleo-auth-greeting) sigue reduciendo el tamaño del título en
-          // móvil, responsivo igual que antes.
+          { className: "cleo-auth-momentos", "aria-hidden": "true", style: { marginTop: 44, maxWidth: 520, position: "relative" } },
           React.createElement(
             "div",
-            {
-              className: "cleo-auth-greeting",
-              style: {
-                fontFamily: FONT,
-                fontSize: 38,
-                fontWeight: 700,
-                color: "#fff",
-                lineHeight: 1.15,
-                letterSpacing: "-0.3px",
-                marginBottom: 18,
-                maxWidth: 320,
-              },
-            },
-            "Tu negocio ya es un negocio."
+            { style: { display: "flex", alignItems: "center", gap: 8, fontSize: 11.5, fontWeight: 800, letterSpacing: "0.08em", color: "#C9CDE0", marginBottom: 12 } },
+            React.createElement("span", { style: { color: "#FFD36B", display: "flex" } }, iconoSolSvg()),
+            "A QUIÉN CONTACTAR HOY ",
+            React.createElement("span", { style: { color: "#A3AFFF" } }, "3")
           ),
           React.createElement(
             "div",
-            {
-              style: {
-                fontSize: 15,
-                lineHeight: 1.6,
-                color: "rgba(255,255,255,0.78)",
-                maxWidth: 300,
-                marginBottom: 20,
-              },
-            },
-            "Todo lo que pasa en él, organizado en un lugar que sí se siente hecho para ti."
+            { style: { display: "flex", alignItems: "center", gap: 14, padding: "13px 16px", marginBottom: 8, borderRadius: 16, background: "rgba(255,255,255,0.06)", boxShadow: "inset 0 0 0 1px rgba(255,255,255,0.07)" } },
+            React.createElement(
+              "div",
+              { style: { minWidth: 0, flex: 1 } },
+              React.createElement("div", { style: { fontSize: 14.5, fontWeight: 800, color: "#FFFFFF" } }, "Roberto Cauich"),
+              React.createElement(
+                "div",
+                { style: { marginTop: 2, fontSize: 13, color: "#A9AFC6", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" } },
+                React.createElement("span", { style: { color: "#FF9C85", fontWeight: 700 } }, "Hoy"),
+                " habías programado retomar contacto"
+              )
+            ),
+            React.createElement("span", { style: { flexShrink: 0, height: 30, padding: "0 14px", borderRadius: 15, background: "rgba(141,155,255,0.16)", color: "#C7CEFF", fontSize: 12, fontWeight: 700, display: "inline-flex", alignItems: "center" } }, "Contactar")
           ),
           React.createElement(
             "div",
-            {
-              style: {
-                fontSize: 12.5,
-                color: "rgba(255,255,255,0.42)",
-                lineHeight: 1.6,
-                letterSpacing: "0.01em",
-                maxWidth: 280,
-              },
-            },
-            "Pedidos, cotizaciones, inventario y cobros sin complicarte."
+            { style: { display: "flex", alignItems: "center", gap: 14, padding: "13px 16px", marginBottom: 8, borderRadius: 16, background: "rgba(255,255,255,0.06)", boxShadow: "inset 0 0 0 1px rgba(255,255,255,0.07)" } },
+            React.createElement(
+              "div",
+              { style: { minWidth: 0, flex: 1 } },
+              React.createElement("div", { style: { fontSize: 14.5, fontWeight: 800, color: "#FFFFFF" } }, "Carlos Ruiz"),
+              React.createElement(
+                "div",
+                { style: { marginTop: 2, fontSize: 13, color: "#A9AFC6", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" } },
+                "Preguntó por Collar dorado · ",
+                React.createElement("span", { style: { color: "#FFD36B", fontWeight: 700 } }, "hace 9 días")
+              )
+            ),
+            React.createElement("span", { style: { flexShrink: 0, height: 30, padding: "0 14px", borderRadius: 15, background: "rgba(141,155,255,0.16)", color: "#C7CEFF", fontSize: 12, fontWeight: 700, display: "inline-flex", alignItems: "center" } }, "Contactar")
+          ),
+          React.createElement(
+            "div",
+            { style: { display: "flex", alignItems: "center", gap: 14, padding: "13px 16px", borderRadius: 16, background: "rgba(255,255,255,0.06)", boxShadow: "inset 0 0 0 1px rgba(255,255,255,0.07)", opacity: 0.55 } },
+            React.createElement(
+              "div",
+              { style: { minWidth: 0, flex: 1 } },
+              React.createElement("div", { style: { fontSize: 14.5, fontWeight: 800, color: "#FFFFFF" } }, "Sofía Herrera"),
+              React.createElement("div", { style: { marginTop: 2, fontSize: 13, color: "#A9AFC6", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" } }, "Saldo pendiente · Pulseras boda x6")
+            ),
+            React.createElement("span", { style: { flexShrink: 0, fontSize: 15, fontWeight: 800, color: "#FFD36B" } }, "$900.00")
           )
         )
       ),
@@ -2349,12 +2408,12 @@ export default function AuthGate() {
                 null,
                 React.createElement(
                   "div",
-                  { style: { fontSize: 23, fontWeight: 700, color: C.text, marginBottom: 6 } },
+                  { style: { fontSize: 26, fontWeight: 800, letterSpacing: "-0.03em", color: C.text, marginBottom: 6 } },
                   "Recupera tu contraseña"
                 ),
                 React.createElement(
                   "div",
-                  { style: { fontSize: 13.5, color: C.textMuted, marginBottom: 28, lineHeight: 1.5 } },
+                  { style: { fontSize: 14.5, color: C.textMuted, marginBottom: 28, lineHeight: 1.5 } },
                   "Escribe el correo con el que creaste tu cuenta. Te enviaremos un enlace para elegir una contraseña nueva."
                 ),
                 React.createElement(
@@ -2365,19 +2424,24 @@ export default function AuthGate() {
                     { style: st.fieldWrap },
                     React.createElement("label", { style: st.label }, "Correo"),
                     React.createElement(
-                      "input",
-                      Object.assign(
-                        {
-                          type: "email",
-                          autoComplete: "email",
-                          placeholder: "tu@correo.com",
-                          value: emailRecuperacion,
-                          onChange: function (ev) {
-                            setEmailRecuperacion(ev.target.value);
+                      "div",
+                      { style: ring.styleFor("emailRecuperacion"), className: "cleo-input-wrap" },
+                      React.createElement("span", { style: st.inputIcon }, iconoCorreoSvg()),
+                      React.createElement(
+                        "input",
+                        Object.assign(
+                          {
+                            type: "email",
+                            autoComplete: "email",
+                            placeholder: "tu@correo.com",
+                            value: emailRecuperacion,
+                            onChange: function (ev) {
+                              setEmailRecuperacion(ev.target.value);
+                            },
+                            style: st.inputBare,
                           },
-                          style: ring.styleFor("emailRecuperacion"),
-                        },
-                        ring.bind("emailRecuperacion")
+                          ring.bind("emailRecuperacion")
+                        )
                       )
                     )
                   ),
@@ -2428,17 +2492,22 @@ export default function AuthGate() {
                 null,
                 React.createElement(
                   "div",
-                  { style: { fontSize: 40, marginBottom: 14 } },
-                  "📩"
+                  {
+                    style: {
+                      width: 44, height: 44, marginBottom: 16, borderRadius: 14,
+                      background: C.purplePale, color: C.purple, display: "grid", placeItems: "center",
+                    },
+                  },
+                  React.createElement("span", { style: { display: "flex" } }, iconoCorreoSvg())
                 ),
                 React.createElement(
                   "div",
-                  { style: { fontSize: 23, fontWeight: 700, color: C.text, marginBottom: 6 } },
+                  { style: { fontSize: 26, fontWeight: 800, letterSpacing: "-0.03em", color: C.text, marginBottom: 6 } },
                   "Revisa tu correo"
                 ),
                 React.createElement(
                   "div",
-                  { style: { fontSize: 13.5, color: C.textMuted, marginBottom: 10, lineHeight: 1.5 } },
+                  { style: { fontSize: 14.5, color: C.textMuted, marginBottom: 10, lineHeight: 1.5 } },
                   "Te enviamos un enlace para confirmar tu cuenta de CLEO. Abre el correo y selecciona \u201CConfirmar mi cuenta\u201D para continuar."
                 ),
                 correoRegistro &&
@@ -2514,8 +2583,9 @@ export default function AuthGate() {
             "div",
             {
               style: {
-                fontSize: 23,
-                fontWeight: 700,
+                fontSize: 26,
+                fontWeight: 800,
+                letterSpacing: "-0.03em",
                 color: C.text,
                 marginBottom: 6,
               },
@@ -2526,7 +2596,7 @@ export default function AuthGate() {
             "div",
             {
               style: {
-                fontSize: 13.5,
+                fontSize: 14.5,
                 color: C.textMuted,
                 marginBottom: 28,
               },
@@ -2546,20 +2616,21 @@ export default function AuthGate() {
               onClick: iniciarConGoogle,
               style: {
                 width: "100%",
+                height: 44,
+                boxSizing: "border-box",
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "center",
                 gap: 10,
-                padding: "14px",
-                borderRadius: 12,
+                borderRadius: 22,
                 border: "1.5px solid " + C.border,
                 background: "#fff",
-                color: "#1F2937",
-                fontSize: 14.5,
+                color: C.text,
+                fontFamily: FONT,
+                fontSize: 14,
                 fontWeight: 700,
                 cursor: iniciandoGoogle ? "default" : "pointer",
                 opacity: iniciandoGoogle ? 0.65 : 1,
-                boxShadow: "0 2px 8px rgba(11,16,32,0.10), 0 1px 2px rgba(11,16,32,0.06)",
                 transition: "box-shadow 0.15s, opacity 0.15s",
               },
             },
@@ -2569,9 +2640,9 @@ export default function AuthGate() {
 
           React.createElement(
             "div",
-            { style: { display: "flex", alignItems: "center", gap: 10, margin: "18px 0" } },
+            { style: { display: "flex", alignItems: "center", gap: 12, margin: "18px 0", fontSize: 12.5, color: C.textDim } },
             React.createElement("div", { style: { flex: 1, height: 1, background: C.border } }),
-            React.createElement("span", { style: { fontSize: 12, color: C.textDim } }, "o"),
+            "o con tu correo",
             React.createElement("div", { style: { flex: 1, height: 1, background: C.border } })
           ),
 
@@ -2584,19 +2655,24 @@ export default function AuthGate() {
               { style: st.fieldWrap },
               React.createElement("label", { style: st.label }, "Correo"),
               React.createElement(
-                "input",
-                Object.assign(
-                  {
-                    type: "email",
-                    autoComplete: "email",
-                    placeholder: "tu@correo.com",
-                    value: email,
-                    onChange: function (ev) {
-                      setEmail(ev.target.value);
+                "div",
+                { style: ring.styleFor("email"), className: "cleo-input-wrap" },
+                React.createElement("span", { style: st.inputIcon }, iconoCorreoSvg()),
+                React.createElement(
+                  "input",
+                  Object.assign(
+                    {
+                      type: "email",
+                      autoComplete: "email",
+                      placeholder: "tu@correo.com",
+                      value: email,
+                      onChange: function (ev) {
+                        setEmail(ev.target.value);
+                      },
+                      style: st.inputBare,
                     },
-                    style: ring.styleFor("email"),
-                  },
-                  ring.bind("email")
+                    ring.bind("email")
+                  )
                 )
               )
             ),
@@ -2607,7 +2683,8 @@ export default function AuthGate() {
               React.createElement("label", { style: st.label }, "Contraseña"),
               React.createElement(
                 "div",
-                { style: { position: "relative" } },
+                { style: ring.styleFor("password"), className: "cleo-input-wrap" },
+                React.createElement("span", { style: st.inputIcon }, iconoCandadoSvg()),
                 React.createElement(
                   "input",
                   Object.assign(
@@ -2622,9 +2699,7 @@ export default function AuthGate() {
                       onChange: function (ev) {
                         setPassword(ev.target.value);
                       },
-                      style: Object.assign({}, ring.styleFor("password"), {
-                        paddingRight: 44,
-                      }),
+                      style: Object.assign({}, st.inputBare, { letterSpacing: password ? 3 : 0 }),
                     },
                     ring.bind("password")
                   )
@@ -2640,10 +2715,7 @@ export default function AuthGate() {
                       ? "Ocultar contraseña"
                       : "Mostrar contraseña",
                     style: {
-                      position: "absolute",
-                      right: 6,
-                      top: "50%",
-                      transform: "translateY(-50%)",
+                      flexShrink: 0,
                       background: "none",
                       border: "none",
                       cursor: "pointer",
@@ -2651,49 +2723,10 @@ export default function AuthGate() {
                       alignItems: "center",
                       justifyContent: "center",
                       color: C.textDim,
-                      padding: 6,
+                      padding: 0,
                     },
                   },
-                  verPassword
-                    ? React.createElement(
-                        "svg",
-                        {
-                          width: 18,
-                          height: 18,
-                          viewBox: "0 0 24 24",
-                          fill: "none",
-                        },
-                        React.createElement("path", {
-                          d: "M3 3l18 18M10.58 10.58a2 2 0 002.83 2.83M9.88 4.24A9.77 9.77 0 0112 4c5 0 9 4 10 8-.31 1.2-.89 2.36-1.68 3.38M6.61 6.61C4.6 8 3.13 9.9 2 12c1 4 5 8 10 8 1.4 0 2.73-.28 3.94-.79",
-                          stroke: "currentColor",
-                          strokeWidth: 1.7,
-                          strokeLinecap: "round",
-                          strokeLinejoin: "round",
-                        })
-                      )
-                    : React.createElement(
-                        "svg",
-                        {
-                          width: 18,
-                          height: 18,
-                          viewBox: "0 0 24 24",
-                          fill: "none",
-                        },
-                        React.createElement("path", {
-                          d: "M2 12c1-4 5-8 10-8s9 4 10 8c-1 4-5 8-10 8s-9-4-10-8z",
-                          stroke: "currentColor",
-                          strokeWidth: 1.7,
-                          strokeLinecap: "round",
-                          strokeLinejoin: "round",
-                        }),
-                        React.createElement("circle", {
-                          cx: 12,
-                          cy: 12,
-                          r: 3,
-                          stroke: "currentColor",
-                          strokeWidth: 1.7,
-                        })
-                      )
+                  iconoOjoSvg(verPassword)
                 )
               )
             ),
@@ -2705,7 +2738,8 @@ export default function AuthGate() {
                 React.createElement("label", { style: st.label }, "Confirmar contraseña"),
                 React.createElement(
                   "div",
-                  { style: { position: "relative" } },
+                  { style: st.input, className: "cleo-input-wrap" },
+                  React.createElement("span", { style: st.inputIcon }, iconoCandadoSvg()),
                   React.createElement("input", {
                     type: verConfirmarPasswordRegistro ? "text" : "password",
                     autoComplete: "new-password",
@@ -2714,7 +2748,7 @@ export default function AuthGate() {
                     onChange: function (ev) {
                       setConfirmarPasswordRegistro(ev.target.value);
                     },
-                    style: Object.assign({}, st.input, { paddingRight: 44 }),
+                    style: st.inputBare,
                   }),
                   React.createElement(
                     "button",
@@ -2725,10 +2759,7 @@ export default function AuthGate() {
                       },
                       "aria-label": verConfirmarPasswordRegistro ? "Ocultar contraseña" : "Mostrar contraseña",
                       style: {
-                        position: "absolute",
-                        right: 6,
-                        top: "50%",
-                        transform: "translateY(-50%)",
+                        flexShrink: 0,
                         background: "none",
                         border: "none",
                         cursor: "pointer",
@@ -2736,7 +2767,7 @@ export default function AuthGate() {
                         alignItems: "center",
                         justifyContent: "center",
                         color: C.textDim,
-                        padding: 6,
+                        padding: 0,
                       },
                     },
                     iconoOjoSvg(verConfirmarPasswordRegistro)
@@ -2811,18 +2842,14 @@ export default function AuthGate() {
                 className: "cleo-btn-email",
                 style: Object.assign({}, st.btnPrimary, {
                   opacity: cargandoForm ? 0.65 : 1,
-                  background: "transparent",
-                  border: "1.5px solid " + C.purple,
-                  color: C.purple,
-                  boxShadow: "none",
-                  transition: "opacity 0.15s, background 0.15s",
                 }),
               },
               cargandoForm
                 ? "Un momento…"
                 : modo === "login"
                 ? "Entrar"
-                : "Crear cuenta"
+                : "Crear cuenta",
+              !cargandoForm && iconoFlechaSvg()
             )
           ),
 
