@@ -4883,6 +4883,9 @@ export default function CLEO(props){
   var sEvtGastoEditId=useState(null); var evtGastoEditId=sEvtGastoEditId[0]; var setEvtGastoEditId=sEvtGastoEditId[1];
   var sEvtGastoDelId=useState(null); var evtGastoDelId=sEvtGastoDelId[0]; var setEvtGastoDelId=sEvtGastoDelId[1];
   var sEvtDiasExp=useState({}); var evtDiasExp=sEvtDiasExp[0]; var setEvtDiasExp=sEvtDiasExp[1];
+  // Por evento: si está oculto el monto de "Llevas cobrados" , para que el
+  // emprendedor pueda taparlo si alguien está viendo su pantalla en el evento.
+  var sEvtCobradoOculto=useState({}); var evtCobradoOculto=sEvtCobradoOculto[0]; var setEvtCobradoOculto=sEvtCobradoOculto[1];
   var sEvtAnularId=useState(null); var evtAnularId=sEvtAnularId[0]; var setEvtAnularId=sEvtAnularId[1];
   var sEvtAnularDecision=useState(null); var evtAnularDecision=sEvtAnularDecision[0]; var setEvtAnularDecision=sEvtAnularDecision[1];
   // ── Costos state
@@ -15116,7 +15119,7 @@ export default function CLEO(props){
                     onClick:function(){ setEvtTerminarConfirmId(null); }},"← Volver"),
                   e("div",{style:{borderRadius:12,border:"1px solid rgba(239,68,68,0.3)",background:"rgba(239,68,68,0.04)",padding:"16px"}},
                     e("div",{style:{fontSize:15,fontWeight:700,color:C.text,marginBottom:6}},"¿Cerrar este evento?"),
-                    e("div",{style:{fontSize:13,color:C.textMuted,lineHeight:1.6,marginBottom:16}},"Vas a cerrar \""+evActual.nombre+"\". Después no podrás registrar más ventas rápidas en él."),
+                    e("div",{style:{fontSize:13,color:C.textMuted,lineHeight:1.6,marginBottom:16}},"Vas a cerrar \""+evActual.nombre+"\". Podrás seguir registrando ventas que se te hayan pasado, pero ya no podrás agregar productos nuevos a la lista."),
                     e("div",{style:{display:"flex",gap:8}},
                       e("button",{type:"button",style:{cursor:"pointer",padding:"10px 16px",borderRadius:10,border:"1px solid "+C.border,background:C.surface,fontSize:13,color:C.textMuted,fontWeight:500,flex:1,minHeight:44},
                         onClick:function(){ setEvtTerminarConfirmId(null); }},"Cancelar"),
@@ -15151,7 +15154,7 @@ export default function CLEO(props){
                       return e("div",{key:ep.catalogoId||idx,style:{display:"grid",gridTemplateColumns:"1fr 70px 90px",padding:"8px 12px",borderBottom:idx<(evActual.productos||[]).length-1?"1px solid "+C.border:"none",alignItems:"center",background:C.surface}},
                         e("div",null,
                           e("div",{style:{fontSize:13}},ep.nombre),
-                          !ep.tieneInventario&&e("div",{style:{fontSize:sc.textLabel,color:C.textDim}},"solo registro")
+                          !ep.tieneInventario&&e("div",{style:{fontSize:sc.textLabel,color:C.textDim}},"no descuenta tu inventario")
                         ),
                         e("span",{style:{fontSize:13,textAlign:"center",color:C.textMuted}},esperadas),
                         e("div",{style:{display:"flex",flexDirection:"column",alignItems:"center",gap:2}},
@@ -15237,15 +15240,31 @@ export default function CLEO(props){
                   ),
                   e("span",{style:{fontSize:sc.textLabel,fontWeight:700,padding:"3px 10px",borderRadius:20,background:evActual.estado==="abierto"?C_TEAL_PALE:C.surfaceUp,color:evActual.estado==="abierto"?C_TEAL:C.textDim,border:"1px solid "+(evActual.estado==="abierto"?C_TEAL_BORDER:C.border)}},evActual.estado.toUpperCase())
                 ),
-                e("div",{style:{marginBottom:14,padding:"12px 16px",borderRadius:12,background:"rgba(13,148,136,0.07)",border:"1px solid rgba(13,148,136,0.2)"}},
-                  e("div",{style:{fontSize:12,fontWeight:700,textTransform:"uppercase",letterSpacing:"0.5px",color:"#0D9488",marginBottom:2}},"Llevas cobrados"),
-                  e("div",{style:{fontSize:26,fontWeight:800,fontVariantNumeric:"tabular-nums",color:"#0D9488",marginBottom:Object.keys(desglosePagoEv).length>0?8:0}},"$"+formatoDinero(cobradoEvento)),
-                  Object.keys(desglosePagoEv).length>0&&e("div",{style:{display:"flex",gap:6,flexWrap:"wrap"}},
-                    [{v:"efectivo",l:"💵 Efectivo",c:"#10B981"},{v:"transferencia",l:"📲 Transferencia",c:"#3B82F6"},{v:"tarjeta",l:"💳 Tarjeta",c:"#D97706"}].filter(function(op){ return desglosePagoEv[op.v]>0; }).map(function(op){
-                      return e("span",{key:op.v,style:{fontSize:11,fontWeight:600,padding:"2px 9px",borderRadius:20,background:op.c+"15",color:op.c,border:"1px solid "+op.c+"35"}},op.l+" $"+formatoDinero(desglosePagoEv[op.v]));
-                    })
-                  )
-                ),
+                (function(){
+                  var cobradoOculto=!!evtCobradoOculto[evActual.id];
+                  function toggleCobradoOculto(){ setEvtCobradoOculto(function(prev){ var n=Object.assign({},prev); n[evActual.id]=!cobradoOculto; return n; }); }
+                  return e("div",{style:{marginBottom:14,padding:"12px 16px",borderRadius:12,background:"rgba(13,148,136,0.07)",border:"1px solid rgba(13,148,136,0.2)"}},
+                    e("div",{style:{display:"flex",alignItems:"center",justifyContent:"space-between",gap:8}},
+                      e("div",{style:{fontSize:12,fontWeight:700,textTransform:"uppercase",letterSpacing:"0.5px",color:"#0D9488"}},"Llevas cobrados"),
+                      e("button",{type:"button","aria-label":cobradoOculto?"Mostrar monto":"Ocultar monto",onClick:toggleCobradoOculto,
+                        style:{cursor:"pointer",background:"none",border:"none",padding:4,display:"flex",alignItems:"center",color:"#0D9488"}},
+                        e("svg",{width:16,height:16,viewBox:"0 0 16 16",fill:"none",stroke:"currentColor",strokeWidth:"2",strokeLinecap:"round",strokeLinejoin:"round",style:{transition:"transform 0.15s",transform:cobradoOculto?"rotate(-90deg)":"rotate(0deg)"}},
+                          e("polyline",{points:"4,6 8,10 12,6"})
+                        )
+                      )
+                    ),
+                    cobradoOculto
+                      ? e("div",{style:{fontSize:26,fontWeight:800,color:"#0D9488",letterSpacing:"2px",marginTop:2}},"• • • • • •")
+                      : e("div",{style:{marginTop:2}},
+                          e("div",{style:{fontSize:26,fontWeight:800,fontVariantNumeric:"tabular-nums",color:"#0D9488",marginBottom:Object.keys(desglosePagoEv).length>0?8:0}},"$"+formatoDinero(cobradoEvento)),
+                          Object.keys(desglosePagoEv).length>0&&e("div",{style:{display:"flex",gap:6,flexWrap:"wrap"}},
+                            [{v:"efectivo",l:"💵 Efectivo",c:"#10B981"},{v:"transferencia",l:"📲 Transferencia",c:"#3B82F6"},{v:"tarjeta",l:"💳 Tarjeta",c:"#D97706"}].filter(function(op){ return desglosePagoEv[op.v]>0; }).map(function(op){
+                              return e("span",{key:op.v,style:{fontSize:11,fontWeight:600,padding:"2px 9px",borderRadius:20,background:op.c+"15",color:op.c,border:"1px solid "+op.c+"35"}},op.l+" $"+formatoDinero(desglosePagoEv[op.v]));
+                            })
+                          )
+                        )
+                  );
+                })(),
                 e("div",{style:{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:1,background:C.border,borderRadius:12,overflow:"hidden",marginBottom:14}},
                   [{v:totalLl,l:"Llevaste",c:null},{v:totalVd,l:"Vendidas",c:C.green},{v:evActual.estado==="abierto"?totalEsp:totalRegReal,l:evActual.estado==="abierto"?"En el evento":"Regresaron",c:evActual.estado==="abierto"?C.amber:C.textMuted}].map(function(s){
                     return e("div",{key:s.l,style:{background:C.surface,textAlign:"center",padding:"10px 8px"}},
@@ -15263,7 +15282,7 @@ export default function CLEO(props){
                     return e("div",{key:ep.catalogoId||idx,style:{display:"grid",gridTemplateColumns:"1fr 56px 68px 60px",padding:"8px 12px",borderBottom:idx<(evActual.productos||[]).length-1?"1px solid "+C.border:"none",alignItems:"center",background:C.surface}},
                       e("div",null,
                         e("div",{style:{fontSize:13,fontWeight:500}},ep.nombre),
-                        !ep.tieneInventario&&e("span",{style:{fontSize:sc.textLabel,color:C.textDim}},"solo registro")
+                        !ep.tieneInventario&&e("span",{style:{fontSize:sc.textLabel,color:C.textDim}},"no descuenta tu inventario")
                       ),
                       e("span",{style:{fontSize:13,textAlign:"center",color:C.textMuted}},ep.cantidadLlevada||0),
                       e("span",{style:{fontSize:13,fontWeight:600,textAlign:"center",color:C.green}},ep.cantidadVendida||0),
@@ -21682,11 +21701,7 @@ export default function CLEO(props){
                           (sv.nombre||"?").charAt(0).toUpperCase()
                         ),
                         e("div",{style:{flex:1,minWidth:0}},
-                          e("div",{style:{fontWeight:600,fontSize:13,color:abierto?C.purple:C.text,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}},sv.nombre),
-                          (sv.descripcion||sv.condiciones)&&e("div",{style:{display:"flex",gap:4,marginTop:3}},
-                            sv.descripcion&&e("span",{style:{fontSize:sc.textLabel,color:C.textDim,background:C.surfaceUp,border:"1px solid "+C.border,borderRadius:4,padding:"0 5px",lineHeight:"16px"}},"desc"),
-                            sv.condiciones&&e("span",{style:{fontSize:sc.textLabel,color:C.textDim,background:C.surfaceUp,border:"1px solid "+C.border,borderRadius:4,padding:"0 5px",lineHeight:"16px"}},"cond")
-                          )
+                          e("div",{style:{fontWeight:600,fontSize:13,color:abierto?C.purple:C.text,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}},sv.nombre)
                         ),
                         e("div",{style:{fontWeight:700,fontSize:13,color:abierto?C.purple:C.textMuted,flexShrink:0,marginRight:6}},
                           "$"+formatoDinero(Number(sv.precio))
