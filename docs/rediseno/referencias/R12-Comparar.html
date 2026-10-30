@@ -1,0 +1,116 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<title>CLEO · Comparar ventas</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0;background:#ECEEF5}
+.cl{font-family:'Plus Jakarta Sans',system-ui,sans-serif;color:#0E1328;font-size:14px;-webkit-font-smoothing:antialiased;font-variant-numeric:tabular-nums}
+.i{width:16px;height:16px;flex:none;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.cap{font-size:11px;font-weight:800;letter-spacing:.08em;color:#6E7489;margin-bottom:10px}
+.card{background:#FFFFFF;border-radius:20px;box-sizing:border-box}
+.h2{margin:0;font-size:18px;font-weight:800;letter-spacing:-0.02em}
+.sub{margin:4px 0 0;font-size:13.5px;line-height:1.5;color:#5A6078}
+.seg{display:inline-flex;gap:2px;padding:3px;border-radius:19px;background:#F4F5FA}
+.seg button{height:32px;padding:0 16px;border:0;border-radius:16px;background:transparent;font-family:inherit;font-size:13px;font-weight:600;color:#4A5068;cursor:pointer}
+.seg button.on{background:#FFFFFF;color:#0E1328;font-weight:800;box-shadow:0 1px 2px rgba(14,19,40,.08)}
+.steps{display:flex;gap:8px}
+.st{flex:1;display:flex;align-items:center;gap:10px;padding:10px 14px;border-radius:14px;background:#F4F5FA;color:#6E7489;font-size:12.5px;font-weight:600;min-width:0}
+.st b{display:block;font-size:13.5px;font-weight:800;color:inherit;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.st .n{width:22px;height:22px;flex:none;border-radius:50%;display:grid;place-items:center;font-size:11.5px;font-weight:800;background:#FFFFFF;color:#6E7489;box-shadow:inset 0 0 0 1.5px #D5D8E4}
+.st.on{background:#EEF0FF;color:#3F4BD0}
+.st.on .n{background:#3F4BD0;color:#FFFFFF;box-shadow:none}
+.q{margin:0;font-size:15px;font-weight:800;letter-spacing:-0.01em}
+.opts{display:flex;flex-wrap:wrap;gap:8px}
+.op{display:inline-flex;align-items:center;gap:8px;height:38px;padding:0 16px;border-radius:19px;border:1.5px solid #E3E6EF;background:#FFFFFF;font-family:inherit;font-size:13.5px;font-weight:600;color:#0E1328;cursor:pointer;white-space:nowrap}
+.op small{font-size:13px;font-weight:500;color:#6E7489}
+.op.on{background:#E4E8FF;border-color:#E4E8FF;font-weight:800}
+.op.on small{color:#3F4BD0;font-weight:700}
+.op .i{width:15px;height:15px}
+.bp{display:inline-flex;align-items:center;gap:8px;height:36px;padding:0 18px;border:0;border-radius:18px;background:#0E1328;color:#FFFFFF;font-family:inherit;font-size:13px;font-weight:700;cursor:pointer}
+.bp .i{width:15px;height:15px;stroke-width:2.4}
+</style>
+</helmet>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+<symbol id="i-check" viewBox="0 0 24 24"><path d="m5 12.5 4.5 4.5L19 7.5"/></symbol>
+<symbol id="i-cal" viewBox="0 0 24 24"><rect x="4" y="5" width="16" height="15" rx="2"/><path d="M4 10h16M9 3v4M15 3v4"/></symbol>
+<symbol id="i-arrow" viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></symbol>
+<symbol id="i-cmp" viewBox="0 0 24 24"><path d="M6 20V10M12 20V4M18 20v-7"/></symbol>
+</svg>
+<div class="cl" style="width: 1440px; min-height: 900px; background: #ECEEF5; padding: 48px 64px; box-sizing: border-box; display: flex; gap: 64px; align-items: flex-start">
+
+<div style="flex: 1; min-width: 0; max-width: 820px">
+<div class="cap">DESKTOP · DENTRO DE RESUMEN</div>
+<section class="card" aria-labelledby="cmp" style="padding: 22px 24px 24px">
+<div style="display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; flex-wrap: wrap">
+<div style="display: flex; gap: 12px; align-items: flex-start; min-width: 0">
+<span style="width: 36px; height: 36px; flex: none; border-radius: 12px; background: #EEF0FF; color: #3F4BD0; display: grid; place-items: center"><svg class="i" style="width: 18px; height: 18px"><use href="#i-cmp"></use></svg></span>
+<div style="min-width: 0"><h2 id="cmp" class="h2">Comparar ventas</h2><p class="sub">Elige 2 períodos y te digo cuál vendiste más, qué vendiste y a qué hora.</p></div>
+</div>
+<div class="seg" role="tablist" aria-label="Tipo de período"><button class="on" role="tab" aria-selected="true">Día</button><button role="tab">Semana</button><button role="tab">Mes</button></div>
+</div>
+
+<div class="steps" style="margin-top: 20px">
+<div class="st on"><span class="n">1</span><div style="min-width: 0">Primer día<b>Hoy · 29 oct</b></div></div>
+<div class="st"><span class="n">2</span><div style="min-width: 0">Segundo día<b>Por elegir</b></div></div>
+</div>
+
+<div style="margin-top: 20px; padding-top: 20px; border-top: 1px solid #EDEFF5">
+<p class="q">¿Qué día quieres revisar?</p>
+<div class="opts" style="margin-top: 12px">
+<button class="op on" aria-pressed="true"><svg class="i" style="stroke-width: 2.6"><use href="#i-check"></use></svg>Hoy <small>29 oct</small></button>
+<button class="op">Ayer <small>28 oct</small></button>
+<button class="op"><svg class="i"><use href="#i-cal"></use></svg>Otra fecha</button>
+</div>
+<div style="margin-top: 20px; display: flex; justify-content: flex-end"><button class="bp">Siguiente<svg class="i"><use href="#i-arrow"></use></svg></button></div>
+</div>
+</section>
+
+<div class="cap" style="margin-top: 32px">AL ELEGIR “OTRA FECHA”</div>
+<section class="card" style="padding: 20px 24px">
+<p class="q">¿Qué día quieres revisar?</p>
+<div class="opts" style="margin-top: 12px">
+<button class="op">Hoy <small>29 oct</small></button>
+<button class="op">Ayer <small>28 oct</small></button>
+<button class="op on" aria-pressed="true"><svg class="i"><use href="#i-cal"></use></svg>Otra fecha <small>15 oct 2026</small></button>
+</div>
+<p style="margin: 10px 0 0; font-size: 12.5px; color: #6E7489">Se abre el calendario al tocarla; la fecha elegida queda escrita en el mismo botón.</p>
+</section>
+</div>
+
+<div style="width: 390px; flex: none">
+<div class="cap">MÓVIL</div>
+<section class="card" style="padding: 18px; border-radius: 22px">
+<div style="display: flex; gap: 12px; align-items: flex-start">
+<span style="width: 34px; height: 34px; flex: none; border-radius: 11px; background: #EEF0FF; color: #3F4BD0; display: grid; place-items: center"><svg class="i" style="width: 17px; height: 17px"><use href="#i-cmp"></use></svg></span>
+<div><h2 class="h2" style="font-size: 17px">Comparar ventas</h2><p class="sub" style="font-size: 13.5px">Elige 2 períodos y te digo cuál vendiste más, qué vendiste y a qué hora.</p></div>
+</div>
+<div class="seg" style="display: flex; margin-top: 16px"><button class="on" style="flex: 1; height: 36px">Día</button><button style="flex: 1; height: 36px">Semana</button><button style="flex: 1; height: 36px">Mes</button></div>
+<div class="steps" style="margin-top: 12px">
+<div class="st on" style="padding: 9px 10px"><span class="n">1</span><div style="min-width: 0">Primer día<b>Hoy · 29 oct</b></div></div>
+<div class="st" style="padding: 9px 10px"><span class="n">2</span><div style="min-width: 0">Segundo día<b>Por elegir</b></div></div>
+</div>
+<div style="margin-top: 16px; padding-top: 16px; border-top: 1px solid #EDEFF5">
+<p class="q">¿Qué día quieres revisar?</p>
+<div class="opts" style="margin-top: 12px; display: grid; grid-template-columns: 1fr 1fr; gap: 8px">
+<button class="op on" style="height: 44px; justify-content: center"><svg class="i" style="stroke-width: 2.6"><use href="#i-check"></use></svg>Hoy <small>29 oct</small></button>
+<button class="op" style="height: 44px; justify-content: center">Ayer <small>28 oct</small></button>
+<button class="op" style="height: 44px; justify-content: center; grid-column: 1 / -1"><svg class="i"><use href="#i-cal"></use></svg>Otra fecha</button>
+</div>
+<button class="bp" style="margin-top: 16px; width: 100%; height: 44px; justify-content: center; font-size: 14px; border-radius: 22px">Siguiente<svg class="i"><use href="#i-arrow"></use></svg></button>
+</div>
+</section>
+</div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":900}}'>
+class Component extends DCLogic { renderVals() { return {}; } }
+</script>
+</body>
+</html>

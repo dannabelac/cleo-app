@@ -184,6 +184,17 @@ Referencias: `docs/rediseno/referencias/R10-Ingresos.html` (desktop) y `R10-Movi
 - Grupos por día (AYER, 10 OCT…) en pervinca 12px/800, como hoy.
 - Movimiento: ícono de 40px (36px móvil) radio 13: pedido = bolsa en #EEF0FF/#3F4BD0; venta rápida = rayo en #FBF1DC/#8A5A06; pedido cancelado = × en #FBE6E1/#B23A24. Nombre 15px/700; debajo, en 13px #5A6078: tipo en negritas ("Pedido", "Venta rápida", "Pedido cancelado" en rojo) + " · " + concepto. En móvil el texto se ajusta en varias líneas, sin cortar. Importe 15.5px/800 a la derecha; negativos en rojo con "−". Se quitan las etiquetas en mayúsculas.
 
+## 4f. Ronda 12 — Comparar ventas (aprobada)
+Referencia: `docs/rediseno/referencias/R12-Comparar.html` (desktop y móvil en el mismo archivo). Aplica la escala v2.
+- Encabezado: ícono de barras en cuadro #EEF0FF/#3F4BD0 (36px, radio 12) + título de sección "Comparar ventas" (18px/800) + el subtítulo actual (13.5px #5A6078). Se quita la etiqueta azul en mayúsculas "COMPARAR VENTAS".
+- Selector Día · Semana · Mes: pista #F4F5FA, botones de 32px, el elegido en blanco con sombra suave y texto 800. Desktop: arriba a la derecha del encabezado. Móvil: a lo ancho (36px).
+- Pasos: dos casillas lado a lado. La del paso actual en #EEF0FF/#3F4BD0 con círculo numerado relleno; la otra en #F4F5FA con círculo en contorno. Texto: "Primer día / Segundo día" (o "Primera semana / Primer mes"… según el tipo, usando los textos del flujo) y debajo lo elegido o "Por elegir".
+- Pregunta (ej. "¿Qué día quieres revisar?") en 15px/800, separada por una línea #EDEFF5.
+- Opciones como pastillas de 38px (44px móvil) con contorno #E3E6EF: "Hoy 29 oct", "Ayer 28 oct" (la fecha en gris, 13px). La elegida en #E4E8FF con ✓ y la fecha en #3F4BD0.
+- "Otra fecha": pastilla con ícono de calendario que abre el selector de fecha nativo; ya no se muestra un campo con la fecha de hoy. Al elegir, la pastilla queda seleccionada con la fecha escrita ("Otra fecha 15 oct 2026").
+- "Siguiente →": botón principal azul noche #0E1328 de 36px (44px a lo ancho en móvil), abajo a la derecha.
+- Paso 2 y resultado: aplicar el mismo sistema (casillas de paso, pastillas, botón azul noche) sin cambiar su contenido.
+
 ## 5. Fase 3 — Pedidos (y el resto de secciones)
 
 Referencias: `R5-Pedidos.html`, `R5-Movil-Pedidos.html`.
