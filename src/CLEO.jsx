@@ -6,6 +6,7 @@ import React from "react";
 import DOMPurify from "dompurify";
 import { PRIVACY_VERSION, TERMS_VERSION, LegalModal, useDocumentoLegal } from "./LegalDocuments.jsx";
 import { ImportarCatalogo } from "./ImportarCatalogo.jsx";
+import ResumenAnalyticsProd from "./ResumenAnalyticsProd.jsx";
 // Único punto de integración con PostHog (ver analytics.js) , nunca se
 // importa "posthog-js" directamente en este archivo.
 import { registrarEvento, marcarModoDemo, dispositivoActual, actualizarTipoPerfil } from "./analytics.js";
@@ -16322,7 +16323,20 @@ export default function CLEO(props){
       })(),
 
       // RESUMEN
-      vista==="resumen"&&esProductos&&(function(){
+      vista==="resumen"&&e(ResumenAnalyticsProd,{
+        pedidos:pedidos,ventas:ventas,clientes:clientes,
+        productosCat:productosCat,materialesCat:materialesCat,
+        esProductos:esProductos,
+        C:C,sc:sc,st:st,isMobile:isMobile,HOY:HOY,FECHA_HOY:FECHA_HOY,
+        periodo:periodo,setPeriodo:setPeriodo,
+        formatoDinero:formatoDinero,parseFechaLocal:parseFechaLocal,fmtFechaLocal:fmtFechaLocal,enRangoFechas:enRangoFechas,
+        obtenerItemsPedido:obtenerItemsPedido,calcularCostoUnitario:calcularCostoUnitario,
+        tienePrecioReal:tienePrecioReal,saldoPendienteDe:saldoPendienteDe,obtenerReversionIngresoPedido:obtenerReversionIngresoPedido,
+        setVista:setVista,
+        setModalReporteComercial:setModalReporteComercial,setFormReporteComercial:setFormReporteComercial,
+        rangoReporteComercialPorDefecto:rangoReporteComercialPorDefecto,setErrorReporteComercial:setErrorReporteComercial,
+      }),
+      vista==="resumen"&&false&&(function(){
         var PERIODOS=[["semana","Semana"],["mes","Mes"],["trimestre","Trimestre"],["todo","Todo"]];
         var periodoRes=periodo||"mes";
 
