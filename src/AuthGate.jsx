@@ -86,6 +86,11 @@ var st = {
     borderColor: "#8D9BFF",
     boxShadow: "0 0 0 4px " + C.purplePale,
   },
+  // -webkit-appearance/appearance en "none" es necesario: sin esto, Safari
+  // en iOS/iPadOS dibuja su propio borde/radio nativos sobre el campo (más
+  // visible todavía al autocompletar correo/contraseña guardados), que
+  // chocaba con el borde del contenedor (st.input) y se veía como un borde
+  // negro grueso encima del nuestro.
   inputBare: {
     flex: 1,
     minWidth: 0,
@@ -96,6 +101,9 @@ var st = {
     color: C.text,
     fontFamily: FONT,
     padding: 0,
+    borderRadius: 0,
+    WebkitAppearance: "none",
+    appearance: "none",
   },
   inputIcon: { color: C.textDim, flexShrink: 0, display: "flex" },
   btnPrimary: {
@@ -2286,8 +2294,22 @@ export default function AuthGate() {
         ".cleo-auth-form{padding:40px}" +
         ".cleo-btn-google:hover:not(:disabled){box-shadow:0 4px 16px rgba(14,19,40,0.15),0 1px 4px rgba(14,19,40,0.08)!important}" +
         ".cleo-btn-email:hover:not(:disabled){opacity:0.9!important}" +
-        ".cleo-input-wrap input{font-family:inherit}" +
-        "@media(max-width:640px){" +
+        ".cleo-input-wrap input{font-family:inherit;border-radius:0!important}" +
+        // Autocompletar (correo/contraseña guardados) , sin esto Safari
+        // pinta su propio fondo (amarillo/azul) y color de texto encima del
+        // campo, chocando con el borde del contenedor.
+        ".cleo-input-wrap input:-webkit-autofill,.cleo-input-wrap input:-webkit-autofill:hover,.cleo-input-wrap input:-webkit-autofill:focus{" +
+        "-webkit-box-shadow:0 0 0 1000px #FFFFFF inset!important;" +
+        "box-shadow:0 0 0 1000px #FFFFFF inset!important;" +
+        "-webkit-text-fill-color:" + C.text + "!important;" +
+        "}" +
+        // 1024px (no 640px): el panel izquierdo es un ancho FIJO de 760px
+        // que no se encoge , en un iPad en vertical (768-834px) un corte en
+        // 640px habría dejado la vista "de escritorio" activa con apenas
+        // unos pocos px para todo el formulario. 1024px cubre el retrato de
+        // cualquier iPad (y la mayoría en horizontal) con el layout apilado
+        // ya aprobado para móvil.
+        "@media(max-width:1024px){" +
         ".cleo-auth-shell{flex-direction:column!important;min-height:100vh!important}" +
         ".cleo-auth-brand{flex:0 0 auto!important;padding:22px 22px 28px!important}" +
         ".cleo-auth-logo{font-size:13px!important}" +
