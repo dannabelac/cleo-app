@@ -206,6 +206,21 @@ Referencia: `docs/rediseno/referencias/R13-Resumen-Abajo.html` (desktop y móvil
 - Móvil: orden canales → tu próximo paso → lo que CLEO aprendió → reporte. Gap 12px.
 - Reporte comercial: ícono documento en #F4F5FA; botón "Generar reporte PDF" azul noche de 36px con ícono de descarga (móvil 44px a lo ancho).
 
+## 4h. Ronda 14 — Crear cuenta / Iniciar sesión (aprobada)
+Referencias: `docs/rediseno/referencias/R14-Login.html` (desktop) y `R14-Movil-Login.html` (móvil). Aplica también a Iniciar sesión y demás vistas de acceso de AuthGate, con sus campos y textos actuales.
+Cambios de texto aprobados:
+- Título del panel: "Tu negocio ya es un negocio." → "Para emprendedores como tú." ("como tú." en #A3AFFF).
+- Texto bajo el título: "Organiza lo que vendes, cobras y entregas en un solo lugar, sin complicarte." Reemplaza los dos textos anteriores ("Todo lo que pasa en él…" y "Pedidos, cotizaciones, inventario y cobros sin complicarte.").
+- Separador "o" → "o con tu correo".
+Desktop (pantalla completa, ya no tarjeta flotante):
+- Panel izquierdo de 760px (o ~53%) a toda la altura: fondo #0E1328 con degradados radiales (#24307A arriba a la derecha, #1B2560 abajo a la izquierda); se quitan los círculos decorativos. Padding 44px 64px 56px.
+- Arriba "CLEO" 15px/800, letter-spacing .14em. El título y el texto se alinean hacia abajo: título 46px/800, -0.04em, line-height 1.05; texto 17px #C9CDE0.
+- Debajo, la mini lista "A quién contactar hoy" integrada al fondo (aria-hidden, decorativa, datos de ejemplo fijos): etiqueta 11.5px/800 #C9CDE0 con sol #FFD36B y contador "3" en #A3AFFF; 3 filas con fondo rgba(255,255,255,.06), borde interior rgba(255,255,255,.07), radio 16, padding 13px 16px, separadas 8px. Filas: Roberto Cauich ("Hoy" en #FF9C85 + "habías programado retomar contacto") con pastilla "Contactar"; Carlos Ruiz ("Preguntó por Collar dorado · " + "hace 9 días" en #FFD36B) con "Contactar"; Sofía Herrera ("Saldo pendiente · Pulseras boda x6") con "$900.00" en #FFD36B y opacidad .55. Nombres 14.5px/800 blanco, detalle 13px #A9AFC6. Pastilla "Contactar": 30px, fondo rgba(141,155,255,.16), texto #C7CEFF 12px/700. No son botones reales.
+- Lado derecho blanco, formulario centrado de 380px: título 26px/800, subtítulo 14.5px #5A6078. Google: botón de contorno #E3E6EF de 44px, radio 22. Campos de 44px, radio 14, borde 1.5px #E3E6EF, ícono a la izquierda (correo / candado) y ojo a la derecha; foco con borde #8D9BFF y halo 4px #EEF0FF. Etiquetas 13px/700. "Crear cuenta →" azul noche #0E1328 lleno, 46px (antes contorno azul). Enlace "Inicia sesión" #3F4BD0/700.
+Móvil:
+- Encabezado azul (mismo degradado) a lo ancho, sin esquinas redondeadas y sin tarjetas: "CLEO" 13px, título 30px y texto 15px. Formulario debajo con padding 26px 22px: campos y botones de 48px, texto de campo 16px, "Crear cuenta" de 50px.
+No cambies la lógica de autenticación, validaciones, Google ni mensajes de error.
+
 ## 5. Fase 3 — Pedidos (y el resto de secciones)
 
 Referencias: `R5-Pedidos.html`, `R5-Movil-Pedidos.html`.
