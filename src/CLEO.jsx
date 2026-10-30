@@ -16326,6 +16326,7 @@ export default function CLEO(props){
       vista==="resumen"&&e(ResumenAnalyticsProd,{
         pedidos:pedidos,ventas:ventas,clientes:clientes,
         productosCat:productosCat,materialesCat:materialesCat,
+        eventos:eventosInv,
         esProductos:esProductos,
         C:C,sc:sc,st:st,isMobile:isMobile,HOY:HOY,FECHA_HOY:FECHA_HOY,
         periodo:periodo,setPeriodo:setPeriodo,
@@ -16333,6 +16334,8 @@ export default function CLEO(props){
         obtenerItemsPedido:obtenerItemsPedido,calcularCostoUnitario:calcularCostoUnitario,
         tienePrecioReal:tienePrecioReal,saldoPendienteDe:saldoPendienteDe,obtenerReversionIngresoPedido:obtenerReversionIngresoPedido,
         setVista:setVista,
+        setFiltroPedido:setFiltroPedido,setFiltroPedidoPeriodo:setFiltroPedidoPeriodo,setFiltroPedidoSaldo:setFiltroPedidoSaldo,
+        setFiltroProspecto:setFiltroProspecto,
         setModalReporteComercial:setModalReporteComercial,setFormReporteComercial:setFormReporteComercial,
         rangoReporteComercialPorDefecto:rangoReporteComercialPorDefecto,setErrorReporteComercial:setErrorReporteComercial,
       }),
