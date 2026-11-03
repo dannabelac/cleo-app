@@ -1,0 +1,9 @@
+# No desplegado todavía. Este archivo declara que la función
+# asistente-proxy SÍ exige el JWT de plataforma de Supabase (la llama el
+# navegador con una sesión real de CLEO, nunca un servicio externo) --
+# verify_jwt=true es el valor por defecto, pero se deja explícito a
+# propósito: no hay que asumir que "ya funciona solo", ver el comentario
+# de autenticación en dos capas al inicio de index.ts.
+
+[functions.asistente-proxy]
+verify_jwt = true

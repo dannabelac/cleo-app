@@ -44,7 +44,7 @@ import { lanzarNavegador, paginaLimpia, clienteSeed, sufijoUnico, N8N_URL_PATTER
     // confiable aquí porque un negocio genuinamente vacío (sin ningún
     // cliente) muestra la pantalla de bienvenida en vez de la barra
     // superior normal, y esta prueba no debe depender de eso.
-    const saludo = page.getByText('Cuéntame qué pasó con tu negocio', { exact: false });
+    const saludo = page.getByText('¿en qué te ayudo hoy?', { exact: false });
     const bSaludo = await saludo.boundingBox();
     if (!bSaludo) fail('no se encontró el panel del chat para medir su posición');
     else if (bSaludo.x < 1280 / 2) fail('en escritorio el panel parece ocupar toda la pantalla (no debería ser modal completo) -- x=' + Math.round(bSaludo.x));

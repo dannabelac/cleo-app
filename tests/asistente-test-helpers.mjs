@@ -18,7 +18,14 @@
 import { chromium } from 'playwright';
 
 export const URL = 'http://localhost:5193/';
-export const N8N_URL_PATTERN = '**/webhook-test/cleo-assistant';
+// El navegador ya no habla directo con n8n -- llama a la función
+// asistente-proxy vía supabase.functions.invoke(), que termina pegándole a
+// "<VITE_SUPABASE_URL>/functions/v1/asistente-proxy". Estas pruebas de
+// interfaz interceptan esa llamada ANTES de que salga (page.route), así
+// que ni el header de sesión ni el backend simulado importan aquí -- solo
+// que el patrón de la URL coincida. La función real (sin interceptar) se
+// prueba aparte en verify-asistente-proxy-real.mjs.
+export const N8N_URL_PATTERN = '**/functions/v1/asistente-proxy';
 
 export const FAKE_SESSION = {
   access_token: 'simulado-no-es-un-jwt-real', token_type: 'bearer',
