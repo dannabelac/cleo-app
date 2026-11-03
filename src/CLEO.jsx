@@ -16,6 +16,10 @@ import { registrarEvento, marcarModoDemo, dispositivoActual, actualizarTipoPerfi
 // borra al cerrar sesión/cambiar de cuenta, ver clearCleoModalDraftKeys) NUNCA
 // se desincronicen sobre cuál es el prefijo real.
 import { CLEO_MODAL_DRAFT_KEY_PREFIX } from "./cloudSync.js";
+// Único uso: enviarMensajeAsistente llama a la función asistente-proxy
+// (supabase.functions.invoke agrega sola la sesión real de la cuenta) ,
+// nunca se habla con n8n directo desde aquí.
+import { supabase } from "./supabaseClient";
 
 // ── Detección de móvil , centralizada y reactiva ────────────────────────
 // Antes existían 2 cálculos independientes de "isMobile" en el archivo, y
@@ -191,6 +195,18 @@ function textoHaceDias(dias){
   if(dias===1) return "ayer";
   return "hace "+dias+" días";
 }
+// Metadatos de método de pago (color/ícono/orden) , misma paleta ya usada en
+// cada fila de pago (ver pagos del cliente/pedido/venta): verde=efectivo,
+// ámbar=tarjeta, azul=transferencia. Centralizado aquí para que el desglose
+// de Ingresos use EXACTAMENTE los mismos colores/íconos que ya ve la persona
+// en el historial de pagos, en vez de inventar una paleta nueva.
+var METODOS_PAGO=[
+  {k:"efectivo",     label:"Efectivo",      icon:"💵", color:"#10B981", bg:"#ECFDF5"},
+  {k:"tarjeta",      label:"Tarjeta",       icon:"💳", color:"#D97706", bg:"#FFFBEB"},
+  {k:"transferencia",label:"Transferencia", icon:"📲", color:"#3B82F6", bg:"rgba(59,130,246,0.08)"},
+];
+var METODOS_PAGO_BY_KEY={};
+METODOS_PAGO.forEach(function(m){ METODOS_PAGO_BY_KEY[m.k]=m; });
 // ── Pluralización central del Reporte comercial ─────────────────────────
 // Única fuente para "cantidad + palabra" en singular/plural dentro del
 // reporte (Sección 5 "Lectura de CLEO") , nunca se repite un ternario
@@ -5702,18 +5718,14 @@ export default function CLEO(props){
     setAsistenteHistorial(function(prev){ return prev.concat([{rol:"usuario",texto:texto}]); });
     setAsistenteChatInput("");
     setAsistenteEsperando(true);
-    var urlFinal=(asistenteUrl||"").trim();
-    if(!urlFinal){
-      setAsistenteHistorial(function(prev){ return prev.concat([{rol:"cleo",texto:"Falta configurar la URL del asistente (ver \"avanzado\" abajo).",error:true}]); });
-      setAsistenteChatInput(texto);
-      setAsistenteEsperando(false);
-      return;
-    }
-    try{ localStorage.setItem("cleo_asistente_url",urlFinal); }catch(e){}
-    fetch(urlFinal,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({mensaje:texto,historial:historialPrevio})})
-      .then(function(res){
-        if(!res.ok) throw new Error("El asistente respondió con un error (HTTP "+res.status+").");
-        return res.json();
+    // La dirección de n8n ya no vive aquí , supabase.functions.invoke llama
+    // a la función asistente-proxy (con la sesión real de esta cuenta, que
+    // Supabase agrega sola) y es ESA función, del lado del servidor, quien
+    // conoce la URL fija y el secreto de n8n , nunca el navegador.
+    supabase.functions.invoke("asistente-proxy",{body:{mensaje:texto,historial:historialPrevio}})
+      .then(function(invocacion){
+        if(invocacion.error) throw invocacion.error;
+        return invocacion.data;
       })
       .then(function(data){
         setAsistenteEsperando(false);
@@ -5785,14 +5797,13 @@ export default function CLEO(props){
       })
       .catch(function(err){
         setAsistenteEsperando(false);
-        var msg=(err&&err.message)||"No se pudo conectar con el asistente.";
-        if(/Failed to fetch|NetworkError|TypeError/i.test(msg)){
-          // Ronda 15 (texto aprobado): el mensaje visible en el chat ya no
-          // menciona n8n , el detalle técnico (solo útil para quien está
-          // desarrollando el flujo) se queda en la consola.
-          console.log("[Asistente] Si usas la URL de prueba de n8n, recuerda activar \"Execute workflow\" en el flujo antes de escribir.");
-          msg="No se pudo conectar con el asistente. Revisa tu conexión e inténtalo de nuevo.";
-        }
+        // Mensaje SIEMPRE simple y genérico , nunca se le muestra a la
+        // persona el motivo técnico real (sesión vencida, límite excedido,
+        // n8n caído, tiempo agotado, red local...) , eso solo sirve para
+        // quien desarrolla, así que se queda en la consola (nunca el
+        // secreto ni la conversación completa, solo el error en sí).
+        console.log("[Asistente] no se pudo completar la solicitud:",err);
+        var msg="No se pudo conectar con el asistente. Revisa tu conexión e inténtalo de nuevo.";
         setAsistenteHistorial(function(prev){ return prev.concat([{rol:"cleo",texto:msg,error:true}]); });
         // Conserva el texto , se regresa al campo para reintentar con un
         // clic, nunca hay que volver a escribirlo.
@@ -5908,7 +5919,7 @@ export default function CLEO(props){
         nombre:draft.clienteNombre,
         fecha:FECHA_HOY,
         ultimoContacto:FECHA_HOY,
-        origen:"Asistente IA (prueba)",
+        origen:"Chat de CLEO",
         notas:draft.contextoComercial||"",
       });
       setClientes([nuevoClienteAsist,...clientes]);
@@ -7241,7 +7252,8 @@ export default function CLEO(props){
   // guardado con las funciones normales de CLEO) ───────────────────────────
   var s90=useState(false); var asistenteAbierto=s90[0]; var setAsistenteAbierto=s90[1];
   var s91=useState(""); var asistenteChatInput=s91[0]; var setAsistenteChatInput=s91[1]; // texto que se está escribiendo ahora
-  var s92=useState(function(){ try{ return localStorage.getItem("cleo_asistente_url")||"https://dannabel-automation.app.n8n.cloud/webhook-test/cleo-assistant"; }catch(e){ return "https://dannabel-automation.app.n8n.cloud/webhook-test/cleo-assistant"; } }); var asistenteUrl=s92[0]; var setAsistenteUrl=s92[1];
+  // s92 (antes asistenteUrl/cleo_asistente_url) se quitó a propósito , la
+  // dirección de n8n ya no se configura en la interfaz, ver asistente-proxy.
   var s93=useState("chat"); var asistentePaso=s93[0]; var setAsistentePaso=s93[1]; // chat|revision|guardando
   var s94=useState([]); var asistenteHistorial=s94[0]; var setAsistenteHistorial=s94[1]; // [{rol:"usuario"|"cleo",texto,error?}] , se conserva al cerrar/reabrir el panel (no se reinicia hasta que se guarde algo o se recargue la página)
   var s95=useState(null); var asistenteDraft=s95[0]; var setAsistenteDraft=s95[1]; // borrador editable construido de la respuesta validada
@@ -7557,7 +7569,7 @@ export default function CLEO(props){
   var sMenuNuevo=useState(false); var menuNuevo=sMenuNuevo[0]; var setMenuNuevo=sMenuNuevo[1];
 
   // Estado filtros Ventas (modo productos)
-  var sVPFiltro=useState({periodo:"mes",origen:"todos",busqueda:""}); var filtroVP=sVPFiltro[0]; var setFiltroVP=sVPFiltro[1];
+  var sVPFiltro=useState({periodo:"mes",origen:"todos",metodo:"todos",busqueda:""}); var filtroVP=sVPFiltro[0]; var setFiltroVP=sVPFiltro[1];
 
   function setClientes(v){
     crearSetterPersistente(setClientesRaw,"cleo_clientes",writeGuard)(v);
@@ -11104,7 +11116,7 @@ export default function CLEO(props){
             var c2=nuevas[0]; var nombre2=c2.nombre.split(" ")[0];
             var dias2=diasDesde(c2.fechaEtapa||c2.fecha);
             ideaDestino={tipo:"opo",id:c2.id};
-            if(c2.productoInteres) return nombre2+" preguntó por "+c2.productoInteres+" hace "+dias2+" días y aún no tiene precio. Entre más rápido le respondas, más probable es que compre.";
+            if(c2.productoInteres) return nombre2+" preguntó por "+c2.productoInteres+" "+textoHaceDias(dias2)+" y aún no tiene precio. Entre más rápido le respondas, más probable es que compre.";
             return "Tienes "+nuevas.length+" oportunidad"+(nuevas.length>1?"es":"")+" nueva"+(nuevas.length>1?"s":"")+" sin precio. ¿Ya les escribiste?";
           }
           if(conSaldo.length>0){
@@ -12432,6 +12444,7 @@ export default function CLEO(props){
               fechaHora:pago.fechaHoraPago||null,
               concepto:(pago.concepto||"Pago")+(cot.concepto?" · "+cot.concepto:""),
               productos:"",
+              metodoPago:pago.metodoPago||"efectivo",
             });
           });
         });
@@ -12452,6 +12465,7 @@ export default function CLEO(props){
                 fechaHora:pago.fechaHoraPago||null,
                 concepto:(pago.concepto||"Pago")+(v.concepto?" · "+v.concepto:""),
                 productos:"",
+                metodoPago:pago.metodoPago||"efectivo",
               });
             });
             // El saldo sin cobrar de una venta con anticipo NO se cuenta aquí , todavía no ha entrado.
@@ -12464,6 +12478,18 @@ export default function CLEO(props){
           return tb-ta;
         });
 
+        // Totales por método de pago para el periodo activo , misma fuente
+        // (ingresos sin filtrar por origen/búsqueda) que totalHoy/Semana/Mes
+        // de abajo, así que efectivo+tarjeta+transferencia siempre suma
+        // exactamente el total del periodo mostrado arriba.
+        var totalesPorMetodo={};
+        METODOS_PAGO.forEach(function(m){ totalesPorMetodo[m.k]=0; });
+        ingresos.forEach(function(i){
+          if(!enPeriodo(i.fecha,filtroVP.periodo)) return;
+          var m=i.metodoPago||"efectivo";
+          totalesPorMetodo[m]=(totalesPorMetodo[m]||0)+i.monto;
+        });
+
         var totalHoy=ingresos.filter(function(i){ return enPeriodo(i.fecha,"hoy"); }).reduce(function(s,i){ return s+i.monto; },0);
         var totalSemana=ingresos.filter(function(i){ return enPeriodo(i.fecha,"semana"); }).reduce(function(s,i){ return s+i.monto; },0);
         var totalMes=ingresos.filter(function(i){ return enPeriodo(i.fecha,"mes"); }).reduce(function(s,i){ return s+i.monto; },0);
@@ -12471,6 +12497,7 @@ export default function CLEO(props){
         var ingFiltrados=ingresos.filter(function(ing){
           if(!enPeriodo(ing.fecha,filtroVP.periodo)) return false;
           if(filtroVP.origen!=="todos"&&ing.origen!==filtroVP.origen) return false;
+          if(filtroVP.metodo&&filtroVP.metodo!=="todos"&&(ing.metodoPago||"efectivo")!==filtroVP.metodo) return false;
           if(filtroVP.busqueda&&!(ing.clienteNombre||"").toLowerCase().includes(filtroVP.busqueda.toLowerCase())&&!(ing.concepto||"").toLowerCase().includes(filtroVP.busqueda.toLowerCase())) return false;
           return true;
         });
@@ -12526,6 +12553,18 @@ export default function CLEO(props){
                   );
                 })
               ),
+              // Desglose por método de pago del periodo activo , tocar una
+              // pastilla filtra los movimientos de abajo por ese método
+              // (vuelve a tocarla para quitar el filtro).
+              e("div",{role:"tablist","aria-label":"Método de pago",style:{marginTop:6,display:"flex",gap:2,padding:4,borderRadius:22,background:"#FFFFFF"}},
+                METODOS_PAGO.map(function(m){
+                  var activo=filtroVP.metodo===m.k;
+                  return e("button",{key:m.k,role:"tab","aria-selected":activo,style:{flex:1,display:"flex",flexDirection:"column",alignItems:"flex-start",gap:2,padding:"10px 12px",border:0,borderRadius:16,background:activo?m.bg:"transparent",fontFamily:"inherit",textAlign:"left",cursor:"pointer"},onClick:function(){ setFiltroVP(Object.assign({},filtroVP,{metodo:activo?"todos":m.k})); }},
+                    e("small",{style:{fontSize:12,fontWeight:activo?800:600,color:activo?m.color:"#5A6078"}},m.icon+" "+m.label),
+                    e("strong",{style:{fontSize:sc.text,fontWeight:800,letterSpacing:"-0.01em",color:C.ink}},"$"+formatoDinero(Math.abs(totalesPorMetodo[m.k]||0)))
+                  );
+                })
+              ),
               e("section",{"aria-label":"Movimientos",style:{marginTop:20,padding:"14px 18px 8px",borderRadius:24,background:"#FFFFFF"}},
                 e("label",{style:{display:"flex",alignItems:"center",gap:10,height:sc.inputH,padding:"0 14px",borderRadius:21,background:"#F4F5FA",color:"#6E7489"}},
                   e("svg",{width:18,height:18,viewBox:"0 0 24 24",fill:"none",stroke:"currentColor",strokeWidth:1.9,strokeLinecap:"round",strokeLinejoin:"round"},e("circle",{cx:11,cy:11,r:6.5}),e("path",{d:"m16 16 4 4"})),
@@ -12564,7 +12603,8 @@ export default function CLEO(props){
                               e("div",{style:{marginTop:2,fontSize:12.5,color:"#5A6078",lineHeight:1.4}},
                                 e("b",{style:{fontWeight:700,color:esNeg?"#B23A24":"#4A5068"}},tipoLabel),
                                 " · "+(ing.concepto||""),
-                                ing.fechaHora&&e("span",{style:{color:"#A9B0C4"}}," · "+(function(){ var d=new Date(ing.fechaHora); return d.getHours()+":"+d.getMinutes().toString().padStart(2,"0"); })())
+                                ing.fechaHora&&e("span",{style:{color:"#A9B0C4"}}," · "+(function(){ var d=new Date(ing.fechaHora); return d.getHours()+":"+d.getMinutes().toString().padStart(2,"0"); })()),
+                                ing.metodoPago&&METODOS_PAGO_BY_KEY[ing.metodoPago]&&e("span",{style:{color:"#A9B0C4"}}," · "+METODOS_PAGO_BY_KEY[ing.metodoPago].icon)
                               )
                             ),
                             e("span",{style:{fontSize:sc.text,fontWeight:800,letterSpacing:"-0.01em",color:esNeg?"#B23A24":C.ink,whiteSpace:"nowrap",paddingTop:2}},(esNeg?"−":"")+"$"+formatoDinero(Math.abs(ing.monto)))
@@ -12617,7 +12657,8 @@ export default function CLEO(props){
                               e("div",{style:{marginTop:2,fontSize:13,color:"#5A6078",whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}},
                                 e("b",{style:{fontWeight:700,color:esNeg?"#B23A24":"#4A5068"}},tipoLabel),
                                 " · "+(ing.concepto||""),
-                                ing.fechaHora&&e("span",{style:{color:"#A9B0C4"}}," · "+(function(){ var d=new Date(ing.fechaHora); return d.getHours()+":"+d.getMinutes().toString().padStart(2,"0"); })())
+                                ing.fechaHora&&e("span",{style:{color:"#A9B0C4"}}," · "+(function(){ var d=new Date(ing.fechaHora); return d.getHours()+":"+d.getMinutes().toString().padStart(2,"0"); })()),
+                                ing.metodoPago&&METODOS_PAGO_BY_KEY[ing.metodoPago]&&e("span",{style:{color:"#A9B0C4"}}," · "+METODOS_PAGO_BY_KEY[ing.metodoPago].icon)
                               )
                             ),
                             e("span",{style:{fontSize:sc.namePerson,fontWeight:800,letterSpacing:"-0.01em",color:esNeg?"#B23A24":C.ink,whiteSpace:"nowrap"}},(esNeg?"−":"")+"$"+formatoDinero(Math.abs(ing.monto)))
@@ -12637,6 +12678,18 @@ export default function CLEO(props){
                     return e("button",{key:p.k,role:"tab","aria-selected":activo,style:{display:"flex",alignItems:"center",justifyContent:"space-between",gap:12,width:"100%",padding:"14px 16px",border:0,borderRadius:16,background:activo?"#E4E8FF":"transparent",fontFamily:"inherit",textAlign:"left",cursor:"pointer",boxSizing:"border-box"},onClick:function(){ setFiltroVP(Object.assign({},filtroVP,{periodo:p.k})); }},
                       e("small",{style:{fontSize:sc.textSec,fontWeight:activo?800:600,color:activo?C.ink:"#5A6078"}},p.label),
                       e("strong",{style:{fontSize:sc.namePerson,fontWeight:800,letterSpacing:"-0.01em",color:C.ink}},"$"+formatoDinero(Math.abs(p.valor)))
+                    );
+                  })
+                ),
+                // Desglose por método de pago del periodo activo , tocar una
+                // fila filtra los movimientos por ese método (vuelve a
+                // tocarla para quitar el filtro).
+                e("div",{role:"tablist","aria-label":"Método de pago",style:{marginTop:10,padding:6,borderRadius:22,background:"#FFFFFF"}},
+                  METODOS_PAGO.map(function(m){
+                    var activo=filtroVP.metodo===m.k;
+                    return e("button",{key:m.k,role:"tab","aria-selected":activo,style:{display:"flex",alignItems:"center",justifyContent:"space-between",gap:12,width:"100%",padding:"14px 16px",border:0,borderRadius:16,background:activo?m.bg:"transparent",fontFamily:"inherit",textAlign:"left",cursor:"pointer",boxSizing:"border-box"},onClick:function(){ setFiltroVP(Object.assign({},filtroVP,{metodo:activo?"todos":m.k})); }},
+                      e("small",{style:{fontSize:sc.textSec,fontWeight:activo?800:600,color:activo?m.color:"#5A6078"}},m.icon+" "+m.label),
+                      e("strong",{style:{fontSize:sc.namePerson,fontWeight:800,letterSpacing:"-0.01em",color:C.ink}},"$"+formatoDinero(Math.abs(totalesPorMetodo[m.k]||0)))
                     );
                   })
                 )
@@ -15045,22 +15098,31 @@ export default function CLEO(props){
               fechaHora:pago.fechaHoraPago||null,
               concepto:pago.concepto||"Pago",
               productos:ped.productos||"",
+              metodoPago:pago.metodoPago||"efectivo",
             });
           });
           var reversionPed=obtenerReversionIngresoPedido(ped);
           if(reversionPed){
-            ingresos.push({
-              id:"vp_ped_cancel_"+ped.id,
-              clienteId:ped.clienteId,
-              clienteNombre:cl?cl.nombre:(ped.etiqueta||"Sin cliente"),
-              origen:origenFiltroPed,
-              origenVenta:ped.origenVenta||"registro_manual",
-              pedidoId:ped.id,
-              monto:reversionPed.monto,
-              fecha:reversionPed.fecha,
-              fechaHora:reversionPed.fechaHora,
-              concepto:"Anticipo descontado · pedido cancelado",
-              productos:ped.productos||"",
+            // Una reversión por CADA pago original (no una sola combinada):
+            // así, si el pedido se cobró con más de un método, cada parte se
+            // descuenta de SU propio método en el desglose de abajo, y la
+            // suma de las partes sigue siendo exactamente reversionPed.monto
+            // (mismo total que antes, solo dividido por método).
+            (ped.pagos||[]).forEach(function(pago){
+              ingresos.push({
+                id:"vp_ped_cancel_"+ped.id+"_"+pago.id,
+                clienteId:ped.clienteId,
+                clienteNombre:cl?cl.nombre:(ped.etiqueta||"Sin cliente"),
+                origen:origenFiltroPed,
+                origenVenta:ped.origenVenta||"registro_manual",
+                pedidoId:ped.id,
+                monto:-Number(pago.monto),
+                fecha:reversionPed.fecha,
+                fechaHora:reversionPed.fechaHora,
+                concepto:"Anticipo descontado · pedido cancelado",
+                productos:ped.productos||"",
+                metodoPago:pago.metodoPago||"efectivo",
+              });
             });
           }
         });
@@ -15087,6 +15149,7 @@ export default function CLEO(props){
                 fechaHora:pago.fechaHoraPago||null,
                 concepto:(pago.concepto||"Pago")+(v.concepto?" · "+v.concepto:""),
                 productos:"",
+                metodoPago:pago.metodoPago||"efectivo",
               });
             });
             // El saldo sin cobrar de una venta con anticipo NO se cuenta aquí , todavía no ha entrado.
@@ -15117,6 +15180,18 @@ export default function CLEO(props){
         }
         ingresos.sort(function(a,b){ return claveOrdenIngresoProductos(b)-claveOrdenIngresoProductos(a); });
 
+        // Totales por método de pago para el periodo activo , misma fuente
+        // (ingresos sin filtrar por origen/búsqueda) que totalHoy/Semana/Mes
+        // de abajo, así que efectivo+tarjeta+transferencia siempre suma
+        // exactamente el total del periodo mostrado arriba.
+        var totalesPorMetodo={};
+        METODOS_PAGO.forEach(function(m){ totalesPorMetodo[m.k]=0; });
+        ingresos.forEach(function(i){
+          if(!enPeriodo(i.fecha,filtroVP.periodo)) return;
+          var m=i.metodoPago||"efectivo";
+          totalesPorMetodo[m]=(totalesPorMetodo[m]||0)+i.monto;
+        });
+
         // KPIs
         var totalHoy=ingresos.filter(function(i){ return enPeriodo(i.fecha,"hoy"); }).reduce(function(s,i){ return s+i.monto; },0);
         var totalSemana=ingresos.filter(function(i){ return enPeriodo(i.fecha,"semana"); }).reduce(function(s,i){ return s+i.monto; },0);
@@ -15126,6 +15201,7 @@ export default function CLEO(props){
         var ingFiltrados=ingresos.filter(function(ing){
           if(!enPeriodo(ing.fecha,filtroVP.periodo)) return false;
           if(filtroVP.origen!=="todos"&&ing.origen!==filtroVP.origen) return false;
+          if(filtroVP.metodo&&filtroVP.metodo!=="todos"&&(ing.metodoPago||"efectivo")!==filtroVP.metodo) return false;
           if(filtroVP.busqueda&&!(ing.clienteNombre||"").toLowerCase().includes(filtroVP.busqueda.toLowerCase())&&!(ing.concepto||"").toLowerCase().includes(filtroVP.busqueda.toLowerCase())) return false;
           return true;
         });
@@ -15179,6 +15255,18 @@ export default function CLEO(props){
                   );
                 })
               ),
+              // Desglose por método de pago del periodo activo , tocar una
+              // pastilla filtra los movimientos de abajo por ese método
+              // (vuelve a tocarla para quitar el filtro).
+              e("div",{role:"tablist","aria-label":"Método de pago",style:{marginTop:6,display:"flex",gap:2,padding:4,borderRadius:22,background:"#FFFFFF"}},
+                METODOS_PAGO.map(function(m){
+                  var activo=filtroVP.metodo===m.k;
+                  return e("button",{key:m.k,role:"tab","aria-selected":activo,style:{flex:1,display:"flex",flexDirection:"column",alignItems:"flex-start",gap:2,padding:"10px 12px",border:0,borderRadius:16,background:activo?m.bg:"transparent",fontFamily:"inherit",textAlign:"left",cursor:"pointer"},onClick:function(){ setFiltroVP(Object.assign({},filtroVP,{metodo:activo?"todos":m.k})); }},
+                    e("small",{style:{fontSize:12,fontWeight:activo?800:600,color:activo?m.color:"#5A6078"}},m.icon+" "+m.label),
+                    e("strong",{style:{fontSize:sc.text,fontWeight:800,letterSpacing:"-0.01em",color:C.ink}},"$"+formatoDinero(Math.abs(totalesPorMetodo[m.k]||0)))
+                  );
+                })
+              ),
               e("section",{"aria-label":"Movimientos",style:{marginTop:20,padding:"14px 18px 8px",borderRadius:24,background:"#FFFFFF"}},
                 e("label",{style:{display:"flex",alignItems:"center",gap:10,height:sc.inputH,padding:"0 14px",borderRadius:21,background:"#F4F5FA",color:"#6E7489"}},
                   e("svg",{width:18,height:18,viewBox:"0 0 24 24",fill:"none",stroke:"currentColor",strokeWidth:1.9,strokeLinecap:"round",strokeLinejoin:"round"},e("circle",{cx:11,cy:11,r:6.5}),e("path",{d:"m16 16 4 4"})),
@@ -15217,7 +15305,8 @@ export default function CLEO(props){
                               e("div",{style:{marginTop:2,fontSize:12.5,color:"#5A6078",lineHeight:1.4}},
                                 e("b",{style:{fontWeight:700,color:esNeg?"#B23A24":"#4A5068"}},tipoLabel),
                                 " · "+(ing.concepto||""),
-                                ing.fechaHora&&e("span",{style:{color:"#A9B0C4"}}," · "+(function(){ var d=new Date(ing.fechaHora); return d.getHours()+":"+d.getMinutes().toString().padStart(2,"0"); })())
+                                ing.fechaHora&&e("span",{style:{color:"#A9B0C4"}}," · "+(function(){ var d=new Date(ing.fechaHora); return d.getHours()+":"+d.getMinutes().toString().padStart(2,"0"); })()),
+                                ing.metodoPago&&METODOS_PAGO_BY_KEY[ing.metodoPago]&&e("span",{style:{color:"#A9B0C4"}}," · "+METODOS_PAGO_BY_KEY[ing.metodoPago].icon)
                               )
                             ),
                             e("span",{style:{fontSize:sc.text,fontWeight:800,letterSpacing:"-0.01em",color:esNeg?"#B23A24":C.ink,whiteSpace:"nowrap",paddingTop:2}},(esNeg?"−":"")+"$"+formatoDinero(Math.abs(ing.monto)))
@@ -15270,7 +15359,8 @@ export default function CLEO(props){
                               e("div",{style:{marginTop:2,fontSize:13,color:"#5A6078",whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}},
                                 e("b",{style:{fontWeight:700,color:esNeg?"#B23A24":"#4A5068"}},tipoLabel),
                                 " · "+(ing.concepto||""),
-                                ing.fechaHora&&e("span",{style:{color:"#A9B0C4"}}," · "+(function(){ var d=new Date(ing.fechaHora); return d.getHours()+":"+d.getMinutes().toString().padStart(2,"0"); })())
+                                ing.fechaHora&&e("span",{style:{color:"#A9B0C4"}}," · "+(function(){ var d=new Date(ing.fechaHora); return d.getHours()+":"+d.getMinutes().toString().padStart(2,"0"); })()),
+                                ing.metodoPago&&METODOS_PAGO_BY_KEY[ing.metodoPago]&&e("span",{style:{color:"#A9B0C4"}}," · "+METODOS_PAGO_BY_KEY[ing.metodoPago].icon)
                               )
                             ),
                             e("span",{style:{fontSize:sc.namePerson,fontWeight:800,letterSpacing:"-0.01em",color:esNeg?"#B23A24":C.ink,whiteSpace:"nowrap"}},(esNeg?"−":"")+"$"+formatoDinero(Math.abs(ing.monto)))
@@ -15290,6 +15380,18 @@ export default function CLEO(props){
                     return e("button",{key:p.k,role:"tab","aria-selected":activo,style:{display:"flex",alignItems:"center",justifyContent:"space-between",gap:12,width:"100%",padding:"14px 16px",border:0,borderRadius:16,background:activo?"#E4E8FF":"transparent",fontFamily:"inherit",textAlign:"left",cursor:"pointer",boxSizing:"border-box"},onClick:function(){ setFiltroVP(Object.assign({},filtroVP,{periodo:p.k})); }},
                       e("small",{style:{fontSize:sc.textSec,fontWeight:activo?800:600,color:activo?C.ink:"#5A6078"}},p.label),
                       e("strong",{style:{fontSize:sc.namePerson,fontWeight:800,letterSpacing:"-0.01em",color:C.ink}},"$"+formatoDinero(Math.abs(p.valor)))
+                    );
+                  })
+                ),
+                // Desglose por método de pago del periodo activo , tocar una
+                // fila filtra los movimientos por ese método (vuelve a
+                // tocarla para quitar el filtro).
+                e("div",{role:"tablist","aria-label":"Método de pago",style:{marginTop:10,padding:6,borderRadius:22,background:"#FFFFFF"}},
+                  METODOS_PAGO.map(function(m){
+                    var activo=filtroVP.metodo===m.k;
+                    return e("button",{key:m.k,role:"tab","aria-selected":activo,style:{display:"flex",alignItems:"center",justifyContent:"space-between",gap:12,width:"100%",padding:"14px 16px",border:0,borderRadius:16,background:activo?m.bg:"transparent",fontFamily:"inherit",textAlign:"left",cursor:"pointer",boxSizing:"border-box"},onClick:function(){ setFiltroVP(Object.assign({},filtroVP,{metodo:activo?"todos":m.k})); }},
+                      e("small",{style:{fontSize:sc.textSec,fontWeight:activo?800:600,color:activo?m.color:"#5A6078"}},m.icon+" "+m.label),
+                      e("strong",{style:{fontSize:sc.namePerson,fontWeight:800,letterSpacing:"-0.01em",color:C.ink}},"$"+formatoDinero(Math.abs(totalesPorMetodo[m.k]||0)))
                     );
                   })
                 )
@@ -20961,7 +21063,6 @@ export default function CLEO(props){
       function iconoAlerta(){ return e("svg",{width:16,height:16,viewBox:"0 0 24 24",fill:"none",style:{flexShrink:0,marginTop:1}},e("circle",{cx:12,cy:12,r:8.5,stroke:"currentColor",strokeWidth:2}),e("path",{d:"M12 7.5v5M12 16h.01",stroke:"currentColor",strokeWidth:2,strokeLinecap:"round"})); }
       function iconoFlecha(){ return e("svg",{width:14,height:14,viewBox:"0 0 24 24",fill:"none"},e("path",{d:"M5 12h14M13 6l6 6-6 6",stroke:"currentColor",strokeWidth:2,strokeLinecap:"round",strokeLinejoin:"round"})); }
       function iconoFlechaArriba(){ return e("svg",{width:16,height:16,viewBox:"0 0 24 24",fill:"none"},e("path",{d:"M12 19V5M6 11l6-6 6 6",stroke:"currentColor",strokeWidth:2.4,strokeLinecap:"round",strokeLinejoin:"round"})); }
-      function iconoChevron(){ return e("svg",{width:12,height:12,viewBox:"0 0 24 24",fill:"none"},e("path",{d:"m9 6 6 6-6 6",stroke:"currentColor",strokeWidth:2,strokeLinecap:"round",strokeLinejoin:"round"})); }
       // Resalta en negritas los importes ($1,234.56) dentro de un texto de
       // CLEO ya normalizado , puramente de presentación.
       function conNegritasDinero(texto){
@@ -20994,7 +21095,10 @@ export default function CLEO(props){
           // ahora que la ficha vive DENTRO de esta misma área (antes tenía
           // su propio alto máximo aparte).
           e("div",{style:{flex:1,minHeight:0,overflowY:"auto",padding:"20px 20px 8px",background:"#F4F5FA",display:"flex",flexDirection:"column",gap:10}},
-            asistenteHistorial.length===0&&e("div",{style:{flexShrink:0,fontSize:13,color:"#8E94AE",lineHeight:1.5}},"Cuéntame qué pasó con tu negocio , puedo registrar un pedido pagado y/o dejarte un recordatorio."),
+            asistenteHistorial.length===0&&e("div",{style:{flexShrink:0}},
+              e("div",{style:{fontSize:15,fontWeight:800,color:"#0E1328",marginBottom:4}},"Hola, ¿en qué te ayudo hoy?"),
+              e("div",{style:{fontSize:13,color:"#8E94AE",lineHeight:1.5}},"Puedo ayudarte a registrar un pedido, anotar quién se interesó en tus productos o recordarte un pendiente")
+            ),
             asistenteHistorial.map(function(m,i){
               var esUsuario=m.rol==="usuario";
               // Mensaje de error: tarjeta compacta con ícono de alerta.
@@ -21005,15 +21109,19 @@ export default function CLEO(props){
                 );
               }
               // Confirmación de guardado: "Ver pedido/oportunidad/recordatorio"
-              // son EXACTAMENTE los mismos 3 enlaces de antes (mismo onClick,
-              // mismo destino) , solo se restylean como tarjeta "GUARDADO".
+              // , tarjeta "GUARDADO". "Ver oportunidad" lleva al tablero de
+              // Oportunidades (vista "prospectos") con la tarjeta de ese
+              // cliente resaltada , mismo mecanismo que irARevisarOportunidad ,
+              // nunca a la ficha del cliente (eso era un bug: coincidía con
+              // el destino de "Ver recordatorio" aunque fueran destinos
+              // distintos en el resto de la app).
               var esCierre=m.verPedidoId||m.verOportunidadClienteId||m.verRecordatorioClienteId;
               if(esCierre){
                 var etiquetaVer=m.verPedidoId?"Ver pedido":m.verOportunidadClienteId?"Ver oportunidad":"Ver recordatorio";
                 var onClickVer=m.verPedidoId
                   ?function(){ cerrarAsistente(); setVista("pedidos"); }
                   :m.verOportunidadClienteId
-                  ?function(){ setVista("clientes"); setClienteAbierto(m.verOportunidadClienteId); setTabCliente("perfil"); }
+                  ?function(){ setVista("prospectos"); setHighlightOpoId(m.verOportunidadClienteId); }
                   :function(){ setVista("clientes"); setClienteAbierto(m.verRecordatorioClienteId); setTabCliente("seguimiento"); };
                 return e("div",{key:i,style:{flexShrink:0,alignSelf:"stretch",marginTop:2,padding:"14px 16px",borderRadius:16,background:"#fff",boxShadow:"inset 0 0 0 1.5px #C9D0FF"}},
                   e("div",{style:{display:"flex",alignItems:"center",gap:8,fontSize:12,fontWeight:800,letterSpacing:".04em",color:"#1E5C38"}},
@@ -21358,7 +21466,7 @@ export default function CLEO(props){
                 onKeyDown:function(ev){ if(ev.key==="Enter"&&!ev.shiftKey){ ev.preventDefault(); enviarMensajeAsistente(); } },
                 onFocus:function(){ setAsistenteInputFocado(true); },
                 onBlur:function(){ setAsistenteInputFocado(false); },
-                placeholder:"Escribe aquí...",disabled:asistenteEsperando,
+                placeholder:"Escribe como se lo contarías a alguien...",disabled:asistenteEsperando,
                 style:{flex:1,minHeight:isMobile?22:20,maxHeight:100,resize:"none",border:"none",outline:"none",background:"transparent",fontFamily:"inherit",fontSize:isMobile?16:14.5,color:"#0E1328",padding:"9px 0",boxSizing:"border-box"}
               }),
               e("button",{type:"button",onClick:enviarMensajeAsistente,disabled:!asistenteChatInput.trim()||asistenteEsperando,"aria-label":"Enviar",
@@ -21369,14 +21477,10 @@ export default function CLEO(props){
                   display:"flex",alignItems:"center",justifyContent:"center"
                 }
               },iconoFlechaArriba())
-            ),
-            e("details",{style:{marginTop:8}},
-              e("summary",{style:{display:"inline-flex",alignItems:"center",gap:4,fontSize:12,fontWeight:600,color:"#8E94AE",cursor:"pointer"}},iconoChevron(),"Avanzado"),
-              e("div",{style:{marginTop:6}},
-                e("input",{type:"text",value:asistenteUrl,onChange:function(ev){ setAsistenteUrl(ev.target.value); },placeholder:"URL del asistente",style:Object.assign({},st.inp,{fontSize:11.5,width:"100%",boxSizing:"border-box"})}),
-                e("div",{style:{fontSize:10.5,color:"#8E94AE",marginTop:4,lineHeight:1.4}},"Si usas la URL de prueba de n8n, activa \"Execute workflow\" en el flujo antes de cada mensaje.")
-              )
             )
+            // Ya no hay "Avanzado"/URL configurable aquí a propósito , la
+            // dirección de n8n vive del lado del servidor (asistente-proxy),
+            // nunca en la interfaz ni en localStorage (ver enviarMensajeAsistente).
           )
         )
       ];
