@@ -1,0 +1,83 @@
+<!doctype html>
+<html lang="es"><head><meta charset="utf-8"><title>CLEO · Chat desktop</title><script src="./support.js"></script></head><body>
+<x-dc><helmet><link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&amp;display=swap" rel="stylesheet"><style>body{margin:0;background:#ECEEF5}
+.cl{font-family:'Plus Jakarta Sans',system-ui,sans-serif;color:#0E1328;-webkit-font-smoothing:antialiased;font-variant-numeric:tabular-nums}
+.i{width:16px;height:16px;flex:none;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.hdr{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:16px 16px 16px 20px;color:#FFFFFF;background:radial-gradient(110% 160% at 100% 0%,#24307A 0%,rgba(36,48,122,0) 62%),#0E1328}
+.mk{width:24px;height:32px;background:transparent;color:#FFFFFF;display:grid;place-items:center}
+.x{width:36px;height:36px;border:0;border-radius:50%;background:rgba(255,255,255,0.10);color:#FFFFFF;display:grid;place-items:center;cursor:pointer}
+.msgs{flex:1;overflow:hidden;padding:20px 20px 8px;background:#F4F5FA;display:flex;flex-direction:column;gap:10px}
+.u{align-self:flex-end;max-width:78%;padding:10px 14px;border-radius:18px 18px 6px 18px;background:#8D9BFF;color:#0E1328;font-weight:600;font-size:14px;line-height:1.5}
+.a{align-self:flex-start;max-width:84%;padding:10px 14px;border-radius:18px 18px 18px 6px;background:#FFFFFF;color:#0E1328;font-size:14px;line-height:1.55}
+.day{align-self:center;font-size:11.5px;font-weight:700;color:#8E94AE;margin:2px 0 4px}
+.err{align-self:flex-start;max-width:88%;display:flex;gap:10px;padding:10px 14px;border-radius:14px;background:#FBE6E1;color:#8E2A18;font-size:13px;line-height:1.5}
+.err .i{color:#B23A24;margin-top:2px}
+.ok{align-self:stretch;margin-top:2px;padding:14px 16px;border-radius:16px;background:#FFFFFF;box-shadow:inset 0 0 0 1.5px #C9D0FF}
+.ok .t{display:flex;align-items:center;gap:8px;font-size:12px;font-weight:800;letter-spacing:.04em;color:#1E5C38}
+.ok .t span{width:20px;height:20px;border-radius:50%;background:#E2F2E8;display:grid;place-items:center}
+.ok .t .i{width:12px;height:12px;stroke-width:3}
+.ok p{margin:6px 0 0;font-size:14px;line-height:1.5}
+.b2{display:inline-flex;align-items:center;gap:6px;height:32px;padding:0 14px;margin-top:12px;border-radius:16px;border:1.5px solid #E3E6EF;background:#FFFFFF;color:#0E1328;font-family:inherit;font-size:12.5px;font-weight:700;text-decoration:none}
+.b2 .i{width:14px;height:14px;stroke-width:2.4}
+.cmp{padding:12px 16px 14px;border-top:1px solid #EDEFF5;background:#FFFFFF}
+.box{display:flex;align-items:flex-end;gap:8px;padding:6px 6px 6px 16px;border-radius:24px;border:1.5px solid #E3E6EF;background:#FFFFFF}
+.box.f{border-color:#8D9BFF;box-shadow:0 0 0 4px #EEF0FF}
+.box span{flex:1;padding:9px 0;font-size:14.5px;color:#8E94AE}
+.snd{width:36px;height:36px;flex:none;border:0;border-radius:50%;background:#3F4BD0;color:#FFFFFF;display:grid;place-items:center}
+.snd.off{background:#E4E8FF;color:#3F4BD0}
+.adv{display:inline-flex;align-items:center;gap:4px;margin-top:8px;font-size:12px;font-weight:600;color:#8E94AE}
+.adv .i{width:12px;height:12px}
+.fc{align-self:stretch;margin-top:2px;border-radius:18px;background:#FFFFFF;border:1.5px solid #C9D0FF;overflow:hidden}
+.fc .sec{padding:14px 16px}
+.fc .sec+.sec{border-top:1px solid #EDEFF5}
+.fc .k{font-size:11px;font-weight:800;letter-spacing:.08em;color:#6E7489}
+.fc .cli{display:flex;align-items:center;gap:8px;margin-top:6px;font-size:15px;font-weight:800}
+.fc .new{height:22px;padding:0 9px;border-radius:11px;background:#EEF0FF;color:#3F4BD0;font-size:11.5px;font-weight:800;display:inline-flex;align-items:center}
+.fc .hlp{margin-top:3px;font-size:12.5px;color:#6E7489}
+.fc .it{display:flex;justify-content:space-between;gap:12px;font-size:14px;margin-top:6px}
+.fc .tot{display:flex;justify-content:space-between;align-items:baseline;gap:12px}
+.fc .tot b{font-size:20px;font-weight:800;letter-spacing:-0.02em}
+.fc .pg{display:flex;align-items:center;justify-content:space-between;margin-top:8px;font-size:13px;color:#1E5C38;font-weight:700}
+.fc .pg span{display:inline-flex;align-items:center;gap:6px}
+.fc .pg .i{width:14px;height:14px;stroke-width:2.6}
+.fc .acts{display:flex;gap:6px;padding:12px 16px 14px;background:#F8F9FC;border-top:1px solid #EDEFF5}
+.fc .gp{flex:1;height:40px;border:0;border-radius:20px;background:#0E1328;color:#FFFFFF;font-family:inherit;font-size:13.5px;font-weight:700;display:inline-flex;align-items:center;justify-content:center;gap:7px}
+.fc .sb{height:40px;padding:0 14px;border-radius:20px;border:1.5px solid #E3E6EF;background:#FFFFFF;color:#0E1328;font-family:inherit;font-size:13px;font-weight:700}
+.fc .tb{height:40px;padding:0 10px;border:0;background:transparent;color:#6E7489;font-family:inherit;font-size:13px;font-weight:700}
+</style></helmet>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+<symbol id="i-x" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18"/></symbol>
+<symbol id="i-chat" viewBox="0 0 24 24"><path d="M12 4c4.7 0 8.5 3.1 8.5 7s-3.8 7-8.5 7c-1 0-2-.1-2.9-.4L4.5 20l1.3-3.6C4.4 15 3.5 13.1 3.5 11c0-3.9 3.8-7 8.5-7z"/></symbol>
+<symbol id="i-up" viewBox="0 0 24 24"><path d="M12 19V5M6 11l6-6 6 6"/></symbol>
+<symbol id="i-alert" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><path d="M12 7.5v5M12 16h.01"/></symbol>
+<symbol id="i-check" viewBox="0 0 24 24"><path d="m5 12.5 4.5 4.5L19 7.5"/></symbol>
+<symbol id="i-arrow" viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></symbol>
+<symbol id="i-chev" viewBox="0 0 24 24"><path d="m9 6 6 6-6 6"/></symbol>
+<symbol id="i-back" viewBox="0 0 24 24"><path d="m15 6-6 6 6 6"/></symbol>
+</svg>
+<div class="cl" style="width:1440px;height:900px;position:relative;overflow:hidden;background:#ECEEF5">
+<div style="position:absolute;inset:0;padding:40px 0 0 140px;opacity:.9" aria-hidden="true">
+<div style="width:1100px;height:84px;border-radius:22px;background:#0E1328;margin-top:110px"></div>
+<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;width:1076px;padding:12px;border-radius:26px;background:#8D9BFF;margin-top:40px"><div style="height:64px;border-radius:18px;background:#fff"></div><div style="height:64px;border-radius:18px;background:#fff"></div><div style="height:64px;border-radius:18px;background:#fff"></div><div style="height:64px;border-radius:18px;background:#fff"></div></div>
+<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:16px;width:1100px;margin-top:60px"><div style="height:220px;border-radius:20px;background:#fff"></div><div style="height:220px;border-radius:20px;background:#fff"></div><div style="height:220px;border-radius:20px;background:#FBF1DC"></div></div>
+</div>
+<div style="position:absolute;inset:0;background:rgba(14,19,40,.28)"></div>
+<aside aria-label="Chat con CLEO" style="position:absolute;top:12px;right:12px;bottom:12px;width:420px;border-radius:24px;background:#FFFFFF;box-shadow:0 24px 60px rgba(14,19,40,.25);display:flex;flex-direction:column;overflow:hidden">
+<div class="hdr"><div style="display:flex;align-items:center;gap:10px"><span class="mk"><svg class="i" style="width:22px;height:22px"><use href="#i-chat"></use></svg></span><span style="font-size:16px;font-weight:800;letter-spacing:.06em">CLEO</span></div><button class="x" aria-label="Cerrar"><svg class="i"><use href="#i-x"></use></svg></button></div>
+<div class="msgs">
+<div class="u">Registra una venta de termos a María.</div>
+<div class="a">¿Cuántos termos compró María y cuál es el precio unitario de cada uno?</div>
+<div class="u">compro 20 y el precio de cada uno es 150</div>
+<div class="err"><svg class="i"><use href="#i-alert"></use></svg><span>No se pudo conectar con el asistente. Revisa tu conexión e inténtalo de nuevo.</span></div>
+<div class="u">compro 20 y el precio de cada uno es 150</div>
+<div class="a">¿La venta de los 20 termos a María fue pagada, quedó pendiente o fue un pago parcial?</div>
+<div class="u">Ya pagó los $3,000 completos.</div>
+<div class="a">Esto es lo que entendí, revísalo abajo antes de guardar.</div>
+<div class="ok"><div class="t"><span><svg class="i"><use href="#i-check"></use></svg></span>GUARDADO</div><p>Listo, María, pedido en preparación por <b>$3,000.00</b> (pago completo).</p><a href="#" class="b2">Ver cliente<svg class="i"><use href="#i-arrow"></use></svg></a></div>
+
+</div>
+<div class="cmp"><div class="box f"><span>Escribe aquí…</span><button class="snd off" aria-label="Enviar"><svg class="i" style="stroke-width:2.4"><use href="#i-up"></use></svg></button></div><div class="adv"><svg class="i"><use href="#i-chev"></use></svg>Avanzado</div></div>
+</aside></div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":900}}'>class Component extends DCLogic { renderVals() { return {}; } }</script>
+</body></html>

@@ -1971,6 +1971,173 @@ function redondearDinero(n){
   var signo=x<0?-1:1;
   return signo*Math.round(Math.abs(x)*100+1e-9)/100;
 }
+// ── validarRespuestaAsistente: valida y normaliza la respuesta JSON del
+// webhook de n8n (MVP InnovaFest). Nunca convierte un dato faltante en 0 ni
+// inventa un método de pago , un campo inválido/ausente se marca como tal
+// en el borrador para que la revisión editable lo pida, nunca se rellena
+// solo. Solo reconoce las acciones "registrar_venta" y "crear_recordatorio"
+// (alcance inicial de este MVP) , cualquier otra acción listada se ignora
+// sin bloquear las reconocidas. Devuelve {ok:false,error} o {ok:true,draft}.
+var ASISTENTE_ACCIONES_SOPORTADAS=["registrar_venta","crear_recordatorio","crear_oportunidad"];
+// firmaVentaAsistente: identifica una venta por cliente + sus productos
+// (nombre/cantidad/precio), sin importar el orden , usada para detectar si
+// una venta que n8n vuelve a incluir (porque manda todo el historial como
+// contexto) ya se guardó antes en este mismo chat.
+function firmaVentaAsistente(clienteNombre,items){
+  var partes=(items||[]).map(function(it){
+    return normalizarTextoIdentidad(it.producto)+":"+it.cantidad+":"+it.precioUnitario;
+  }).sort();
+  return normalizarTextoIdentidad(clienteNombre)+"|"+partes.join("|");
+}
+// ventaPagoResuelto: SIEMPRE se calcula en el momento (nunca se guarda como
+// campo fijo en el borrador) , editar el tipo de pago/monto/método en la
+// revisión debe reflejarse de inmediato en si ya se puede guardar, sin
+// depender de recordar actualizar un campo aparte en cada handler.
+function ventaPagoResuelto(venta){
+  if(!venta) return true;
+  if(venta.pagoTipo==="") return true;
+  if(venta.pagoTipo==="parcial"){
+    if(venta.montoAbonado==null) return false;
+    if(venta.completa&&venta.montoAbonado>=venta.total) return false;
+  }
+  return !!venta.metodoPago;
+}
+function firmaOportunidadAsistente(clienteNombre,producto){
+  return normalizarTextoIdentidad(clienteNombre)+"|"+normalizarTextoIdentidad(producto);
+}
+// Ronda 15 (texto aprobado): quita espacios antes de coma/punto al MOSTRAR
+// un mensaje del chat ("entendí ," → "entendí,") , puramente de
+// presentación, nunca toca cómo se arman los mensajes en el resto del
+// código del Asistente.
+function normalizarTextoChatAsistente(texto){
+  return typeof texto==="string"?texto.replace(/ +([,.])/g,"$1"):texto;
+}
+function validarRespuestaAsistente(data){
+  if(!data||typeof data!=="object"||Array.isArray(data)){
+    return {ok:false,error:"La respuesta del asistente no es un objeto JSON válido."};
+  }
+  var clienteNombre=typeof data.cliente==="string"?data.cliente.trim():"";
+  if(!clienteNombre) return {ok:false,error:"La respuesta no trae el nombre del cliente."};
+  var accionesIn=Array.isArray(data.acciones)?data.acciones:[];
+  var acciones=accionesIn.filter(function(a){ return ASISTENTE_ACCIONES_SOPORTADAS.indexOf(a)!==-1; });
+  if(acciones.length===0){
+    return {ok:false,error:"La respuesta no trae ninguna acción reconocida (registrar_venta / crear_recordatorio)."};
+  }
+
+  var venta=null;
+  if(acciones.indexOf("registrar_venta")!==-1){
+    // Un dato de venta FALTANTE o inválido (cantidad/precio ausentes, en
+    // cero, o no numéricos) ya NO bloquea toda la respuesta , eso obligaba a
+    // reescribir el mensaje completo por un mensaje vago. En vez de eso se
+    // arma un borrador parcial (con esos campos en null, nunca inventados
+    // en 0 o 1) y "completa:false" , la revisión editable es quien pide lo
+    // que falta, con el mismo criterio que ya usa para el recordatorio.
+    var v=(data.venta&&typeof data.venta==="object")?data.venta:{};
+    // Lista de productos , contrato nuevo: v.items=[{producto,cantidad,
+    // precio_unitario}, ...]. Tolera también el contrato anterior de UN
+    // solo producto (v.producto/v.cantidad/v.precio_unitario sueltos) por
+    // si n8n todavía no se actualizó, tratándolo como una lista de 1.
+    var itemsCrudos=Array.isArray(v.items)?v.items:(v.producto!=null||v.cantidad!=null||v.precio_unitario!=null?[v]:[]);
+    var items=itemsCrudos.map(function(it){
+      it=it&&typeof it==="object"?it:{};
+      var producto=typeof it.producto==="string"?it.producto.trim():"";
+      var cantidad=interpretarImporte(it.cantidad);
+      if(cantidad!=null&&cantidad<=0) cantidad=null; // 0/negativo no es un dato real
+      var precioUnitario=interpretarImporte(it.precio_unitario);
+      if(precioUnitario!=null&&precioUnitario<=0) precioUnitario=null;
+      var completo=!!producto&&cantidad!=null&&precioUnitario!=null;
+      return {
+        producto:producto,cantidad:cantidad,precioUnitario:precioUnitario,
+        total:completo?redondearDinero(cantidad*precioUnitario):null,
+        completo:completo
+      };
+    });
+    if(items.length===0) items=[{producto:"",cantidad:null,precioUnitario:null,total:null,completo:false}];
+    var ventaCompleta=items.length>0&&items.every(function(it){ return it.completo; });
+    var totalCalc=ventaCompleta?redondearDinero(items.reduce(function(s,it){ return s+it.total; },0)):null;
+    var totalReportado=interpretarImporte(v.total);
+    var moneda=typeof v.moneda==="string"&&v.moneda.trim()?v.moneda.trim().toUpperCase():"";
+    var estadoPago=typeof v.estado_pago==="string"?v.estado_pago.trim().toLowerCase():"";
+    // montoAbonado: solo tiene sentido con pago parcial , nunca se infiere
+    // de otra cosa. metodoPago: solo si el asistente lo reportó con un
+    // valor reconocido (los 3 que ya usa el resto de CLEO) , cualquier otro
+    // valor o ausencia se deja en null , la revisión lo pide, nunca se
+    // asume "efectivo" por default.
+    var montoAbonado=interpretarImporte(v.monto_pagado);
+    if(montoAbonado!=null&&montoAbonado<=0) montoAbonado=null;
+    var metodoPagoCrudo=typeof v.metodo_pago==="string"?v.metodo_pago.trim().toLowerCase():"";
+    var metodoPago=["efectivo","transferencia","tarjeta"].indexOf(metodoPagoCrudo)!==-1?metodoPagoCrudo:null;
+    // pagoTipo: "completo"|"parcial"|"" (pendiente/sin pago/desconocido).
+    // Si hay pago (completo o parcial) hace falta el método; si es parcial
+    // además hace falta el monto , pero esto se evalúa SIEMPRE al momento
+    // (ventaPagoResuelto), nunca como un campo fijo aquí , editar el pago
+    // en la revisión debe reflejarse de inmediato, sin quedar pegado al
+    // cálculo original de esta respuesta.
+    var pagoTipo=estadoPago==="pagado"?"completo":(estadoPago==="parcial"?"parcial":"");
+    venta={
+      items:items,
+      total:totalCalc,
+      completa:ventaCompleta,
+      avisoTotal:ventaCompleta&&totalReportado!=null&&Math.abs(totalReportado-totalCalc)>=0.01,
+      totalReportado:totalReportado,
+      moneda:moneda,avisoMoneda:!!moneda&&moneda!=="MXN",
+      estadoPagoOriginal:estadoPago,
+      pagoTipo:pagoTipo,
+      montoAbonado:montoAbonado,
+      metodoPago:metodoPago
+    };
+  }
+
+  // oportunidad: "alguien preguntó" (Productos) , igual que el flujo manual
+  // "+ Nueva oportunidad" cuando todavía no se envió un precio (estadoAuto
+  // "Nueva" en guardarPreguntoP). Solo el producto es obligatorio , el
+  // flujo manual SÍ permite crear la oportunidad sin cantidad ni precio
+  // todavía, así que esos dos nunca bloquean nada aquí.
+  var oportunidad=null;
+  if(acciones.indexOf("crear_oportunidad")!==-1){
+    var o=(data.oportunidad&&typeof data.oportunidad==="object")?data.oportunidad:{};
+    var productoOp=typeof o.producto==="string"?o.producto.trim():"";
+    var cantidadOp=interpretarImporte(o.cantidad);
+    if(cantidadOp!=null&&cantidadOp<=0) cantidadOp=null;
+    var precioUnitarioOp=interpretarImporte(o.precio_unitario);
+    if(precioUnitarioOp!=null&&precioUnitarioOp<=0) precioUnitarioOp=null;
+    var notasOp=typeof o.notas==="string"?o.notas.trim():"";
+    oportunidad={
+      producto:productoOp,
+      cantidad:cantidadOp,
+      precioUnitario:precioUnitarioOp,
+      notas:notasOp,
+      completa:!!productoOp
+    };
+  }
+
+  var recordatorio=null;
+  if(acciones.indexOf("crear_recordatorio")!==-1){
+    var r=data.recordatorio||{};
+    var texto=typeof r.texto==="string"?r.texto.trim():"";
+    var fechaObj=typeof r.fecha==="string"&&r.fecha.trim()?parseFechaLocal(r.fecha.trim()):null;
+    var fechaValida=!!(fechaObj&&!isNaN(fechaObj.getTime()));
+    recordatorio={
+      texto:texto,
+      fecha:fechaValida?r.fecha.trim():"",
+      valido:!!texto&&fechaValida,
+      motivoInvalido:!texto?"Falta el texto del recordatorio.":(!fechaValida?"La fecha del recordatorio no es válida.":null),
+      // incluir: controla el checkbox de la revisión , empieza marcado solo
+      // si vino completo y válido, la persona puede desmarcarlo o
+      // completarlo a mano antes de guardar.
+      incluir:!!texto&&fechaValida
+    };
+  }
+
+  return {ok:true,draft:{
+    clienteNombre:clienteNombre,
+    acciones:acciones,
+    venta:venta,
+    oportunidad:oportunidad,
+    recordatorio:recordatorio,
+    contextoComercial:typeof data.contexto_comercial==="string"?data.contexto_comercial.trim():""
+  }};
+}
 // formatoDinero: representación consistente de un importe YA normalizado ,
 // usada en toda la app , historial, Ingresos, Resumen, CSV y reporte
 // comercial (los PDFs/comprobantes usan su propia copia mínima , mismos
@@ -4487,6 +4654,32 @@ function clientesAOportunidades(clientes, tipoPerfil, opActuales) {
   });
 }
 
+// CORREGIDO (2026-10-27, hallazgo real -- reproducido con una sesión real
+// atascada en un conflicto): mientras cleo_conflict_backup está pendiente,
+// cloudSync.js tiene congelado un snapshot EXACTO de localStorage contra el
+// que compara byte a byte antes de resolver (versionLocalSigueIgual()). Si
+// cualquier inicialización o migración local (cleo_data_version,
+// cleo_oportunidades, la migración a multi-oportunidad de más abajo) escribe
+// algo DURANTE esa ventana -- aunque sea un campo puramente administrativo,
+// nunca una edición real de la persona -- esa comparación deja de coincidir
+// para siempre, y "Conservar este dispositivo"/"Usar la versión de la nube"
+// quedan bloqueados sin ninguna llamada de red (se ve en el log del
+// servidor: ninguna petición sale del navegador). Mientras haya un conflicto
+// pendiente, estas rutinas deben leer tal cual lo que ya hay en localStorage
+// y no escribir nada -- se vuelven a evaluar normalmente en cuanto el
+// conflicto se resuelve (la próxima vez que CLEO vuelva a montar sin un
+// respaldo pendiente).
+function hayConflictoPendiente() {
+  try {
+    var raw = localStorage.getItem("cleo_conflict_backup");
+    if (!raw) return false;
+    var backup = JSON.parse(raw);
+    return !!backup && backup.estado === "pendiente";
+  } catch (e) {
+    return false;
+  }
+}
+
 // Transforma cleo_oportunidades al formato multi-oportunidad (agrega cotizacionId,
 // recordatorios, origen). Idempotente: una op con cotizacionId ya migradu se preserva.
 // Reglas de migración:
@@ -4510,7 +4703,20 @@ function migrarOportunidadesV1(clientes, cotizaciones, opActuales) {
     if(opExistente && 'cotizacionId' in opExistente){ resultado.push(opExistente); return; }
     var tieneEtapa = !!(c.etapa&&c.etapa!=='');
     var todasLasCots = (cotizaciones||[]).filter(function(cot){ return String(cot.clienteId)===String(c.id); });
-    if(!tieneEtapa && todasLasCots.length===0) return;
+    if(!tieneEtapa && todasLasCots.length===0){
+      // CORREGIDO (2026-10-27, hallazgo real): "sin etapa ni cotización" asumía
+      // que una oportunidad YA existente siempre implica que c.etapa también
+      // está puesta -- no es cierto cuando algo externo (un escritor remoto
+      // como WhatsApp, o incluso clientesAOportunidades() local) creó la
+      // oportunidad antes de que c.etapa llegara a reflejarlo (ej.: una
+      // sincronización a medias). Antes esto DESCARTABA esa oportunidad en
+      // silencio -- se perdía sin ningún error ni aviso. Ahora, si ya existía
+      // algo para este cliente, se preserva (marcada pendiente de migrar con
+      // cotizacionId:null) en vez de borrarla; solo se sigue omitiendo crear
+      // una oportunidad nueva para un cliente que de verdad nunca tuvo ninguna.
+      if(opExistente){ resultado.push(Object.assign({cotizacionId:null}, opExistente)); }
+      return;
+    }
     var cotsActivas = todasLasCots.filter(function(cot){
       return cot.estatus==='Pendiente'||cot.estatus==='Aceptada';
     }).sort(function(a,b){ return new Date(b.fecha)-new Date(a.fecha); });
@@ -4762,7 +4968,7 @@ export default function CLEO(props){
   var writeGuard=useState(function(){
     // Inicializar cleo_oportunidades y cleo_tombstones ANTES de que el guard
     // tome su snapshot. El initializer de useState corre una sola vez al montar.
-    if(typeof localStorage!=="undefined"){
+    if(typeof localStorage!=="undefined"&&!hayConflictoPendiente()){
       function _lsg(k,fb){try{var v=localStorage.getItem(k);return v?JSON.parse(v):fb;}catch(e){return fb;}}
       if(!localStorage.getItem("cleo_oportunidades")){
         try{
@@ -4779,8 +4985,11 @@ export default function CLEO(props){
 
   // Estados principales , forzar datos frescos si version cambio
   var DATA_VERSION="v4";
-  // No borrar datos al iniciar , solo marcar version si es nueva instalación
-  if(typeof localStorage!=="undefined"&&!localStorage.getItem("cleo_data_version")){
+  // No borrar datos al iniciar , solo marcar version si es nueva instalación.
+  // CORREGIDO: nunca mientras haya un conflicto pendiente (ver nota junto a
+  // hayConflictoPendiente()) -- escribir esto ahí rompe para siempre la
+  // comparación que necesita "Conservar este dispositivo"/"Usar la nube".
+  if(typeof localStorage!=="undefined"&&!localStorage.getItem("cleo_data_version")&&!hayConflictoPendiente()){
     localStorage.setItem("cleo_data_version",DATA_VERSION);
   }
   function lsGet(key,fallback){ try{ var v=localStorage.getItem(key); return v?JSON.parse(v):fallback; }catch(e){ return fallback; } }
@@ -5469,8 +5678,467 @@ export default function CLEO(props){
     // ("oportunidad" si venía de convertir una oportunidad activa,
     // "registro_manual" en cualquier otro caso , ver guardarCerreP).
     registrarEvento("pedido_creado",{tipo_perfil:perfil.tipoPerfil||"",origen:origenVenta==="oportunidad"?"oportunidad":"cerre_venta",dispositivo:dispositivoActual()});
-    return {ok:true};
+    return {ok:true,pedidoId:nuevoPedBase.id};
   }
+
+  // ════════════════════════════════════════════════════════════════════════
+  // ASISTENTE (MVP InnovaFest, prueba) ────────────────────────────────────
+  // Interpreta un mensaje libre vía n8n (solo NLU: n8n nunca escribe en
+  // Supabase ni en localStorage), muestra una revisión editable, y al
+  // confirmar guarda con las MISMAS funciones que ya usan los flujos
+  // manuales (buscarPosiblesCoincidenciasCliente, crearPedidoDesdeVenta,
+  // conRecordatoriosActualizados) , así hereda persistencia local, el
+  // guard de pestaña obsoleta y la sincronización normales, sin ningún
+  // camino de guardado paralelo.
+  // ════════════════════════════════════════════════════════════════════════
+  // enviarMensajeAsistente: UN turno del chat. Manda el mensaje actual MÁS
+  // el historial previo (nunca solo el mensaje suelto) , así n8n puede
+  // reconstruir todo el contexto de la conversación y seguir pidiendo lo
+  // que falte sin que la persona tenga que repetir nada ya dicho.
+  function enviarMensajeAsistente(){
+    var texto=asistenteChatInput.trim();
+    if(!texto||asistenteEsperando) return;
+    var historialPrevio=asistenteHistorial.map(function(m){ return {rol:m.rol,texto:m.texto}; });
+    setAsistenteHistorial(function(prev){ return prev.concat([{rol:"usuario",texto:texto}]); });
+    setAsistenteChatInput("");
+    setAsistenteEsperando(true);
+    var urlFinal=(asistenteUrl||"").trim();
+    if(!urlFinal){
+      setAsistenteHistorial(function(prev){ return prev.concat([{rol:"cleo",texto:"Falta configurar la URL del asistente (ver \"avanzado\" abajo).",error:true}]); });
+      setAsistenteChatInput(texto);
+      setAsistenteEsperando(false);
+      return;
+    }
+    try{ localStorage.setItem("cleo_asistente_url",urlFinal); }catch(e){}
+    fetch(urlFinal,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({mensaje:texto,historial:historialPrevio})})
+      .then(function(res){
+        if(!res.ok) throw new Error("El asistente respondió con un error (HTTP "+res.status+").");
+        return res.json();
+      })
+      .then(function(data){
+        setAsistenteEsperando(false);
+        // Modo conversación: n8n todavía no tiene todo lo que necesita , hace
+        // una pregunta puntual y espera la siguiente respuesta, conservando
+        // lo ya dicho (nunca se pide repetir el mensaje original).
+        if(data&&data.estado==="pregunta"){
+          var pregunta=typeof data.pregunta==="string"&&data.pregunta.trim()?data.pregunta.trim():"¿Puedes dar un poco más de detalle?";
+          setAsistenteHistorial(function(prev){ return prev.concat([{rol:"cleo",texto:pregunta}]); });
+          return;
+        }
+        if(!data||data.estado!=="completo"){
+          setAsistenteHistorial(function(prev){ return prev.concat([{rol:"cleo",texto:"No entendí bien tu mensaje. ¿Puedes explicarlo de otra forma?",error:true}]); });
+          return;
+        }
+        var v=validarRespuestaAsistente(data);
+        if(!v.ok){
+          setAsistenteHistorial(function(prev){ return prev.concat([{rol:"cleo",texto:v.error,error:true}]); });
+          return;
+        }
+        var draftFinal=v.draft;
+        // n8n manda el historial completo como contexto, así que puede
+        // volver a incluir una venta que ya se guardó hace unos turnos
+        // (sigue "viéndola" en la conversación aunque ya esté cerrada). Si
+        // esa venta exacta (mismo cliente/producto/cantidad/precio) ya se
+        // guardó en ESTE chat, se descarta aquí , nunca se vuelve a
+        // mostrar ni se puede guardar dos veces. Una venta genuinamente
+        // nueva, o una que todavía no se había guardado, no se toca.
+        if(draftFinal.venta){
+          var firmaEntrante=firmaVentaAsistente(draftFinal.clienteNombre,draftFinal.venta.items);
+          var ventaYaGuardada=asistenteVentasGuardadas.indexOf(firmaEntrante)!==-1;
+          if(ventaYaGuardada){
+            draftFinal=Object.assign({},draftFinal,{venta:null});
+            setAsistenteHistorial(function(prev){ return prev.concat([{rol:"cleo",texto:"Ese pedido ya está guardado , preparo solo lo nuevo."}]); });
+          }
+        }
+        // Mismo criterio que arriba, para una oportunidad que n8n vuelva a
+        // incluir aunque ya se guardó en un turno anterior de este chat.
+        if(draftFinal.oportunidad&&draftFinal.oportunidad.producto){
+          var firmaOpEntrante=firmaOportunidadAsistente(draftFinal.clienteNombre,draftFinal.oportunidad.producto);
+          var oportunidadYaGuardada=asistenteOportunidadesGuardadas.indexOf(firmaOpEntrante)!==-1;
+          if(oportunidadYaGuardada){
+            draftFinal=Object.assign({},draftFinal,{oportunidad:null});
+            setAsistenteHistorial(function(prev){ return prev.concat([{rol:"cleo",texto:"Esa oportunidad ya está guardada , preparo solo lo nuevo."}]); });
+          }
+        }
+        // Si ya hay un borrador SIN GUARDAR abierto (la persona todavía no
+        // guardó lo anterior) y este mensaje nuevo sigue hablando del MISMO
+        // cliente, se trata como una corrección/continuación de esa MISMA
+        // operación , nunca se pide elegir cliente otra vez ni se pierde lo
+        // que ya tenía (fusionarDraftsAsistente conserva cualquier campo que
+        // esta respuesta no vuelva a mencionar). Si habla de alguien
+        // DISTINTO, no se asume nada: se pregunta antes de tocar el
+        // borrador abierto (nunca se descarta en silencio).
+        if(asistenteDraft&&asistentePaso==="revision"){
+          var esMismoClienteQueElAbierto=normalizarTextoIdentidad(draftFinal.clienteNombre)===normalizarTextoIdentidad(asistenteDraft.clienteNombre);
+          if(esMismoClienteQueElAbierto){
+            setAsistenteDraft(fusionarDraftsAsistente(asistenteDraft,draftFinal));
+            setAsistenteConflictoOportunidad(null);
+            setAsistenteHistorial(function(prev){ return prev.concat([{rol:"cleo",texto:"Esto es lo que entendí , revísalo abajo antes de guardar."}]); });
+            return;
+          }
+          setAsistenteConflictoOperacion({draftViejo:asistenteDraft,draftNuevo:draftFinal});
+          setAsistenteHistorial(function(prev){ return prev.concat([{rol:"cleo",texto:"¿Quieres cambiar lo que estamos revisando o empezar otra operación?",conflictoOperacionPendiente:true}]); });
+          return;
+        }
+        activarDraftAsistente(draftFinal);
+        setAsistenteHistorial(function(prev){ return prev.concat([{rol:"cleo",texto:"Esto es lo que entendí , revísalo abajo antes de guardar."}]); });
+      })
+      .catch(function(err){
+        setAsistenteEsperando(false);
+        var msg=(err&&err.message)||"No se pudo conectar con el asistente.";
+        if(/Failed to fetch|NetworkError|TypeError/i.test(msg)){
+          // Ronda 15 (texto aprobado): el mensaje visible en el chat ya no
+          // menciona n8n , el detalle técnico (solo útil para quien está
+          // desarrollando el flujo) se queda en la consola.
+          console.log("[Asistente] Si usas la URL de prueba de n8n, recuerda activar \"Execute workflow\" en el flujo antes de escribir.");
+          msg="No se pudo conectar con el asistente. Revisa tu conexión e inténtalo de nuevo.";
+        }
+        setAsistenteHistorial(function(prev){ return prev.concat([{rol:"cleo",texto:msg,error:true}]); });
+        // Conserva el texto , se regresa al campo para reintentar con un
+        // clic, nunca hay que volver a escribirlo.
+        setAsistenteChatInput(texto);
+      });
+  }
+
+  function cancelarRevisionAsistente(){
+    setAsistenteDraft(null);
+    setAsistenteCandidatos([]);
+    setAsistenteClienteElegido(null);
+    setAsistenteRevisionModo("resumen");
+    setAsistenteConflictoOportunidad(null);
+    setAsistenteConflictoOperacion(null);
+    setAsistentePaso("chat");
+  }
+
+  // activarDraftAsistente: punto único para dejar un draft nuevo listo para
+  // revisión (resuelve cliente igual que siempre , identidad ya confirmada
+  // en este chat se reutiliza, sin ninguna coincidencia se prepara "nuevo"
+  // por defecto, con coincidencias se exige elegir). Se usa tanto para un
+  // mensaje normal (sin nada abierto) como para "Empezar otra operación"
+  // tras una ambigüedad , en ambos casos es exactamente lo mismo: una
+  // operación fresca, independiente de cualquier borrador anterior.
+  function activarDraftAsistente(draftFinal){
+    var candidatos=buscarPosiblesCoincidenciasCliente({nombre:draftFinal.clienteNombre},clientes,null);
+    var clienteAutoResuelto=(asistenteClienteActivo&&normalizarTextoIdentidad(asistenteClienteActivo.nombre)===normalizarTextoIdentidad(draftFinal.clienteNombre))
+      ?String(asistenteClienteActivo.id):null;
+    if(!clienteAutoResuelto&&candidatos.length===0){
+      clienteAutoResuelto="nuevo";
+      setAsistenteClienteActivo({id:"nuevo",nombre:draftFinal.clienteNombre});
+    }
+    setAsistenteDraft(draftFinal);
+    setAsistenteCandidatos(candidatos);
+    setAsistenteClienteElegido(clienteAutoResuelto);
+    setAsistenteRevisionModo("resumen");
+    setAsistenteConflictoOportunidad(null);
+    setAsistenteConflictoOperacion(null);
+    setAsistentePaso("revision");
+  }
+
+  // fusionarDraftsAsistente: una corrección sobre el MISMO cliente nunca
+  // debe borrar lo que el borrador abierto ya tenía y esta respuesta no
+  // volvió a mencionar (ej. agregar "y recuérdame..." no debe tirar el
+  // pedido que ya se estaba armando) , solo se sobreescribe un bloque
+  // (venta/oportunidad/recordatorio) cuando la respuesta nueva SÍ lo trae.
+  function fusionarDraftsAsistente(draftViejo,draftNuevo){
+    return {
+      clienteNombre:draftNuevo.clienteNombre||draftViejo.clienteNombre,
+      acciones:Array.from(new Set((draftViejo.acciones||[]).concat(draftNuevo.acciones||[]))),
+      venta:draftNuevo.venta||draftViejo.venta,
+      oportunidad:draftNuevo.oportunidad||draftViejo.oportunidad,
+      recordatorio:draftNuevo.recordatorio||draftViejo.recordatorio,
+      contextoComercial:draftNuevo.contextoComercial||draftViejo.contextoComercial
+    };
+  }
+
+  // Resolución de "¿Quieres cambiar lo que estamos revisando o empezar otra
+  // operación?" , ninguna de las dos toca nada hasta que la persona elige
+  // explícitamente (nunca se descarta el borrador abierto en silencio).
+  // "Cambiar": la respuesta nueva corrige la MISMA operación abierta (puede
+  // incluir corregir el nombre del cliente) , se fusiona igual que una
+  // corrección normal, conservando lo que no se volvió a mencionar.
+  function cambiarOperacionConflicto(){
+    var conf=asistenteConflictoOperacion;
+    if(!conf) return;
+    setAsistenteDraft(fusionarDraftsAsistente(conf.draftViejo,conf.draftNuevo));
+    setAsistenteConflictoOperacion(null);
+  }
+  // "Empezar otra operación": la persona confirma que el borrador abierto
+  // se abandona , se activa la nueva operación desde cero (candidatos y
+  // cliente elegido se vuelven a resolver, nunca se arrastra nada del
+  // borrador anterior).
+  function empezarOtraOperacionConflicto(){
+    var conf=asistenteConflictoOperacion;
+    if(!conf) return;
+    activarDraftAsistente(conf.draftNuevo);
+  }
+
+  function confirmarGuardarAsistente(){
+    if(asistenteGuardandoRef.current) return;
+    if(!asistenteDraft) return;
+    if(!asistenteClienteElegido){ alert("Elige si es un cliente nuevo o uno existente antes de guardar."); return; }
+    if(sinConexionParaGuardar()){ alert(MSG_SIN_CONEXION_GUARDADO); return; }
+    var draft=asistenteDraft;
+    if(draft.venta&&!draft.venta.completa){
+      alert("Completa producto, cantidad y precio antes de guardar."); return;
+    }
+    if(draft.venta&&draft.venta.completa&&!ventaPagoResuelto(draft.venta)){
+      alert("Completa los datos del pago (monto abonado y/o método de pago) antes de guardar."); return;
+    }
+    if(draft.oportunidad&&!draft.oportunidad.completa){
+      alert("Escribe el producto de interés antes de guardar."); return;
+    }
+    if(draft.recordatorio&&draft.recordatorio.incluir&&(!draft.recordatorio.texto||!draft.recordatorio.texto.trim()||!draft.recordatorio.fecha)){
+      alert("Completa el texto y la fecha del recordatorio, o desmárcalo."); return;
+    }
+    asistenteGuardandoRef.current=true;
+    setAsistentePaso("guardando");
+
+    // 1) Resolver cliente , nunca se fusiona ni se elige solo. NUNCA se
+    // marca Convertido/Ganado aquí , eso solo puede decidirse en el paso 2,
+    // una vez confirmado que crearPedidoDesdeVenta tuvo éxito de verdad
+    // (que exista draft.venta no basta: el guardado real puede fallar).
+    var clienteIdFinal=null;
+    if(asistenteClienteElegido==="nuevo"){
+      clienteIdFinal=Date.now();
+      // Mismos valores iniciales que "+ Cliente" (ver guardarCliente):
+      // etapa "Nuevo contacto", sin estadoProspecto , nunca nace ya
+      // convertido solo por venir del Asistente.
+      var nuevoClienteAsist=Object.assign({},formVacio,{
+        id:clienteIdFinal,
+        nombre:draft.clienteNombre,
+        fecha:FECHA_HOY,
+        ultimoContacto:FECHA_HOY,
+        origen:"Asistente IA (prueba)",
+        notas:draft.contextoComercial||"",
+      });
+      setClientes([nuevoClienteAsist,...clientes]);
+    } else {
+      clienteIdFinal=Number(asistenteClienteElegido);
+    }
+    // Cliente activo de ESTE chat , un mensaje posterior que mencione el
+    // mismo nombre reutiliza esta identidad sin volver a preguntar (ver
+    // enviarMensajeAsistente). Nunca es una coincidencia difusa: la persona
+    // ya la confirmó explícitamente ahora mismo.
+    setAsistenteClienteActivo({id:clienteIdFinal,nombre:draft.clienteNombre});
+
+    // 2) Pedido + pago (si hay venta) , SIEMPRE "preparando" (pendiente de
+    // producir), nunca "entregado" , con pago completo solo si se eligió
+    // explícitamente en la revisión.
+    var resumenPedidoId=null;
+    var pedidoIdGuardado=null;
+    if(draft.venta){
+      var itemsAsist=draft.venta.items.map(function(it,idx){ return {id:"it_"+Date.now()+"_"+idx,catalogoId:null,nombre:it.producto,cantidad:it.cantidad,precioUnitario:it.precioUnitario,total:it.total}; });
+      // parcial reutiliza el mecanismo de anticipo que ya usa el resto de
+      // CLEO (mismo registrarPago/saldoPendienteDe) , no es un camino nuevo.
+      var tipoPagoAsist=draft.venta.pagoTipo==="completo"?"completo":(draft.venta.pagoTipo==="parcial"?"anticipo":"");
+      var anticipoAsist=draft.venta.pagoTipo==="parcial"?draft.venta.montoAbonado:null;
+      var metodoPagoAsist=draft.venta.metodoPago||"efectivo";
+      var resPed=crearPedidoDesdeVenta(clienteIdFinal,itemsAsist,tipoPagoAsist,anticipoAsist,"registro_manual",false,metodoPagoAsist);
+      if(!resPed.ok){
+        // El pedido NO se guardó , el cliente (nuevo o existente) se deja
+        // exactamente como estaba, nunca se marca Convertido/Ganado por un
+        // intento fallido.
+        asistenteGuardandoRef.current=false;
+        setAsistentePaso("revision");
+        alert("No se pudo guardar el pedido: "+(resPed.error||"intenta de nuevo."));
+        return;
+      }
+      pedidoIdGuardado=resPed.pedidoId;
+      resumenPedidoId=clienteIdFinal;
+      // Se registra como venta YA guardada en este chat , si un turno
+      // posterior vuelve a traer esta misma venta (n8n repitiendo contexto
+      // del historial), enviarMensajeAsistente la descarta en vez de
+      // mostrarla de nuevo.
+      setAsistenteVentasGuardadas(function(prev){ return prev.concat([firmaVentaAsistente(draft.clienteNombre,draft.venta.items)]); });
+      // Convertido/Ganado SOLO aquí, ya confirmado el éxito real de
+      // crearPedidoDesdeVenta , nunca antes. setClientes funcional: para un
+      // cliente "nuevo" recién creado arriba en esta misma función, `clientes`
+      // (la variable capturada al inicio) todavía no lo incluye , leer
+      // `prev` evita perder esa alta reciente.
+      if(esProductos){
+        setClientes(function(prev){
+          return prev.map(function(c){
+            if(Number(c.id)!==clienteIdFinal) return c;
+            return c.estadoProspecto!=="Convertido"?marcarOportunidadConvertidaProductos(c):c;
+          });
+        });
+      }
+    }
+
+    // 2b) Oportunidad (si no hay venta) , mismos campos que guardarPreguntoP
+    // cuando "aún no se envió un precio" (estadoProspecto:"Nueva", nunca
+    // Convertido/Ganado, items/precio/cantidad opcionales). No crea pedido
+    // ni pago , el interés queda en el propio cliente, igual que el flujo
+    // manual "+ Nueva oportunidad".
+    //
+    // PROTECCIÓN (hallazgo real con n8n): si el cliente YA tiene una
+    // oportunidad activa (mismo criterio que usa el flujo manual ,
+    // tieneOportunidadActivaProductos) con un interés DISTINTO al nuevo,
+    // nunca se sobrescribe en silencio. Se corta aquí (sin guardar nada
+    // todavía, ni siquiera el recordatorio de este turno) y se pide elegir
+    // explícitamente , exactamente la misma decisión que ya ofrece el
+    // flujo manual ("Agregar a la oportunidad" , mismo algoritmo de
+    // combinar/deduplicar, ver confirmarAgregarOportunidad), más una
+    // opción de Reemplazar, ambas explícitas, nunca automáticas.
+    if(draft.oportunidad){
+      var itemNuevoOp=draft.oportunidad.cantidad!=null&&draft.oportunidad.precioUnitario!=null
+        ?{id:"it_"+Date.now(),catalogoId:null,nombre:draft.oportunidad.producto,cantidad:draft.oportunidad.cantidad,precioUnitario:draft.oportunidad.precioUnitario,total:redondearDinero(draft.oportunidad.cantidad*draft.oportunidad.precioUnitario)}
+        :{id:"it_"+Date.now(),catalogoId:null,nombre:draft.oportunidad.producto,cantidad:0,precioUnitario:0,total:0};
+      var clienteExistenteOp=asistenteClienteElegido!=="nuevo"?clientes.find(function(c){ return c.id===clienteIdFinal; }):null;
+      if(clienteExistenteOp&&tieneOportunidadActivaProductos(clienteExistenteOp)){
+        var itemsActualesOp=obtenerItemsInteres(clienteExistenteOp);
+        var productoNuevoNormOp=normalizarNombreItem(draft.oportunidad.producto);
+        var yaIncluidoOp=itemsActualesOp.some(function(it){ return normalizarNombreItem(it.nombre)===productoNuevoNormOp; });
+        if(itemsActualesOp.length>0&&!yaIncluidoOp){
+          asistenteGuardandoRef.current=false;
+          setAsistentePaso("revision");
+          setAsistenteConflictoOportunidad({
+            clienteId:clienteIdFinal,
+            clienteNombre:draft.clienteNombre,
+            itemsActuales:itemsActualesOp,
+            resumenActual:resumenOportunidadActivaProductos(clienteExistenteOp),
+            itemNuevo:itemNuevoOp,
+            draft:draft
+          });
+          return;
+        }
+      }
+      terminarGuardadoAsistente(clienteIdFinal,draft,[itemNuevoOp],pedidoIdGuardado);
+      return;
+    }
+
+    terminarGuardadoAsistente(clienteIdFinal,draft,null,pedidoIdGuardado);
+  }
+
+  // terminarGuardadoAsistente: cola compartida de guardado (oportunidad con
+  // los items YA decididos + recordatorio + mensaje de éxito) , usada tanto
+  // por el flujo normal (sin conflicto) como por las 2 resoluciones del
+  // conflicto de interés (Agregar/Reemplazar). itemsOportunidadFinal es
+  // null cuando no hay draft.oportunidad en absoluto (pedido o solo
+  // recordatorio).
+  function terminarGuardadoAsistente(clienteIdFinal,draft,itemsOportunidadFinal,pedidoIdGuardado){
+    var oportunidadGuardada=false;
+    if(itemsOportunidadFinal){
+      var compatOp=buildItemsCompat(itemsOportunidadFinal,"producto");
+      setClientes(function(prev){
+        return prev.map(function(c){
+          if(Number(c.id)!==clienteIdFinal) return c;
+          return Object.assign({},c,{
+            fechaEtapa:FECHA_HOY,etapa:"Nuevo contacto",estadoProspecto:"Nueva",
+            items:itemsOportunidadFinal,productoInteres:compatOp.resumen,precioInteres:String(compatOp.total),cantidadInteres:String(compatOp.cantidad),
+            notasProspecto:draft.oportunidad.notas||c.notasProspecto||"",
+            ultimoContacto:FECHA_HOY
+          });
+        });
+      });
+      setAsistenteOportunidadesGuardadas(function(prev){ return prev.concat([firmaOportunidadAsistente(draft.clienteNombre,draft.oportunidad.producto)]); });
+      registrarEvento("oportunidad_creada",{tipo_perfil:perfil.tipoPerfil||"",origen:"asistente",dispositivo:dispositivoActual()});
+      oportunidadGuardada=true;
+    }
+
+    // 3) Recordatorio manual , categoria:"manual" , nunca lo cancela el
+    // cambio de etapa (ver esRecordatorioPipelineObsoleto). El pedido (si
+    // lo había) ya se guardó arriba , si esto fallara no se reintenta el
+    // pedido, nunca se duplica.
+    var recordatorioGuardado=false;
+    if(draft.recordatorio&&draft.recordatorio.incluir){
+      var fechaRecAsist=parseFechaLocal(draft.recordatorio.fecha);
+      var entradaAsist={id:"r_"+Date.now(),fecha:fmtFechaLocal(fechaRecAsist),nota:draft.recordatorio.texto,esPersonalizada:true,origen:"manual",categoria:"manual"};
+      setClientes(function(prev){
+        return prev.map(function(c){
+          if(Number(c.id)!==clienteIdFinal) return c;
+          return conRecordatoriosActualizados(c,recordatoriosDe(c).concat([entradaAsist]));
+        });
+      });
+      recordatorioGuardado=true;
+    }
+
+    registrarEvento("asistente_guardado",{tipo_perfil:perfil.tipoPerfil||"",dispositivo:dispositivoActual()});
+    // El resultado se agrega como un mensaje más del chat (no una pantalla
+    // aparte) , así "cerrar y volver a abrir" conserva exactamente lo que
+    // pasó, y la persona puede seguir escribiendo de inmediato para otra
+    // cosa sin perder el hilo. Esta tarjeta de confirmación es definitiva ,
+    // una vez aquí el draft ya se limpió abajo, así que nada en esta
+    // burbuja puede volver a disparar un guardado.
+    var detallePagoTexto=!draft.venta?""
+      :draft.venta.pagoTipo==="completo"?"Pagado completo"
+      :draft.venta.pagoTipo==="parcial"?("Abonado $"+formatoDinero(draft.venta.montoAbonado)+" · Pendiente $"+formatoDinero(redondearDinero(draft.venta.total-draft.venta.montoAbonado)))
+      :"Sin pago registrado";
+    var lineaPrincipal=draft.venta
+      ?("Pedido guardado para "+draft.clienteNombre+" · $"+formatoDinero(draft.venta.total)+" · "+detallePagoTexto)
+      :oportunidadGuardada
+      ?("Oportunidad guardada para "+draft.clienteNombre+": "+buildItemsCompat(itemsOportunidadFinal,"producto").resumen)
+      :recordatorioGuardado
+      ?("Recordatorio guardado para "+draft.clienteNombre)
+      :("Listo, "+draft.clienteNombre+".");
+    // El recordatorio siempre muestra su propia nota y fecha cuando se
+    // guardó, sin importar si también hubo pedido u oportunidad en el mismo
+    // turno , nunca se resume como "agregado" sin decir qué dice ni cuándo.
+    var lineaRecordatorio=recordatorioGuardado?("Recordatorio: \""+draft.recordatorio.texto+"\" · "+draft.recordatorio.fecha):"";
+    // La operación se cierra sola , sin ningún botón de "empezar de
+    // nuevo". La invitación a seguir es parte del propio mensaje de cierre;
+    // el siguiente texto que escriba la persona ya arranca una operación
+    // distinta de forma natural (ver enviarMensajeAsistente).
+    var resumenTexto=lineaPrincipal+(lineaRecordatorio?("\n"+lineaRecordatorio):"")+"\n\n¿Qué más pasó en tu negocio?";
+    // Cada enlace aplica de forma independiente , un pedido con recordatorio
+    // en el mismo turno ofrece AMBOS ("Ver pedido" y "Ver recordatorio"),
+    // nunca se oculta uno por el otro.
+    setAsistenteHistorial(function(prev){ return prev.concat([{
+      rol:"cleo",texto:resumenTexto,
+      verPedidoId:pedidoIdGuardado||null,
+      verOportunidadClienteId:(!pedidoIdGuardado&&oportunidadGuardada)?clienteIdFinal:null,
+      verRecordatorioClienteId:recordatorioGuardado?clienteIdFinal:null
+    }]); });
+    setAsistenteConflictoOportunidad(null);
+    setAsistenteDraft(null);
+    setAsistenteCandidatos([]);
+    setAsistenteClienteElegido(null);
+    setAsistentePaso("chat");
+    setTimeout(function(){ asistenteGuardandoRef.current=false; },300);
+  }
+
+  // ── Resolución del conflicto de interés distinto ────────────────────────
+  // "Agregar": combina el interés actual + el nuevo, con el MISMO algoritmo
+  // de deduplicación que ya usa confirmarAgregarOportunidad (por
+  // catalogoId, o por nombre normalizado) , nunca suma ni fusiona en
+  // silencio, solo evita duplicar el mismo renglón.
+  function agregarOportunidadAsistente(){
+    var conf=asistenteConflictoOportunidad;
+    if(!conf) return;
+    if(asistenteGuardandoRef.current) return;
+    asistenteGuardandoRef.current=true;
+    var itemsCombinados=conf.itemsActuales.concat(
+      conf.itemsActuales.some(function(it){
+        if(conf.itemNuevo.catalogoId&&it.catalogoId) return conf.itemNuevo.catalogoId===it.catalogoId;
+        return normalizarNombreItem(it.nombre)===normalizarNombreItem(conf.itemNuevo.nombre);
+      })?[]:[conf.itemNuevo]
+    );
+    terminarGuardadoAsistente(conf.clienteId,conf.draft,itemsCombinados,null);
+  }
+  // "Reemplazar": usa SOLO el interés nuevo , el anterior se pierde, pero
+  // únicamente porque la persona lo confirmó explícitamente aquí, nunca
+  // como comportamiento por defecto.
+  function reemplazarOportunidadAsistente(){
+    var conf=asistenteConflictoOportunidad;
+    if(!conf) return;
+    if(asistenteGuardandoRef.current) return;
+    asistenteGuardandoRef.current=true;
+    terminarGuardadoAsistente(conf.clienteId,conf.draft,[conf.itemNuevo],null);
+  }
+  // "Cancelar": nada se guarda , ni la oportunidad ni el recordatorio de
+  // este turno , la oportunidad anterior queda exactamente como estaba.
+  function cancelarConflictoOportunidadAsistente(){
+    setAsistenteConflictoOportunidad(null);
+    cancelarRevisionAsistente();
+  }
+
+  // cerrarAsistente: SOLO oculta el panel , nunca borra el historial ni el
+  // borrador en revisión, para que reabrir conserve exactamente la
+  // conversación donde se quedó (pedido explícito de la persona).
+  function cerrarAsistente(){
+    setAsistenteAbierto(false);
+  }
+
   function guardarCerreP(overrides){
     if(sinConexionParaGuardar()){ alert(MSG_SIN_CONEXION_GUARDADO); return; }
     var fc=Object.assign({},formCerreP,overrides||{});
@@ -6568,6 +7236,27 @@ export default function CLEO(props){
   var s34=useState(function(){ try{ return JSON.parse(localStorage.getItem("cleo_alertas_cerradas")||"[]"); }catch(e){ return []; } }); var alertasCerradas=s34[0]; var setAlertasCerradas=s34[1];
   var s35=useState(false); var mostrarArchivados=s35[0]; var setMostrarArchivados=s35[1];
 
+  // ── Estados del Asistente (MVP InnovaFest, prueba — chat con CLEO → n8n
+  // (conversacional, puede preguntar lo que falte) → revisión editable →
+  // guardado con las funciones normales de CLEO) ───────────────────────────
+  var s90=useState(false); var asistenteAbierto=s90[0]; var setAsistenteAbierto=s90[1];
+  var s91=useState(""); var asistenteChatInput=s91[0]; var setAsistenteChatInput=s91[1]; // texto que se está escribiendo ahora
+  var s92=useState(function(){ try{ return localStorage.getItem("cleo_asistente_url")||"https://dannabel-automation.app.n8n.cloud/webhook-test/cleo-assistant"; }catch(e){ return "https://dannabel-automation.app.n8n.cloud/webhook-test/cleo-assistant"; } }); var asistenteUrl=s92[0]; var setAsistenteUrl=s92[1];
+  var s93=useState("chat"); var asistentePaso=s93[0]; var setAsistentePaso=s93[1]; // chat|revision|guardando
+  var s94=useState([]); var asistenteHistorial=s94[0]; var setAsistenteHistorial=s94[1]; // [{rol:"usuario"|"cleo",texto,error?}] , se conserva al cerrar/reabrir el panel (no se reinicia hasta que se guarde algo o se recargue la página)
+  var s95=useState(null); var asistenteDraft=s95[0]; var setAsistenteDraft=s95[1]; // borrador editable construido de la respuesta validada
+  var s96=useState([]); var asistenteCandidatos=s96[0]; var setAsistenteCandidatos=s96[1]; // coincidencias de cliente (buscarPosiblesCoincidenciasCliente)
+  var s97=useState(null); var asistenteClienteElegido=s97[0]; var setAsistenteClienteElegido=s97[1]; // "nuevo" | id de cliente existente | null=sin elegir
+  var s98=useState(false); var asistenteEsperando=s98[0]; var setAsistenteEsperando=s98[1]; // esperando respuesta de n8n ("CLEO está escribiendo...")
+  var s99=useState(null); var asistenteClienteActivo=s99[0]; var setAsistenteClienteActivo=s99[1]; // {id,nombre} del cliente ya confirmado en este chat , evita volver a pedir elegirlo
+  var s100=useState([]); var asistenteVentasGuardadas=s100[0]; var setAsistenteVentasGuardadas=s100[1]; // firmas (firmaVentaAsistente) de ventas ya guardadas en este chat , para no repetir una venta cerrada si n8n la vuelve a incluir
+  var s101=useState("resumen"); var asistenteRevisionModo=s101[0]; var setAsistenteRevisionModo=s101[1]; // resumen|detalle , "Editar" pasa a detalle, "Volver al resumen" regresa
+  var s102=useState([]); var asistenteOportunidadesGuardadas=s102[0]; var setAsistenteOportunidadesGuardadas=s102[1]; // firmas (firmaOportunidadAsistente) de oportunidades ya guardadas en este chat
+  var s103=useState(null); var asistenteConflictoOportunidad=s103[0]; var setAsistenteConflictoOportunidad=s103[1]; // {clienteId,clienteNombre,itemsActuales,resumenActual,itemNuevo,draft} , cliente ya tiene un interés DISTINTO activo, exige elegir Agregar/Reemplazar/Cancelar antes de guardar nada
+  var s104=useState(null); var asistenteConflictoOperacion=s104[0]; var setAsistenteConflictoOperacion=s104[1]; // {draftViejo,draftNuevo} , llegó un mensaje nuevo mientras había un borrador SIN GUARDAR de otro cliente/operación , exige elegir Cambiar/Empezar otra antes de tocar el borrador abierto
+  var s105=useState(false); var asistenteInputFocado=s105[0]; var setAsistenteInputFocado=s105[1]; // puramente visual (Ronda 15) , aro de foco pervinca del campo de escribir
+  var asistenteGuardandoRef=useRef(false); // evita doble pedido por doble click / reintento
+
   // Estados de prospectos (modo productos)
   var sProsp=useState(false); var modalProspecto=sProsp[0]; var setModalProspecto=sProsp[1];
   var formProspectoVacio={clienteId:"",nuevoNombre:"",origen:"",canalPrincipal:"",contacto:"",items:[{id:"it_"+Date.now(),catalogoId:null,nombre:"",cantidad:1,precioUnitario:"",total:0}],envioPrecio:false,notas:""};
@@ -6902,6 +7591,14 @@ export default function CLEO(props){
   // hasta que el flag esté confirmado activo. Reporta excepciones sin adivinar vínculos.
   useEffect(function(){
     if(esProductos) return;
+    // CORREGIDO: nunca migrar mientras haya un conflicto pendiente (ver nota
+    // junto a hayConflictoPendiente()) -- esta migración puede, en el peor
+    // caso, DESCARTAR una oportunidad que ya existe (cuando c.etapa todavía
+    // no refleja el cambio real, exactamente la situación de un conflicto a
+    // medio resolver), y aunque eso ya se corrigió para que preserve en vez
+    // de borrar, escribir aquí de todas formas rompería para siempre la
+    // comparación que necesita el modal de conflicto para resolverse.
+    if(hayConflictoPendiente()) return;
     var opsActuales = lsGet("cleo_oportunidades",[]);
     var todasMigradas = opsActuales.length>0 && opsActuales.every(function(op){ return op && 'cotizacionId' in op; });
     var clientesActuales = lsGet("cleo_clientes",[]);
@@ -20223,6 +20920,466 @@ export default function CLEO(props){
           )
         )
       );
+    })(),
+
+    // BOTÓN FLOTANTE "Hablar con CLEO" (MVP InnovaFest, prueba). Sin logo ni
+    // mascota propia (CLEO no tiene símbolo) , ícono genérico de burbuja de
+    // conversación. Se oculta mientras el panel está abierto.
+    esProductos&&!asistenteAbierto&&e("button",{
+      type:"button",
+      onClick:function(){ setAsistenteAbierto(true); },
+      title:"Hablar con CLEO","aria-label":"Hablar con CLEO",
+      style:{position:"fixed",right:16,bottom:isMobile?"calc(76px + 16px + env(safe-area-inset-bottom,0px))":24,width:56,height:56,borderRadius:"50%",border:"none",cursor:"pointer",background:C.purple||"#5B5CF6",boxShadow:"0 6px 18px rgba(91,92,246,0.4)",display:"flex",alignItems:"center",justifyContent:"center",zIndex:150}
+    },
+      e("svg",{width:24,height:24,viewBox:"0 0 24 24",fill:"none","aria-hidden":"true"},
+        e("path",{d:"M4 11.5C4 7.4 7.8 4 12.5 4S21 7.4 21 11.5 17.2 19 12.5 19c-.97 0-1.9-.15-2.76-.43L5 20l1.2-3.6C4.86 15.1 4 13.4 4 11.5z",stroke:"#fff",strokeWidth:1.7,strokeLinejoin:"round",strokeLinecap:"round"})
+      )
+    ),
+
+    // PANEL DE CHAT CON CLEO (Ronda 15 del rediseño visual , ver
+    // docs/REDISENO-TU-MESA.md sección "4i", referencias R15-*.html).
+    // SOLO diseño visual: ningún onClick/onChange de aquí cambió de
+    // función respecto a la versión anterior, igual que la conexión con
+    // n8n y el guardado (ver enviarMensajeAsistente/confirmarGuardarAsistente,
+    // sin tocar). El botón flotante de abajo tampoco se tocó.
+    // Desktop: panel flotante de 420px. Móvil: hoja desde abajo (NO
+    // pantalla completa), dejando ~150px de la app visible arriba.
+    // Cerrar solo oculta el panel , el historial y el borrador en revisión
+    // se conservan (cerrarAsistente). Por ahora solo el botón × cierra ,
+    // el doc de Ronda 15 solo pide clic-fuera/Esc "si ya existía ese
+    // comportamiento", y no existía, así que no se agrega.
+    esProductos&&asistenteAbierto&&(function(){
+      var draft=asistenteDraft;
+
+      // Mismo ícono EXACTO del botón flotante (que no se tocó), reutilizado
+      // en el encabezado , "el MISMO globito blanco del botón flotante".
+      var iconoGlobito=e("svg",{width:22,height:22,viewBox:"0 0 24 24",fill:"none","aria-hidden":"true"},
+        e("path",{d:"M4 11.5C4 7.4 7.8 4 12.5 4S21 7.4 21 11.5 17.2 19 12.5 19c-.97 0-1.9-.15-2.76-.43L5 20l1.2-3.6C4.86 15.1 4 13.4 4 11.5z",stroke:"#fff",strokeWidth:1.7,strokeLinejoin:"round",strokeLinecap:"round"})
+      );
+      function iconoX(){ return e("svg",{width:14,height:14,viewBox:"0 0 24 24",fill:"none"},e("path",{d:"M6 6l12 12M18 6 6 18",stroke:"currentColor",strokeWidth:2,strokeLinecap:"round",strokeLinejoin:"round"})); }
+      function iconoCheck(tam,grosor){ return e("svg",{width:tam||12,height:tam||12,viewBox:"0 0 24 24",fill:"none"},e("path",{d:"m5 12.5 4.5 4.5L19 7.5",stroke:"currentColor",strokeWidth:grosor||3,strokeLinecap:"round",strokeLinejoin:"round"})); }
+      function iconoAlerta(){ return e("svg",{width:16,height:16,viewBox:"0 0 24 24",fill:"none",style:{flexShrink:0,marginTop:1}},e("circle",{cx:12,cy:12,r:8.5,stroke:"currentColor",strokeWidth:2}),e("path",{d:"M12 7.5v5M12 16h.01",stroke:"currentColor",strokeWidth:2,strokeLinecap:"round"})); }
+      function iconoFlecha(){ return e("svg",{width:14,height:14,viewBox:"0 0 24 24",fill:"none"},e("path",{d:"M5 12h14M13 6l6 6-6 6",stroke:"currentColor",strokeWidth:2,strokeLinecap:"round",strokeLinejoin:"round"})); }
+      function iconoFlechaArriba(){ return e("svg",{width:16,height:16,viewBox:"0 0 24 24",fill:"none"},e("path",{d:"M12 19V5M6 11l6-6 6 6",stroke:"currentColor",strokeWidth:2.4,strokeLinecap:"round",strokeLinejoin:"round"})); }
+      function iconoChevron(){ return e("svg",{width:12,height:12,viewBox:"0 0 24 24",fill:"none"},e("path",{d:"m9 6 6 6-6 6",stroke:"currentColor",strokeWidth:2,strokeLinecap:"round",strokeLinejoin:"round"})); }
+      // Resalta en negritas los importes ($1,234.56) dentro de un texto de
+      // CLEO ya normalizado , puramente de presentación.
+      function conNegritasDinero(texto){
+        var partes=String(texto).split(/(\$[\d,]+\.\d{2})/g);
+        return partes.map(function(parte,idx){ return /^\$[\d,]+\.\d{2}$/.test(parte)?e("b",{key:idx},parte):parte; });
+      }
+
+      var panelStyle=isMobile
+        ?{position:"fixed",left:0,right:0,bottom:0,top:150,zIndex:220,background:"#fff",borderRadius:"24px 24px 0 0",boxShadow:"0 -12px 40px rgba(14,19,40,.25)",display:"flex",flexDirection:"column",overflow:"hidden"}
+        :{position:"fixed",top:12,right:12,bottom:12,width:420,maxWidth:"92vw",zIndex:220,background:"#fff",borderRadius:24,boxShadow:"0 24px 60px rgba(14,19,40,.25)",display:"flex",flexDirection:"column",overflow:"hidden"};
+
+      return [
+        // Fondo oscurecido detrás del panel.
+        e("div",{key:"asistente-fondo",style:{position:"fixed",inset:0,zIndex:219,background:"rgba(14,19,40,"+(isMobile?".35":".28")+")"}}),
+        e("div",{key:"asistente-panel",style:panelStyle},
+          isMobile&&e("div",{style:{position:"absolute",top:7,left:"50%",width:40,height:4,marginLeft:-20,borderRadius:2,background:"rgba(255,255,255,.35)",zIndex:2}}),
+
+          // ── Encabezado azul noche ──────────────────────────────────────
+          e("div",{style:{display:"flex",alignItems:"center",justifyContent:"space-between",gap:12,padding:"16px 16px 16px 20px",color:"#fff",background:"radial-gradient(110% 160% at 100% 0%,#24307A 0%,rgba(36,48,122,0) 62%),#0E1328",flexShrink:0}},
+            e("div",{style:{display:"flex",alignItems:"center",gap:10}}, iconoGlobito, e("span",{style:{fontSize:16,fontWeight:800,letterSpacing:".06em"}},"CLEO")),
+            e("button",{type:"button",onClick:cerrarAsistente,"aria-label":"Cerrar",title:"Cerrar",style:{cursor:"pointer",width:36,height:36,flexShrink:0,borderRadius:"50%",border:"none",background:"rgba(255,255,255,.10)",color:"#fff",display:"flex",alignItems:"center",justifyContent:"center"}}, iconoX())
+          ),
+
+          // ── Conversación: mensajes Y la ficha de revisión, en el MISMO
+          // scroll (Ronda 15: "la ficha va dentro de la conversación, no
+          // fija abajo del panel") ─────────────────────────────────────
+          // minHeight:0 es necesario para que flex:1 + overflowY:auto
+          // realmente recorten/hagan scroll en vez de crecer sin límite
+          // (comportamiento por defecto de flexbox) , se nota sobre todo
+          // ahora que la ficha vive DENTRO de esta misma área (antes tenía
+          // su propio alto máximo aparte).
+          e("div",{style:{flex:1,minHeight:0,overflowY:"auto",padding:"20px 20px 8px",background:"#F4F5FA",display:"flex",flexDirection:"column",gap:10}},
+            asistenteHistorial.length===0&&e("div",{style:{flexShrink:0,fontSize:13,color:"#8E94AE",lineHeight:1.5}},"Cuéntame qué pasó con tu negocio , puedo registrar un pedido pagado y/o dejarte un recordatorio."),
+            asistenteHistorial.map(function(m,i){
+              var esUsuario=m.rol==="usuario";
+              // Mensaje de error: tarjeta compacta con ícono de alerta.
+              if(m.error){
+                return e("div",{key:i,style:{flexShrink:0,alignSelf:"flex-start",maxWidth:"88%",display:"flex",gap:10,padding:"10px 14px",borderRadius:14,background:"#FBE6E1",color:"#8E2A18",fontSize:13,lineHeight:1.5}},
+                  e("span",{style:{color:"#B23A24"}},iconoAlerta()),
+                  e("span",null,normalizarTextoChatAsistente(m.texto))
+                );
+              }
+              // Confirmación de guardado: "Ver pedido/oportunidad/recordatorio"
+              // son EXACTAMENTE los mismos 3 enlaces de antes (mismo onClick,
+              // mismo destino) , solo se restylean como tarjeta "GUARDADO".
+              var esCierre=m.verPedidoId||m.verOportunidadClienteId||m.verRecordatorioClienteId;
+              if(esCierre){
+                var etiquetaVer=m.verPedidoId?"Ver pedido":m.verOportunidadClienteId?"Ver oportunidad":"Ver recordatorio";
+                var onClickVer=m.verPedidoId
+                  ?function(){ cerrarAsistente(); setVista("pedidos"); }
+                  :m.verOportunidadClienteId
+                  ?function(){ setVista("clientes"); setClienteAbierto(m.verOportunidadClienteId); setTabCliente("perfil"); }
+                  :function(){ setVista("clientes"); setClienteAbierto(m.verRecordatorioClienteId); setTabCliente("seguimiento"); };
+                return e("div",{key:i,style:{flexShrink:0,alignSelf:"stretch",marginTop:2,padding:"14px 16px",borderRadius:16,background:"#fff",boxShadow:"inset 0 0 0 1.5px #C9D0FF"}},
+                  e("div",{style:{display:"flex",alignItems:"center",gap:8,fontSize:12,fontWeight:800,letterSpacing:".04em",color:"#1E5C38"}},
+                    e("span",{style:{width:20,height:20,borderRadius:"50%",background:"#E2F2E8",color:"#1E5C38",display:"flex",alignItems:"center",justifyContent:"center"}},iconoCheck(12,3)),
+                    "GUARDADO"
+                  ),
+                  e("p",{style:{margin:"6px 0 0",fontSize:14,lineHeight:1.5,whiteSpace:"pre-line",color:"#0E1328"}},conNegritasDinero(normalizarTextoChatAsistente(m.texto))),
+                  e("button",{type:"button",onClick:onClickVer,style:{display:"inline-flex",alignItems:"center",gap:6,height:32,padding:"0 14px",marginTop:12,borderRadius:16,border:"1.5px solid #E3E6EF",background:"#fff",color:"#0E1328",fontFamily:"inherit",fontSize:12.5,fontWeight:700,cursor:"pointer"}},etiquetaVer,iconoFlecha())
+                );
+              }
+              // Burbuja normal (usuario o CLEO).
+              return e("div",{key:i,style:{flexShrink:0,display:"flex",flexDirection:"column",alignItems:esUsuario?"flex-end":"flex-start"}},
+                e("div",{style:{maxWidth:esUsuario?"78%":"84%",padding:"10px 14px",fontSize:14,lineHeight:esUsuario?1.5:1.55,whiteSpace:"pre-line",
+                  borderRadius:esUsuario?"18px 18px 6px 18px":"18px 18px 18px 6px",
+                  background:esUsuario?"#8D9BFF":"#fff",
+                  color:"#0E1328",
+                  fontWeight:esUsuario?600:400
+                }},normalizarTextoChatAsistente(m.texto)),
+                // Botones de la pregunta "¿Cambiar o empezar otra?" , solo
+                // mientras el conflicto sigue sin resolver (una vez resuelto
+                // desaparecen, el texto de la pregunta queda como historial
+                // normal, nunca se puede volver a disparar desde ahí).
+                m.conflictoOperacionPendiente&&asistenteConflictoOperacion&&e("div",{style:{display:"flex",gap:6,marginTop:6,flexWrap:"wrap",alignSelf:"flex-start"}},
+                  e("button",{type:"button",onClick:cambiarOperacionConflicto,style:{fontSize:11.5,fontWeight:700,color:C.purple||"#3F4BD0",background:"#fff",border:"1.5px solid "+(C.purple||"#3F4BD0"),borderRadius:16,padding:"6px 12px",cursor:"pointer",fontFamily:"inherit"}},"Cambiar lo que estamos revisando"),
+                  e("button",{type:"button",onClick:empezarOtraOperacionConflicto,style:{fontSize:11.5,fontWeight:700,color:"#fff",background:C.purple||"#3F4BD0",border:"none",borderRadius:16,padding:"6px 12px",cursor:"pointer",fontFamily:"inherit"}},"Empezar otra operación")
+                )
+              );
+            }),
+            asistenteEsperando&&e("div",{style:{flexShrink:0,alignSelf:"flex-start",fontSize:12.5,color:"#8E94AE",fontStyle:"italic"}},"CLEO está escribiendo..."),
+
+            // ── Ficha para revisar antes de guardar ───────────────────────
+            (asistentePaso==="revision"||asistentePaso==="guardando")&&draft&&(function(){
+              // Conflicto de interés distinto , sustituye TODA la ficha ,
+              // no se guarda nada hasta elegir Agregar/Reemplazar/Cancelar
+              // (mismas 3 funciones de antes, sin cambios).
+              if(asistenteConflictoOportunidad){
+                var conf=asistenteConflictoOportunidad;
+                var resumenNuevo=conf.itemNuevo.cantidad&&conf.itemNuevo.precioUnitario
+                  ?(conf.itemNuevo.cantidad+" "+conf.itemNuevo.nombre+" · $"+formatoDinero(conf.itemNuevo.total))
+                  :conf.itemNuevo.nombre;
+                return e("div",{key:"ficha-conflicto",style:{flexShrink:0,alignSelf:"stretch",marginTop:2,borderRadius:18,background:"#fff",border:"1.5px solid #C9D0FF",overflow:"hidden"}},
+                  e("div",{style:{padding:"14px 16px"}},
+                    e("div",{style:{fontSize:11,fontWeight:800,letterSpacing:".08em",color:"#6E7489"}},"CONFLICTO"),
+                    e("div",{style:{fontSize:15,fontWeight:800,marginTop:6,color:"#0E1328"}},conf.clienteNombre+" ya tiene un interés distinto"),
+                    e("div",{style:{fontSize:12.5,color:"#8A5A06",background:"#FBF1DC",borderRadius:10,padding:"8px 10px",marginTop:8,lineHeight:1.5}},
+                      "Actualmente: ",e("b",null,conf.resumenActual),". Nuevo: ",e("b",null,resumenNuevo),". CLEO no guarda ningún cambio hasta que elijas qué hacer."
+                    )
+                  ),
+                  e("div",{style:{display:"flex",gap:6,flexWrap:"wrap",padding:"12px 16px 14px",background:"#F8F9FC",borderTop:"1px solid #EDEFF5"}},
+                    e("button",{type:"button",onClick:cancelarConflictoOportunidadAsistente,style:{height:40,padding:"0 10px",border:"none",background:"transparent",color:"#6E7489",fontFamily:"inherit",fontSize:13,fontWeight:700,cursor:"pointer"}},"Cancelar"),
+                    e("button",{type:"button",onClick:agregarOportunidadAsistente,style:{height:40,padding:"0 14px",borderRadius:20,border:"1.5px solid #E3E6EF",background:"#fff",color:"#0E1328",fontFamily:"inherit",fontSize:13,fontWeight:700,cursor:"pointer"}},"Agregar a la oportunidad"),
+                    e("button",{type:"button",onClick:reemplazarOportunidadAsistente,style:{flex:1,height:40,border:"none",borderRadius:20,background:"#B23A24",color:"#fff",fontFamily:"inherit",fontSize:13.5,fontWeight:700,cursor:"pointer"}},"Reemplazar interés")
+                  )
+                );
+              }
+
+              var identidadResuelta=!!asistenteClienteElegido;
+              var esClienteNuevo=asistenteClienteElegido==="nuevo";
+              var modo=asistenteRevisionModo;
+              var METODOS_PAGO_ASIST=[{v:"efectivo",l:"Efectivo"},{v:"transferencia",l:"Transferencia"},{v:"tarjeta",l:"Tarjeta"}];
+              var secciones=[];
+              var nSec=0;
+              function pushSec(key,hijos){ secciones.push(e("div",{key:key,style:{padding:"14px 16px",borderTop:nSec===0?"none":"1px solid #EDEFF5"}},hijos)); nSec++; }
+              function etiquetaSeccion(texto){ return e("div",{style:{fontSize:11,fontWeight:800,letterSpacing:".08em",color:"#6E7489"}},texto); }
+
+              // Fila de radio reutilizable (candidatos + "Crear cliente
+              // nuevo") , controles de selección visibles, nunca se
+              // autoselecciona cuando hay coincidencias reales.
+              function filaOpcionCliente(key,checked,texto,onClick,extra){
+                return e("label",{key:key,onClick:onClick,
+                  style:{display:"flex",alignItems:"center",gap:8,cursor:"pointer",padding:"10px 12px",borderRadius:12,border:"1.5px solid "+(checked?"#8D9BFF":"#E3E6EF"),background:checked?"#EEF0FF":"#fff",marginBottom:6,fontSize:13,fontWeight:extra&&extra.bold?700:500,color:"#0E1328"}
+                },
+                  e("input",{type:"radio",checked:checked,readOnly:true,style:{flexShrink:0}}),
+                  texto
+                );
+              }
+
+              // ── CLIENTE ──────────────────────────────────────────────────
+              if(!identidadResuelta){
+                // Hay coincidencias reales , exige elegir explícitamente
+                // entre ellas y "Crear cliente nuevo".
+                pushSec("cli",[
+                  etiquetaSeccion("CLIENTE"),
+                  e("div",{key:"m",style:{fontSize:13,color:"#0E1328",margin:"6px 0 10px"}},"Mencionaste a: ",e("b",null,draft.clienteNombre)),
+                  asistenteCandidatos.map(function(cand){
+                    return filaOpcionCliente(cand.cliente.id,asistenteClienteElegido===String(cand.cliente.id),
+                      "¿Es "+cand.cliente.nombre+"? "+"("+cand.tipo.replace("_"," ")+")",
+                      function(){ setAsistenteClienteElegido(String(cand.cliente.id)); setAsistenteClienteActivo({id:cand.cliente.id,nombre:draft.clienteNombre}); }
+                    );
+                  }),
+                  filaOpcionCliente("nuevo",false,"Crear cliente nuevo: \""+draft.clienteNombre+"\"",
+                    function(){ setAsistenteClienteElegido("nuevo"); setAsistenteClienteActivo({id:"nuevo",nombre:draft.clienteNombre}); },{bold:true}
+                  ),
+                  e("div",{key:"warn",style:{fontSize:12.5,color:"#8A5A06",background:"#FBF1DC",borderRadius:10,padding:"8px 10px",marginTop:4,lineHeight:1.4}},"Elige de quién se trata , no se puede guardar hasta resolver esto.")
+                ]);
+              } else if(modo==="detalle"){
+                // Resuelto pero en edición , se puede cambiar el nombre o
+                // volver a elegir otro cliente (recalcula coincidencias con
+                // el nombre actual, mismo criterio que arriba).
+                var candidatosDetalle=buscarPosiblesCoincidenciasCliente({nombre:draft.clienteNombre},clientes,esClienteNuevo?null:Number(asistenteClienteElegido));
+                pushSec("cli",[
+                  etiquetaSeccion("CLIENTE"),
+                  e("input",{key:"inp",type:"text",value:draft.clienteNombre,onChange:function(ev){
+                    var nombre=ev.target.value;
+                    setAsistenteDraft(Object.assign({},draft,{clienteNombre:nombre}));
+                    // Cambiar el nombre invalida la elección anterior , nunca
+                    // se arrastra un id elegido para un nombre distinto.
+                    setAsistenteClienteElegido(null);
+                  },style:Object.assign({},st.inp,{width:"100%",boxSizing:"border-box",marginTop:8,marginBottom:8})}),
+                  candidatosDetalle.map(function(cand){
+                    return filaOpcionCliente(cand.cliente.id,asistenteClienteElegido===String(cand.cliente.id),
+                      "¿Es "+cand.cliente.nombre+"? "+"("+cand.tipo.replace("_"," ")+")",
+                      function(){ setAsistenteClienteElegido(String(cand.cliente.id)); setAsistenteClienteActivo({id:cand.cliente.id,nombre:draft.clienteNombre}); }
+                    );
+                  }),
+                  filaOpcionCliente("nuevo",esClienteNuevo,"Crear cliente nuevo: \""+draft.clienteNombre+"\"",
+                    function(){ setAsistenteClienteElegido("nuevo"); setAsistenteClienteActivo({id:"nuevo",nombre:draft.clienteNombre}); },{bold:true}
+                  ),
+                  !asistenteClienteElegido&&e("div",{key:"falta",style:{fontSize:12,color:"#8A5A06",marginTop:2}},"Elige de quién se trata.")
+                ]);
+              } else {
+                // Resuelto + resumen: nombre + pastilla "Nuevo" si aplica.
+                pushSec("cli",[
+                  etiquetaSeccion("CLIENTE"),
+                  e("div",{key:"nombre",style:{display:"flex",alignItems:"center",gap:8,marginTop:6,fontSize:15,fontWeight:800,color:"#0E1328"}},
+                    draft.clienteNombre,
+                    esClienteNuevo&&e("span",{style:{height:22,padding:"0 9px",borderRadius:11,background:"#EEF0FF",color:"#3F4BD0",fontSize:11.5,fontWeight:800,display:"inline-flex",alignItems:"center"}},"Nuevo")
+                  ),
+                  esClienteNuevo&&e("div",{key:"ayuda",style:{marginTop:3,fontSize:12.5,color:"#6E7489"}},"Se creará al guardar "+(draft.venta?"el pedido.":draft.oportunidad?"la oportunidad.":"el recordatorio."))
+                ]);
+              }
+
+              if(modo==="resumen"){
+                // ── RESUMEN: solo lectura, sin campos de formulario ──────────
+                if(draft.venta){
+                  pushSec("ped",[
+                    etiquetaSeccion("PEDIDO"),
+                    draft.venta.items.map(function(it,idx){
+                      return e("div",{key:idx,style:{display:"flex",justifyContent:"space-between",gap:12,fontSize:14,marginTop:6,color:it.completo?"#0E1328":"#8A5A06"}},
+                        e("span",null,it.completo?(it.cantidad+" "+it.producto):((it.producto||"Producto sin nombre")+" , faltan datos")),
+                        it.completo&&e("span",null,"$"+formatoDinero(it.total))
+                      );
+                    })
+                  ]);
+                  pushSec("tot",[
+                    e("div",{key:"tot",style:{display:"flex",justifyContent:"space-between",alignItems:"baseline",gap:12}},
+                      e("span",{style:{fontSize:13.5,fontWeight:700,color:"#4A5068"}},"Total"),
+                      draft.venta.completa
+                        ?e("b",{style:{fontSize:20,fontWeight:800,letterSpacing:"-0.02em",color:"#0E1328"}},"$"+formatoDinero(draft.venta.total)+" "+(draft.venta.moneda||"MXN"))
+                        :e("span",{style:{fontSize:13,fontWeight:700,color:"#8A5A06"}},"Faltan datos de los productos")
+                    ),
+                    // El monto abonado se muestra en cuanto se conoce , no se
+                    // espera a que el método de pago también esté resuelto
+                    // (son 2 datos independientes, cada uno se pide aparte).
+                    draft.venta.completa&&(draft.venta.pagoTipo==="completo"
+                      ?e("div",{key:"pg",style:{display:"flex",alignItems:"center",justifyContent:"space-between",marginTop:8,fontSize:13,fontWeight:700,color:"#1E5C38"}},
+                          e("span",{style:{display:"inline-flex",alignItems:"center",gap:6}},iconoCheck(14,2.6),"Pagado"),e("span",null,"$"+formatoDinero(draft.venta.total)))
+                      :draft.venta.pagoTipo==="parcial"
+                      ?(draft.venta.montoAbonado!=null
+                        ?e("div",{key:"pg"},
+                            e("div",{style:{display:"flex",alignItems:"center",justifyContent:"space-between",marginTop:8,fontSize:13,fontWeight:700,color:"#1E5C38"}},e("span",null,"Abonó"),e("span",null,"$"+formatoDinero(draft.venta.montoAbonado))),
+                            e("div",{style:{display:"flex",alignItems:"center",justifyContent:"space-between",marginTop:4,fontSize:13,fontWeight:700,color:"#8A5A06"}},e("span",null,"Pendiente"),e("span",null,"$"+formatoDinero(redondearDinero(draft.venta.total-draft.venta.montoAbonado))))
+                          )
+                        :e("div",{key:"pg",style:{marginTop:8,fontSize:13,fontWeight:700,color:"#8A5A06"}},"Pago parcial , falta el monto abonado"))
+                      :e("div",{key:"pg",style:{display:"flex",alignItems:"center",justifyContent:"space-between",marginTop:8,fontSize:13,fontWeight:700,color:"#8A5A06"}},e("span",null,"Pendiente"),e("span",null,"$"+formatoDinero(draft.venta.total)))
+                    ),
+                    draft.venta.completa&&(draft.venta.pagoTipo==="completo"||draft.venta.pagoTipo==="parcial")&&!draft.venta.metodoPago&&e("div",{key:"faltamet",style:{fontSize:12,color:"#8A5A06",marginTop:6}},"Falta elegir el método de pago.")
+                  ]);
+                }
+                if(draft.oportunidad){
+                  pushSec("opo",[
+                    etiquetaSeccion("Producto de interés"),
+                    e("div",{key:"v",style:{fontSize:14,marginTop:6,color:draft.oportunidad.completa?"#0E1328":"#8A5A06"}},
+                      draft.oportunidad.completa
+                        ?(draft.oportunidad.producto+(draft.oportunidad.cantidad!=null&&draft.oportunidad.precioUnitario!=null?(" · "+draft.oportunidad.cantidad+" x $"+formatoDinero(draft.oportunidad.precioUnitario)):""))
+                        :"Falta el producto de interés"
+                    )
+                  ]);
+                }
+                if(draft.recordatorio&&draft.recordatorio.incluir){
+                  pushSec("rec",[
+                    etiquetaSeccion("Recordatorio"),
+                    e("div",{key:"t",style:{fontSize:14,marginTop:6,color:"#0E1328"}},draft.recordatorio.texto||"(falta la nota)"),
+                    e("div",{key:"f",style:{fontSize:12.5,color:"#6E7489",marginTop:2}},draft.recordatorio.fecha||"(falta la fecha)")
+                  ]);
+                }
+                var faltaAlgoResumen=(draft.venta&&(!draft.venta.completa||!ventaPagoResuelto(draft.venta)))
+                  ||(draft.oportunidad&&!draft.oportunidad.completa)
+                  ||(draft.recordatorio&&draft.recordatorio.incluir&&(!draft.recordatorio.texto||!draft.recordatorio.texto.trim()||!draft.recordatorio.fecha));
+                if(faltaAlgoResumen){
+                  pushSec("falta",[e("div",{key:"f",style:{fontSize:12.5,color:"#8A5A06"}},"Faltan datos , toca \"Editar\" para completarlos.")]);
+                }
+              } else {
+                // ── DETALLE: formulario completo, igual que antes + pago
+                // parcial/método (MISMOS onChange, solo restylado) ──────────
+                draft.venta&&pushSec("ped",[
+                  e("div",{key:"k",style:{marginBottom:8}},etiquetaSeccion("PEDIDO")),
+                  !draft.venta.completa&&e("div",{key:"falta",style:{background:"#FBF1DC",color:"#8A5A06",borderRadius:10,padding:"8px 10px",fontSize:12,marginBottom:8,lineHeight:1.4}},"Faltan datos para registrar la venta, complétalos abajo."),
+                  (function(){
+                    function actualizarItem(idx,cambios){
+                      var items=draft.venta.items.map(function(it,i){ return i===idx?Object.assign({},it,cambios):it; });
+                      var item=items[idx];
+                      item.completo=!!item.producto&&item.cantidad!=null&&item.precioUnitario!=null;
+                      item.total=item.completo?redondearDinero(item.cantidad*item.precioUnitario):null;
+                      var v=Object.assign({},draft.venta,{items:items});
+                      v.completa=items.length>0&&items.every(function(it){ return it.completo; });
+                      v.total=v.completa?redondearDinero(items.reduce(function(s,it){ return s+it.total; },0)):null;
+                      setAsistenteDraft(Object.assign({},draft,{venta:v}));
+                    }
+                    function quitarItem(idx){
+                      var items=draft.venta.items.filter(function(it,i){ return i!==idx; });
+                      if(items.length===0) items=[{producto:"",cantidad:null,precioUnitario:null,total:null,completo:false}];
+                      var v=Object.assign({},draft.venta,{items:items});
+                      v.completa=items.length>0&&items.every(function(it){ return it.completo; });
+                      v.total=v.completa?redondearDinero(items.reduce(function(s,it){ return s+it.total; },0)):null;
+                      setAsistenteDraft(Object.assign({},draft,{venta:v}));
+                    }
+                    function agregarItem(){
+                      var items=draft.venta.items.concat([{producto:"",cantidad:null,precioUnitario:null,total:null,completo:false}]);
+                      setAsistenteDraft(Object.assign({},draft,{venta:Object.assign({},draft.venta,{items:items,completa:false})}));
+                    }
+                    return e("div",null,
+                      draft.venta.items.map(function(it,idx){
+                        return e("div",{key:idx,style:{marginBottom:8,paddingBottom:8,borderBottom:draft.venta.items.length>1?"1px solid #F3F4F6":"none"}},
+                          e("div",{style:{display:"flex",gap:6,marginBottom:6,alignItems:"center"}},
+                            e("input",{type:"text",value:it.producto,placeholder:"¿Qué vendiste?",onChange:function(ev){ actualizarItem(idx,{producto:ev.target.value}); },style:Object.assign({},st.inp,{flex:1})}),
+                            draft.venta.items.length>1&&e("button",{type:"button",onClick:function(){ quitarItem(idx); },title:"Quitar",style:{cursor:"pointer",border:"none",background:"transparent",color:"#B91C1C",fontSize:16,lineHeight:1,padding:"0 4px",flexShrink:0}},"×")
+                          ),
+                          e("div",{style:{display:"flex",gap:6}},
+                            e("input",{type:"number",value:it.cantidad==null?"":it.cantidad,
+                              placeholder:"¿Cuántos"+(it.producto?" "+it.producto:"")+"?",
+                              onChange:function(ev){ var c=interpretarImporte(ev.target.value); if(c!=null&&c<=0) c=null; actualizarItem(idx,{cantidad:c}); },
+                              style:Object.assign({},st.inp,{width:90})}),
+                            e("input",{type:"number",value:it.precioUnitario==null?"":it.precioUnitario,
+                              placeholder:"¿A qué precio cada uno?",
+                              onChange:function(ev){ var p=interpretarImporte(ev.target.value); if(p!=null&&p<=0) p=null; actualizarItem(idx,{precioUnitario:p}); },
+                              style:Object.assign({},st.inp,{flex:1})}),
+                          ),
+                          it.completo&&e("div",{style:{fontSize:11.5,color:"#8E94AE",marginTop:3}},"Subtotal: $"+formatoDinero(it.total))
+                        );
+                      }),
+                      e("button",{type:"button",onClick:agregarItem,style:{cursor:"pointer",border:"1px dashed "+(C.purple||"#3F4BD0")+"66",background:"transparent",color:C.purple||"#3F4BD0",fontSize:12,borderRadius:8,padding:"5px 10px",marginBottom:8,fontFamily:"inherit"}},"+ Agregar producto")
+                    );
+                  })(),
+                  e("div",{key:"tot",style:{fontSize:13,fontWeight:700,color:draft.venta.completa?"#0E1328":"#8A5A06",marginBottom:6}},draft.venta.completa?("Total: $"+formatoDinero(draft.venta.total)):"Total: completa cantidad y precio de cada producto"),
+                  draft.venta.avisoTotal&&e("div",{key:"avisoTot",style:{fontSize:11,color:"#8A5A06",marginBottom:6}},"El total que mandó el asistente ($"+formatoDinero(draft.venta.totalReportado)+") no coincide con cantidad × precio, se usó el calculado."),
+                  draft.venta.avisoMoneda&&e("div",{key:"avisoMon",style:{fontSize:11,color:"#8A5A06",marginBottom:6}},"Moneda reportada: "+draft.venta.moneda+", CLEO no distingue moneda, se guardará como importe simple."),
+                  // Pago: completo / parcial (con monto) / sin pago , reutiliza
+                  // el mismo mecanismo de anticipo que ya usa el resto de CLEO.
+                  e("div",{key:"pagoRadios",style:{display:"flex",gap:10,marginBottom:8,fontSize:12.5,flexWrap:"wrap"}},
+                    e("label",{style:{display:"flex",alignItems:"center",gap:5,cursor:"pointer"}},
+                      e("input",{type:"radio",checked:draft.venta.pagoTipo==="completo",onChange:function(){ setAsistenteDraft(Object.assign({},draft,{venta:Object.assign({},draft.venta,{pagoTipo:"completo",montoAbonado:null})})); }}),"Pago completo"
+                    ),
+                    e("label",{style:{display:"flex",alignItems:"center",gap:5,cursor:"pointer"}},
+                      e("input",{type:"radio",checked:draft.venta.pagoTipo==="parcial",onChange:function(){ setAsistenteDraft(Object.assign({},draft,{venta:Object.assign({},draft.venta,{pagoTipo:"parcial"})})); }}),"Pago parcial"
+                    ),
+                    e("label",{style:{display:"flex",alignItems:"center",gap:5,cursor:"pointer"}},
+                      e("input",{type:"radio",checked:draft.venta.pagoTipo==="",onChange:function(){ setAsistenteDraft(Object.assign({},draft,{venta:Object.assign({},draft.venta,{pagoTipo:"",montoAbonado:null,metodoPago:null})})); }}),"Sin pago aún"
+                    )
+                  ),
+                  draft.venta.pagoTipo==="parcial"&&e("div",{key:"abono",style:{marginBottom:8}},
+                    e("input",{type:"number",value:draft.venta.montoAbonado==null?"":draft.venta.montoAbonado,placeholder:"¿Cuánto abonó?",
+                      onChange:function(ev){ var m=interpretarImporte(ev.target.value); if(m!=null&&m<=0) m=null; setAsistenteDraft(Object.assign({},draft,{venta:Object.assign({},draft.venta,{montoAbonado:m})})); },
+                      style:Object.assign({},st.inp,{width:140})}),
+                    draft.venta.completa&&draft.venta.montoAbonado!=null&&draft.venta.montoAbonado>=draft.venta.total&&e("div",{style:{fontSize:11,color:"#8A5A06",marginTop:4}},"El abono no puede ser igual o mayor al total, eso sería pago completo."),
+                    draft.venta.completa&&draft.venta.montoAbonado!=null&&draft.venta.montoAbonado<draft.venta.total&&e("div",{style:{fontSize:11.5,color:"#8E94AE",marginTop:4}},"Pendiente: $"+formatoDinero(redondearDinero(draft.venta.total-draft.venta.montoAbonado)))
+                  ),
+                  (draft.venta.pagoTipo==="completo"||draft.venta.pagoTipo==="parcial")&&e("div",{key:"metodos",style:{display:"flex",gap:8,flexWrap:"wrap",marginBottom:10}},
+                    METODOS_PAGO_ASIST.map(function(op){
+                      var activo=draft.venta.metodoPago===op.v;
+                      return e("button",{key:op.v,type:"button",onClick:function(){ setAsistenteDraft(Object.assign({},draft,{venta:Object.assign({},draft.venta,{metodoPago:op.v})})); },
+                        style:{cursor:"pointer",padding:"6px 12px",borderRadius:20,border:"1.5px solid "+(activo?"#8D9BFF":"#E3E6EF"),background:activo?"#EEF0FF":"#fff",color:activo?"#3F4BD0":"#4A5068",fontSize:12,fontWeight:activo?700:500,fontFamily:"inherit"}
+                      },op.l);
+                    })
+                  )
+                ]);
+
+                draft.oportunidad&&pushSec("opo",[
+                  e("div",{key:"k",style:{marginBottom:8}},etiquetaSeccion("Producto de interés")),
+                  !draft.oportunidad.completa&&e("div",{key:"falta",style:{background:"#FBF1DC",color:"#8A5A06",borderRadius:10,padding:"8px 10px",fontSize:12,marginBottom:8,lineHeight:1.4}},"Falta el producto de interés."),
+                  e("input",{key:"producto",type:"text",value:draft.oportunidad.producto,placeholder:"¿Qué le interesó?",onChange:function(ev){
+                    var o=Object.assign({},draft.oportunidad,{producto:ev.target.value});
+                    o.completa=!!o.producto;
+                    setAsistenteDraft(Object.assign({},draft,{oportunidad:o}));
+                  },style:Object.assign({},st.inp,{width:"100%",boxSizing:"border-box",marginBottom:8})}),
+                  e("div",{key:"ayuda",style:{fontSize:11,color:"#8E94AE",marginBottom:6}},"Cantidad y precio son opcionales, se puede guardar la oportunidad sin ellos."),
+                  e("div",{key:"camposOp",style:{display:"flex",gap:6,marginBottom:8}},
+                    e("input",{type:"number",value:draft.oportunidad.cantidad==null?"":draft.oportunidad.cantidad,placeholder:"Cantidad (opcional)",
+                      onChange:function(ev){ var c=interpretarImporte(ev.target.value); if(c!=null&&c<=0) c=null; setAsistenteDraft(Object.assign({},draft,{oportunidad:Object.assign({},draft.oportunidad,{cantidad:c})})); },
+                      style:Object.assign({},st.inp,{width:140})}),
+                    e("input",{type:"number",value:draft.oportunidad.precioUnitario==null?"":draft.oportunidad.precioUnitario,placeholder:"Precio aproximado (opcional)",
+                      onChange:function(ev){ var p=interpretarImporte(ev.target.value); if(p!=null&&p<=0) p=null; setAsistenteDraft(Object.assign({},draft,{oportunidad:Object.assign({},draft.oportunidad,{precioUnitario:p})})); },
+                      style:Object.assign({},st.inp,{flex:1})}),
+                  ),
+                  e("textarea",{key:"notas",value:draft.oportunidad.notas||"",placeholder:"Notas (opcional)",onChange:function(ev){ setAsistenteDraft(Object.assign({},draft,{oportunidad:Object.assign({},draft.oportunidad,{notas:ev.target.value})})); },style:Object.assign({},st.inp,{width:"100%",boxSizing:"border-box",minHeight:44,resize:"vertical"})})
+                ]);
+
+                draft.recordatorio&&pushSec("rec",[
+                  e("label",{key:"chk",style:{display:"flex",alignItems:"center",gap:6,cursor:"pointer",marginBottom:6}},
+                    e("input",{type:"checkbox",checked:!!draft.recordatorio.incluir,onChange:function(ev){ setAsistenteDraft(Object.assign({},draft,{recordatorio:Object.assign({},draft.recordatorio,{incluir:ev.target.checked})})); }}),
+                    etiquetaSeccion("Recordatorio")
+                  ),
+                  draft.recordatorio.incluir&&e("div",{key:"campos"},
+                    e("input",{type:"text",value:draft.recordatorio.texto,onChange:function(ev){ setAsistenteDraft(Object.assign({},draft,{recordatorio:Object.assign({},draft.recordatorio,{texto:ev.target.value})})); },style:Object.assign({},st.inp,{width:"100%",boxSizing:"border-box",marginBottom:6}),placeholder:"Texto del recordatorio"}),
+                    e("input",{type:"date",value:draft.recordatorio.fecha,onChange:function(ev){ setAsistenteDraft(Object.assign({},draft,{recordatorio:Object.assign({},draft.recordatorio,{fecha:ev.target.value})})); },style:Object.assign({},st.inp,{width:"100%",boxSizing:"border-box"})})
+                  )
+                ]);
+              }
+
+              var bloqueadoGuardar=asistentePaso==="guardando"
+                ||!identidadResuelta
+                ||(draft.venta&&(!draft.venta.completa||!ventaPagoResuelto(draft.venta)))
+                ||(draft.oportunidad&&!draft.oportunidad.completa)
+                ||(draft.recordatorio&&draft.recordatorio.incluir&&(!draft.recordatorio.texto||!draft.recordatorio.texto.trim()||!draft.recordatorio.fecha));
+              var etiquetaGuardar=asistentePaso==="guardando"?"Guardando...":(draft.venta?"Guardar pedido":draft.oportunidad?"Guardar oportunidad":"Guardar recordatorio");
+
+              secciones.push(e("div",{key:"acts",style:{display:"flex",gap:6,padding:"12px 16px 14px",background:"#F8F9FC",borderTop:"1px solid #EDEFF5"}},
+                modo==="resumen"
+                  ?[
+                      e("button",{key:"cancel",type:"button",onClick:cancelarRevisionAsistente,style:{height:40,padding:"0 10px",border:"none",background:"transparent",color:"#6E7489",fontFamily:"inherit",fontSize:13,fontWeight:700,cursor:"pointer"}},"Cancelar"),
+                      e("button",{key:"edit",type:"button",onClick:function(){ setAsistenteRevisionModo("detalle"); },style:{height:40,padding:"0 14px",borderRadius:20,border:"1.5px solid #E3E6EF",background:"#fff",color:"#0E1328",fontFamily:"inherit",fontSize:13,fontWeight:700,cursor:"pointer"}},"Editar")
+                    ]
+                  :e("button",{key:"back",type:"button",onClick:function(){ setAsistenteRevisionModo("resumen"); },style:{height:40,padding:"0 14px",borderRadius:20,border:"1.5px solid #E3E6EF",background:"#fff",color:"#0E1328",fontFamily:"inherit",fontSize:13,fontWeight:700,cursor:"pointer"}},"Volver al resumen"),
+                e("button",{key:"save",type:"button",disabled:bloqueadoGuardar,onClick:confirmarGuardarAsistente,
+                  style:{flex:1,height:40,border:"none",borderRadius:20,background:"#0E1328",color:"#fff",fontFamily:"inherit",fontSize:13.5,fontWeight:700,display:"inline-flex",alignItems:"center",justifyContent:"center",gap:7,cursor:bloqueadoGuardar?"default":"pointer",opacity:bloqueadoGuardar?0.6:1}
+                },asistentePaso!=="guardando"&&iconoCheck(15,2.6),etiquetaGuardar)
+              ));
+
+              return e("div",{key:"ficha",style:{flexShrink:0,alignSelf:"stretch",marginTop:2,borderRadius:18,background:"#fff",border:"1.5px solid #C9D0FF",overflow:"hidden"}},secciones);
+            })()
+          ),
+
+          // ── Escribir ─────────────────────────────────────────────────
+          // Sigue disponible AUN con una revisión abierta (solo se oculta
+          // mientras se está guardando) , así se puede seguir conversando
+          // para completar/ajustar la misma operación sin perder lo ya
+          // resuelto. Campo redondo único con el botón de enviar ADENTRO ,
+          // se quita el botón gris "Enviar".
+          asistentePaso!=="guardando"&&e("div",{style:{padding:"12px 16px 14px",borderTop:"1px solid #EDEFF5",background:"#fff",flexShrink:0,paddingBottom:isMobile?"calc(14px + env(safe-area-inset-bottom,0px))":14}},
+            e("div",{style:{display:"flex",alignItems:"flex-end",gap:8,padding:"6px 6px 6px 16px",borderRadius:24,border:"1.5px solid "+(asistenteInputFocado?"#8D9BFF":"#E3E6EF"),background:"#fff",boxShadow:asistenteInputFocado?"0 0 0 4px #EEF0FF":"none",boxSizing:"border-box"}},
+              e("textarea",{value:asistenteChatInput,onChange:function(ev){ setAsistenteChatInput(ev.target.value); },
+                onKeyDown:function(ev){ if(ev.key==="Enter"&&!ev.shiftKey){ ev.preventDefault(); enviarMensajeAsistente(); } },
+                onFocus:function(){ setAsistenteInputFocado(true); },
+                onBlur:function(){ setAsistenteInputFocado(false); },
+                placeholder:"Escribe aquí...",disabled:asistenteEsperando,
+                style:{flex:1,minHeight:isMobile?22:20,maxHeight:100,resize:"none",border:"none",outline:"none",background:"transparent",fontFamily:"inherit",fontSize:isMobile?16:14.5,color:"#0E1328",padding:"9px 0",boxSizing:"border-box"}
+              }),
+              e("button",{type:"button",onClick:enviarMensajeAsistente,disabled:!asistenteChatInput.trim()||asistenteEsperando,"aria-label":"Enviar",
+                style:{width:36,height:36,flexShrink:0,border:"none",borderRadius:"50%",
+                  cursor:(!asistenteChatInput.trim()||asistenteEsperando)?"default":"pointer",
+                  background:asistenteChatInput.trim()?"#3F4BD0":"#E4E8FF",
+                  color:asistenteChatInput.trim()?"#fff":"#3F4BD0",
+                  display:"flex",alignItems:"center",justifyContent:"center"
+                }
+              },iconoFlechaArriba())
+            ),
+            e("details",{style:{marginTop:8}},
+              e("summary",{style:{display:"inline-flex",alignItems:"center",gap:4,fontSize:12,fontWeight:600,color:"#8E94AE",cursor:"pointer"}},iconoChevron(),"Avanzado"),
+              e("div",{style:{marginTop:6}},
+                e("input",{type:"text",value:asistenteUrl,onChange:function(ev){ setAsistenteUrl(ev.target.value); },placeholder:"URL del asistente",style:Object.assign({},st.inp,{fontSize:11.5,width:"100%",boxSizing:"border-box"})}),
+                e("div",{style:{fontSize:10.5,color:"#8E94AE",marginTop:4,lineHeight:1.4}},"Si usas la URL de prueba de n8n, activa \"Execute workflow\" en el flujo antes de cada mensaje.")
+              )
+            )
+          )
+        )
+      ];
     })(),
 
     // MODAL MOTIVO PERDIDA PIPELINE

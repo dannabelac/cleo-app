@@ -21,6 +21,7 @@
     "dev": "vite",
     "build": "node scripts/check-preview.cjs && vite build",
     "preview": "vite preview",
-    "test:sync": "node --test tests/*.test.cjs"
+    "test:sync": "node --test tests/*.test.cjs",
+    "test:asistente": "node tests/run-asistente-suite.mjs"
   }
 }

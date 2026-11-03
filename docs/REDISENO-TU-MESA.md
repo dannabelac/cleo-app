@@ -221,6 +221,36 @@ Móvil:
 - Encabezado azul (mismo degradado) a lo ancho, sin esquinas redondeadas y sin tarjetas: "CLEO" 13px, título 30px y texto 15px. Formulario debajo con padding 26px 22px: campos y botones de 48px, texto de campo 16px, "Crear cuenta" de 50px.
 No cambies la lógica de autenticación, validaciones, Google ni mensajes de error.
 
+## 4i. Ronda 15 — Chat con CLEO (aprobada)
+Referencias: `docs/rediseno/referencias/R15-Chat.html` y `R15-Ficha.html` (desktop), `R15-Movil-Chat.html` y `R15-Movil-Ficha.html` (móvil). El botón flotante redondo con el globito blanco se queda igual.
+Contenedor:
+- Desktop: panel flotante de 420px a la derecha, con 12px de margen arriba/abajo/derecha, radio 24 y sombra suave; la app atrás se oscurece con rgba(14,19,40,.28). Clic fuera o Esc cierra (si ya existe ese comportamiento; si no, solo el botón cerrar).
+- Móvil: ya NO pantalla completa. Hoja que sube desde abajo, deja visibles ~150px de la app arriba (oscurecida rgba(14,19,40,.35)), radio 24 solo arriba, rayita de arrastre 40×4 centrada arriba. Debe respetar el teclado (el campo sube con él) y el área segura inferior.
+Encabezado:
+- Fondo azul noche con el degradado de la franja "Hoy tienes…" (radial #24307A arriba a la derecha sobre #0E1328), padding 16px 16px 16px 20px.
+- A la izquierda: el MISMO globito blanco del botón flotante (22px, sin círculo de fondo) + "CLEO" 16px/800 blanco, letter-spacing .06em. Sin foco.
+- Cerrar: botón redondo de 36px, fondo rgba(255,255,255,.10), × blanca.
+Mensajes (área con fondo #F4F5FA, padding 20px, gap 10px):
+- Usuario: a la derecha, fondo #8D9BFF, texto #0E1328 14px/600, radio 18 18 6 18, máx. 78% de ancho.
+- CLEO: a la izquierda, fondo blanco, texto 14px, radio 18 18 18 6, máx. 84%.
+- Error: aviso compacto a la izquierda, fondo #FBE6E1, texto #8E2A18 13px, ícono de alerta #B23A24, radio 14.
+- Confirmación guardada: tarjeta blanca a lo ancho con borde 1.5px #C9D0FF, radio 16; arriba "✓ GUARDADO" (12px/800 #1E5C38, check en círculo #E2F2E8), el texto de CLEO 14px con el importe en negritas y "Ver cliente →" como botón secundario de contorno de 32px (antes enlace subrayado).
+Ficha para revisar antes de guardar:
+- Se muestra DENTRO de la conversación, justo debajo del mensaje "Esto es lo que entendí…", no fija abajo del panel.
+- Tarjeta blanca a lo ancho, borde 1.5px #C9D0FF, radio 18, con secciones separadas por línea #EDEFF5:
+  1. "CLIENTE" (11px/800 #6E7489) · nombre 15px/800 + pastilla "Nuevo" (#EEF0FF/#3F4BD0, 22px) si es cliente nuevo · ayuda "Se creará al guardar el pedido." 12.5px #6E7489.
+  2. "PEDIDO" · cada producto en fila: "1 taza" a la izquierda y "$100.00" a la derecha, 14px.
+  3. "Total" 13.5px/700 #4A5068 a la izquierda y "$100.00 MXN" 20px/800 a la derecha; debajo "✓ Pagado" y el importe en verde #1E5C38 13px/700 (si hay pago parcial o pendiente, mostrar el dato actual con el mismo estilo; pendiente en ocre #8A5A06).
+  4. Franja de acciones con fondo #F8F9FC: "Cancelar" como texto gris (#6E7489), "Editar" con contorno #E3E6EF y "✓ Guardar pedido" azul noche #0E1328 ocupando el resto; todos de 40px.
+Escribir:
+- Un solo campo redondo (radio 24, borde 1.5px #E3E6EF; foco #8D9BFF con halo 4px #EEF0FF) con el botón de enviar ADENTRO a la derecha: círculo de 36px con flecha hacia arriba; #E4E8FF/#3F4BD0 cuando está vacío y #3F4BD0 con flecha blanca cuando hay texto. Se quita el botón gris "Enviar". Texto 14.5px (16px en móvil). Enter envía, Shift+Enter salto de línea si ya funciona así.
+- "Avanzado" queda abajo, 12px #8E94AE con chevron.
+Textos aprobados:
+- Error al conectar: "No se pudo conectar con el asistente. Revisa tu conexión e inténtalo de nuevo." Si el mensaje técnico de n8n ("Execute workflow"…) es útil para desarrollo, muéstralo solo en modo desarrollo o en consola.
+- Etiquetas nuevas: "Guardado", "Cliente", "Pedido".
+- Quitar espacios antes de comas y puntos en los textos de CLEO ("entendí ," → "entendí,", "Listo , María ," → "Listo, María,"): normalizar al mostrar el mensaje.
+No cambies la lógica del asistente, la conexión con n8n, el guardado ni lo que hace "Editar" / "Cancelar".
+
 ## 5. Fase 3 — Pedidos (y el resto de secciones)
 
 Referencias: `R5-Pedidos.html`, `R5-Movil-Pedidos.html`.
