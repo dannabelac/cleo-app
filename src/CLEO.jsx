@@ -9667,7 +9667,10 @@ export default function CLEO(props){
     var items=formVenta.items||[];
     var totalItems=redondearDinero(items.reduce(function(s,it){ return s+Number(it.cantidad||1)*redondearDinero(interpretarImporte(it.precio)); },0));
     var montoFinal=items.length>0?totalItems:redondearDinero(interpretarImporte(formVenta.monto));
-    if(!montoFinal) return;
+    // Igual que en avanzarVenta: si hay productos agregados (aunque sumen
+    // $0, ej. un regalo/cortesía) no se bloquea , solo se bloquea cuando de
+    // verdad no hay ni productos ni un monto escrito.
+    if(items.length===0&&!montoFinal) return;
     var conceptoFinal=items.length>0
       ? items.map(function(it){ return (it.cantidad&&it.cantidad>1?it.cantidad+"x ":"")+it.nombre; }).join(", ")
       : formVenta.concepto;
@@ -9676,9 +9679,13 @@ export default function CLEO(props){
     // tocar nada , el saldo de una venta nueva siempre es su monto total
     // completo (todavía no ha pagado nada). Si esto falla, no se crea
     // ningún cliente ni se toca el pipeline.
-    var montoPagoPrevio=formVenta.tipoPago==="anticipo"?redondearDinero(interpretarImporte(formVenta.anticipo)):montoFinal;
-    var validacionPrevia=construirMovimientoPago(montoFinal,montoPagoPrevio,formVenta.fecha||FECHA_HOY,true);
-    if(!validacionPrevia.ok){ alert(validacionPrevia.error); return; }
+    // Venta/pedido a $0 (ej. producto de cortesía): no hay ningún pago que
+    // pre-validar , se salta, igual que el registro real más abajo.
+    if(montoFinal!==0){
+      var montoPagoPrevio=formVenta.tipoPago==="anticipo"?redondearDinero(interpretarImporte(formVenta.anticipo)):montoFinal;
+      var validacionPrevia=construirMovimientoPago(montoFinal,montoPagoPrevio,formVenta.fecha||FECHA_HOY,true);
+      if(!validacionPrevia.ok){ alert(validacionPrevia.error); return; }
+    }
 
     // En Productos, "+ Venta rápida" siempre crea un PEDIDO ya entregado y
     // pagado , nunca escribe en la colección antigua "ventas", así Pedidos
@@ -9770,14 +9777,24 @@ export default function CLEO(props){
 
     // Registro real del pago , se revisa resultado.ok por seguridad, ya
     // validado arriba con los mismos datos, así que no debería fallar aquí.
-    var resultadoPago;
+    // Caso venta/pedido a $0 (ej. producto de cortesía/regalo): no hay nada
+    // que cobrar, así que no se intenta construir un PAGO , validarNuevoPago
+    // rechaza correctamente cualquier monto de $0 para un pago real (eso
+    // sigue siendo correcto en todos los demás flujos), pero aquí no hay
+    // ningún pago que registrar. Se usa insertarSinPago , el mismo mecanismo
+    // ya existente para "no pagó nada todavía".
     var _metPago=formVenta.metodoPago||"efectivo";
-    if(formVenta.tipoPago==="anticipo"&&!esProductos){
-      resultadoPago=registrarPago(tipoItemVD,itemBaseVD.id,formVenta.anticipo,formVenta.fecha||FECHA_HOY,"Anticipo",itemBaseVD,_metPago);
+    if(montoFinal===0){
+      itemBaseVD=insertarSinPago(tipoItemVD,itemBaseVD);
     } else {
-      resultadoPago=registrarPago(tipoItemVD,itemBaseVD.id,montoFinal,formVenta.fecha||FECHA_HOY,"Pago completo",itemBaseVD,_metPago);
+      var resultadoPago;
+      if(formVenta.tipoPago==="anticipo"&&!esProductos){
+        resultadoPago=registrarPago(tipoItemVD,itemBaseVD.id,formVenta.anticipo,formVenta.fecha||FECHA_HOY,"Anticipo",itemBaseVD,_metPago);
+      } else {
+        resultadoPago=registrarPago(tipoItemVD,itemBaseVD.id,montoFinal,formVenta.fecha||FECHA_HOY,"Pago completo",itemBaseVD,_metPago);
+      }
+      if(!resultadoPago.ok){ alert(resultadoPago.error); return; }
     }
-    if(!resultadoPago.ok){ alert(resultadoPago.error); return; }
     // pedido_creado , solo Productos (esProductos): "+ Venta rápida" SIEMPRE
     // crea un pedido aquí (nunca "ventas", ver comentario arriba de
     // itemBaseVD) , se registra una sola vez, ya con el pago confirmado.
@@ -9872,7 +9889,12 @@ export default function CLEO(props){
   function avanzarVenta(){
     var items=formVenta.items||[];
     var totalItems=items.reduce(function(s,it){ return s+Number(it.cantidad||1)*Number(it.precio||0); },0);
-    if(!formVenta.monto&&totalItems===0) return;
+    // Antes comparaba totalItems===0 , eso bloqueaba avanzar cuando SÍ hay
+    // un producto agregado pero a $0 (ej. una pieza regalada/de cortesía),
+    // tratándolo igual que "no se escribió nada". Lo que de verdad debe
+    // bloquear es que no haya NI monto NI ningún producto agregado , un
+    // producto a $0 ya es una entrada real, válida, y debe dejar avanzar.
+    if(!formVenta.monto&&items.length===0) return;
     var creandoClienteV=!formVenta.clienteId&&formVenta.nuevoNombre&&formVenta.nuevoNombre.trim();
     // Canal/contacto ya NO es obligatorio , mismo criterio que el modal
     // dedicado "+ Cliente" (guardarCliente): se puede guardar sin canal
