@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>CLEO — Sin conexión</title>
+    <style>
+      * { box-sizing: border-box; margin: 0; padding: 0; }
+      html, body { height: 100%; }
+      body {
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+        background: #0B0D17;
+        color: #FFFFFF;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 24px;
+        text-align: center;
+      }
+      .tarjeta { max-width: 360px; }
+      h1 { font-size: 20px; font-weight: 800; margin-bottom: 8px; }
+      p { font-size: 14px; line-height: 1.55; color: rgba(255,255,255,0.65); margin-bottom: 20px; }
+      button {
+        font-family: inherit;
+        font-size: 14px;
+        font-weight: 700;
+        padding: 12px 20px;
+        border-radius: 999px;
+        border: none;
+        background: #4B5EFC;
+        color: #FFFFFF;
+        cursor: pointer;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="tarjeta">
+      <h1>Sin conexión por ahora</h1>
+      <p>No encontramos internet. En cuanto vuelva la señal, CLEO se reconecta sola — tus datos ya guardados siguen aquí.</p>
+      <button onclick="location.reload()">Reintentar</button>
+    </div>
+  </body>
+</html>
