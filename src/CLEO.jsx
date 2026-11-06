@@ -599,7 +599,7 @@ function obtenerAccionesHoy(clientes,cotizaciones,esProductos,limite,multiOpEnab
         listaP.push({
           cliente:c,dias:dias,tipo:c.estadoProspecto,prioridad:"alta",
           desc:textoRecordatorioPersistido(r.fecha),mensajeSugerido:"",monto:0,
-          recordatorioId:recordatorioId,recordatorioNota:r.nota||null,recordatorioEsManualOPersonalizado:true,
+          recordatorioId:recordatorioId,recordatorioNota:r.nota||null,recordatorioEsManualOPersonalizado:true,recordatorioHora:r.hora||null,
           accionId:"recordatorio:"+c.id+":"+recordatorioId
         });
       });
@@ -740,7 +740,7 @@ function obtenerAccionesHoy(clientes,cotizaciones,esProductos,limite,multiOpEnab
     if(!pasaFiltroBasico(c)) return;
     var dias=diasSinContacto(c);
     var recordatorioId=r.id||r.fecha;
-    lista.push({cliente:c,tipo:"Recordatorio personalizado",desc:textoRecordatorioPersistido(r.fecha),prioridad:"alta",dias:dias,ordenReal:1,monto:0,mensajeSugerido:"",estancado:false,recordatorioId:recordatorioId,recordatorioNota:r.nota||null,recordatorioEsManualOPersonalizado:true,accionId:"recordatorio:"+c.id+":"+recordatorioId});
+    lista.push({cliente:c,tipo:"Recordatorio personalizado",desc:textoRecordatorioPersistido(r.fecha),prioridad:"alta",dias:dias,ordenReal:1,monto:0,mensajeSugerido:"",estancado:false,recordatorioId:recordatorioId,recordatorioNota:r.nota||null,recordatorioEsManualOPersonalizado:true,recordatorioHora:r.hora||null,accionId:"recordatorio:"+c.id+":"+recordatorioId});
   }
 
   // NIVEL 1 , recordatorios persistidos vencidos o de hoy (cualquier
@@ -3361,7 +3361,7 @@ function identidadSinCambios(snapshot,actual){
 function obtenerItemsInteres(cliente){
   if(!cliente) return [];
   if(Array.isArray(cliente.items)&&cliente.items.length>0){
-    return cliente.items.map(function(it){
+    var itemsNormalizadosInt=cliente.items.map(function(it){
       var cantidad=Number(it.cantidad)||1;
       var precioUnitario=redondearDinero(interpretarImporte(it.precioUnitario));
       return {
@@ -3373,6 +3373,20 @@ function obtenerItemsInteres(cliente){
         total:redondearDinero(cantidad*precioUnitario)
       };
     });
+    // Si precioInteres (el total real, el que queda al sincronizar desde
+    // una cotización , ver guardarCot) no coincide con la suma de los
+    // items, es el MISMO caso que un pedido vinculado a una cotización con
+    // descuento (ver separarMontoConfiableDePedido): el descuento vive a
+    // nivel documento, nunca repartido entre renglones. Antes esto se
+    // ignoraba aquí y la ficha mostraba el total SIN descuento aunque
+    // precioInteres sí lo tuviera. Se reconcilia con la misma función ya
+    // usada para pedidos , cuando no hay descuento (el caso normal) esto
+    // es un no-op exacto, porque ambos totales ya coinciden.
+    if(cliente.precioInteres!==undefined&&cliente.precioInteres!==null&&cliente.precioInteres!==""){
+      var totalRealInt=redondearDinero(interpretarImporte(cliente.precioInteres));
+      return separarMontoConfiableDePedido(itemsNormalizadosInt,totalRealInt).items;
+    }
+    return itemsNormalizadosInt;
   }
   var nombreLegacy=cliente.productoInteres||cliente.servicioInteres||"";
   if(!nombreLegacy) return [];
@@ -7238,6 +7252,7 @@ export default function CLEO(props){
   var s31c=useState("nuevo"); var seguimientoModo=s31c[0]; var setSeguimientoModo=s31c[1]; // "nuevo" agrega, "reprogramar" edita el más próximo
   var s31d=useState(""); var seguimientoFechaCal=s31d[0]; var setSeguimientoFechaCal=s31d[1]; // fecha de calendario para el modo "nuevo"
   var s31e=useState(null); var seguimientoEditandoId=s31e[0]; var setSeguimientoEditandoId=s31e[1]; // id del recordatorio específico que se reprograma
+  var s31f=useState(""); var horaRecordatorio=s31f[0]; var setHoraRecordatorio=s31f[1]; // hora opcional ("HH:MM"), solo para recordatorios personales , "" = sin hora específica, igual que siempre
 
   // Estados de carpeta cliente
   var s32=useState(null); var clienteAbierto=s32[0]; var setClienteAbierto=s32[1];
@@ -11334,12 +11349,13 @@ export default function CLEO(props){
                   urgentes.map(function(u,i){
                     var c=u.cliente;
                     var nota=u.recordatorioEsManualOPersonalizado&&u.recordatorioNota?u.recordatorioNota:null;
+                    var notaHora=nota&&u.recordatorioHora?u.recordatorioHora:null;
                     return e("article",{key:u.accionId,style:{padding:"18px 0 20px",borderTop:i===0?"none":"1px solid #E6E8F0"}},
                       e("div",{style:{fontSize:sc.namePerson,fontWeight:800,color:C.ink}},c.nombre),
                       e("p",{style:{margin:"6px 0 0",fontSize:sc.text,lineHeight:1.55,color:"#4A5068"}},u.desc),
                       nota&&e("p",{style:{display:"flex",gap:6,alignItems:"flex-start",margin:"6px 0 0",fontSize:13,lineHeight:1.45,color:"#545A72"}},
                         e("svg",{width:14,height:14,viewBox:"0 0 24 24",fill:"none",stroke:"#7C8CFF",strokeWidth:1.9,strokeLinecap:"round",strokeLinejoin:"round",style:{flexShrink:0,marginTop:2}},e("path",{d:"M4 20h4L19 9l-4-4L4 16z"})),
-                        e("span",null,'"'+nota+'"')
+                        e("span",null,'"'+nota+'"'+(notaHora?" · "+notaHora:""))
                       ),
                       e("div",{style:{display:"flex",gap:4,marginTop:14}},
                         e("button",{style:{cursor:"pointer",height:44,padding:"0 16px",borderRadius:999,border:0,background:C.ink,color:"#FFFFFF",fontSize:sc.text,fontWeight:700,fontFamily:"inherit",display:"inline-flex",alignItems:"center",justifyContent:"center",gap:8,flex:1},onClick:function(){manejarClickContactar(c,u.recordatorioId,u.recordatorioNota,u.recordatorioEsManualOPersonalizado);}},
@@ -11382,12 +11398,13 @@ export default function CLEO(props){
                   urgentes.map(function(u){
                     var c=u.cliente;
                     var nota=u.recordatorioEsManualOPersonalizado&&u.recordatorioNota?u.recordatorioNota:null;
+                    var notaHora=nota&&u.recordatorioHora?u.recordatorioHora:null;
                     return e("article",{key:u.accionId,style:{background:"#FFFFFF",borderRadius:20,padding:"18px 20px",display:"flex",flexDirection:"column",boxSizing:"border-box"}},
                       e("div",{style:{fontSize:sc.namePerson,fontWeight:800,letterSpacing:"-0.015em",color:C.ink}},c.nombre),
                       e("p",{style:{margin:"8px 0 0",fontSize:13.5,lineHeight:1.55,color:"#4A5068"}},u.desc),
                       nota&&e("p",{style:{display:"flex",gap:7,alignItems:"flex-start",margin:"12px 0 0",fontSize:13,lineHeight:1.5,color:"#545A72"}},
                         e("svg",{width:15,height:15,viewBox:"0 0 24 24",fill:"none",stroke:"#7C8CFF",strokeWidth:1.9,strokeLinecap:"round",strokeLinejoin:"round",style:{flexShrink:0,marginTop:2}},e("path",{d:"M4 20h4L19 9l-4-4L4 16z"})),
-                        e("span",null,'"'+nota+'"')
+                        e("span",null,'"'+nota+'"'+(notaHora?" · "+notaHora:""))
                       ),
                       e("div",{style:{flex:1,minHeight:14}}),
                       e("div",{style:{display:"flex",gap:4}},
@@ -11443,12 +11460,13 @@ export default function CLEO(props){
                   acciones.length>0&&e("div",{style:{display:"flex",gap:6,fontSize:11,fontWeight:800,letterSpacing:".08em",color:"#4A5068",paddingTop:14}},"CONVERSACIONES POR RETOMAR",e("span",{style:{color:C.purple}},acciones.length)),
                   acciones.map(function(a,i){
                     var nota=a.recordatorioEsManualOPersonalizado&&a.recordatorioNota?a.recordatorioNota:null;
+                    var notaHora=nota&&a.recordatorioHora?a.recordatorioHora:null;
                     return e("article",{key:a.accionId||i,style:{padding:"18px 0 20px",borderTop:i===0?"none":"1px solid #E6E8F0"}},
                       e("div",{style:{fontSize:sc.namePerson,fontWeight:800,color:C.ink}},a.cliente.nombre),
                       e("p",{style:{margin:"6px 0 0",fontSize:sc.text,lineHeight:1.55,color:"#4A5068"}},a.desc),
                       nota&&e("p",{style:{display:"flex",gap:6,alignItems:"flex-start",margin:"6px 0 0",fontSize:13,lineHeight:1.45,color:"#545A72"}},
                         e("svg",{width:14,height:14,viewBox:"0 0 24 24",fill:"none",stroke:"#7C8CFF",strokeWidth:1.9,strokeLinecap:"round",strokeLinejoin:"round",style:{flexShrink:0,marginTop:2}},e("path",{d:"M4 20h4L19 9l-4-4L4 16z"})),
-                        e("span",null,'"'+nota+'"')
+                        e("span",null,'"'+nota+'"'+(notaHora?" · "+notaHora:""))
                       ),
                       e("div",{style:{display:"flex",gap:4,marginTop:14}},
                         a.origenAccion==="cotizacion_independiente"
@@ -11502,12 +11520,13 @@ export default function CLEO(props){
                   hayCobrosPendientes&&e("div",{style:{fontSize:11,fontWeight:800,letterSpacing:".08em",color:"#4A5068",display:"flex",gap:7,marginBottom:12,marginLeft:4,gridColumn:acciones.length>0?"span "+cobrosPendientes.length:"1/-1"}},"COBROS PENDIENTES",e("span",{style:{color:C.purple}},cobrosTodosIni.length)),
                   acciones.map(function(a,i){
                     var nota=a.recordatorioEsManualOPersonalizado&&a.recordatorioNota?a.recordatorioNota:null;
+                    var notaHora=nota&&a.recordatorioHora?a.recordatorioHora:null;
                     return e("article",{key:a.accionId||i,style:{background:"#FFFFFF",borderRadius:20,padding:"18px 20px",display:"flex",flexDirection:"column",boxSizing:"border-box"}},
                       e("div",{style:{fontSize:sc.namePerson,fontWeight:800,letterSpacing:"-0.015em",color:C.ink}},a.cliente.nombre),
                       e("p",{style:{margin:"8px 0 0",fontSize:13.5,lineHeight:1.55,color:"#4A5068"}},a.desc),
                       nota&&e("p",{style:{display:"flex",gap:7,alignItems:"flex-start",margin:"12px 0 0",fontSize:13,lineHeight:1.5,color:"#545A72"}},
                         e("svg",{width:15,height:15,viewBox:"0 0 24 24",fill:"none",stroke:"#7C8CFF",strokeWidth:1.9,strokeLinecap:"round",strokeLinejoin:"round",style:{flexShrink:0,marginTop:2}},e("path",{d:"M4 20h4L19 9l-4-4L4 16z"})),
-                        e("span",null,'"'+nota+'"')
+                        e("span",null,'"'+nota+'"'+(notaHora?" · "+notaHora:""))
                       ),
                       e("div",{style:{flex:1,minHeight:14}}),
                       a.origenAccion==="cotizacion_independiente"
@@ -12301,7 +12320,7 @@ export default function CLEO(props){
                     var esManual=r.origen==="manual";
                     return e("div",{key:r.id||i,style:{paddingBottom:12,marginBottom:12,borderBottom:i<lista.length-1?"1px solid "+C.border:"none"}},
                       e("div",{style:{fontSize:12,color:C.textDim,marginBottom:4}},esProximo?"Próximo seguimiento":"Después"),
-                      e("div",{style:{fontSize:sc.text,fontWeight:600,color:C.amber,marginBottom:8}},r.fecha),
+                      e("div",{style:{fontSize:sc.text,fontWeight:600,color:C.amber,marginBottom:8}},r.fecha+(r.hora?" · "+r.hora:"")),
                       motivoTexto&&e("div",{style:{fontSize:12,color:C.purple,fontStyle:"italic",lineHeight:1.5,marginBottom:12}},'💬 "'+motivoTexto+'"'),
                       r.esCotIndep
                         // Mismas 3 acciones que ya usa la tarjeta de Hoy para
@@ -12316,7 +12335,7 @@ export default function CLEO(props){
                         : esManual
                         ?e("button",{style:Object.assign({},st.btn,{fontSize:11,color:C.red}),onClick:function(){ quitarEste(r); }},"Quitar")
                         :e("div",{style:{display:"flex",gap:8}},
-                            e("button",{style:Object.assign({},st.btn,{fontSize:12}),onClick:function(){ setSeguimientoEditandoId(r.id||r.fecha); setSeguimientoClienteId(c.id); setSeguimientoModo("reprogramar"); setSeguimientoDias(""); setNotaReprogramar(r.nota||""); }},"Reprogramar"),
+                            e("button",{style:Object.assign({},st.btn,{fontSize:12}),onClick:function(){ setSeguimientoEditandoId(r.id||r.fecha); setSeguimientoClienteId(c.id); setSeguimientoModo("reprogramar"); setSeguimientoDias(""); setNotaReprogramar(r.nota||""); setHoraRecordatorio(""); }},"Reprogramar"),
                             e("button",{style:Object.assign({},st.btn,{fontSize:12,color:C.green}),onClick:function(){ quitarEste(r); }},"Marcar contactado")
                           )
                     );
@@ -12328,7 +12347,7 @@ export default function CLEO(props){
               // ninguno), solo agrega uno más y la lista se reordena sola
               // por fecha (el más próximo siempre arriba, y aparece en Hoy
               // exactamente en su fecha indicada).
-              e("button",{style:{marginTop:14,cursor:"pointer",padding:"10px 18px",borderRadius:12,border:"1px solid #C7D2FE",background:"#EEF2FF",color:"#5B5CF6",fontSize:13,fontWeight:600},onClick:function(){ setSeguimientoClienteId(c.id); setSeguimientoModo("nuevo"); setSeguimientoDias(""); setNotaReprogramar(""); setSeguimientoFechaCal(""); setSeguimientoEditandoId(null); }},"+ Recordatorio")
+              e("button",{style:{marginTop:14,cursor:"pointer",padding:"10px 18px",borderRadius:12,border:"1px solid #C7D2FE",background:"#EEF2FF",color:"#5B5CF6",fontSize:13,fontWeight:600},onClick:function(){ setSeguimientoClienteId(c.id); setSeguimientoModo("nuevo"); setSeguimientoDias(""); setNotaReprogramar(""); setSeguimientoFechaCal(""); setSeguimientoEditandoId(null); setHoraRecordatorio(""); }},"+ Recordatorio")
             )
           );
         }
@@ -13031,7 +13050,16 @@ export default function CLEO(props){
                       }
                       itemsOpo=[{id:"it_"+Date.now(),catalogoId:null,nombre:c.productoInteres||"",cantidad:1,precioUnitario:precioOpo,total:redondearDinero(interpretarImporte(precioOpo))}];
                     }
-                    setFormCot(Object.assign({},cotVacio,{clienteId:String(c.id),clienteNombre:c.nombre,items:itemsOpo}));
+                    // _pedirSeguimientoAlGuardar: mismo mecanismo que "Ya se
+                    // lo envié" (ver flujo especializado de contactadoClienteId
+                    // en Hoy) , sin esto, guardarCot nunca pregunta "¿cuándo
+                    // le das seguimiento?" y por lo tanto nunca limpia el
+                    // recordatorio viejo "...quedaste en enviarle el precio"
+                    // (esa limpieza está condicionada exactamente a esa
+                    // pregunta). Antes, crear la cotización desde este botón
+                    // avanzaba el estado a "En seguimiento" pero dejaba el
+                    // recordatorio viejo sobreviviendo para siempre.
+                    setFormCot(Object.assign({},cotVacio,{clienteId:String(c.id),clienteNombre:c.nombre,items:itemsOpo,_pedirSeguimientoAlGuardar:true}));
                     setModalCot(true);
                   }
                 }
@@ -14789,7 +14817,7 @@ export default function CLEO(props){
                 e("p",{style:{margin:"4px 0 0",fontSize:14,lineHeight:1.55,color:C.textMuted}},u.desc),
                 (u.recordatorioEsManualOPersonalizado&&u.recordatorioNota)&&e("p",{style:{display:"flex",gap:7,alignItems:"flex-start",margin:"6px 0 0",fontSize:sc.textSec,lineHeight:1.5,color:"#545A72"}},
                   e("svg",{width:15,height:15,viewBox:"0 0 24 24",fill:"none",stroke:"#7C8CFF",strokeWidth:1.9,strokeLinecap:"round",strokeLinejoin:"round",style:{flexShrink:0,marginTop:2}},e("path",{d:"M4 20h4L19 9l-4-4L4 16z"})),
-                  e("span",null,'"'+u.recordatorioNota+'"')
+                  e("span",null,'"'+u.recordatorioNota+'"'+(u.recordatorioHora?" · "+u.recordatorioHora:""))
                 ),
                 isSugerido&&e("p",{style:{display:"flex",alignItems:"center",gap:7,margin:"10px 0 0",fontSize:sc.textSec,fontWeight:600,color:"#2E37A3"}},
                   e("svg",{width:15,height:15,viewBox:"0 0 24 24",fill:"none",stroke:"#3F4BD0",strokeWidth:1.9,strokeLinecap:"round",strokeLinejoin:"round"},e("path",{d:"M9 18h6M10 21h4M12 3a6 6 0 0 0-3.6 10.8c.6.5 1 1.2 1 2V16h5.2v-.2c0-.8.4-1.5 1-2A6 6 0 0 0 12 3z"})),
@@ -14998,7 +15026,7 @@ export default function CLEO(props){
                       ),
                       u.recordatorioEsManualOPersonalizado&&u.recordatorioNota&&e("p",{style:{display:"flex",gap:7,alignItems:"flex-start",margin:"6px 0 0",fontSize:sc.textSec,lineHeight:1.5,color:"#545A72"}},
                         e("svg",{width:15,height:15,viewBox:"0 0 24 24",fill:"none",stroke:"#7C8CFF",strokeWidth:1.9,strokeLinecap:"round",strokeLinejoin:"round",style:{flexShrink:0,marginTop:2}},e("path",{d:"M4 20h4L19 9l-4-4L4 16z"})),
-                        e("span",null,'"'+u.recordatorioNota+'"')
+                        e("span",null,'"'+u.recordatorioNota+'"'+(u.recordatorioHora?" · "+u.recordatorioHora:""))
                       ),
                       u.monto>0&&e("div",{style:{fontSize:sc.figHero,lineHeight:1.1,fontWeight:800,letterSpacing:"-0.03em",color:C.text,marginTop:8}},"$"+formatoDinero(Number(u.monto))),
                       u.origenAccion==="cotizacion_independiente"
@@ -20941,11 +20969,11 @@ export default function CLEO(props){
       else if(etapa==="Cotizacion enviada") consejo="El 80% de las ventas requieren más de un seguimiento. No escribirle no es respetarle , es perder la venta.";
       else consejo="Mantener el contacto no es perseguir. Es recordarle que existes cuando llegue el momento de necesitarte.";
 
-      return e("div",{style:st.ov,onClick:function(){ setSeguimientoClienteId(null); setNotaReprogramar(""); setSeguimientoFechaCal(""); setSeguimientoEditandoId(null); }},
+      return e("div",{style:st.ov,onClick:function(){ setSeguimientoClienteId(null); setNotaReprogramar(""); setSeguimientoFechaCal(""); setSeguimientoEditandoId(null); setHoraRecordatorio(""); }},
         e("div",{style:st.modal,onClick:function(ev){ ev.stopPropagation(); }},
           e("div",{style:{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:4}},
             e("div",{style:{fontWeight:700,fontSize:sc.titleSection,color:C.text}},seguimientoModo==="reprogramar"?"Reprogramar seguimiento":"Nuevo recordatorio"),
-            e("button",{style:{background:"none",border:"none",cursor:"pointer",color:C.textDim,fontSize:22,lineHeight:1,padding:"0 4px"},onClick:function(){ setSeguimientoClienteId(null); setNotaReprogramar(""); setSeguimientoFechaCal(""); setSeguimientoEditandoId(null); }},"x")
+            e("button",{style:{background:"none",border:"none",cursor:"pointer",color:C.textDim,fontSize:22,lineHeight:1,padding:"0 4px"},onClick:function(){ setSeguimientoClienteId(null); setNotaReprogramar(""); setSeguimientoFechaCal(""); setSeguimientoEditandoId(null); setHoraRecordatorio(""); }},"x")
           ),
           e("div",{style:{fontSize:13,color:C.textMuted,marginBottom:20}},cl?cl.nombre:"--"),
           seguimientoModo==="nuevo"
@@ -20962,6 +20990,11 @@ export default function CLEO(props){
                   // Servicios (se abre desde Cliente→Seguimiento en ambos
                   // perfiles) , esta corrección aplica a los dos por igual.
                   e("input",{type:"date",value:seguimientoFechaCal,onChange:function(ev){ setSeguimientoFechaCal(ev.target.value); },style:Object.assign({},st.inp,{width:"100%",maxWidth:"100%",boxSizing:"border-box",display:"block",minWidth:0,WebkitAppearance:"none"})})
+                ),
+                e("div",{style:{marginBottom:16}},
+                  e("label",{style:st.lbl},"Hora (opcional)"),
+                  e("input",{type:"time",value:horaRecordatorio,onChange:function(ev){ setHoraRecordatorio(ev.target.value); },style:Object.assign({},st.inp,{width:"100%",maxWidth:"100%",boxSizing:"border-box",display:"block",minWidth:0,WebkitAppearance:"none"})}),
+                  e("div",{style:{fontSize:11,color:C.textDim,marginTop:4}},"Si la dejas vacía, te lo recordamos en algún momento de ese día.")
                 ),
                 e("div",{style:{marginBottom:16}},
                   e("label",{style:st.lbl},"Qué quieres recordar"),
@@ -21002,7 +21035,7 @@ export default function CLEO(props){
           )
             ),
           e("div",{style:{display:"flex",gap:8,justifyContent:"flex-end"}},
-            e("button",{style:st.btn,onClick:function(){ setSeguimientoClienteId(null); setNotaReprogramar(""); setSeguimientoFechaCal(""); setSeguimientoEditandoId(null); }},"Cancelar"),
+            e("button",{style:st.btn,onClick:function(){ setSeguimientoClienteId(null); setNotaReprogramar(""); setSeguimientoFechaCal(""); setSeguimientoEditandoId(null); setHoraRecordatorio(""); }},"Cancelar"),
             e("button",{style:st.btnP,onClick:function(){
               var fecha;
               if(seguimientoModo==="nuevo"){
@@ -21031,7 +21064,14 @@ export default function CLEO(props){
                   var entradaR={id:original?original.id:("r_"+Date.now()),fecha:fmtFechaLocal(fecha),nota:notaReprogramar.trim(),esPersonalizada:!!notaReprogramar.trim(),origen:(original&&original.origen)||"cleo",categoria:categoriaOriginal};
                   listaFinal=actuales.map(function(rr){ return (rr.id||rr.fecha)===seguimientoEditandoId?entradaR:rr; });
                 } else {
-                  var entradaN={id:"r_"+Date.now(),fecha:fmtFechaLocal(fecha),nota:notaReprogramar.trim(),esPersonalizada:!!notaReprogramar.trim(),origen:"manual",categoria:"manual"};
+                  // hora: opcional, solo aquí (recordatorio personal nuevo) ,
+                  // nunca en "reprogramar" (ese modo reprograma recordatorios
+                  // automáticos de CLEO, que no tienen un momento del día).
+                  // Campo separado de `fecha`, nunca fusionado en un solo
+                  // datetime , así ningún recordatorio existente ni ningún
+                  // cálculo que ya usa `fecha` (Hoy, CSV, "vencido") se ve
+                  // afectado, simplemente no tienen `hora`.
+                  var entradaN=Object.assign({id:"r_"+Date.now(),fecha:fmtFechaLocal(fecha),nota:notaReprogramar.trim(),esPersonalizada:!!notaReprogramar.trim(),origen:"manual",categoria:"manual"},horaRecordatorio?{hora:horaRecordatorio}:{});
                   listaFinal=actuales.concat([entradaN]);
                 }
                 return conRecordatoriosActualizados(b,listaFinal);
@@ -21039,7 +21079,7 @@ export default function CLEO(props){
               // seguimiento_programado , único botón "Guardar" de este modal,
               // compartido por Productos y Servicios (nuevo o reprogramado).
               registrarEvento("seguimiento_programado",{tipo_perfil:perfil.tipoPerfil||"",dispositivo:dispositivoActual()});
-              setSeguimientoClienteId(null); setSeguimientoDias(""); setNotaReprogramar(""); setSeguimientoFechaCal(""); setSeguimientoEditandoId(null);
+              setSeguimientoClienteId(null); setSeguimientoDias(""); setNotaReprogramar(""); setSeguimientoFechaCal(""); setSeguimientoEditandoId(null); setHoraRecordatorio("");
             }},"Guardar")
           )
         )
