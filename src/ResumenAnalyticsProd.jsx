@@ -930,7 +930,7 @@ function IconPlus({ size = 18 }) {
   return <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="8.5" /><path d="M12 8v8M8 12h8" /></svg>;
 }
 
-const ICONOS_INSIGHT = { bag: IconBag, users: IconUsers, clock: IconClock, x: IconX, warn: IconWarn, help: IconHelp };
+const ICONOS_INSIGHT = { bag: IconBag, users: IconUsers, clock: IconClock, x: IconX, warn: IconWarn, help: IconHelp, tag: IconTag };
 const ICONOS_ACCION = { chat: IconChat, cash: IconCash, tag: IconTag, target: IconTarget, plus: IconPlus };
 const ICONOS_CANAL = { Instagram: IconIg, Facebook: IconFb, Referido: IconRef };
 
@@ -1336,6 +1336,17 @@ export default function ResumenAnalyticsProd({
   if (canceladosPer.length > 0) insights.push({ ic: "x", titulo: canceladosPer.length + (canceladosPer.length === 1 ? " pedido cancelado" : " pedidos cancelados") + " este mes", evidencia: (() => { const mc = {}; canceladosPer.forEach(p => { if (p.motivoCancelacion) mc[p.motivoCancelacion] = (mc[p.motivoCancelacion] || 0) + 1; }); const top = Object.entries(mc).sort((a, b) => b[1] - a[1])[0]; return top ? 'Motivo más común: "' + top[0] + '"' : "Sin motivo dominante"; })() });
   if (topMotivoPerdida && topMotivoPerdida[1] >= 2) insights.push({ ic: "warn", titulo: '"' + topMotivoPerdida[0] + '" repite como motivo de pérdida', evidencia: topMotivoPerdida[1] + " de " + totalPerdidas + " oportunidades o pedidos perdidos" });
   if (sinOrigenCount > 0) insights.push({ ic: "help", titulo: sinOrigenCount + (sinOrigenCount === 1 ? " cliente sin canal registrado" : " clientes sin canal registrado"), evidencia: "No se puede saber qué canal los trajo" });
+  const pedidosConPromo = pedidos.filter(p => p.estadoPedido !== "cancelado" && p.promoVenta);
+  if (pedidosConPromo.length > 0) {
+    const promoCounts = {};
+    pedidosConPromo.forEach(p => {
+      const label = p.promoVenta || "Promo";
+      promoCounts[label] = (promoCounts[label] || 0) + 1;
+    });
+    const topPromo = Object.entries(promoCounts).sort((a, b) => b[1] - a[1])[0];
+    const evidenciaPromo = topPromo ? topPromo[0] + " — " + topPromo[1] + (topPromo[1] === 1 ? " vez" : " veces") : "";
+    insights.push({ ic: "tag", titulo: pedidosConPromo.length + (pedidosConPromo.length === 1 ? " venta con promoción" : " ventas con promoción"), evidencia: evidenciaPromo });
+  }
 
   const [mostrarInsightsTodos, setMostrarInsightsTodos] = useState(false);
 
