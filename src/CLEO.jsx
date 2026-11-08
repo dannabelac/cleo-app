@@ -1911,7 +1911,7 @@ var formVacio={nombre:"",negocio:"",contacto:"",origen:"Instagram",etapa:"Nuevo 
 var cotVacio={clienteId:"",items:[{id:"it_"+Date.now(),catalogoId:null,nombre:"",cantidad:1,precioUnitario:"",total:0}],descuento:"",tipoDescuento:"porcentaje",estatus:"Pendiente",vigencia:"",vigenciaDias:"",notas:"",anticipo:0,fechaAnticipo:""};
 var svVacio={nombre:"",precio:"",descripcion:"",condiciones:""};
 // Formulario de venta directa vacío
-var ventaVacia={tipo:"especifico",clienteId:"",concepto:"",monto:"",fecha:FECHA_HOY,etiqueta:"",eventoId:null,notas:"",nuevoNombre:"",nuevoContacto:"",nuevoNegocio:"",items:[],metodoPago:"efectivo"};
+var ventaVacia={tipo:"especifico",clienteId:"",concepto:"",monto:"",fecha:FECHA_HOY,etiqueta:"",eventoId:null,notas:"",nuevoNombre:"",nuevoContacto:"",nuevoNegocio:"",items:[],metodoPago:"efectivo",promoVenta:"",promoVentaOtra:""};
 
 // ─── PDF GENERATORS ──────────────────────────────────────────────────────────
 
@@ -2944,6 +2944,26 @@ function obtenerItemsPedido(ped){
     precioUnitario:precioLegacy,
     total:totalLegacy
   }];
+}
+// Versión para cotización: si el pedido tiene promoVenta conocida (2×1, 3×2)
+// multiplica la cantidad física y divide el precio para que el total no cambie.
+// Solo se usa al crear/mostrar la cotización del cliente, no en cálculos internos.
+function obtenerItemsPedidoConPromo(ped){
+  var items=obtenerItemsPedido(ped);
+  var promo=ped&&ped.promoVenta||"";
+  // factorFisico = unidades que el cliente lleva (para cantidad en cotización e inventario)
+  // factorPago   = unidades que se cobran (para calcular el total a cobrar)
+  // 2×1: lleva 2, paga 1 → total sin cambio
+  // 3×2: lleva 3, paga 2 → total se duplica respecto al precio capturado por unidad
+  var factorFisico=promo==="2×1"?2:promo==="3×2"?3:0;
+  var factorPago  =promo==="2×1"?1:promo==="3×2"?2:0;
+  if(!factorFisico) return items;
+  return items.map(function(it){
+    var cantFisica=Math.ceil(it.cantidad*factorFisico);
+    var totalAjustado=redondearDinero(it.total*factorPago);
+    var precioAjustado=cantFisica>0?redondearDinero(totalAjustado/cantFisica):it.precioUnitario;
+    return Object.assign({},it,{cantidad:cantFisica,precioUnitario:precioAjustado,total:redondearDinero(cantFisica*precioAjustado)});
+  });
 }
 // separarMontoConfiableDePedido: NUNCA asumas que pedido.total === suma de
 // item.total. Coinciden en la enorme mayoría de los casos (todo pedido
@@ -4226,6 +4246,8 @@ function ModalVenta(props){
     );
   }
   var tipoOpciones=[{key:"especifico",label:"Con cliente",desc:"Tienes el contacto"},{key:"generico",label:"Sin contacto",desc:esProductos?"Venta rápida":"Venta directa"},{key:"dia",label:"Total del dia",desc:"Monto global"}];
+  var _idsVD=(formVenta.items||[]).filter(function(it){ return it.nombre||it.catalogoId; }).map(function(it){ return it.catalogoId||it.nombre||""; });
+  var multiProductoVD=_idsVD.length>1&&(new Set(_idsVD)).size>1;
   return e("div",{style:st.ov,onClick:cancelarVentaDirectaProvisional},
     e("div",{style:Object.assign({},st.modal,{padding:0,overflow:"hidden",display:"flex",flexDirection:"column",maxHeight:isMobile?"94vh":"88vh"}),onClick:function(ev){ ev.stopPropagation(); }},
       e("div",{style:{padding:"20px 24px 16px",background:"linear-gradient(135deg,"+(esProductos?"#FFFBEB":C.greenBg)+" 0%,transparent 70%)",borderBottom:"1px solid "+C.border,display:"flex",alignItems:"center",justifyContent:"space-between",flexShrink:0}},
@@ -4352,11 +4374,13 @@ function ModalVenta(props){
               e("span",null)
             ),
             items.map(function(it,idx){
-              return e("div",{key:it.id,style:{display:"grid",gridTemplateColumns:"1fr 52px 88px 28px",gap:6,padding:"6px 10px",borderBottom:idx<items.length-1?"1px solid "+C.border:"none",alignItems:"center",background:C.surface}},
-                e("input",{value:it.nombre,placeholder:"Nombre...",onChange:function(ev){ updItem(it.id,"nombre",ev.target.value); },style:Object.assign({},st.inp,{padding:"5px 8px",fontSize:sc.inputFs,marginBottom:0})}),
-                e("input",{type:"number",min:1,value:it.cantidad,onChange:function(ev){ updItem(it.id,"cantidad",ev.target.value); },style:Object.assign({},st.inp,{padding:"5px 4px",fontSize:16,textAlign:"center",marginBottom:0})}),
-                e(MontoInput,{value:it.precio,placeholder:"0",onChange:function(ev){ updItem(it.id,"precio",ev.target.value); },style:Object.assign({},st.inp,{padding:"5px 8px",fontSize:12,textAlign:"right",marginBottom:0})}),
-                e("button",{onClick:function(){ delItem(it.id); },style:{background:"none",border:"none",cursor:"pointer",color:C.textDim,fontSize:18,lineHeight:1,padding:0,display:"flex",alignItems:"center",justifyContent:"center"}},"×")
+              return e("div",{key:it.id,style:{borderBottom:idx<items.length-1?"1px solid "+C.border:"none",background:C.surface}},
+                e("div",{style:{display:"grid",gridTemplateColumns:"1fr 52px 88px 28px",gap:6,padding:"6px 10px",alignItems:"center"}},
+                  e("input",{value:it.nombre,placeholder:"Nombre...",onChange:function(ev){ updItem(it.id,"nombre",ev.target.value); },style:Object.assign({},st.inp,{padding:"5px 8px",fontSize:sc.inputFs,marginBottom:0})}),
+                  e("input",{type:"number",min:1,value:it.cantidad,onChange:function(ev){ updItem(it.id,"cantidad",ev.target.value); },style:Object.assign({},st.inp,{padding:"5px 4px",fontSize:16,textAlign:"center",marginBottom:0})}),
+                  e(MontoInput,{value:it.precio,placeholder:"0",onChange:function(ev){ updItem(it.id,"precio",ev.target.value); },style:Object.assign({},st.inp,{padding:"5px 8px",fontSize:12,textAlign:"right",marginBottom:0})}),
+                  e("button",{onClick:function(){ delItem(it.id); },style:{background:"none",border:"none",cursor:"pointer",color:C.textDim,fontSize:18,lineHeight:1,padding:0,display:"flex",alignItems:"center",justifyContent:"center"}},"×")
+                )
               );
             }),
             e("div",{style:{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"7px 10px",borderTop:"1px solid "+C.border,background:C.surfaceUp}},
@@ -4471,6 +4495,20 @@ function ModalVenta(props){
             },op.l);
           })
         )
+      ),
+      esProductos&&e("div",{style:{marginBottom:8}},
+        e("label",{style:st.lbl},"¿Aplica alguna promo? (opcional)"),
+        e("div",{style:{display:"flex",gap:6,flexWrap:"wrap",marginBottom:formVenta.promoVenta==="otra"?8:0}},
+          [{v:"2×1",l:"2×1"},{v:"3×2",l:"3×2"},{v:"otra",l:"Otra"}].map(function(op){
+            var activo=formVenta.promoVenta===op.v||(op.v==="otra"&&formVenta.promoVenta==="otra");
+            var bloqueado=(op.v==="2×1"||op.v==="3×2")&&multiProductoVD;
+            return e("button",{key:op.v,type:"button",style:{cursor:bloqueado?"not-allowed":"pointer",padding:"6px 14px",borderRadius:20,border:"1.5px solid "+(activo?C.amber:C.amberBorder),background:activo?C.amberBg:"transparent",fontSize:12,fontWeight:activo?700:500,color:activo?C.amberText:C.textMuted,opacity:bloqueado?0.4:1},
+              onClick:function(){ if(bloqueado) return; setFormVenta(Object.assign({},formVenta,{promoVenta:activo?"":op.v,promoVentaOtra:""})); }
+            },op.l);
+          })
+        ),
+        multiProductoVD&&e("div",{style:{fontSize:11,color:C.textMuted,marginBottom:formVenta.promoVenta==="otra"?8:0}},"2×1 y 3×2 aplican cuando todos los productos son el mismo — usa Otra para describirla"),
+        formVenta.promoVenta==="otra"&&e("input",{value:formVenta.promoVentaOtra||"",onChange:function(ev){ setFormVenta(Object.assign({},formVenta,{promoVentaOtra:ev.target.value})); },placeholder:"ej. 2da unidad mitad de precio",style:Object.assign({},st.inp,{marginBottom:0,fontSize:13})})
       )
       ), // cierra body scrollable
       e("div",{style:{padding:isMobile?"12px 24px 28px":"14px 24px",borderTop:"1px solid "+C.border,background:C.surfaceUp,display:"flex",gap:8,justifyContent:"flex-end",flexShrink:0}},
@@ -4492,7 +4530,7 @@ var formVacio={nombre:"",negocio:"",contacto:"",origen:"Instagram",etapa:"Nuevo 
 var cotVacio={clienteId:"",items:[{id:"it_"+Date.now(),catalogoId:null,nombre:"",cantidad:1,precioUnitario:"",total:0}],descuento:"",tipoDescuento:"porcentaje",estatus:"Pendiente",vigencia:"",vigenciaDias:"",notas:"",anticipo:0,fechaAnticipo:""};
 var svVacio={nombre:"",precio:"",descripcion:""};
 // Formulario de venta directa vacío
-var ventaVacia={tipo:"especifico",clienteId:"",concepto:"",monto:"",fecha:FECHA_HOY,etiqueta:"",eventoId:null,notas:"",nuevoNombre:"",nuevoContacto:"",nuevoNegocio:"",items:[],metodoPago:"efectivo"};
+var ventaVacia={tipo:"especifico",clienteId:"",concepto:"",monto:"",fecha:FECHA_HOY,etiqueta:"",eventoId:null,notas:"",nuevoNombre:"",nuevoContacto:"",nuevoNegocio:"",items:[],metodoPago:"efectivo",promoVenta:"",promoVentaOtra:""};
 
 // ─── PDF GENERATORS ──────────────────────────────────────────────────────────
 
@@ -5627,7 +5665,7 @@ export default function CLEO(props){
   var sFormCerre=useState(formCerreVacio); var formCerre=sFormCerre[0]; var setFormCerre=sFormCerre[1];
   // Flujo independiente "Cerré una venta" para PRODUCTOS
   var sModalCerreP=useState(false); var modalCerreP=sModalCerreP[0]; var setModalCerreP=sModalCerreP[1];
-  var formCerrePVacio={busqueda:"",clienteId:null,mostrarForm:false,items:[{id:"it_"+Date.now(),catalogoId:null,nombre:"",cantidad:1,precioUnitario:"",total:0}],tipoPago:"completo",anticipo:"",yaEntregado:null,origenVentaP:null,metodoPago:"efectivo"};
+  var formCerrePVacio={busqueda:"",clienteId:null,mostrarForm:false,items:[{id:"it_"+Date.now(),catalogoId:null,nombre:"",cantidad:1,precioUnitario:"",total:0}],tipoPago:"completo",anticipo:"",yaEntregado:null,origenVentaP:null,metodoPago:"efectivo",promoVenta:"",promoVentaOtra:""};
   var sFormCerreP=useState(formCerrePVacio); var formCerreP=sFormCerreP[0]; var setFormCerreP=sFormCerreP[1];
   var sMostrarCatCerreP=useState(false); var mostrarCatCerreP=sMostrarCatCerreP[0]; var setMostrarCatCerreP=sMostrarCatCerreP[1];
   var sCerrePExito=useState(false); var cerrePExito=sCerrePExito[0]; var setCerrePExito=sCerrePExito[1];
@@ -5641,7 +5679,8 @@ export default function CLEO(props){
   // nuevo que va a estado "preparando". Calcula disponibles restando los
   // apartados de pedidos existentes. No toca items sin catalogoId ni
   // productos sin inventario activo.
-  function calcularInvItemsParaNuevoPedido(items){
+  function calcularInvItemsParaNuevoPedido(items,promoVenta){
+    var factorPromo=promoVenta==="2×1"?2:promoVenta==="3×2"?3:1;
     return items.map(function(it){
       var catId=it.catalogoId;
       var prod=catId
@@ -5653,16 +5692,19 @@ export default function CLEO(props){
       var apartadosExistentes=(pedidos||[]).filter(function(p){ return p.estadoPedido==="preparando"; }).reduce(function(sum,p){ return sum+(p.items||[]).reduce(function(s,pi){ return (pi.catalogoId===prodId)?s+((pi.invApartado||0)-(pi.invEntregado||0)):s; },0); },0);
       var apartadosEvtExist=(eventosInv||[]).filter(function(ev){ return ev.estado==="abierto"; }).reduce(function(sum,ev){ var ep=(ev.productos||[]).find(function(x){ return x.catalogoId===prodId; }); return sum+(ep?Math.max(0,(ep.cantidadLlevada||0)-(ep.cantidadVendida||0)):0); },0);
       var disponibles=Math.max(0,prod.stock-apartadosExistentes-apartadosEvtExist);
-      var invApartado=Math.min(Number(itBase.cantidad)||0,disponibles);
-      var invPendiente=Math.max(0,(Number(itBase.cantidad)||0)-invApartado);
+      var cantEfectiva=Math.ceil((Number(itBase.cantidad)||0)*factorPromo);
+      var invApartado=Math.min(cantEfectiva,disponibles);
+      var invPendiente=Math.max(0,cantEfectiva-invApartado);
       return Object.assign({},itBase,{invApartado:invApartado,invPendiente:invPendiente,invEntregado:0});
     });
   }
 
-  function crearPedidoDesdeVenta(clienteId,items,tipoPago,anticipo,origenVenta,yaEntregado,metodoPago){
-    var totalItems=items.reduce(function(s,it){ return s+it.total; },0);
-    var itemsConInv=yaEntregado?items:calcularInvItemsParaNuevoPedido(items);
-    var nuevoPedBase={
+  function crearPedidoDesdeVenta(clienteId,items,tipoPago,anticipo,origenVenta,yaEntregado,metodoPago,extraCampos){
+    var _promoV=(extraCampos||{}).promoVenta||"";
+    var _factorPago=_promoV==="3×2"?2:1;
+    var totalItems=redondearDinero(items.reduce(function(s,it){ return s+it.total; },0)*_factorPago);
+    var itemsConInv=yaEntregado?items:calcularInvItemsParaNuevoPedido(items,_promoV);
+    var nuevoPedBase=Object.assign({
       id:"ped_"+Date.now(),clienteId:clienteId,
       items:itemsConInv,productos:resumenItemsCotizacion(items,"producto"),
       // itemsConfirmacion/montoConfirmacion: snapshot INMUTABLE de los items
@@ -5677,7 +5719,7 @@ export default function CLEO(props){
       origenVenta:origenVenta||"registro_manual",
       notas:"",fecha:FECHA_HOY,fechaCreado:new Date().toISOString(),
       fechaEntrega:yaEntregado?FECHA_HOY:""
-    };
+    },extraCampos||{});
     var _met=metodoPago||"efectivo";
     var resultado;
     if(tipoPago==="completo"){
@@ -6223,7 +6265,8 @@ export default function CLEO(props){
     // Primero se intenta crear el pedido/registrar el pago , solo si eso
     // funciona se modifica al cliente como Ganado/Convertido. Si el pago no
     // es válido, no se toca al cliente ni se muestra éxito.
-    var resultadoPedido=crearPedidoDesdeVenta(clienteId,itemsFinalCV,fc.tipoPago,fc.anticipo,fc.origenVentaP||"registro_manual",fc.yaEntregado===true,fc.metodoPago||"efectivo");
+    var promoVentaCV=(function(){ var pv=fc.promoVenta||""; return pv==="otra"?(fc.promoVentaOtra||"").trim():pv; })();
+    var resultadoPedido=crearPedidoDesdeVenta(clienteId,itemsFinalCV,fc.tipoPago,fc.anticipo,fc.origenVentaP||"registro_manual",fc.yaEntregado===true,fc.metodoPago||"efectivo",promoVentaCV?{promoVenta:promoVentaCV}:null);
     if(!resultadoPedido.ok){ alert(resultadoPedido.error); return; }
     // Protección temporal de la oportunidad activa (beta): fc.origenVentaP
     // ya viene decidido por la pregunta "¿Este pedido corresponde a esta
@@ -6380,7 +6423,9 @@ export default function CLEO(props){
     // Crear pedido , items[] es SIEMPRE la fuente de verdad;
     // productos/cantidad/total quedan como compatibilidad
     // derivada para pantallas que aún no leen items.
-    var itemsFinalPedConInv=calcularInvItemsParaNuevoPedido(itemsFinalPed);
+    var promoVentaFinalPed=(function(){ var pv=fp.promoVenta||""; return pv==="otra"?(fp.promoVentaOtra||"").trim():pv; })();
+    var _factorPagoNP=promoVentaFinalPed==="3×2"?2:1;
+    var itemsFinalPedConInv=calcularInvItemsParaNuevoPedido(itemsFinalPed,promoVentaFinalPed);
     var nuevoPedBase={
       id:"ped_"+Date.now(),
       clienteId:clienteIdFinal,
@@ -6390,12 +6435,13 @@ export default function CLEO(props){
       // de confirmar , ver el mismo comentario en crearPedidoDesdeVenta.
       itemsConfirmacion:itemsFinalPed,montoConfirmacion:totalPed,
       cantidad:cantidadResumenPed,
-      total:totalPed,
+      total:redondearDinero(totalPed*_factorPagoNP),
       estadoPedido:"preparando",
       notas:fp.notas||"",
       fechaEntrega:fp.fechaEntrega||"",
       fecha:FECHA_HOY,
       fechaCreado:new Date().toISOString(),
+      promoVenta:promoVentaFinalPed
     };
     if(fp.anticipo&&Number(fp.anticipo)>0){
       var resultadoPed=registrarPago("pedido",nuevoPedBase.id,fp.anticipo,FECHA_HOY,"Anticipo",nuevoPedBase,fp.metodoPago||"efectivo");
@@ -7568,7 +7614,7 @@ export default function CLEO(props){
   var sPedFormPagoModal=useState({monto:"",fecha:FECHA_HOY,concepto:"Anticipo",metodoPago:"efectivo"}); var formPagoPedidoModal=sPedFormPagoModal[0]; var setFormPagoPedidoModal=sPedFormPagoModal[1];
   var sPedEdit=useState(null); var pedidoEditando=sPedEdit[0]; var setPedidoEditando=sPedEdit[1];
   var sNuevoPedidoModal=useState(false); var nuevoPedidoModal=sNuevoPedidoModal[0]; var setNuevoPedidoModal=sNuevoPedidoModal[1];
-  var pedidoVacio={clienteId:"",nuevoNombre:"",items:[{id:"it_"+Date.now(),catalogoId:null,nombre:"",cantidad:1,precioUnitario:"",total:0}],anticipo:"",metodoPago:"efectivo",fechaEntrega:"",notas:"",oportunidadRespuesta:null};
+  var pedidoVacio={clienteId:"",nuevoNombre:"",items:[{id:"it_"+Date.now(),catalogoId:null,nombre:"",cantidad:1,precioUnitario:"",total:0}],anticipo:"",metodoPago:"efectivo",fechaEntrega:"",notas:"",oportunidadRespuesta:null,promoVenta:"",promoVentaOtra:""};
   var sNuevoPedidoForm=useState(pedidoVacio); var nuevoPedidoForm=sNuevoPedidoForm[0]; var setNuevoPedidoForm=sNuevoPedidoForm[1];
   var sBuscaCliPed=useState(""); var buscaCliPed=sBuscaCliPed[0]; var setBuscaCliPed=sBuscaCliPed[1];
   var sGuardarProdOpo=useState(null); var guardarProdOpo=sGuardarProdOpo[0]; var setGuardarProdOpo=sGuardarProdOpo[1];
@@ -9681,7 +9727,9 @@ export default function CLEO(props){
     if(sinConexionParaGuardar()){ alert(MSG_SIN_CONEXION_GUARDADO); return; }
     var items=formVenta.items||[];
     var totalItems=redondearDinero(items.reduce(function(s,it){ return s+Number(it.cantidad||1)*redondearDinero(interpretarImporte(it.precio)); },0));
-    var montoFinal=items.length>0?totalItems:redondearDinero(interpretarImporte(formVenta.monto));
+    var promoVentaVD=(function(){ var pv=formVenta.promoVenta||""; return pv==="otra"?(formVenta.promoVentaOtra||"").trim():pv; })();
+    var factorPagoVD=esProductos&&promoVentaVD==="3×2"?2:1;
+    var montoFinal=items.length>0?redondearDinero(totalItems*factorPagoVD):redondearDinero(interpretarImporte(formVenta.monto));
     // Igual que en avanzarVenta: si hay productos agregados (aunque sumen
     // $0, ej. un regalo/cortesía) no se bloquea , solo se bloquea cuando de
     // verdad no hay ni productos ni un monto escrito.
@@ -9733,7 +9781,8 @@ export default function CLEO(props){
           fechaEntrega:formVenta.fecha||FECHA_HOY,
           notas:formVenta.notas||"",
           etiqueta:formVenta.etiqueta||"",
-          eventoId:(formVenta.eventoId&&formVenta.eventoId!=="otro")?formVenta.eventoId:null
+          eventoId:(formVenta.eventoId&&formVenta.eventoId!=="otro")?formVenta.eventoId:null,
+          promoVenta:promoVentaVD
         }
       : {
           id:Date.now(),
@@ -9829,12 +9878,14 @@ export default function CLEO(props){
         setProductosCat(function(prev){ return prev.map(function(px){
           var it=itemsVRConInv.find(function(x){ return x.catalogoId===px.id; });
           if(!it) return px;
-          var cant=Math.max(0,Number(it.cantidad)||0);
+          var factorVR=itemBaseVD.promoVenta==="2×1"?2:itemBaseVD.promoVenta==="3×2"?3:1;
+          var cant=Math.ceil(Math.max(0,Number(it.cantidad)||0)*factorVR);
           if(cant===0) return px;
           var stockNuevo=Math.max(0,(px.stock||0)-cant);
+          var notaPromo=itemBaseVD.promoVenta?" · "+itemBaseVD.promoVenta:"";
           var mov={id:"mov_"+Date.now()+"_"+px.id,fecha:FECHA_HOY,tipo:"entrega",
                    cantAntes:px.stock,cantDespues:stockNuevo,
-                   nota:nombreClVR?"Venta rápida · "+cant+" a "+nombreClVR:(formVenta.etiqueta?"Venta rápida · "+cant+" en "+formVenta.etiqueta:"Venta rápida · "+cant)};
+                   nota:nombreClVR?"Venta rápida · "+cant+" a "+nombreClVR+notaPromo:(formVenta.etiqueta?"Venta rápida · "+cant+" en "+formVenta.etiqueta+notaPromo:"Venta rápida · "+cant+notaPromo)};
           return Object.assign({},px,{stock:stockNuevo,movimientos:(px.movimientos||[]).concat([mov])});
         }); });
       }
@@ -13647,6 +13698,7 @@ export default function CLEO(props){
                       e("div",{style:{flex:1,minWidth:0}},
                         e("div",{style:{fontSize:sc.namePerson,fontWeight:800,letterSpacing:"-0.015em",color:C.ink,overflowWrap:"anywhere"}},cl?cl.nombre:"Cliente"),
                         e("div",{style:{marginTop:3,fontSize:sc.textSec,fontWeight:600,color:C.ink}},ped.productos||"Sin producto"),
+                        ped.promoVenta&&e("span",{style:{display:"inline-flex",alignItems:"center",marginTop:4,padding:"2px 10px",borderRadius:16,background:C.amberBg,border:"1px solid "+C.amberBorder,fontSize:11,fontWeight:700,color:C.amberText}},"🏷️ "+ped.promoVenta),
                         ped.etiqueta&&e("div",{style:{marginTop:2,fontSize:sc.textLabel,color:C.textDim,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}},"📍 "+ped.etiqueta)
                       ),
                       totalPedido>0&&e("div",{style:{textAlign:"right",flexShrink:0}},
@@ -13710,7 +13762,7 @@ export default function CLEO(props){
                         onClick:function(){
                           var cotVinculada=ped.cotizacionId?cotizaciones.find(function(cot){ return cot.id===ped.cotizacionId; }):null;
                           if(!cotVinculada&&!ped.cotizacionId){ var cotsDelClientePed=cotizaciones.filter(function(cot){ return String(cot.clienteId)===String(ped.clienteId); }); if(cotsDelClientePed.length===1){ cotVinculada=cotsDelClientePed[0]; setPedidos(function(prevP){ return prevP.map(function(p){ return p.id===ped.id?Object.assign({},p,{cotizacionId:cotVinculada.id}):p; }); }); } }
-                          if(cotVinculada){ editarCot(cotVinculada); } else { setFormCot(Object.assign({},cotVacio,{clienteId:String(ped.clienteId),clienteNombre:cl?cl.nombre:"",items:obtenerItemsPedido(ped),_origenPedidoId:ped.id})); setModalCot(true); }
+                          if(cotVinculada){ editarCot(cotVinculada); } else { setFormCot(Object.assign({},cotVacio,{clienteId:String(ped.clienteId),clienteNombre:cl?cl.nombre:"",items:obtenerItemsPedidoConPromo(ped),_origenPedidoId:ped.id})); setModalCot(true); }
                         }
                       },"Cotización"),
                       e("button",{style:{flex:1,cursor:"pointer",height:sc.btnH,padding:"0 12px",borderRadius:20,border:"1.5px solid #E3E6EF",background:"#FFFFFF",color:C.ink,fontFamily:"inherit",fontSize:sc.btnText,fontWeight:700},onClick:function(){ setFormPagoPedidoModal({monto:"",fecha:FECHA_HOY,concepto:pagosArr.length===0?"Anticipo":"Pago"}); setPedidoPagosId(ped.id); }},pagosArr.length>0?"Pagos ("+pagosArr.length+")":"Pagos"),
@@ -13753,6 +13805,7 @@ export default function CLEO(props){
                       ),
                       // producto
                       e("div",{style:{marginTop:4,fontSize:sc.text,fontWeight:600,color:C.ink}},ped.productos||"Sin producto"),
+                      ped.promoVenta&&e("span",{style:{display:"inline-flex",alignItems:"center",marginTop:4,padding:"2px 10px",borderRadius:16,background:C.amberBg,border:"1px solid "+C.amberBorder,fontSize:11,fontWeight:700,color:C.amberText}},"🏷️ "+ped.promoVenta),
                       ped.etiqueta&&e("div",{style:{marginTop:2,fontSize:sc.textLabel,color:C.textDim,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}},"📍 "+ped.etiqueta),
                       // fecha + tiempo
                       e("div",{style:{display:"flex",flexWrap:"wrap",alignItems:"center",gap:"6px 14px",marginTop:8,fontSize:sc.textSec,color:"#5A6078"}},
@@ -13798,7 +13851,7 @@ export default function CLEO(props){
                           onClick:function(){
                             var cotVinculada=ped.cotizacionId?cotizaciones.find(function(cot){ return cot.id===ped.cotizacionId; }):null;
                             if(!cotVinculada&&!ped.cotizacionId){ var cotsDelClientePed=cotizaciones.filter(function(cot){ return String(cot.clienteId)===String(ped.clienteId); }); if(cotsDelClientePed.length===1){ cotVinculada=cotsDelClientePed[0]; setPedidos(function(prevP){ return prevP.map(function(p){ return p.id===ped.id?Object.assign({},p,{cotizacionId:cotVinculada.id}):p; }); }); } }
-                            if(cotVinculada){ editarCot(cotVinculada); } else { setFormCot(Object.assign({},cotVacio,{clienteId:String(ped.clienteId),clienteNombre:cl?cl.nombre:"",items:obtenerItemsPedido(ped),_origenPedidoId:ped.id})); setModalCot(true); }
+                            if(cotVinculada){ editarCot(cotVinculada); } else { setFormCot(Object.assign({},cotVacio,{clienteId:String(ped.clienteId),clienteNombre:cl?cl.nombre:"",items:obtenerItemsPedidoConPromo(ped),_origenPedidoId:ped.id})); setModalCot(true); }
                           }
                         },"Cotización"),
                         e("button",{style:{display:"inline-flex",alignItems:"center",gap:7,height:sc.btnSmH,padding:"0 14px",borderRadius:18,border:"1.5px solid #E3E6EF",background:"#FFFFFF",color:C.ink,fontFamily:"inherit",fontSize:sc.btnSmText,fontWeight:700,cursor:"pointer",whiteSpace:"nowrap"},onClick:function(){ setFormPagoPedidoModal({monto:"",fecha:FECHA_HOY,concepto:pagosArr.length===0?"Anticipo":"Pago"}); setPedidoPagosId(ped.id); }},pagosArr.length>0?"Pagos ("+pagosArr.length+")":"Ver pagos"),
@@ -14186,6 +14239,26 @@ export default function CLEO(props){
                   esProductos:true,
                   st:st,TXT:TXT
                 }),
+
+                // PROMO
+                (function(){
+                  var _idsNP=(nuevoPedidoForm.items||[]).filter(function(it){ return it.nombre||it.catalogoId; }).map(function(it){ return it.catalogoId||it.nombre||""; });
+                  var multiProductoNP=_idsNP.length>1&&(new Set(_idsNP)).size>1;
+                  return e("div",{style:{marginBottom:4}},
+                    e("label",{style:Object.assign({},st.lbl,{marginBottom:8})},"¿Aplica alguna promo? (opcional)"),
+                    e("div",{style:{display:"flex",gap:6,flexWrap:"wrap",marginBottom:nuevoPedidoForm.promoVenta==="otra"?8:0}},
+                      [{v:"2×1",l:"2×1"},{v:"3×2",l:"3×2"},{v:"otra",l:"Otra"}].map(function(op){
+                        var activo=nuevoPedidoForm.promoVenta===op.v;
+                        var bloqueado=(op.v==="2×1"||op.v==="3×2")&&multiProductoNP;
+                        return e("button",{key:op.v,type:"button",style:{cursor:bloqueado?"not-allowed":"pointer",padding:"6px 14px",borderRadius:20,border:"1.5px solid "+(activo?C.amber:C.amberBorder),background:activo?C.amberBg:"transparent",fontSize:12,fontWeight:activo?700:500,color:activo?C.amberText:C.textMuted,opacity:bloqueado?0.4:1},
+                          onClick:function(){ if(bloqueado) return; setNuevoPedidoForm(Object.assign({},nuevoPedidoForm,{promoVenta:activo?"":op.v,promoVentaOtra:""})); }
+                        },op.l);
+                      })
+                    ),
+                    multiProductoNP&&e("div",{style:{fontSize:11,color:C.textMuted,marginBottom:nuevoPedidoForm.promoVenta==="otra"?8:0}},"2×1 y 3×2 aplican cuando todos los productos son el mismo — usa Otra para describirla"),
+                    nuevoPedidoForm.promoVenta==="otra"&&e("input",{value:nuevoPedidoForm.promoVentaOtra||"",onChange:function(ev){ setNuevoPedidoForm(Object.assign({},nuevoPedidoForm,{promoVentaOtra:ev.target.value})); },placeholder:"ej. 2da unidad mitad de precio",style:Object.assign({},st.inp,{marginBottom:0,fontSize:13})})
+                  );
+                })(),
 
                 // ANTICIPO
                 e("div",null,
@@ -14929,16 +15002,16 @@ export default function CLEO(props){
                   "STOCK INSUFICIENTE",
                   e("span",{style:{fontSize:11,padding:"2px 8px",borderRadius:10,background:C.red+"18",color:C.red,fontWeight:800}},alertasStock.length)
                 ),
-                e("div",{style:{display:"flex",flexDirection:"column",gap:10}},
+                e("div",{style:(isMobile||alertasStock.length<2)?{display:"flex",flexDirection:"column",gap:10}:{display:"grid",gridTemplateColumns:"repeat(2,minmax(0,1fr))",gap:10,alignItems:"start"}},
                   alertasStock.map(function(item){
-                    return e("div",{key:item.prod.id,style:{display:"flex",alignItems:"center",gap:12,padding:"14px 16px",background:C.surface,borderRadius:16}},
-                      e("div",{style:{flex:1,minWidth:0}},
-                        e("div",{style:{fontSize:sc.namePerson,fontWeight:700,color:C.text,marginBottom:2}},item.prod.nombre),
-                        e("div",{style:{fontSize:13,color:C.textMuted,lineHeight:1.4}},
-                          "Te faltan "+item.faltantes+" unidad"+(item.faltantes===1?"":"es")+" para completar tus pedidos"
-                        )
+                    return e("article",{key:item.prod.id,style:cardHoy},
+                      e("div",{style:{fontSize:sc.namePerson,fontWeight:800,letterSpacing:"-0.01em",color:C.text}},item.prod.nombre),
+                      e("p",{style:{margin:"4px 0 0",fontSize:14,lineHeight:1.55,color:C.red,fontWeight:700}},
+                        "Te faltan "+item.faltantes+" unidad"+(item.faltantes===1?"":"es")+" para completar tus pedidos"
                       ),
-                      e("button",{style:btnSecHoy,onClick:function(){ setVista("inventario"); }},"Ver inventario →")
+                      e("div",{style:{display:"flex",gap:4,marginTop:14}},
+                        e("button",{style:btnPrimHoy,onClick:function(){ setVista("inventario"); }},"Ver inventario →")
+                      )
                     );
                   })
                 )
@@ -14950,18 +15023,18 @@ export default function CLEO(props){
                   "POCAS EXISTENCIAS",
                   e("span",{style:{fontSize:11,padding:"2px 8px",borderRadius:10,background:C.amber+"22",color:C.amber,fontWeight:800}},pocasExistencias.length)
                 ),
-                e("div",{style:{display:"flex",flexDirection:"column",gap:10}},
+                e("div",{style:(isMobile||pocasExistencias.length<2)?{display:"flex",flexDirection:"column",gap:10}:{display:"grid",gridTemplateColumns:"repeat(2,minmax(0,1fr))",gap:10,alignItems:"start"}},
                   pocasExistencias.map(function(item){
-                    return e("div",{key:item.prod.id,style:{display:"flex",alignItems:"center",gap:12,padding:"14px 16px",background:C.surface,borderRadius:16}},
-                      e("div",{style:{flex:1,minWidth:0}},
-                        e("div",{style:{fontSize:sc.namePerson,fontWeight:700,color:C.text,marginBottom:2}},item.prod.nombre),
-                        e("div",{style:{fontSize:13,color:C.textMuted,lineHeight:1.4}},
-                          item.disp===0
-                            ?"Sin existencias disponibles — llegaste al mínimo que configuraste"
-                            :"Quedan "+item.disp+" unidad"+(item.disp===1?"":"es")+" — llegaste al mínimo que configuraste"
-                        )
+                    return e("article",{key:item.prod.id,style:cardHoy},
+                      e("div",{style:{fontSize:sc.namePerson,fontWeight:800,letterSpacing:"-0.01em",color:C.text}},item.prod.nombre),
+                      e("p",{style:{margin:"4px 0 0",fontSize:14,lineHeight:1.55,color:"#8A5A06",fontWeight:700}},
+                        item.disp===0
+                          ?"Sin existencias disponibles — llegaste al mínimo que configuraste"
+                          :"Quedan "+item.disp+" unidad"+(item.disp===1?"":"es")+" — llegaste al mínimo que configuraste"
                       ),
-                      e("button",{style:btnSecHoy,onClick:function(){ setVista("inventario"); }},"Ver inventario →")
+                      e("div",{style:{display:"flex",gap:4,marginTop:14}},
+                        e("button",{style:btnPrimHoy,onClick:function(){ setVista("inventario"); }},"Ver inventario →")
+                      )
                     );
                   })
                 )
@@ -19912,6 +19985,24 @@ export default function CLEO(props){
               esProductos:true,
               st:st,TXT:TXT
             }),
+            (function(){
+              var _idsCP=(fc.items||[]).filter(function(it){ return it.nombre||it.catalogoId; }).map(function(it){ return it.catalogoId||it.nombre||""; });
+              var multiProductoCP=_idsCP.length>1&&(new Set(_idsCP)).size>1;
+              return e("div",{style:{marginBottom:16}},
+                e("label",{style:Object.assign({},st.lbl,{marginBottom:8})},"¿Aplica alguna promo? (opcional)"),
+                e("div",{style:{display:"flex",gap:6,flexWrap:"wrap",marginBottom:fc.promoVenta==="otra"?8:0}},
+                  [{v:"2×1",l:"2×1"},{v:"3×2",l:"3×2"},{v:"otra",l:"Otra"}].map(function(op){
+                    var activo=fc.promoVenta===op.v;
+                    var bloqueado=(op.v==="2×1"||op.v==="3×2")&&multiProductoCP;
+                    return e("button",{key:op.v,type:"button",style:{cursor:bloqueado?"not-allowed":"pointer",padding:"6px 14px",borderRadius:20,border:"1.5px solid "+(activo?C.amber:C.amberBorder),background:activo?C.amberBg:"transparent",fontSize:12,fontWeight:activo?700:500,color:activo?C.amberText:C.textMuted,opacity:bloqueado?0.4:1},
+                      onClick:function(){ if(bloqueado) return; setFormCerreP(Object.assign({},fc,{promoVenta:activo?"":op.v,promoVentaOtra:""})); }
+                    },op.l);
+                  })
+                ),
+                multiProductoCP&&e("div",{style:{fontSize:11,color:C.textMuted,marginBottom:fc.promoVenta==="otra"?8:0}},"2×1 y 3×2 aplican cuando todos los productos son el mismo — usa Otra para describirla"),
+                fc.promoVenta==="otra"&&e("input",{value:fc.promoVentaOtra||"",onChange:function(ev){ setFormCerreP(Object.assign({},fc,{promoVentaOtra:ev.target.value})); },placeholder:"ej. 2da unidad mitad de precio",style:Object.assign({},st.inp,{marginBottom:0,fontSize:13})})
+              );
+            })(),
             e("div",{style:{marginBottom:22}},
               e("div",{style:{fontSize:11,fontWeight:700,color:C.textMuted,textTransform:"uppercase",letterSpacing:"0.7px",marginBottom:10}},"Cómo quedó el pago"),
               e("div",{style:{display:"flex",gap:8,flexWrap:"wrap"}},

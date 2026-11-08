@@ -436,6 +436,7 @@ begin
                      'seguimiento', case when pd.postv_seguimiento='ok' then 'resuelto' else pd.postv_seguimiento end)
               else null end,
             'eventoId',        pd.evento_id,
+            'promoVenta',      pd.promo_venta,
             'pagos',
               coalesce(
                 (select jsonb_agg(jsonb_build_object(
@@ -670,11 +671,11 @@ begin
        and cleo_id    = any(v_del_oportunidades);
   end if;
 
+  -- CAMBIO 57: se quitó el "update ... set oportunidad_id = null" que iba
+  -- aquí antes del delete — innecesario (borrar la fila no requiere limpiar
+  -- su propia FK de salida primero) y causaba que el trigger de guarda
+  -- bloqueara TODO el flush cuando la oportunidad vinculada seguía activa.
   if array_length(v_del_cotizaciones, 1) > 0 then
-    update public.cotizaciones
-       set oportunidad_id = null, oportunidad_vinculada = false
-     where negocio_id = v_neg_id
-       and cleo_id    = any(v_del_cotizaciones);
     delete from public.cotizaciones
      where negocio_id = v_neg_id
        and cleo_id    = any(v_del_cotizaciones);
@@ -1317,7 +1318,7 @@ begin
         anticipo_conservado, motivo_cancelacion, motivo_cancelacion_lado,
         items_confirmacion, monto_confirmacion,
         postv_pago, postv_seguimiento,
-        evento_id
+        evento_id, promo_venta
       )
       values (
         v_neg_id, v_it ->> 'id', v_cli_id, v_cot_id, v_op_id,
@@ -1341,7 +1342,8 @@ begin
         case when (v_it -> 'configPostVenta') ->> 'seguimiento' = 'pendiente' then 'pendiente'
              when (v_it -> 'configPostVenta') ->> 'seguimiento' in ('ok','resuelto') then 'ok'
              else null end,
-        nullif(v_it ->> 'eventoId','')
+        nullif(v_it ->> 'eventoId',''),
+        nullif(v_it ->> 'promoVenta','')
       )
       on conflict (negocio_id, cleo_id) do update set
         cliente_id               = excluded.cliente_id,
@@ -1362,7 +1364,8 @@ begin
         motivo_cancelacion_lado  = excluded.motivo_cancelacion_lado,
         postv_pago               = excluded.postv_pago,
         postv_seguimiento        = excluded.postv_seguimiento,
-        evento_id                = excluded.evento_id;
+        evento_id                = excluded.evento_id,
+        promo_venta              = excluded.promo_venta;
     end;
 
     select pd.id into v_uuid
