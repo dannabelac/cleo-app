@@ -13761,7 +13761,6 @@ export default function CLEO(props){
                       e("button",{style:{flex:1,cursor:"pointer",height:sc.btnH,padding:"0 12px",borderRadius:20,border:"1.5px solid #E3E6EF",background:"#FFFFFF",color:C.ink,fontFamily:"inherit",fontSize:sc.btnText,fontWeight:700},
                         onClick:function(){
                           var cotVinculada=ped.cotizacionId?cotizaciones.find(function(cot){ return cot.id===ped.cotizacionId; }):null;
-                          if(!cotVinculada&&!ped.cotizacionId){ var cotsDelClientePed=cotizaciones.filter(function(cot){ return String(cot.clienteId)===String(ped.clienteId); }); if(cotsDelClientePed.length===1){ cotVinculada=cotsDelClientePed[0]; setPedidos(function(prevP){ return prevP.map(function(p){ return p.id===ped.id?Object.assign({},p,{cotizacionId:cotVinculada.id}):p; }); }); } }
                           if(cotVinculada){ editarCot(cotVinculada); } else { setFormCot(Object.assign({},cotVacio,{clienteId:String(ped.clienteId),clienteNombre:cl?cl.nombre:"",items:obtenerItemsPedidoConPromo(ped),_origenPedidoId:ped.id})); setModalCot(true); }
                         }
                       },"Cotización"),
@@ -13850,7 +13849,6 @@ export default function CLEO(props){
                         e("button",{style:{display:"inline-flex",alignItems:"center",gap:7,height:sc.btnSmH,padding:"0 14px",borderRadius:18,border:"1.5px solid #E3E6EF",background:"#FFFFFF",color:C.ink,fontFamily:"inherit",fontSize:sc.btnSmText,fontWeight:700,cursor:"pointer",whiteSpace:"nowrap"},
                           onClick:function(){
                             var cotVinculada=ped.cotizacionId?cotizaciones.find(function(cot){ return cot.id===ped.cotizacionId; }):null;
-                            if(!cotVinculada&&!ped.cotizacionId){ var cotsDelClientePed=cotizaciones.filter(function(cot){ return String(cot.clienteId)===String(ped.clienteId); }); if(cotsDelClientePed.length===1){ cotVinculada=cotsDelClientePed[0]; setPedidos(function(prevP){ return prevP.map(function(p){ return p.id===ped.id?Object.assign({},p,{cotizacionId:cotVinculada.id}):p; }); }); } }
                             if(cotVinculada){ editarCot(cotVinculada); } else { setFormCot(Object.assign({},cotVacio,{clienteId:String(ped.clienteId),clienteNombre:cl?cl.nombre:"",items:obtenerItemsPedidoConPromo(ped),_origenPedidoId:ped.id})); setModalCot(true); }
                           }
                         },"Cotización"),
