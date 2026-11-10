@@ -31,6 +31,7 @@ export var CLEO_KEYS = [
   "cleo_tombstones",
   "cleo_materiales_cat",
   "cleo_eventos_inventario",
+  "cleo_promos_rapidas",
 ];
 
 // Claves locales/temporales de CLEO — nunca se sincronizan a Supabase, pero sí
