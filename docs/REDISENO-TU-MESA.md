@@ -251,6 +251,53 @@ Textos aprobados:
 - Quitar espacios antes de comas y puntos en los textos de CLEO ("entendí ," → "entendí,", "Listo , María ," → "Listo, María,"): normalizar al mostrar el mensaje.
 No cambies la lógica del asistente, la conexión con n8n, el guardado ni lo que hace "Editar" / "Cancelar".
 
+## 4j. Rondas 16–20 — Onboarding, "Ya le hablé" e Inventario (aprobadas)
+Todas con la escala v2. Mismos textos, datos y lógica salvo lo indicado.
+
+### R16 · Bienvenida "¿qué vendes?" — `R16-Bienvenida.html`, `R16-Movil-Bienvenida.html`
+- Desktop: panel azul noche a la izquierda (640px, mismo degradado de Crear cuenta), "CLEO" arriba y abajo "Bienvenido a CLEO" (46px/800 blanco) + "Vender tiene muchos pasos. CLEO te ayuda con cada uno." (30px/800 #A3AFFF). Derecha fondo #F4F5FA con columna de 520px.
+- Se quita el cuadro con "C"; solo la palabra CLEO.
+- "Para hablarte en tu idioma, dinos qué vendes principalmente." pasa a ser el título de la derecha (22px/800).
+- Opciones como tarjetas tocables (borde 1.5px #E3E6EF, radio 20, padding 18): ícono 48px radio 15 (productos: bolsa #EEF0FF/#3F4BD0; servicios: maletín #FBF1DC/#8A5A06) — sin emojis; título 16px/800, descripción 13.5px #5A6078; flecha en círculo #EEF0FF a la derecha. Hover/foco: borde #8D9BFF + halo #EEF0FF.
+- Todo en Plus Jakarta Sans (las descripciones salían en fuente del sistema).
+- Móvil: encabezado azul a lo ancho, sin esquinas redondeadas, título 32px y frase 21px; opciones debajo.
+
+### R17 · "Empecemos" — `R17-Empecemos.html`, `R17-Movil-Empecemos.html`
+- El saludo va en un bloque azul noche (radio 28, degradado de "Hoy tienes…", padding 56px desktop / 28px 22px móvil), alineado a la izquierda, máx. 820px.
+- Sin emoji 👋. "Hola, qué bueno tenerte aquí." 40px/800 (28 móvil) blanco; "Desde hoy ya no emprendes solo." 24px/800 (19 móvil) #A3AFFF; descripción 16px #C9CDE0.
+- "Empecemos →" botón BLANCO con texto azul noche, 46px (50px a lo ancho en móvil).
+- Móvil con la barra de navegación inferior.
+
+### R18 · Pasos "¿cómo te llamas?" y "¿cómo se llama tu negocio?" — `R18-Nombre.html`, `R18-Negocio.html`, `R18-Movil-Nombre.html`, `R18-Movil-Negocio.html`
+- Cada paso en tarjeta blanca centrada de 520px (radio 24, padding 36px 40px; móvil 24px 20px).
+- Puntitos de avance → barra de 3 segmentos de 4px (#3F4BD0 hechos, #E4E8FF pendientes) + "Paso N de 3" 12px/700 #6E7489 (texto nuevo).
+- Título 26px/800 (22 móvil), subtítulo 15px #5A6078, todo alineado a la izquierda.
+- Campo 48px, radio 14, texto a la izquierda 16px, foco pervinca.
+- "Continuar →" azul noche 48px a lo ancho; desactivado: fondo #E4E8FF texto #8E94AE.
+- Paso 2: sin emoji en "Mucho gusto, Danna". "Todavía no tiene nombre" como botón secundario de contorno de 44px a lo ancho (antes texto suelto).
+- "← Atrás" texto 13px/700 #6E7489 centrado abajo.
+- Móvil: tarjeta centrada en el espacio y barra de navegación inferior visible. Usa los destinos reales que ya tiene la barra inferior de cada perfil (no inventes).
+
+### R19 · Modal "Ya le hablé" (¿Qué pasó con …?) — `R19-YaLeHable.html`, `R19-Movil-YaLeHable.html`
+- Modal de 480px, radio 26, padding 26px 24px 16px, fondo atrás rgba(14,19,40,.45). Móvil: hoja desde abajo con rayita.
+- Encabezado: título 22px/800 + subtítulo 14px; botón cerrar × redondo 34px #F4F5FA arriba a la derecha.
+- Cada opción: tarjeta con borde 1.5px #E3E6EF, radio 16, padding 14; ícono 40px radio 13 — Ya se lo envié: avión de papel #EEF0FF/#3F4BD0; Todavía no se lo envié: reloj #FBF1DC/#8A5A06; No respondió: mensaje #FBF1DC/#8A5A06; Ya no está interesada: ✕ en círculo #FBE6E1/#B23A24. Título 15px/800 azul noche (solo "Ya no está interesada" en #B23A24), subtítulo 13px #5A6078. Chevron gris a la derecha: ▸ si avanza, ▾ si despliega (se quitan los triángulos negros).
+- "Ya no está interesada" separada por una línea #EDEFF5 y con borde #F3D3CB.
+- Hover: borde #8D9BFF + halo #EEF0FF.
+- "Cancelar" como texto 13.5px/700 #6E7489 centrado (antes botón grande).
+- Al desplegar "Todavía no se lo envié" / "No respondió", el contenido actual va dentro de la misma tarjeta con el mismo estilo.
+
+### R20 · Inventario y costos — `R20-Inventario.html`, `R20-Movil-Inventario.html`
+- Encabezado: título 24px; resumen "3 productos · 1 agotado · 1 con pocas existencias" con "N agotado" en #B23A24/700 y "N con pocas existencias" en #8A5A06/700. "Descargar reporte" botón de contorno de 36px con ícono de descarga (móvil: arriba a la derecha).
+- Pestañas: subrayado #3F4BD0 2.5px, activa 800 azul noche; contador de Eventos en pastilla #E4E8FF/#3F4BD0 (antes verde).
+- Buscador blanco 40px (44 móvil) con lupa a la izquierda SIN encimarse con el texto.
+- Filtros como pastillas (pista blanca; elegida #E4E8FF): "Todos · Quedan pocos 1 · Agotados 1" (contador gris chico). Móvil: a lo ancho.
+- Lista en bloque blanco (radio 20) con filas separadas por línea. Se quitan los círculos con inicial. A la izquierda, cuadro de 76×52 radio 14 con la cantidad disponible (19px/800) + "disponible(s)" 10.5px: verde #E2F2E8/#1E5C38 si hay; ocre #FBF1DC/#8A5A06 si quedan pocos (mismo umbral de "Quedan pocos"); rojo #FBE6E1/#B23A24 con ícono ⚠ y "Agotado" si es 0.
+- Nombre 15px/800; debajo, en una línea 13px #5A6078: "N pedido(s)" en #3F4BD0/700 · "N en evento" · "Quedan pocos" (si aplica). Se quitan las etiquetas de colores.
+- Acciones: "Anotar ventas" azul noche, "Cambiar cantidad" contorno con ícono lápiz, chevron en botón de 32px; todos de 32px. Móvil: cantidad + nombre + chevron arriba y los dos botones abajo a lo ancho (40px); "Cambiar cantidad" completo (no "Cambiar cant.").
+- "Elegir productos para inventario": fila tocable blanca (borde #E3E6EF, radio 18) con ícono + en #EEF0FF y chevron; sin borde punteado.
+- Corregir plurales: "1 disponible", "1 pedido".
+
 ## 5. Fase 3 — Pedidos (y el resto de secciones)
 
 Referencias: `R5-Pedidos.html`, `R5-Movil-Pedidos.html`.
