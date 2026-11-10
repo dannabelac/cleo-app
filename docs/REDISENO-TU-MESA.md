@@ -298,6 +298,21 @@ Todas con la escala v2. Mismos textos, datos y lógica salvo lo indicado.
 - "Elegir productos para inventario": fila tocable blanca (borde #E3E6EF, radio 18) con ícono + en #EEF0FF y chevron; sin borde punteado.
 - Corregir plurales: "1 disponible", "1 pedido".
 
+### R21 · Paso 3 del onboarding: primer intercambio con CLEO — `R21-PrimerChat.html`, `R21-PrimerChat-Respuesta.html`, `R21-Movil-PrimerChat.html`
+Reemplaza la pantalla "¿Qué quieres organizar primero?" (las 3 tarjetas Alguien preguntó / Envié un precio / Cerré una venta). Va después del paso del nombre del negocio (también si eligió "Todavía no tiene nombre").
+- En este paso se OCULTAN el menú lateral (desktop) y la barra inferior (móvil) para concentrar la atención.
+- Arriba: "CLEO" (15px/800, letter-spacing .14em) a la izquierda; a la derecha la barra de avance completa (3 segmentos #3F4BD0) + "Paso 3 de 3". Contenido en columna de 640px centrada (móvil padding 20px 18px).
+- Título: "{nombre}, ¿qué pasó hoy en tu negocio?" (32px/800, 26 móvil). Si no hay nombre, "¿Qué pasó hoy en tu negocio?".
+- Texto: "Cuéntame con tus palabras. Te ayudo a organizarlo para que no se te pase lo que sigue." 16px #5A6078.
+- Campo: el MISMO componente de escribir del chat de CLEO (R15), en versión grande: área de texto de 3 líneas, radio 22, borde #8D9BFF con halo #EEF0FF (enfocado al entrar), placeholder "Escribe aquí algo de tu negocio…", botón enviar redondo adentro abajo a la derecha. Texto 16px.
+- "PRUEBA CON ALGO COMO ESTO" (12px/800 #6E7489) y 3 ejemplos como filas tocables (borde #E3E6EF, radio 16, padding 12px 14px, texto 14px) con ícono de 34px a la izquierda y flecha ↑ gris a la derecha. Al tocar uno, se escribe en el campo (no se envía solo):
+  1. ícono mensaje #EEF0FF/#3F4BD0 — "Sofía me pidió precio de 10 playeras para su negocio. Se lo envié, pero todavía no me confirma."
+  2. ícono billete #E2F2E8/#1E5C38 — "Le vendí una playera a Luis por $200 y ya me pagó."
+  3. ícono campana #FBF1DC/#8A5A06 — "Recuérdame enviarle a Ana las fotos de los nuevos productos mañana."
+  (Sin emojis.)
+- Abajo: "← Atrás" (texto 13px/700 #6E7489) a la izquierda y "Explorar datos de ejemplo" a la derecha como botón de contorno de 40px con ícono de play; hace lo mismo que el actual "Ver cómo funciona con datos de ejemplo". "Prefiero empezar después" se conserva como texto chico 13px #6E7489 junto a "Atrás" (misma acción de hoy).
+- Al enviar: la pantalla pasa a la conversación con CLEO (mismo diseño del chat R15: burbuja del usuario en #8D9BFF, respuesta de CLEO en blanco sobre #F4F5FA y la ficha para revisar con Cliente · Pedido · Total · Guardar pedido / Editar / Cancelar), con el campo de escribir debajo. Usa el mismo asistente y flujo de guardado que el chat. Al guardar o al terminar, continúa a Inicio como hoy.
+
 ## 5. Fase 3 — Pedidos (y el resto de secciones)
 
 Referencias: `R5-Pedidos.html`, `R5-Movil-Pedidos.html`.
