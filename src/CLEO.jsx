@@ -10806,46 +10806,81 @@ export default function CLEO(props){
           );
         }
         function botonAtras(destino){
-          return e("button",{style:{cursor:"pointer",background:"none",border:"none",color:C.textDim,fontSize:13,marginTop:18,display:"block",marginLeft:"auto",marginRight:"auto"},onClick:function(){ setOnbSubPaso(destino); }},"← Atrás");
+          return e("div",{style:{marginTop:18,display:"flex",justifyContent:"center"}},
+            e("button",{style:{cursor:"pointer",background:"none",border:"none",color:C.textDim,fontSize:13,fontWeight:700,display:"inline-flex",alignItems:"center",gap:6,padding:"6px 0",fontFamily:FONT_CLEO},onClick:function(){ setOnbSubPaso(destino); }},
+              e("svg",{width:14,height:14,viewBox:"0 0 24 24",fill:"none",stroke:"currentColor",strokeWidth:1.9,strokeLinecap:"round",strokeLinejoin:"round"},e("path",{d:"M19 12H5M11 6l-6 6 6 6"})),
+              "Atrás"
+            )
+          );
+        }
+        function barraAvance(paso){
+          // paso: 1=nombre, 2=negocio, 3=situacion
+          return e("div",null,
+            e("div",{style:{display:"flex",gap:6}},
+              [1,2,3].map(function(n){
+                return e("div",{key:n,style:{flex:1,height:4,borderRadius:2,background:n<=paso?"#3F4BD0":"#E4E8FF"}});
+              })
+            ),
+            e("div",{style:{fontSize:12,fontWeight:700,color:"#6E7489",marginTop:10}},"Paso "+paso+" de 3")
+          );
         }
 
         var pasoMostrar=onbSubPaso;
+        var r17Grad="radial-gradient(90% 120% at 100% 0%, #24307A 0%, rgba(36,48,122,0) 60%), radial-gradient(60% 80% at 0% 100%, #1B2560 0%, rgba(27,37,96,0) 70%), #0E1328";
+        var r17ArrowSvg=e("svg",{width:16,height:16,viewBox:"0 0 24 24",fill:"none",stroke:"currentColor",strokeWidth:2.4,strokeLinecap:"round",strokeLinejoin:"round"},e("path",{d:"M5 12h14M13 6l6 6-6 6"}));
 
-        return e("div",{style:{display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",minHeight:"70vh",padding:"0 16px"}},
-          e("div",{style:{width:"100%",maxWidth:440}},
+        return e("div",{style:{display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",minHeight:"70vh",padding:isMobile?"0 16px":"0 40px"}},
+          e("div",{style:{width:"100%",maxWidth:820}},
 
-            // PASO: BIENVENIDA
-            pasoMostrar==="bienvenida"&&e("div",{style:{textAlign:"center"}},
-              e("div",{style:{fontSize:40,marginBottom:20}},"👋"),
-              e("div",{style:{fontSize:24,fontWeight:700,color:C.text,marginBottom:10,lineHeight:1.3}},"Hola, qué bueno tenerte aquí."),
-              e("div",{style:{fontSize:sc.text,color:C.text,marginBottom:8,lineHeight:1.5}},"Desde hoy ya no emprendes solo."),
-              e("div",{style:{fontSize:14,color:C.textMuted,marginBottom:32,lineHeight:1.6}},"CLEO te ayudará a organizar tus ventas y a saber qué necesitas cobrar, entregar o retomar."),
-              e("button",{style:{cursor:"pointer",padding:"13px 36px",borderRadius:12,border:"none",background:C.purple,fontSize:15,color:"#fff",fontWeight:600},onClick:function(){ setOnbSubPaso("nombre"); }},"Empecemos →")
+            // PASO: BIENVENIDA (R17)
+            pasoMostrar==="bienvenida"&&e("section",{style:{position:"relative",overflow:"hidden",borderRadius:28,color:"#FFFFFF",background:r17Grad,padding:isMobile?"28px 22px 26px":"56px 56px 52px"}},
+              e("div",{style:{maxWidth:560,position:"relative"}},
+                e("h1",{style:{margin:0,fontSize:isMobile?28:40,lineHeight:1.1,fontWeight:800,letterSpacing:"-0.035em",color:"#FFFFFF"}},"Hola, qué bueno tenerte aquí."),
+                e("p",{style:{margin:"14px 0 0",fontSize:isMobile?19:24,lineHeight:1.3,fontWeight:800,letterSpacing:"-0.02em",color:"#A3AFFF"}},"Desde hoy ya no emprendes solo."),
+                e("p",{style:{margin:(isMobile?"12px":"16px")+" 0 0",fontSize:isMobile?15:16,lineHeight:1.6,color:"#C9CDE0"}},"CLEO te ayudará a organizar tus ventas y a saber qué necesitas cobrar, entregar o retomar."),
+                e("button",{style:{cursor:"pointer",display:"inline-flex",alignItems:"center",gap:8,height:isMobile?50:46,padding:isMobile?"0":"0 22px",width:isMobile?"100%":undefined,justifyContent:isMobile?"center":undefined,borderRadius:isMobile?25:23,border:"none",background:"#FFFFFF",color:"#0E1328",fontFamily:FONT_CLEO,fontSize:14.5,fontWeight:800,marginTop:isMobile?22:28},onClick:function(){ setOnbSubPaso("nombre"); }},
+                  "Empecemos", r17ArrowSvg
+                )
+              )
             ),
 
-            // PASO: NOMBRE
-            pasoMostrar==="nombre"&&e("div",null,
-              puntos("nombre"),
-              e("div",{style:{textAlign:"center",marginBottom:28}},
-                e("div",{style:{fontSize:sc.titleSection,fontWeight:700,color:C.text,marginBottom:8,lineHeight:1.3}},"Primero, ¿cómo te llamas?"),
-                e("div",{style:{fontSize:14,color:C.textMuted,lineHeight:1.5}},"Queremos que CLEO se sienta como tu espacio.")
-              ),
-              e("input",{value:onbNombreTmp,onChange:function(ev){ setOnbNombreTmp(ev.target.value); },placeholder:"Tu nombre",autoFocus:true,onKeyDown:function(ev){ if(ev.key==="Enter") avanzarNombre(); },style:{width:"100%",padding:"14px 16px",borderRadius:12,border:"1.5px solid "+C.border,background:C.surface,fontSize:16,color:C.text,marginBottom:16,boxSizing:"border-box",textAlign:"center",outline:"none"}}),
-              e("button",{style:{cursor:"pointer",width:"100%",padding:"13px",borderRadius:12,border:"none",background:C.purple,fontSize:15,color:"#fff",fontWeight:600,opacity:onbNombreTmp.trim()?1:0.4},disabled:!onbNombreTmp.trim(),onClick:avanzarNombre},"Continuar →"),
-              botonAtras("bienvenida")
+            // PASO: NOMBRE (R18 Paso 1)
+            pasoMostrar==="nombre"&&e("div",{style:{display:"flex",justifyContent:"center"}},
+              e("div",{style:{width:"100%",maxWidth:520,background:"#FFFFFF",borderRadius:24,padding:isMobile?"24px 20px":"36px 40px",boxSizing:"border-box"}},
+                barraAvance(1),
+                e("h1",{style:{margin:"22px 0 0",fontSize:isMobile?22:26,lineHeight:1.2,fontWeight:800,letterSpacing:"-0.03em",color:C.ink}},"Primero, ¿cómo te llamas?"),
+                e("p",{style:{margin:"6px 0 0",fontSize:15,lineHeight:1.5,color:"#5A6078"}},"Queremos que CLEO se sienta como tu espacio."),
+                e("input",{value:onbNombreTmp,onChange:function(ev){ setOnbNombreTmp(ev.target.value); },placeholder:"Tu nombre",autoFocus:true,onKeyDown:function(ev){ if(ev.key==="Enter") avanzarNombre(); },
+                  style:{display:"block",width:"100%",height:48,padding:"0 16px",borderRadius:14,border:"1.5px solid "+C.border,background:"#FFFFFF",fontSize:16,color:C.ink,marginTop:24,boxSizing:"border-box",fontFamily:FONT_CLEO,outline:"none"},
+                  onFocus:function(ev){ ev.target.style.borderColor="#8D9BFF"; ev.target.style.boxShadow="0 0 0 4px #EEF0FF"; },
+                  onBlur:function(ev){ ev.target.style.borderColor=C.border; ev.target.style.boxShadow="none"; }
+                }),
+                e("button",{style:{cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",gap:8,width:"100%",height:48,borderRadius:24,border:"none",background:onbNombreTmp.trim()?"#0E1328":"#E4E8FF",color:onbNombreTmp.trim()?"#FFFFFF":"#8E94AE",fontFamily:FONT_CLEO,fontSize:14.5,fontWeight:700,marginTop:12},disabled:!onbNombreTmp.trim(),onClick:avanzarNombre},
+                  "Continuar", r17ArrowSvg
+                ),
+                botonAtras("bienvenida")
+              )
             ),
 
-            // PASO: NEGOCIO
-            pasoMostrar==="negocio"&&e("div",null,
-              puntos("negocio"),
-              e("div",{style:{textAlign:"center",marginBottom:28}},
-                e("div",{style:{fontSize:sc.titleSection,fontWeight:700,color:C.text,marginBottom:8,lineHeight:1.3}},"Mucho gusto, "+tuNombreCorto+" 👋"),
-                e("div",{style:{fontSize:sc.text,color:C.text,lineHeight:1.5}},"¿Cómo se llama tu negocio?")
-              ),
-              e("input",{value:onbNegocioTmp,onChange:function(ev){ setOnbNegocioTmp(ev.target.value); },placeholder:"Nombre de tu negocio",autoFocus:true,onKeyDown:function(ev){ if(ev.key==="Enter"&&onbNegocioTmp.trim()) avanzarNegocio(); },style:{width:"100%",padding:"14px 16px",borderRadius:12,border:"1.5px solid "+C.border,background:C.surface,fontSize:16,color:C.text,marginBottom:16,boxSizing:"border-box",textAlign:"center",outline:"none"}}),
-              e("button",{style:{cursor:"pointer",width:"100%",padding:"13px",borderRadius:12,border:"none",background:C.purple,fontSize:15,color:"#fff",fontWeight:600,opacity:onbNegocioTmp.trim()?1:0.4,marginBottom:10},disabled:!onbNegocioTmp.trim(),onClick:avanzarNegocio},"Continuar →"),
-              e("button",{style:{cursor:"pointer",width:"100%",padding:"10px",borderRadius:12,border:"none",background:"none",fontSize:13,color:C.textDim},onClick:omitirNegocio},"Todavía no tiene nombre"),
-              botonAtras("nombre")
+            // PASO: NEGOCIO (R18 Paso 2)
+            pasoMostrar==="negocio"&&e("div",{style:{display:"flex",justifyContent:"center"}},
+              e("div",{style:{width:"100%",maxWidth:520,background:"#FFFFFF",borderRadius:24,padding:isMobile?"24px 20px":"36px 40px",boxSizing:"border-box"}},
+                barraAvance(2),
+                e("h1",{style:{margin:"22px 0 0",fontSize:isMobile?22:26,lineHeight:1.2,fontWeight:800,letterSpacing:"-0.03em",color:C.ink}},"Mucho gusto, "+tuNombreCorto),
+                e("p",{style:{margin:"6px 0 0",fontSize:15,lineHeight:1.5,color:"#5A6078"}},"¿Cómo se llama tu negocio?"),
+                e("input",{value:onbNegocioTmp,onChange:function(ev){ setOnbNegocioTmp(ev.target.value); },placeholder:"Nombre de tu negocio",autoFocus:true,onKeyDown:function(ev){ if(ev.key==="Enter"&&onbNegocioTmp.trim()) avanzarNegocio(); },
+                  style:{display:"block",width:"100%",height:48,padding:"0 16px",borderRadius:14,border:"1.5px solid "+C.border,background:"#FFFFFF",fontSize:16,color:C.ink,marginTop:24,boxSizing:"border-box",fontFamily:FONT_CLEO,outline:"none"},
+                  onFocus:function(ev){ ev.target.style.borderColor="#8D9BFF"; ev.target.style.boxShadow="0 0 0 4px #EEF0FF"; },
+                  onBlur:function(ev){ ev.target.style.borderColor=C.border; ev.target.style.boxShadow="none"; }
+                }),
+                e("button",{style:{cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",gap:8,width:"100%",height:48,borderRadius:24,border:"none",background:onbNegocioTmp.trim()?"#0E1328":"#E4E8FF",color:onbNegocioTmp.trim()?"#FFFFFF":"#8E94AE",fontFamily:FONT_CLEO,fontSize:14.5,fontWeight:700,marginTop:12},disabled:!onbNegocioTmp.trim(),onClick:avanzarNegocio},
+                  "Continuar", r17ArrowSvg
+                ),
+                e("button",{style:{cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",width:"100%",height:44,borderRadius:22,border:"1.5px solid "+C.border,background:"#FFFFFF",color:C.ink,fontFamily:FONT_CLEO,fontSize:13.5,fontWeight:700,marginTop:8},onClick:omitirNegocio},
+                  "Todavía no tiene nombre"
+                ),
+                botonAtras("nombre")
+              )
             ),
 
             // PASO: SITUACIÓN
