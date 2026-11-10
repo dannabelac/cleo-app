@@ -9896,7 +9896,7 @@ export default function CLEO(props){
           if(ev.id!==evtIdReal) return ev;
           var ventaItems=itemBaseVD.items||[];
           var nuevosProds=(ev.productos||[]).map(function(ep){
-            var vit=ventaItems.find(function(x){ return x.catalogoId===ep.catalogoId; });
+            var vit=ventaItems.find(function(x){ return (x.catalogoId&&ep.catalogoId)?String(x.catalogoId)===String(ep.catalogoId):(x.nombre||"").trim().toLowerCase()===(ep.nombre||"").trim().toLowerCase(); });
             if(!vit) return ep;
             return Object.assign({},ep,{cantidadVendida:(ep.cantidadVendida||0)+Math.max(0,Number(vit.cantidad)||0)});
           });
@@ -10565,7 +10565,7 @@ export default function CLEO(props){
             var _items=pedidoAntesEstado.items||[];
             return Object.assign({},ev,{
               productos:(ev.productos||[]).map(function(ep){
-                var _it=_items.find(function(x){ return x.catalogoId===ep.catalogoId; });
+                var _it=_items.find(function(x){ return (x.catalogoId&&ep.catalogoId)?String(x.catalogoId)===String(ep.catalogoId):(x.nombre||"").trim().toLowerCase()===(ep.nombre||"").trim().toLowerCase(); });
                 if(!_it) return ep;
                 return Object.assign({},ep,{cantidadVendida:Math.max(0,(ep.cantidadVendida||0)-(Math.max(0,Number(_it.cantidad)||0)))});
               }),
