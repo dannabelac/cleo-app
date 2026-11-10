@@ -13756,18 +13756,20 @@ export default function CLEO(props){
                       )
                     ),
                     // .act: acciones
-                    !esCancelado&&e("div",{style:{display:"flex",gap:6,alignItems:"center",marginTop:12,paddingTop:10,borderTop:"1px solid #EDEFF5"}},
-                      cl&&e(BtnCanal,{cliente:cl,iconOnly:true}),
-                      e("button",{style:{flex:1,cursor:"pointer",height:sc.btnH,padding:"0 12px",borderRadius:20,border:"1.5px solid #E3E6EF",background:"#FFFFFF",color:C.ink,fontFamily:"inherit",fontSize:sc.btnText,fontWeight:700},
-                        onClick:function(){
-                          var cotVinculada=ped.cotizacionId?cotizaciones.find(function(cot){ return cot.id===ped.cotizacionId; }):null;
-                          if(cotVinculada){ editarCot(cotVinculada); } else { setFormCot(Object.assign({},cotVacio,{clienteId:String(ped.clienteId),clienteNombre:cl?cl.nombre:"",items:obtenerItemsPedidoConPromo(ped),_origenPedidoId:ped.id})); setModalCot(true); }
-                        }
-                      },"Cotización"),
-                      e("button",{style:{flex:1,cursor:"pointer",height:sc.btnH,padding:"0 12px",borderRadius:20,border:"1.5px solid #E3E6EF",background:"#FFFFFF",color:C.ink,fontFamily:"inherit",fontSize:sc.btnText,fontWeight:700},onClick:function(){ setFormPagoPedidoModal({monto:"",fecha:FECHA_HOY,concepto:pagosArr.length===0?"Anticipo":"Pago"}); setPedidoPagosId(ped.id); }},pagosArr.length>0?"Pagos ("+pagosArr.length+")":"Pagos"),
-                      e(ArchivoAdjunto,{tipoDocumento:"pedido",documento:ped,demoActivo:!!(perfil.modoDemo||props.demoActivo),onActualizarDocumento:actualizarArchivoAdjuntoPedido,borderColor:"#E3E6EF",textColor:C.ink,compacto:true}),
-                      !esEntregado&&(restante<=0||totalPedido===0)&&e("button",{style:{flex:1,cursor:"pointer",height:sc.btnH,padding:"0 12px",borderRadius:20,border:"none",background:C.green,color:"#FFFFFF",fontFamily:"inherit",fontSize:sc.btnText,fontWeight:700},onClick:function(){ actualizarPedido(ped.id,{estadoPedido:"entregado"}); var cl2=clientes.find(function(c){ return c.id===ped.clienteId; }); setCelebEntregadoData({pedidoId:ped.id,clienteNombre:cl2?cl2.nombre:"Cliente",producto:ped.productos||"",precio:ped.total||0,clienteId:ped.clienteId}); setCelebPaso(1); setCelebRazon([]); setCelebRecontacto("30"); }},"Entregado")
-                    )
+                    !esCancelado&&(function(){
+                      var _stPI={cursor:"pointer",width:34,height:34,borderRadius:9,border:"1.5px solid #E3E6EF",background:"#FFFFFF",color:"#9299A8",display:"inline-flex",alignItems:"center",justifyContent:"center",padding:0,flexShrink:0};
+                      var _iconLapiz=e("svg",{width:15,height:15,viewBox:"0 0 15 15",fill:"none",stroke:"currentColor",strokeWidth:1.5,strokeLinecap:"round",strokeLinejoin:"round"},e("path",{d:"M10.5 2L13 4.5L5 12.5H2.5V10L10.5 2Z"}));
+                      var _iconPago=e("svg",{width:15,height:15,viewBox:"0 0 15 15",fill:"none",stroke:"currentColor",strokeWidth:1.5,strokeLinecap:"round",strokeLinejoin:"round"},e("rect",{x:"1.5",y:"3.5",width:"12",height:"8",rx:"1.5"}),e("line",{x1:"1.5",y1:"6.5",x2:"13.5",y2:"6.5"}));
+                      var _iconPDF=e("svg",{width:15,height:15,viewBox:"0 0 15 15",fill:"none",stroke:"currentColor",strokeWidth:1.5,strokeLinecap:"round",strokeLinejoin:"round"},e("path",{d:"M9 1.5H4C3.17 1.5 2.5 2.17 2.5 3V12C2.5 12.83 3.17 13.5 4 13.5H11C11.83 13.5 12.5 12.83 12.5 12V5L9 1.5Z"}),e("path",{d:"M9 1.5V5H12.5"}));
+                      return e("div",{style:{display:"flex",gap:6,alignItems:"center",marginTop:12,paddingTop:10,borderTop:"1px solid #EDEFF5"}},
+                        cl&&e(BtnCanal,{cliente:cl,iconOnly:true}),
+                        e("button",{style:_stPI,title:"Editar pedido",onClick:function(){ setPedidoEditando({id:ped.id,productos:ped.productos||"",cantidad:ped.cantidad||1,total:ped.total||0,notas:ped.notas||"",promoVenta:ped.promoVenta||"",promoVentaOtra:"",esEvento:!!ped.eventoId}); }},_iconLapiz),
+                        e("button",{style:_stPI,title:pagosArr.length>0?"Pagos ("+pagosArr.length+")":"Pagos",onClick:function(){ setFormPagoPedidoModal({monto:"",fecha:FECHA_HOY,concepto:pagosArr.length===0?"Anticipo":"Pago"}); setPedidoPagosId(ped.id); }},_iconPago),
+                        e("button",{style:_stPI,title:"Descargar cotización PDF",onClick:function(){ var _c=ped.cotizacionId?(cotizaciones.find(function(x){ return x.id===ped.cotizacionId; })||null):null; if(!_c){ _c=Object.assign({},cotVacio,{id:ped.id,clienteId:ped.clienteId||"",items:obtenerItemsPedidoConPromo(ped),notas:ped.notas||""}); } manejarGenerarCotizacionPDF(_c,cl,perfil); }},_iconPDF),
+                        e(ArchivoAdjunto,{tipoDocumento:"pedido",documento:ped,demoActivo:!!(perfil.modoDemo||props.demoActivo),onActualizarDocumento:actualizarArchivoAdjuntoPedido,borderColor:"#E3E6EF",textColor:C.ink,compacto:true}),
+                        !esEntregado&&(restante<=0||totalPedido===0)&&e("button",{style:{flex:1,cursor:"pointer",height:sc.btnH,padding:"0 12px",borderRadius:20,border:"none",background:C.green,color:"#FFFFFF",fontFamily:"inherit",fontSize:sc.btnText,fontWeight:700},onClick:function(){ actualizarPedido(ped.id,{estadoPedido:"entregado"}); var cl2=clientes.find(function(c){ return c.id===ped.clienteId; }); setCelebEntregadoData({pedidoId:ped.id,clienteNombre:cl2?cl2.nombre:"Cliente",producto:ped.productos||"",precio:ped.total||0,clienteId:ped.clienteId}); setCelebPaso(1); setCelebRazon([]); setCelebRecontacto("30"); }},"Entregado")
+                      );
+                    })()
                   )
 
                 ) : (
@@ -13844,17 +13846,19 @@ export default function CLEO(props){
                     ),
                     // FOOTER
                     !esCancelado&&e("div",{style:{gridColumn:"1/-1",display:"flex",alignItems:"center",justifyContent:"space-between",gap:10,flexWrap:"wrap",paddingTop:16,borderTop:"1px solid #EDEFF5"}},
-                      e("div",{style:{display:"flex",gap:6,flexWrap:"wrap"}},
-                        cl&&e(BtnCanal,{cliente:cl,small:true}),
-                        e("button",{style:{display:"inline-flex",alignItems:"center",gap:7,height:sc.btnSmH,padding:"0 14px",borderRadius:18,border:"1.5px solid #E3E6EF",background:"#FFFFFF",color:C.ink,fontFamily:"inherit",fontSize:sc.btnSmText,fontWeight:700,cursor:"pointer",whiteSpace:"nowrap"},
-                          onClick:function(){
-                            var cotVinculada=ped.cotizacionId?cotizaciones.find(function(cot){ return cot.id===ped.cotizacionId; }):null;
-                            if(cotVinculada){ editarCot(cotVinculada); } else { setFormCot(Object.assign({},cotVacio,{clienteId:String(ped.clienteId),clienteNombre:cl?cl.nombre:"",items:obtenerItemsPedidoConPromo(ped),_origenPedidoId:ped.id})); setModalCot(true); }
-                          }
-                        },"Cotización"),
-                        e("button",{style:{display:"inline-flex",alignItems:"center",gap:7,height:sc.btnSmH,padding:"0 14px",borderRadius:18,border:"1.5px solid #E3E6EF",background:"#FFFFFF",color:C.ink,fontFamily:"inherit",fontSize:sc.btnSmText,fontWeight:700,cursor:"pointer",whiteSpace:"nowrap"},onClick:function(){ setFormPagoPedidoModal({monto:"",fecha:FECHA_HOY,concepto:pagosArr.length===0?"Anticipo":"Pago"}); setPedidoPagosId(ped.id); }},pagosArr.length>0?"Pagos ("+pagosArr.length+")":"Ver pagos"),
-                        e(ArchivoAdjunto,{tipoDocumento:"pedido",documento:ped,demoActivo:!!(perfil.modoDemo||props.demoActivo),onActualizarDocumento:actualizarArchivoAdjuntoPedido,borderColor:"#E3E6EF",textColor:C.ink,compacto:true})
-                      ),
+                      (function(){
+                        var _stPI={cursor:"pointer",width:34,height:34,borderRadius:9,border:"1.5px solid #E3E6EF",background:"#FFFFFF",color:"#9299A8",display:"inline-flex",alignItems:"center",justifyContent:"center",padding:0,flexShrink:0};
+                        var _iconLapiz=e("svg",{width:15,height:15,viewBox:"0 0 15 15",fill:"none",stroke:"currentColor",strokeWidth:1.5,strokeLinecap:"round",strokeLinejoin:"round"},e("path",{d:"M10.5 2L13 4.5L5 12.5H2.5V10L10.5 2Z"}));
+                        var _iconPago=e("svg",{width:15,height:15,viewBox:"0 0 15 15",fill:"none",stroke:"currentColor",strokeWidth:1.5,strokeLinecap:"round",strokeLinejoin:"round"},e("rect",{x:"1.5",y:"3.5",width:"12",height:"8",rx:"1.5"}),e("line",{x1:"1.5",y1:"6.5",x2:"13.5",y2:"6.5"}));
+                        var _iconPDF=e("svg",{width:15,height:15,viewBox:"0 0 15 15",fill:"none",stroke:"currentColor",strokeWidth:1.5,strokeLinecap:"round",strokeLinejoin:"round"},e("path",{d:"M9 1.5H4C3.17 1.5 2.5 2.17 2.5 3V12C2.5 12.83 3.17 13.5 4 13.5H11C11.83 13.5 12.5 12.83 12.5 12V5L9 1.5Z"}),e("path",{d:"M9 1.5V5H12.5"}));
+                        return e("div",{style:{display:"flex",gap:6,flexWrap:"wrap",alignItems:"center"}},
+                          cl&&e(BtnCanal,{cliente:cl,small:true}),
+                          e("button",{style:_stPI,title:"Editar pedido",onClick:function(){ setPedidoEditando({id:ped.id,productos:ped.productos||"",cantidad:ped.cantidad||1,total:ped.total||0,notas:ped.notas||"",promoVenta:ped.promoVenta||"",promoVentaOtra:"",esEvento:!!ped.eventoId}); }},_iconLapiz),
+                          e("button",{style:_stPI,title:pagosArr.length>0?"Pagos ("+pagosArr.length+")":"Pagos",onClick:function(){ setFormPagoPedidoModal({monto:"",fecha:FECHA_HOY,concepto:pagosArr.length===0?"Anticipo":"Pago"}); setPedidoPagosId(ped.id); }},_iconPago),
+                          e("button",{style:_stPI,title:"Descargar cotización PDF",onClick:function(){ var _c=ped.cotizacionId?(cotizaciones.find(function(x){ return x.id===ped.cotizacionId; })||null):null; if(!_c){ _c=Object.assign({},cotVacio,{id:ped.id,clienteId:ped.clienteId||"",items:obtenerItemsPedidoConPromo(ped),notas:ped.notas||""}); } manejarGenerarCotizacionPDF(_c,cl,perfil); }},_iconPDF),
+                          e(ArchivoAdjunto,{tipoDocumento:"pedido",documento:ped,demoActivo:!!(perfil.modoDemo||props.demoActivo),onActualizarDocumento:actualizarArchivoAdjuntoPedido,borderColor:"#E3E6EF",textColor:C.ink,compacto:true})
+                        );
+                      })(),
                       e("div",{style:{display:"flex",gap:8}},
                         restante>0&&totalPedido>0&&e("button",{style:{display:"inline-flex",alignItems:"center",gap:7,height:sc.btnSmH,padding:"0 18px",borderRadius:18,border:"none",background:C.ink,color:"#FFFFFF",fontFamily:"inherit",fontSize:sc.btnSmText,fontWeight:700,cursor:"pointer"},onClick:function(){ setFormPagoPedidoModal({monto:String(redondearDinero(restante)),fecha:FECHA_HOY,concepto:"Pago final"}); setPedidoPagosId(ped.id); }},"Registrar pago"),
                         !esEntregado&&(restante<=0||totalPedido===0)&&e("button",{style:{display:"inline-flex",alignItems:"center",gap:7,height:sc.btnSmH,padding:"0 18px",borderRadius:18,border:"none",background:C.green,color:"#FFFFFF",fontFamily:"inherit",fontSize:sc.btnSmText,fontWeight:700,cursor:"pointer"},onClick:function(){ actualizarPedido(ped.id,{estadoPedido:"entregado"}); var cl2=clientes.find(function(c){ return c.id===ped.clienteId; }); setCelebEntregadoData({pedidoId:ped.id,clienteNombre:cl2?cl2.nombre:"Cliente",producto:ped.productos||"",precio:ped.total||0,clienteId:ped.clienteId}); setCelebPaso(1); setCelebRazon([]); setCelebRecontacto("30"); }},"Marcar entregado")
@@ -14335,18 +14339,15 @@ export default function CLEO(props){
                 e("button",{style:{background:"transparent",border:"1px solid "+C.border,cursor:"pointer",color:C.textDim,fontSize:16,width:28,height:28,borderRadius:8,display:"flex",alignItems:"center",justifyContent:"center"},onClick:function(){ setPedidoEditando(null); }},"×")
               ),
               e("div",{style:{padding:"18px 20px",display:"flex",flexDirection:"column",gap:14}},
-                e("div",null,
+                !pedidoEditando.esEvento&&e("div",null,
                   e("label",{style:st.lbl},"Productos / descripción"),
                   e("input",{value:pedidoEditando.productos,onChange:function(ev){ setPedidoEditando(Object.assign({},pedidoEditando,{productos:ev.target.value})); },style:st.inp})
                 ),
-                e("div",null,
+                !pedidoEditando.esEvento&&e("div",null,
                   e("label",{style:st.lbl},"Cantidad"),
                   e("input",{type:"number",min:"1",value:pedidoEditando.cantidad,onChange:function(ev){
                     var nuevaCantStr=ev.target.value;
                     var upd={cantidad:nuevaCantStr};
-                    // Mismo recálculo que en "Nuevo pedido" y "Cerré una venta":
-                    // el total se reescala usando el precio unitario implícito
-                    // (total actual ÷ cantidad anterior).
                     var cantAnterior=Number(pedidoEditando.cantidad)||1;
                     var montoActual=Number(pedidoEditando.total)||0;
                     var nuevaCantNum=Number(nuevaCantStr);
@@ -14357,9 +14358,24 @@ export default function CLEO(props){
                     setPedidoEditando(Object.assign({},pedidoEditando,upd));
                   },style:st.inp})
                 ),
-                e("div",null,
+                !pedidoEditando.esEvento&&e("div",null,
                   e("label",{style:st.lbl},"Total del pedido ($)"),
                   e(MontoInput,{placeholder:"0",value:pedidoEditando.total,onChange:function(ev){ setPedidoEditando(Object.assign({},pedidoEditando,{total:ev.target.value})); },style:st.inp})
+                ),
+                e("div",null,
+                  e("label",{style:st.lbl},"Promoción"),
+                  e("div",{style:{display:"flex",gap:6,flexWrap:"wrap",marginTop:4}},
+                    ["2×1","3×2","otra"].map(function(v){
+                      var activo=pedidoEditando.promoVenta===v||(v==="otra"&&pedidoEditando.promoVenta&&pedidoEditando.promoVenta!=="2×1"&&pedidoEditando.promoVenta!=="3×2");
+                      return e("button",{key:v,type:"button",style:{cursor:"pointer",padding:"5px 12px",borderRadius:16,border:"1.5px solid "+(activo?"#D97706":"#E3E6EF"),background:activo?"rgba(217,119,6,0.08)":"transparent",fontSize:12,fontWeight:600,color:activo?"#D97706":C.textMuted},
+                        onClick:function(){
+                          if(activo){ setPedidoEditando(Object.assign({},pedidoEditando,{promoVenta:"",promoVentaOtra:""})); }
+                          else { setPedidoEditando(Object.assign({},pedidoEditando,{promoVenta:v,promoVentaOtra:v==="otra"?pedidoEditando.promoVentaOtra:""})); }
+                        }
+                      },v==="otra"?"Otra":v);
+                    }),
+                    (pedidoEditando.promoVenta==="otra"||(pedidoEditando.promoVenta&&pedidoEditando.promoVenta!=="2×1"&&pedidoEditando.promoVenta!=="3×2"))&&e("input",{placeholder:"Ej. 3x2, descuento...",value:pedidoEditando.promoVentaOtra||(pedidoEditando.promoVenta!=="otra"?pedidoEditando.promoVenta:""),onChange:function(ev){ setPedidoEditando(Object.assign({},pedidoEditando,{promoVentaOtra:ev.target.value,promoVenta:"otra"})); },style:Object.assign({},st.inp,{marginTop:6,fontSize:12})})
+                  )
                 ),
                 e("div",null,
                   e("label",{style:st.lbl},"Notas"),
@@ -14369,12 +14385,14 @@ export default function CLEO(props){
               e("div",{style:{padding:"14px 24px",borderTop:"1px solid "+C.border,display:"flex",gap:8,justifyContent:"flex-end",background:C.surfaceUp}},
                 e("button",{style:st.btn,onClick:function(){ setPedidoEditando(null); }},"Cancelar"),
                 e("button",{style:st.btnP,onClick:function(){
-                  actualizarPedido(pedidoEditando.id,{
-                    productos:pedidoEditando.productos,
-                    cantidad:Number(pedidoEditando.cantidad)||1,
-                    total:Number(pedidoEditando.total)||0,
-                    notas:pedidoEditando.notas,
-                  });
+                  var promoFinal=(function(){ var pv=pedidoEditando.promoVenta||""; return pv==="otra"?(pedidoEditando.promoVentaOtra||"").trim():pv; })();
+                  var cambiosEdit={notas:pedidoEditando.notas,promoVenta:promoFinal||null};
+                  if(!pedidoEditando.esEvento){
+                    cambiosEdit.productos=pedidoEditando.productos;
+                    cambiosEdit.cantidad=Number(pedidoEditando.cantidad)||1;
+                    cambiosEdit.total=Number(pedidoEditando.total)||0;
+                  }
+                  actualizarPedido(pedidoEditando.id,cambiosEdit);
                   setPedidoEditando(null);
                 }},"Guardar cambios")
               )
