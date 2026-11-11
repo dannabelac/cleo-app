@@ -1908,7 +1908,7 @@ var formVacio={nombre:"",negocio:"",contacto:"",origen:"Instagram",etapa:"Nuevo 
 // obtenerItemsCotizacion. cotVacio arranca con UNA fila vacía lista para
 // llenar , no con los campos legacy sueltos (concepto/cantidad/precioUnit),
 // que ya no se escriben en cotizaciones nuevas.
-var cotVacio={clienteId:"",items:[{id:"it_"+Date.now(),catalogoId:null,nombre:"",cantidad:1,precioUnitario:"",total:0}],descuento:"",tipoDescuento:"porcentaje",estatus:"Pendiente",vigencia:"",vigenciaDias:"",notas:"",anticipo:0,fechaAnticipo:""};
+var cotVacio={clienteId:"",items:[{id:"it_"+Date.now(),catalogoId:null,nombre:"",cantidad:1,precioUnitario:"",total:0}],descuento:"",tipoDescuento:"porcentaje",estatus:"Pendiente",vigencia:"",vigenciaDias:"",notas:"",anticipo:0,fechaAnticipo:"",promoVenta:"",promoVentaOtra:""};
 var svVacio={nombre:"",precio:"",descripcion:"",condiciones:""};
 // Formulario de venta directa vacío
 var ventaVacia={tipo:"especifico",clienteId:"",concepto:"",monto:"",fecha:FECHA_HOY,etiqueta:"",eventoId:null,notas:"",nuevoNombre:"",nuevoContacto:"",nuevoNegocio:"",items:[],metodoPago:"efectivo",promoVenta:"",promoVentaOtra:""};
@@ -4535,7 +4535,7 @@ var formVacio={nombre:"",negocio:"",contacto:"",origen:"Instagram",etapa:"Nuevo 
 // obtenerItemsCotizacion. cotVacio arranca con UNA fila vacía lista para
 // llenar , no con los campos legacy sueltos (concepto/cantidad/precioUnit),
 // que ya no se escriben en cotizaciones nuevas.
-var cotVacio={clienteId:"",items:[{id:"it_"+Date.now(),catalogoId:null,nombre:"",cantidad:1,precioUnitario:"",total:0}],descuento:"",tipoDescuento:"porcentaje",estatus:"Pendiente",vigencia:"",vigenciaDias:"",notas:"",anticipo:0,fechaAnticipo:""};
+var cotVacio={clienteId:"",items:[{id:"it_"+Date.now(),catalogoId:null,nombre:"",cantidad:1,precioUnitario:"",total:0}],descuento:"",tipoDescuento:"porcentaje",estatus:"Pendiente",vigencia:"",vigenciaDias:"",notas:"",anticipo:0,fechaAnticipo:"",promoVenta:"",promoVentaOtra:""};
 var svVacio={nombre:"",precio:"",descripcion:""};
 // Formulario de venta directa vacío
 var ventaVacia={tipo:"especifico",clienteId:"",concepto:"",monto:"",fecha:FECHA_HOY,etiqueta:"",eventoId:null,notas:"",nuevoNombre:"",nuevoContacto:"",nuevoNegocio:"",items:[],metodoPago:"efectivo",promoVenta:"",promoVentaOtra:""};
@@ -9398,7 +9398,9 @@ export default function CLEO(props){
       // de pedido (pedido sin cotización vinculada todavía), se estampa el
       // vínculo explícito en ese pedido apenas se crea la cotización nueva.
       if(fcCot._origenPedidoId){
-        setPedidos(function(prevP){ return prevP.map(function(p){ return p.id===fcCot._origenPedidoId?Object.assign({},p,{cotizacionId:cotIdFinal,total:monto,productos:resumenFinal,items:itemsFinal.map(function(it){ return Object.assign({},it,{id:"it_"+Date.now()+"_"+Math.random().toString(36).slice(2,6)}); })}):p; }); });
+        var _promoFinalCot=(function(){ var pv=fcCot.promoVenta||""; return pv==="otra"?(fcCot.promoVentaOtra||"").trim():pv; })();
+        if(_promoFinalCot) guardarPromoRapida(_promoFinalCot);
+        setPedidos(function(prevP){ return prevP.map(function(p){ return p.id===fcCot._origenPedidoId?Object.assign({},p,{cotizacionId:cotIdFinal,total:monto,productos:resumenFinal,items:itemsFinal.map(function(it){ return Object.assign({},it,{id:"it_"+Date.now()+"_"+Math.random().toString(36).slice(2,6)}); }),promoVenta:_promoFinalCot||null}):p; }); });
       }
       // Sincronizar items/precioInteres/productoInteres del cliente para que la ficha refleje el desglose real de la cotización
       setClientes(function(prev){
@@ -9537,25 +9539,18 @@ export default function CLEO(props){
     // función (cubre tanto crear como editar, ambas ramas terminan aquí).
     borrarBorradorModal("cotizacion");
   }
-  function editarCot(cot){
+  function editarCot(cot,extras){
     setEditCotId(cot.id);
-    // condicionesPago: si esta cotización ya tiene su propia copia guardada
-    // (aunque sea ""), se respeta tal cual , solo se usa la general del
-    // perfil como default quando la cotización es de ANTES de que existiera
-    // este campo (undefined).
-    // items: se llena SIEMPRE vía obtenerItemsCotizacion , una cotización
-    // legacy de un solo concepto se ve en el editor como "1 item" sin que
-    // se toque su forma real en localStorage , solo se persiste como
-    // items[] real si esta edición se guarda (ver guardarCot).
-    setFormCot({
+    setFormCot(Object.assign({
       clienteId:String(cot.clienteId),
       items:obtenerItemsCotizacion(cot),
       descuento:cot.descuento||"",tipoDescuento:cot.tipoDescuento||"porcentaje",
       estatus:cot.estatus,vigencia:cot.vigencia||"",vigenciaDias:cot.vigenciaDias||"",notas:cot.notas||"",
       svCondiciones:(cot.svCondicionesHtml||cot.svCondiciones||"").replace(/<[^>]+>/g," ").replace(/\s+/g," ").trim(),
       svCondicionesHtml:cot.svCondicionesHtml||cot.svCondiciones||"",
-      condicionesPago:cot.condicionesPago!=null?cot.condicionesPago:(perfil.condicionesPago||"")
-    });
+      condicionesPago:cot.condicionesPago!=null?cot.condicionesPago:(perfil.condicionesPago||""),
+      promoVenta:"",promoVentaOtra:""
+    },extras||{}));
     setModalCot(true);
   }
   // ── Flujo central de una cotización "diferente" independiente ──────────
@@ -13954,7 +13949,7 @@ export default function CLEO(props){
                         cl&&e(BtnCanal,{cliente:cl,iconOnly:true}),
                         e("button",{style:_stPI,title:"Editar pedido",onClick:function(){
                           if(ped.eventoId){ setPedidoEditando({id:ped.id,notas:ped.notas||"",promoVenta:ped.promoVenta||"",promoVentaOtra:"",esEvento:true}); }
-                          else { var _cv=ped.cotizacionId?cotizaciones.find(function(x){ return x.id===ped.cotizacionId; }):null; if(!_cv&&!ped.cotizacionId){ var _csp=cotizaciones.filter(function(x){ return String(x.clienteId)===String(ped.clienteId); }); if(_csp.length===1){ _cv=_csp[0]; setPedidos(function(pp){ return pp.map(function(p){ return p.id===ped.id?Object.assign({},p,{cotizacionId:_cv.id}):p; }); }); } } if(_cv){ editarCot(_cv); } else { setFormCot(Object.assign({},cotVacio,{clienteId:String(ped.clienteId),clienteNombre:cl?cl.nombre:"",items:obtenerItemsPedidoConPromo(ped),_origenPedidoId:ped.id})); setModalCot(true); } }
+                          else { var _cv=ped.cotizacionId?cotizaciones.find(function(x){ return x.id===ped.cotizacionId; }):null; if(!_cv&&!ped.cotizacionId){ var _csp=cotizaciones.filter(function(x){ return String(x.clienteId)===String(ped.clienteId); }); if(_csp.length===1){ _cv=_csp[0]; setPedidos(function(pp){ return pp.map(function(p){ return p.id===ped.id?Object.assign({},p,{cotizacionId:_cv.id}):p; }); }); } } if(_cv){ editarCot(_cv,{_origenPedidoId:ped.id,promoVenta:ped.promoVenta||"",promoVentaOtra:""}); } else { setFormCot(Object.assign({},cotVacio,{clienteId:String(ped.clienteId),clienteNombre:cl?cl.nombre:"",items:obtenerItemsPedidoConPromo(ped),_origenPedidoId:ped.id,promoVenta:ped.promoVenta||"",promoVentaOtra:""})); setModalCot(true); } }
                         }},_iconLapiz),
                         e("button",{style:_stPI,title:pagosArr.length>0?"Pagos ("+pagosArr.length+")":"Pagos",onClick:function(){ setFormPagoPedidoModal({monto:"",fecha:FECHA_HOY,concepto:pagosArr.length===0?"Anticipo":"Pago"}); setPedidoPagosId(ped.id); }},_iconPago),
                         e("button",{style:_stPI,title:"Descargar cotización PDF",onClick:function(){ var _c=ped.cotizacionId?(cotizaciones.find(function(x){ return x.id===ped.cotizacionId; })||null):null; if(!_c){ _c=Object.assign({},cotVacio,{id:ped.id,clienteId:ped.clienteId||"",items:obtenerItemsPedidoConPromo(ped),notas:ped.notas||""}); } manejarGenerarCotizacionPDF(_c,cl,perfil); }},_iconPDF),
@@ -14047,7 +14042,7 @@ export default function CLEO(props){
                           cl&&e(BtnCanal,{cliente:cl,iconOnly:true}),
                           e("button",{style:_stPI,title:"Editar pedido",onClick:function(){
                             if(ped.eventoId){ setPedidoEditando({id:ped.id,notas:ped.notas||"",promoVenta:ped.promoVenta||"",promoVentaOtra:"",esEvento:true}); }
-                            else { var _cv=ped.cotizacionId?cotizaciones.find(function(x){ return x.id===ped.cotizacionId; }):null; if(!_cv&&!ped.cotizacionId){ var _csp=cotizaciones.filter(function(x){ return String(x.clienteId)===String(ped.clienteId); }); if(_csp.length===1){ _cv=_csp[0]; setPedidos(function(pp){ return pp.map(function(p){ return p.id===ped.id?Object.assign({},p,{cotizacionId:_cv.id}):p; }); }); } } if(_cv){ editarCot(_cv); } else { setFormCot(Object.assign({},cotVacio,{clienteId:String(ped.clienteId),clienteNombre:cl?cl.nombre:"",items:obtenerItemsPedidoConPromo(ped),_origenPedidoId:ped.id})); setModalCot(true); } }
+                            else { var _cv=ped.cotizacionId?cotizaciones.find(function(x){ return x.id===ped.cotizacionId; }):null; if(!_cv&&!ped.cotizacionId){ var _csp=cotizaciones.filter(function(x){ return String(x.clienteId)===String(ped.clienteId); }); if(_csp.length===1){ _cv=_csp[0]; setPedidos(function(pp){ return pp.map(function(p){ return p.id===ped.id?Object.assign({},p,{cotizacionId:_cv.id}):p; }); }); } } if(_cv){ editarCot(_cv,{_origenPedidoId:ped.id,promoVenta:ped.promoVenta||"",promoVentaOtra:""}); } else { setFormCot(Object.assign({},cotVacio,{clienteId:String(ped.clienteId),clienteNombre:cl?cl.nombre:"",items:obtenerItemsPedidoConPromo(ped),_origenPedidoId:ped.id,promoVenta:ped.promoVenta||"",promoVentaOtra:""})); setModalCot(true); } }
                           }},_iconLapiz),
                           e("button",{style:_stPI,title:pagosArr.length>0?"Pagos ("+pagosArr.length+")":"Pagos",onClick:function(){ setFormPagoPedidoModal({monto:"",fecha:FECHA_HOY,concepto:pagosArr.length===0?"Anticipo":"Pago"}); setPedidoPagosId(ped.id); }},_iconPago),
                           e("button",{style:_stPI,title:"Descargar cotización PDF",onClick:function(){ var _c=ped.cotizacionId?(cotizaciones.find(function(x){ return x.id===ped.cotizacionId; })||null):null; if(!_c){ _c=Object.assign({},cotVacio,{id:ped.id,clienteId:ped.clienteId||"",items:obtenerItemsPedidoConPromo(ped),notas:ped.notas||""}); } manejarGenerarCotizacionPDF(_c,cl,perfil); }},_iconPDF),
@@ -14564,7 +14559,7 @@ export default function CLEO(props){
                   e("label",{style:st.lbl},"Total del pedido ($)"),
                   e(MontoInput,{placeholder:"0",value:pedidoEditando.total,onChange:function(ev){ setPedidoEditando(Object.assign({},pedidoEditando,{total:ev.target.value})); },style:st.inp})
                 ),
-                pedidoEditando.esEvento&&e("div",null,
+                e("div",null,
                   e("label",{style:st.lbl},"Promoción"),
                   e("div",{style:{display:"flex",gap:6,flexWrap:"wrap",marginTop:4}},
                     ["2×1","3×2","otra"].map(function(v){
@@ -14595,11 +14590,10 @@ export default function CLEO(props){
                 e("button",{style:st.btn,onClick:function(){ setPedidoEditando(null); }},"Cancelar"),
                 e("button",{style:st.btnP,onClick:function(){
                   var cambiosEdit={notas:pedidoEditando.notas};
-                  if(pedidoEditando.esEvento){
-                    var promoFinal=(function(){ var pv=pedidoEditando.promoVenta||""; return pv==="otra"?(pedidoEditando.promoVentaOtra||"").trim():pv; })();
-                    guardarPromoRapida(promoFinal);
-                    cambiosEdit.promoVenta=promoFinal||null;
-                  } else {
+                  var promoFinal=(function(){ var pv=pedidoEditando.promoVenta||""; return pv==="otra"?(pedidoEditando.promoVentaOtra||"").trim():pv; })();
+                  guardarPromoRapida(promoFinal);
+                  cambiosEdit.promoVenta=promoFinal||null;
+                  if(!pedidoEditando.esEvento){
                     cambiosEdit.productos=pedidoEditando.productos;
                     cambiosEdit.cantidad=Number(pedidoEditando.cantidad)||1;
                     cambiosEdit.total=Number(pedidoEditando.total)||0;
@@ -24064,6 +24058,27 @@ export default function CLEO(props){
             detallesPorItem:true,
             keyPrefix:"cot-"+(editCotId||"new")
           }),
+
+          // PROMO — solo cuando el editor se abre desde un pedido regular
+          formCot._origenPedidoId&&e("div",null,
+            e("label",{style:st.lbl},"Etiqueta de promoción"),
+            e("div",{style:{display:"flex",gap:6,flexWrap:"wrap",marginTop:4}},
+              ["2×1","3×2","otra"].map(function(v){
+                var activo=formCot.promoVenta===v||(v==="otra"&&formCot.promoVenta&&formCot.promoVenta!=="2×1"&&formCot.promoVenta!=="3×2");
+                return e("button",{key:v,type:"button",style:{cursor:"pointer",padding:"5px 12px",borderRadius:16,border:"1.5px solid "+(activo?"#D97706":"#E3E6EF"),background:activo?"rgba(217,119,6,0.08)":"transparent",fontSize:12,fontWeight:600,color:activo?"#D97706":C.textMuted},
+                  onClick:function(){ setFormCot(Object.assign({},formCot,activo?{promoVenta:"",promoVentaOtra:""}:{promoVenta:v,promoVentaOtra:v==="otra"?formCot.promoVentaOtra:""})); }
+                },v==="otra"?"Otra":v);
+              }),
+              promosRapidas.map(function(pr){
+                var _ap=formCot.promoVenta===pr;
+                return e("div",{key:"cpr_"+pr,style:{display:"inline-flex",alignItems:"center",borderRadius:16,border:"1.5px solid "+(_ap?"#D97706":"#E3E6EF"),background:_ap?"rgba(217,119,6,0.08)":"transparent",overflow:"hidden"}},
+                  e("button",{type:"button",style:{cursor:"pointer",border:"none",background:"transparent",padding:"4px 2px 4px 10px",fontSize:12,fontWeight:_ap?600:500,color:_ap?"#D97706":C.textMuted},onClick:function(){ setFormCot(Object.assign({},formCot,{promoVenta:_ap?"":pr,promoVentaOtra:""})); }},pr),
+                  e("button",{type:"button",style:{cursor:"pointer",border:"none",background:"transparent",padding:"4px 8px 4px 2px",fontSize:11,color:_ap?"#D97706":"#9299A8",lineHeight:1},onClick:function(){ eliminarPromoRapida(pr); if(_ap) setFormCot(Object.assign({},formCot,{promoVenta:"",promoVentaOtra:""})); }},"×")
+                );
+              }),
+              (formCot.promoVenta==="otra"||(formCot.promoVenta&&formCot.promoVenta!=="2×1"&&formCot.promoVenta!=="3×2"))&&e("input",{placeholder:"Ej. 3x2, descuento...",value:formCot.promoVentaOtra||(formCot.promoVenta!=="otra"?formCot.promoVenta:""),onChange:function(ev){ setFormCot(Object.assign({},formCot,{promoVentaOtra:ev.target.value,promoVenta:"otra"})); },style:Object.assign({},st.inp,{marginTop:6,fontSize:12})})
+            )
+          ),
 
           // "+ Más opciones" , colapsa Descuento/Vigencia/Condiciones de pago
           // por defecto (así "Envié un precio" y "+Nueva cotización" arrancan
