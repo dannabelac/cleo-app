@@ -608,8 +608,6 @@ export async function crearCotizacionPDF(cot, cliente, perfil) {
 
   var folio = "COT-" + String(cot.id || "").slice(-4).padStart(4, "0");
 
-  var total = numeroSeguro(cot.monto);
-
   var itemsPDF = obtenerItemsCotizacionPDF(cot);
   var subtotalItems =
     numeroSeguro(cot.subtotal) > 0
@@ -626,6 +624,14 @@ export async function crearCotizacionPDF(cot, cliente, perfil) {
       descuentoTexto = "OFF";
     }
   }
+  // total: se respeta cot.monto cuando viene capturado (cotizaciones
+  // guardadas normalmente lo traen, ya calculado con la misma fórmula) ,
+  // pero cuando NO viene (p. ej. el botón de PDF en Pedidos arma una
+  // cotización "al vuelo" a partir de los items del pedido, sin pasar por
+  // guardarCot) se deriva aquí con la misma fórmula única que
+  // calcularTotalesCotizacion() en CLEO.jsx (subtotal - descuento) , así
+  // nunca vuelve a salir "$0.00" habiendo items con precio real.
+  var total = cot.monto != null ? numeroSeguro(cot.monto) : numeroSeguro(Math.max(0, subtotalItems - descuentoMonto));
 
   var nombreCliente = textoPlanoSeguro(cliente.nombre, 200) || "--";
   var iniciales =
