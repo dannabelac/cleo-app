@@ -5971,6 +5971,11 @@ export default function CLEO(props){
     if(draft.recordatorio&&draft.recordatorio.incluir&&(!draft.recordatorio.texto||!draft.recordatorio.texto.trim()||!draft.recordatorio.fecha)){
       alert("Completa el texto y la fecha del recordatorio, o desmárcalo."); return;
     }
+    // Etapa 1: en Servicios solo recordatorios están habilitados
+    if(!esProductos&&(draft.venta||draft.oportunidad)){
+      alert("Las ventas y oportunidades desde el chat llegarán pronto a Servicios. Por ahora puedo ayudarte a crear recordatorios.");
+      return;
+    }
     asistenteGuardandoRef.current=true;
     setAsistentePaso("guardando");
 
@@ -6099,7 +6104,7 @@ export default function CLEO(props){
   // recordatorio).
   function terminarGuardadoAsistente(clienteIdFinal,draft,itemsOportunidadFinal,pedidoIdGuardado){
     var oportunidadGuardada=false;
-    if(itemsOportunidadFinal){
+    if(itemsOportunidadFinal&&esProductos){
       var compatOp=buildItemsCompat(itemsOportunidadFinal,"producto");
       setClientes(function(prev){
         return prev.map(function(c){
@@ -20540,7 +20545,7 @@ export default function CLEO(props){
     // BOTÓN FLOTANTE "Hablar con CLEO" (MVP InnovaFest, prueba). Sin logo ni
     // mascota propia (CLEO no tiene símbolo) , ícono genérico de burbuja de
     // conversación. Se oculta mientras el panel está abierto.
-    esProductos&&!asistenteAbierto&&e("button",{
+    !asistenteAbierto&&e("button",{
       type:"button",
       title:"Hablar con CLEO","aria-label":"Hablar con CLEO",
       style:chatBtnPos
@@ -20587,7 +20592,7 @@ export default function CLEO(props){
     // se conservan (cerrarAsistente). Por ahora solo el botón × cierra ,
     // el doc de Ronda 15 solo pide clic-fuera/Esc "si ya existía ese
     // comportamiento", y no existía, así que no se agrega.
-    esProductos&&asistenteAbierto&&(function(){
+    asistenteAbierto&&(function(){
       var draft=asistenteDraft;
 
       // Mismo ícono EXACTO del botón flotante (que no se tocó), reutilizado
