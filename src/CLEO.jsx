@@ -15095,14 +15095,23 @@ export default function CLEO(props){
           // para ofrecerlo , no un banner genérico en Inicio.
           (function(){
             if(appEstaInstalada()||pwaBannerCerrado) return null;
-            if(!esIOS()&&!installPromptEvt) return null; // nada accionable que ofrecer todavía
+            // CORREGIDO: antes, en Android sin el evento beforeinstallprompt
+            // (que Chrome dispara con su propia lógica, nada garantizado ni
+            // inmediato), el banner no mostraba nada en absoluto , alguien
+            // podía no ver NUNCA cómo instalar. Ahora siempre hay una
+            // instrucción manual de respaldo (el mismo camino que ya
+            // confirmamos que funciona: menú ⋮ → "Agregar a pantalla de
+            // inicio"), y el botón de un toque es un plus cuando esa señal
+            // sí llega, nunca un requisito para mostrar algo.
             return e("div",{style:{display:"flex",alignItems:"center",gap:12,marginBottom:20,padding:"14px 16px",borderRadius:16,background:C.purplePale||"rgba(75,94,252,0.08)",border:"1px solid "+(C.purple||"#4B5EFC")+"33"}},
               e("div",{style:{flex:1,minWidth:0}},
                 e("div",{style:{fontSize:13.5,fontWeight:700,color:C.text}},esIOS()?"Instala CLEO en tu iPhone":"Instala CLEO en tu celular"),
                 e("div",{style:{marginTop:3,fontSize:12.5,color:C.textMuted,lineHeight:1.5}},
                   esIOS()
                     ?"Toca Compartir (el ícono con la flecha) y luego \"Agregar a pantalla de inicio\" , así puedes recibir avisos directo en tu celular."
-                    :"Ábrela como app y recibe avisos directo, sin tener que entrar al navegador."
+                    :installPromptEvt
+                      ?"Ábrela como app y recibe avisos directo, sin tener que entrar al navegador."
+                      :"Toca los 3 puntos (⋮) de arriba y luego \"Agregar a pantalla de inicio\" , así puedes recibir avisos directo en tu celular."
                 )
               ),
               !esIOS()&&installPromptEvt&&e("button",{onClick:function(){ installPromptEvt.prompt(); setInstallPromptEvt(null); },style:{cursor:"pointer",flexShrink:0,height:36,padding:"0 16px",borderRadius:999,border:"none",background:C.purple||"#4B5EFC",color:"#fff",fontSize:13,fontWeight:700,fontFamily:"inherit"}},"Instalar"),
@@ -21548,7 +21557,9 @@ export default function CLEO(props){
         e("div",{style:{fontSize:13,color:C.textMuted,lineHeight:1.6,marginBottom:20}},
           esIOS()
             ?"...instala CLEO en tu iPhone: toca Compartir y luego \"Agregar a pantalla de inicio\". Así podemos avisarte cuando sea hora de escribirle a "+pwaNudgeHora+"."
-            :"...instala CLEO en tu celular. Así podemos avisarte cuando sea hora de escribirle a "+pwaNudgeHora+", directo en tu pantalla de bloqueo."
+            :installPromptEvt
+              ?"...instala CLEO en tu celular. Así podemos avisarte cuando sea hora de escribirle a "+pwaNudgeHora+", directo en tu pantalla de bloqueo."
+              :"...instala CLEO en tu celular: toca los 3 puntos (⋮) de arriba y luego \"Agregar a pantalla de inicio\". Así podemos avisarte cuando sea hora de escribirle a "+pwaNudgeHora+"."
         ),
         installPromptEvt&&!esIOS()
           ?e("button",{style:Object.assign({},st.btnP,{width:"100%"}),onClick:function(){ installPromptEvt.prompt(); setInstallPromptEvt(null); cerrarNudgePWAHora(); }},"Instalar ahora")
