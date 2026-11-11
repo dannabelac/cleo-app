@@ -6141,13 +6141,16 @@ export default function CLEO(props){
   function terminarGuardadoAsistente(clienteIdFinal,draft,itemsOportunidadFinal,pedidoIdGuardado,cotActualizarIdSv){
     var oportunidadGuardada=false;
     if(itemsOportunidadFinal&&esProductos){
-      var compatOp=buildItemsCompat(itemsOportunidadFinal,"producto");
+      var _itemsProdNorm=itemsOportunidadFinal.map(function(it){
+        return (Number(it.cantidad)===0&&Number(it.precioUnitario)>0)?Object.assign({},it,{total:Number(it.precioUnitario)}):it;
+      });
+      var compatOp=buildItemsCompat(_itemsProdNorm,"producto");
       setClientes(function(prev){
         return prev.map(function(c){
           if(Number(c.id)!==clienteIdFinal) return c;
           return Object.assign({},c,{
             fechaEtapa:FECHA_HOY,etapa:"Nuevo contacto",estadoProspecto:"Nueva",
-            items:itemsOportunidadFinal,productoInteres:compatOp.resumen,precioInteres:String(precioReferenciaItems(itemsOportunidadFinal)),cantidadInteres:String(compatOp.cantidad),
+            items:_itemsProdNorm,productoInteres:compatOp.resumen,precioInteres:String(precioReferenciaItems(_itemsProdNorm)),cantidadInteres:String(compatOp.cantidad),
             notasProspecto:draft.oportunidad.notas||c.notasProspecto||"",
             ultimoContacto:FECHA_HOY
           });
@@ -6158,11 +6161,17 @@ export default function CLEO(props){
       oportunidadGuardada=true;
     }
     if(itemsOportunidadFinal&&!esProductos){
-      var _totSv=calcularTotalesCotizacion(itemsOportunidadFinal,"","porcentaje");
-      var _montoSv=precioReferenciaItems(itemsOportunidadFinal);
-      var _resumenSv=resumenItemsCotizacion(itemsOportunidadFinal,"servicio");
-      var _cantSv=itemsOportunidadFinal.reduce(function(s,it){ return s+(it.cantidad||0); },0);
-      var _datosFinSv={subtotal:_totSv.subtotal,descuento:_totSv.descuento,tipoDescuento:_totSv.tipoDescuento,monto:_montoSv,items:itemsOportunidadFinal,concepto:_resumenSv,cantidad:_cantSv,precioUnit:_cantSv>0?_montoSv/_cantSv:(itemsOportunidadFinal[0]?itemsOportunidadFinal[0].precioUnitario:0)};
+      // Normalizar: cuando cantidad=0 pero precioUnitario>0, total=precioUnitario
+      // (el PDF fuerza cantidad 0→1 via ||1; sin este fix el subtotal queda en $0
+      // aunque el precio del servicio sí se proporcionó).
+      var _itemsSvNorm=itemsOportunidadFinal.map(function(it){
+        return (Number(it.cantidad)===0&&Number(it.precioUnitario)>0)?Object.assign({},it,{total:Number(it.precioUnitario)}):it;
+      });
+      var _totSv=calcularTotalesCotizacion(_itemsSvNorm,"","porcentaje");
+      var _montoSv=precioReferenciaItems(_itemsSvNorm);
+      var _resumenSv=resumenItemsCotizacion(_itemsSvNorm,"servicio");
+      var _cantSv=_itemsSvNorm.reduce(function(s,it){ return s+(it.cantidad||0); },0);
+      var _datosFinSv={subtotal:_totSv.subtotal,descuento:_totSv.descuento,tipoDescuento:_totSv.tipoDescuento,monto:_montoSv,items:_itemsSvNorm,concepto:_resumenSv,cantidad:_cantSv,precioUnit:_cantSv>0?_montoSv/_cantSv:(_itemsSvNorm[0]?_itemsSvNorm[0].precioUnitario:0)};
       if(cotActualizarIdSv){
         // Agregar a cotización existente
         setCotizaciones(function(prev){ return prev.map(function(cot){ return cot.id===cotActualizarIdSv?Object.assign({},cot,_datosFinSv):cot; }); });
