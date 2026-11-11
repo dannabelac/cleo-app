@@ -1061,7 +1061,7 @@ function SelectorEventosMultiples({ eventos, seleccionados, onToggle, isMobile }
 // ── Componente principal ──────────────────────────────────────────────────────
 
 export default function ResumenAnalyticsProd({
-  pedidos, ventas, clientes, productosCat, materialesCat, eventos,
+  pedidos, ventas, cotizaciones, clientes, productosCat, materialesCat, eventos,
   esProductos,
   C, sc, st, isMobile, HOY, FECHA_HOY,
   periodo, setPeriodo,
@@ -1264,13 +1264,22 @@ export default function ResumenAnalyticsProd({
   ventas.forEach(v => {
     (v.pagos || []).forEach(p => { if (p.fecha && p.fecha.slice(0, 7) === mesActualStr) cobradoPeriodo += Number(p.monto); });
   });
+  (cotizaciones || []).forEach(c => {
+    (c.pagos || []).forEach(p => { if (p.fecha && p.fecha.slice(0, 7) === mesActualStr) cobradoPeriodo += Number(p.monto); });
+  });
 
-  const saldoPorCobrar = pedidos
+  let saldoPorCobrar = pedidos
     .filter(p => p.estadoPedido !== "cancelado")
     .reduce((s, p) => {
       const pagado = (p.pagos || []).reduce((a, pg) => a + Number(pg.monto), 0);
       return s + Math.max(0, Number(p.total || 0) - pagado);
     }, 0);
+  if (!esProductos) {
+    (cotizaciones || []).filter(c => c.estatus === "Aceptada").forEach(c => {
+      const pagado = (c.pagos || []).reduce((a, pg) => a + Number(pg.monto), 0);
+      saldoPorCobrar += Math.max(0, Number(c.monto || 0) - pagado);
+    });
+  }
 
   const potencial = cobradoPeriodo + saldoPorCobrar;
 

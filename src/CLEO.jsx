@@ -1100,8 +1100,8 @@ function enPeriodo(f,p){
   var d=parseFechaLocal(f);
   if(p==="todo") return true;
   if(p==="hoy"){var h=new Date(HOY);h.setHours(0,0,0,0);var df=parseFechaLocal(f);df.setHours(0,0,0,0);return df.getTime()===h.getTime();}
-  if(p==="semana"){var x=new Date(HOY);x.setDate(x.getDate()-7);return d>=x;}
-  if(p==="mes"){var m=new Date(HOY);m.setDate(m.getDate()-30);return d>=m;}
+  if(p==="semana"){var x=new Date(HOY);x.setDate(HOY.getDate()-HOY.getDay());x.setHours(0,0,0,0);return d>=x;}
+  if(p==="mes"){var m=new Date(HOY.getFullYear(),HOY.getMonth(),1);return d>=m;}
   if(p==="trimestre"){var y=new Date(HOY);y.setMonth(y.getMonth()-3);return d>=y;}
   return true;
 }
@@ -5093,6 +5093,9 @@ export default function CLEO(props){
   var sHighlightPed=useState(null); var highlightPedidoId=sHighlightPed[0]; var setHighlightPedidoId=sHighlightPed[1];
   var sHighlightHoy=useState(null); var highlightHoyClienteId=sHighlightHoy[0]; var setHighlightHoyClienteId=sHighlightHoy[1];
   var sHighlightCot=useState(null); var highlightCotId=sHighlightCot[0]; var setHighlightCotId=sHighlightCot[1];
+  var sOpenEstatusCotId=useState(null); var openEstatusCotId=sOpenEstatusCotId[0]; var setOpenEstatusCotId=sOpenEstatusCotId[1];
+  var sOpenFiltroCotEstatus=useState(false); var openFiltroCotEstatus=sOpenFiltroCotEstatus[0]; var setOpenFiltroCotEstatus=sOpenFiltroCotEstatus[1];
+  var sOpenFiltroCotPeriodo=useState(false); var openFiltroCotPeriodo=sOpenFiltroCotPeriodo[0]; var setOpenFiltroCotPeriodo=sOpenFiltroCotPeriodo[1];
   // Único punto normal para cambiar de sección , valida contra el perfil
   // actual, actualiza el estado, guarda inmediatamente la continuidad de
   // navegación, y conserva exactamente la misma limpieza de highlights
@@ -14610,180 +14613,217 @@ export default function CLEO(props){
 
       // COTIZACIONES
       vista==="cotizaciones"&&e("div",{style:{display:"flex",flexDirection:"column",gap:0}},
-        e("div",{style:{display:"flex",alignItems:"center",justifyContent:isMobile?"space-between":"flex-end",gap:isMobile?6:8,marginLeft:isMobile?-16:0,marginRight:isMobile?-16:0,marginTop:isMobile?-20:0,padding:isMobile?"12px 16px":"0 0 16px",background:isMobile?C.bg:"none",flexWrap:"nowrap"}},
-            isMobile&&e("div",{style:{
-              width:36,height:36,borderRadius:10,
-              background:C.dark,
-              display:"flex",alignItems:"center",justifyContent:"center",
-              flexShrink:0,marginRight:"auto"
-            }},
-              e("svg",{width:22,height:22,viewBox:"0 0 100 100",fill:"none"},
-                e("path",{d:"M72 28C65 20 54 16 44 18C28 21 17 35 17 50C17 65 28 79 44 82C54 84 65 80 72 72",stroke:"#fff",strokeWidth:12,strokeLinecap:"round",fill:"none"}),
-                e("path",{d:"M62 38C57 33 50 30 44 31C34 33 27 41 27 50C27 59 34 67 44 69C50 70 57 67 62 62",stroke:"rgba(255,255,255,0.35)",strokeWidth:8,strokeLinecap:"round",fill:"none"})
+        e("style",null,".cot-adjunto-btn-wrap button,.cot-adjunto-btn-wrap a{height:100% !important;width:100% !important;box-sizing:border-box !important;padding:0 !important;margin:0 !important;display:inline-flex !important;align-items:center !important;justify-content:center !important;}"),
+        e("div",{style:{maxWidth:1120,margin:"0 auto",width:"100%"}},
+          // ── Header ───────────────────────────────────────────────────
+          isMobile
+            ? e("div",null,
+                e("div",{style:{display:"flex",justifyContent:"flex-end"}},
+                  e(TopBarServicios,{open:menuNuevo,setOpen:setMenuNuevo,isMobile:isMobile,C:C,st:st,
+                    onCliente:function(){ setClienteSel(null); setForm(formVacio); setModalCliente(true); },
+                    onCot:function(){ setModalCot(true); },
+                    onVenta:abrirModalVenta})
+                ),
+                e("div",{style:{marginTop:18}},
+                  e("div",{style:{fontSize:sc.titlePage,fontWeight:800,letterSpacing:"-0.03em",color:C.text}},"Cotizaciones"),
+                  e("div",{style:{marginTop:4,fontSize:sc.textSec,color:"#5A6078"}},"Las propuestas que tus clientes siguen pensando y las que esta vez no se concretaron.")
+                )
               )
-            ),
-            esProductos
-              ? e(TopBarProductos,{open:menuNuevo,setOpen:setMenuNuevo,isMobile:isMobile,C:C,st:st,
-                  onProspecto:function(){ setFormProspecto(formProspectoVacio); setBuscaCliOpo(""); setModalProspecto(true); setVista("prospectos"); },
-                  onPedido:function(){ setNuevoPedidoForm(pedidoVacio); setBuscaCliPed(""); setNuevoPedidoModal(true); setVista("pedidos"); },
-                  onVenta:abrirModalVenta})
-              : e(TopBarServicios,{open:menuNuevo,setOpen:setMenuNuevo,isMobile:isMobile,C:C,st:st,
+            : e("div",{style:{display:"flex",alignItems:"flex-end",justifyContent:"space-between",gap:16}},
+                e("div",null,
+                  e("div",{style:{fontSize:sc.titlePage,fontWeight:800,letterSpacing:"-0.03em",color:C.text}},"Cotizaciones"),
+                  e("div",{style:{marginTop:4,fontSize:sc.textSec,color:"#5A6078"}},"Las propuestas que tus clientes siguen pensando y las que esta vez no se concretaron.")
+                ),
+                e(TopBarServicios,{open:menuNuevo,setOpen:setMenuNuevo,isMobile:isMobile,C:C,st:st,
                   onCliente:function(){ setClienteSel(null); setForm(formVacio); setModalCliente(true); },
                   onCot:function(){ setModalCot(true); },
                   onVenta:abrirModalVenta})
-          ),
-          // Filtros styled
-        e("div",{style:{paddingTop:20,marginBottom:20}},
-          e("div",{style:{fontSize:28,fontWeight:700,color:C.text,lineHeight:1.1,marginBottom:4}},"Cotizaciones"),
-          e("div",{style:{fontSize:14,color:C.textMuted,marginBottom:6}},"Las propuestas que tus clientes siguen pensando y las que esta vez no se concretaron.")
-        ),
-        e("div",{style:{display:"flex",flexDirection:isMobile?"column":"row",gap:8,marginBottom:16,flexWrap:isMobile?"nowrap":"wrap",alignItems:isMobile?"stretch":"center"}},
-          e("input",{"aria-label":"Buscar cotizaciones",placeholder:"Buscar...",value:filtroCot.busqueda,onChange:function(ev){ setFiltroCot(Object.assign({},filtroCot,{busqueda:ev.target.value})); },style:Object.assign({},st.inp,{flex:1,minWidth:120,width:isMobile?"100%":"auto"})}),
-          // Selects de estatus/periodo: en escritorio antes usaban un
-          // tratamiento visual propio (7px de padding, borderRadius 12,
-          // borde claro C.border, texto C.textMuted, flechita nativa de
-          // doble punta del navegador) distinto al del buscador de al lado
-          // (st.inp: más alto, borde C.borderStrong, texto C.text), así que
-          // se veían más chicos/desalineados/genéricos junto a él. En
-          // escritorio ahora comparten exactamente el alto/borde/tipografía
-          // de st.inp y usan el mismo patrón de flecha propia + appearance:
-          // "none" que ya usa el selector "+ Del catálogo..." de items ,
-          // minWidth fijo para que no se compriman al ancho del texto más
-          // corto ("Todas") y salten de tamaño al cambiar de opción. Móvil
-          // no se toca (sigue con su propio tratamiento compacto en grid).
-          e("div",{style:isMobile?{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8}:{display:"flex",gap:8,flexShrink:0}},
-            isMobile
-              ? e("select",{"aria-label":"Filtrar por estatus",value:filtroCot.estatus,onChange:function(ev){ setHighlightCotId(null); setFiltroCot(Object.assign({},filtroCot,{estatus:ev.target.value})); },style:{cursor:"pointer",padding:"7px 12px",borderRadius:12,border:"1px solid "+C.border,background:C.surface,fontSize:13,color:C.textMuted,outline:"none",width:"100%",minWidth:0}},
-                  [["","Todas"],["Pendiente","Esperando respuesta"],["Rechazada","Sin cerrar"]].map(function(f){ return e("option",{key:f[0]||"todas",value:f[0]},f[1]); })
-                )
-              : e("div",{style:{position:"relative",flexShrink:0}},
-                  e("select",{"aria-label":"Filtrar por estatus",value:filtroCot.estatus,onChange:function(ev){ setHighlightCotId(null); setFiltroCot(Object.assign({},filtroCot,{estatus:ev.target.value})); },style:Object.assign({},st.inp,{cursor:"pointer",appearance:"none",WebkitAppearance:"none",padding:"10px 30px 10px 14px",width:"auto",minWidth:190,outline:"none"})},
-                    [["","Todas"],["Pendiente","Esperando respuesta"],["Rechazada","Sin cerrar"]].map(function(f){ return e("option",{key:f[0]||"todas",value:f[0]},f[1]); })
-                  ),
-                  e("span",{style:{position:"absolute",right:12,top:"50%",transform:"translateY(-50%)",pointerEvents:"none",fontSize:sc.textLabel,color:C.textMuted}},"▾")
-                ),
-            isMobile
-              ? e("select",{"aria-label":"Filtrar por período",value:filtroCot.periodo,onChange:function(ev){ setFiltroCot(Object.assign({},filtroCot,{periodo:ev.target.value})); },style:{cursor:"pointer",padding:"7px 12px",borderRadius:12,border:"1px solid "+C.border,background:C.surface,fontSize:13,color:C.textMuted,outline:"none",width:"100%",minWidth:0}},
-                  [["todo","Todo el tiempo"],["semana","Esta semana"],["mes","Este mes"],["trimestre","Trimestre"]].map(function(p){ return e("option",{key:p[0],value:p[0]},p[1]); })
-                )
-              : e("div",{style:{position:"relative",flexShrink:0}},
-                  e("select",{"aria-label":"Filtrar por período",value:filtroCot.periodo,onChange:function(ev){ setFiltroCot(Object.assign({},filtroCot,{periodo:ev.target.value})); },style:Object.assign({},st.inp,{cursor:"pointer",appearance:"none",WebkitAppearance:"none",padding:"10px 30px 10px 14px",width:"auto",minWidth:170,outline:"none"})},
-                    [["todo","Todo el tiempo"],["semana","Esta semana"],["mes","Este mes"],["trimestre","Trimestre"]].map(function(p){ return e("option",{key:p[0],value:p[0]},p[1]); })
-                  ),
-                  e("span",{style:{position:"absolute",right:12,top:"50%",transform:"translateY(-50%)",pointerEvents:"none",fontSize:sc.textLabel,color:C.textMuted}},"▾")
-                )
-          )
-        ),
-        cotsFiltradas.length===0&&e("div",{style:{fontSize:13,color:C.textDim,textAlign:"center",padding:"24px 0"}},"No hay cotizaciones con esos filtros."),
-        // Fuerza que el botón que renderiza ArchivoAdjunto (componente
-        // externo, sin acceso a su código desde aquí) tenga exactamente la
-        // misma altura que Editar/PDF/red social , sin esto, "Adjuntar
-        // archivo" se ve más chico/grande según su propio padding interno.
-        e("style",null,".cot-adjunto-btn-wrap button,.cot-adjunto-btn-wrap a{height:100% !important;width:100% !important;box-sizing:border-box !important;padding-top:0 !important;padding-bottom:0 !important;padding-left:0 !important;padding-right:0 !important;margin:0 !important;display:inline-flex !important;align-items:center !important;justify-content:center !important;}"),
-        cotsFiltradas.map(function(cot){
-          var cl=clientes.find(function(c){ return c.id===cot.clienteId; });
-          var _cotConcepto=cot.concepto||resumenItemsCotizacion(obtenerItemsCotizacion(cot),esProductos?"producto":"servicio")||"tu cotización";
-          var waUrl=cl&&cl.contacto?crearUrlWhatsApp(cl.contacto,"Hola "+(cl.nombre?cl.nombre.split(" ")[0]:"")+",\n\nTe comparto tu cotización:\n"+_cotConcepto+"\nTotal: $"+formatoDinero(Number(cot.monto))+" MXN"+(cot.vigencia?"\nVigencia: "+cot.vigencia:"")+"\n\n"+perfil.mensaje):null;
-          var saldo=saldoPendienteDe(cot,cot.monto);
-          // Formatear fechas legibles
-          var fmtFecha=function(f){ if(!f) return ""; var p=f.split("-"); return p[2]+"/"+p[1]+"/"+p[0].slice(2); };
-          var esAceptada=cot.estatus==="Aceptada";
-          var esPendiente=cot.estatus==="Pendiente";
-          var esRechazada=cot.estatus==="Rechazada";
-          var borderColor=esAceptada?C.green:esRechazada?C.red:esPendiente?C.amber:C.borderStrong;
-          var esHighlightCot=cot.id===highlightCotId;
-          return e("div",{key:cot.id,style:{background:C.surface,border:"1.5px solid "+(esHighlightCot?C.purple:C.border),borderRadius:16,padding:"16px",marginBottom:10,boxShadow:"0 2px 6px rgba(0,0,0,0.05)",transition:"border-color 0.3s"},ref:function(el){ if(el&&esHighlightCot){ el.scrollIntoView({behavior:"smooth",block:"start"}); } }},
-            // HEADER,info + monto
-            e("div",{style:{display:"flex",alignItems:"flex-start",justifyContent:"space-between",gap:8,marginBottom:8}},
-              e("div",{style:{flex:1,minWidth:0}},
-                e("div",{style:{fontWeight:600,fontSize:14,color:C.text,marginBottom:3,lineHeight:1.3,wordBreak:"break-word"}},cot.concepto||resumenItemsCotizacion(obtenerItemsCotizacion(cot),esProductos?"producto":"servicio")||"Cotización"),
-                e("div",{style:{fontSize:12,color:C.textMuted,marginBottom:4}},cl?(cl.nombre+(cl.negocio?" · "+cl.negocio:"")):"--"),
-                e("div",{style:{display:"flex",gap:8,flexWrap:"wrap",alignItems:"center"}},
-                  e("span",{style:{fontSize:11,color:C.textDim}},"Enviada: "+fmtFecha(cot.fecha)),
-                  cot.vigencia&&e("span",{style:{fontSize:11,color:new Date(cot.vigencia)<new Date()?C.red:C.textDim}},"Vence: "+fmtFecha(cot.vigencia))
-                )
               ),
-              e("div",{style:{display:"flex",flexDirection:"column",alignItems:"flex-end",gap:4,flexShrink:0,paddingLeft:8}},
-                e("div",{style:{fontSize:sc.namePerson,fontWeight:700,color:esAceptada?C.green:C.text,whiteSpace:"nowrap"}},"$"+formatoDinero(Number(cot.monto))),
-                e("span",{style:st.badgeCot(cot.estatus)},cot.estatus)
+          // ── Filter bar ───────────────────────────────────────────────
+          e("div",{style:{marginTop:isMobile?18:22,display:"flex",flexWrap:"wrap",gap:8,alignItems:"center"}},
+            e("label",{style:{flex:"1 1 280px",display:"flex",alignItems:"center",gap:10,height:isMobile?44:40,padding:"0 16px",borderRadius:22,background:"#FFFFFF",color:"#6E7489"}},
+              e("svg",{width:16,height:16,viewBox:"0 0 24 24",fill:"none",stroke:"currentColor",strokeWidth:1.9,strokeLinecap:"round",strokeLinejoin:"round"},e("circle",{cx:11,cy:11,r:6.5}),e("path",{d:"m16 16 4.5 4.5"})),
+              e("input",{"aria-label":"Buscar cotizaciones",placeholder:"Buscar...",value:filtroCot.busqueda,onChange:function(ev){ setFiltroCot(Object.assign({},filtroCot,{busqueda:ev.target.value})); },style:{flex:1,minWidth:0,border:0,outline:0,background:"transparent",fontFamily:"inherit",fontSize:isMobile?16:14,color:C.text}})
+            ),
+            e("div",{style:{position:"relative"}},
+              openFiltroCotEstatus&&e("div",{style:{position:"fixed",inset:0,zIndex:49},onClick:function(){ setOpenFiltroCotEstatus(false); }}),
+              e("button",{style:{display:"inline-flex",alignItems:"center",gap:6,height:40,padding:"0 15px",border:0,borderRadius:20,background:"#FFFFFF",fontFamily:"inherit",fontSize:13,fontWeight:700,color:C.text,cursor:"pointer",whiteSpace:"nowrap"},
+                onClick:function(){ setOpenFiltroCotEstatus(!openFiltroCotEstatus); setOpenFiltroCotPeriodo(false); }},
+                filtroCot.estatus===""?"Todas":filtroCot.estatus,
+                e("svg",{width:13,height:13,viewBox:"0 0 24 24",fill:"none",stroke:"currentColor",strokeWidth:2,strokeLinecap:"round",strokeLinejoin:"round"},e("path",{d:"m6 9 6 6 6-6"}))
+              ),
+              openFiltroCotEstatus&&e("div",{style:{position:"absolute",top:"calc(100% + 6px)",left:0,background:"#FFFFFF",border:"1px solid #E3E6EF",borderRadius:12,boxShadow:"0 8px 20px rgba(0,0,0,0.12)",minWidth:160,zIndex:50,overflow:"hidden",padding:4}},
+                [["","Todas"],["Pendiente","Pendiente"],["Rechazada","Rechazada"]].map(function(f){
+                  var activo=filtroCot.estatus===f[0];
+                  return e("button",{key:f[0]||"todas",style:{width:"100%",padding:"8px 12px",border:0,background:activo?"#F4F5FA":"transparent",fontFamily:"inherit",fontSize:12.5,fontWeight:activo?700:500,color:C.text,cursor:"pointer",textAlign:"left",borderRadius:8,boxSizing:"border-box",display:"block"},
+                    onClick:function(){ setHighlightCotId(null); setFiltroCot(Object.assign({},filtroCot,{estatus:f[0]})); setOpenFiltroCotEstatus(false); }
+                  },f[1]);
+                })
               )
             ),
-            // ACCIONES , la altura de referencia es la del toggle de estatus
-            // (Pendiente/Aceptada/Rechazada, el más compacto), NO al revés:
-            // Editar, PDF, Adjuntar archivo y WA/red social se achican a
-            // pillH en vez de que el toggle crezca a su tamaño. Misma altura
-            // en desktop y mobil , el toggle nunca escaló distinto entre los
-            // dos, así que igualarlos a él tampoco debe hacerlo.
-            (function(){
-              var pillH=isMobile?36:26;
-              // El toggle Pendiente/Aceptada/Rechazada se queda exactamente
-              // igual (mismo tamaño, mismo estilo) , solo cambia cómo se
-              // acomoda junto a las demás acciones. En móvil, Editar/PDF/
-              // Adjuntar/WA pasan a ser botones ícono-únicamente de 32×32
-              // (mismo patrón ya usado en Pedidos) en su propia fila, en vez
-              // de mezclarse con el toggle en una sola fila que envolvía en
-              // tamaños distintos.
-              var segmentado=e("div",{role:"group","aria-label":"Estado de la cotización",style:{display:"flex",alignItems:"center",gap:2,background:C.surfaceUp,borderRadius:6,padding:"0 3px",height:pillH,boxSizing:"border-box",border:"0.5px solid "+C.border,flexShrink:0}},
-                ["Pendiente","Aceptada","Rechazada"].map(function(est){
-                  var activo=cot.estatus===est;
-                  return e("button",{key:est,"aria-pressed":activo,style:{cursor:"pointer",padding:"0 8px",height:"100%",boxSizing:"border-box",borderRadius:4,border:"none",background:activo?C.surface:"transparent",fontSize:11,color:activo?C.text:C.textMuted,fontWeight:activo?500:400,display:"inline-flex",alignItems:"center"},onClick:function(){ var eraAceptada=cot.estatus==="Aceptada"; cambiarEstatus(cot.id,est); if(est==="Aceptada"&&!eraAceptada) mostrarToastTrabajo(); }},est);
+            e("div",{style:{position:"relative"}},
+              openFiltroCotPeriodo&&e("div",{style:{position:"fixed",inset:0,zIndex:49},onClick:function(){ setOpenFiltroCotPeriodo(false); }}),
+              e("button",{style:{display:"inline-flex",alignItems:"center",gap:6,height:40,padding:"0 15px",border:0,borderRadius:20,background:"#FFFFFF",fontFamily:"inherit",fontSize:13,fontWeight:700,color:C.text,cursor:"pointer",whiteSpace:"nowrap"},
+                onClick:function(){ setOpenFiltroCotPeriodo(!openFiltroCotPeriodo); setOpenFiltroCotEstatus(false); }},
+                ({todo:"Todo el tiempo",semana:"Esta semana",mes:"Este mes",trimestre:"Trimestre"})[filtroCot.periodo]||"Todo el tiempo",
+                e("svg",{width:13,height:13,viewBox:"0 0 24 24",fill:"none",stroke:"currentColor",strokeWidth:2,strokeLinecap:"round",strokeLinejoin:"round"},e("path",{d:"m6 9 6 6 6-6"}))
+              ),
+              openFiltroCotPeriodo&&e("div",{style:{position:"absolute",top:"calc(100% + 6px)",left:0,background:"#FFFFFF",border:"1px solid #E3E6EF",borderRadius:12,boxShadow:"0 8px 20px rgba(0,0,0,0.12)",minWidth:160,zIndex:50,overflow:"hidden",padding:4}},
+                [["todo","Todo el tiempo"],["semana","Esta semana"],["mes","Este mes"],["trimestre","Trimestre"]].map(function(p){
+                  var activo=filtroCot.periodo===p[0];
+                  return e("button",{key:p[0],style:{width:"100%",padding:"8px 12px",border:0,background:activo?"#F4F5FA":"transparent",fontFamily:"inherit",fontSize:12.5,fontWeight:activo?700:500,color:C.text,cursor:"pointer",textAlign:"left",borderRadius:8,boxSizing:"border-box",display:"block"},
+                    onClick:function(){ setFiltroCot(Object.assign({},filtroCot,{periodo:p[0]})); setOpenFiltroCotPeriodo(false); }
+                  },p[1]);
                 })
-              );
-              var iconBtnStyle={cursor:"pointer",padding:isMobile?0:"0 12px",width:isMobile?44:"auto",height:isMobile?44:pillH,boxSizing:"border-box",borderRadius:8,border:"1px solid "+C.border,background:"transparent",color:C.textMuted,fontSize:12,fontWeight:500,display:"inline-flex",alignItems:"center",justifyContent:"center",gap:5,flexShrink:0};
-              var acciones=e("div",{style:{display:"flex",gap:isMobile?8:6,alignItems:"center",flexWrap:"wrap"}},
-                e("button",{style:iconBtnStyle,title:"Editar","aria-label":"Editar cotización",onClick:function(){ editarCot(cot); }},
-                  e("svg",{width:isMobile?14:12,height:isMobile?14:12,viewBox:"0 0 24 24",fill:"none",stroke:"currentColor",strokeWidth:2,strokeLinecap:"round",strokeLinejoin:"round"},e("path",{d:"M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"}),e("path",{d:"M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"})),
-                  !isMobile&&"Editar"
-                ),
-                e("button",{style:iconBtnStyle,title:"Descargar o compartir cotización en PDF","aria-label":"Descargar PDF de cotización",onClick:function(){ manejarGenerarCotizacionPDF(cot,cl,perfil); }},
-                  e("svg",{width:isMobile?14:12,height:isMobile?14:12,viewBox:"0 0 24 24",fill:"none",stroke:"currentColor",strokeWidth:2,strokeLinecap:"round",strokeLinejoin:"round"},e("path",{d:"M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"}),e("path",{d:"M14 2v6h6"})),
-                  !isMobile&&"PDF"
-                ),
-                !esProductos&&e("div",{className:"cot-adjunto-btn-wrap",style:{height:isMobile?44:pillH,width:isMobile?44:"auto",display:"inline-flex",alignItems:"center",flexShrink:0}},
-                  e(ArchivoAdjunto,{tipoDocumento:"cotizacion",documento:cot,demoActivo:!!(perfil.modoDemo||props.demoActivo),onActualizarDocumento:actualizarArchivoAdjuntoCotizacion,compacto:isMobile})
-                ),
-                waUrl
-                  ? e("a",{href:waUrl,target:"_blank",rel:"noopener noreferrer",title:"Enviar por WhatsApp","aria-label":"Enviar cotización por WhatsApp"+(cl?" a "+cl.nombre:""),style:{padding:isMobile?0:"0 12px",width:isMobile?44:"auto",height:isMobile?44:pillH,boxSizing:"border-box",borderRadius:8,background:C.greenBg,color:C.green,border:"0.5px solid "+C.greenBorder,fontSize:12,fontWeight:500,textDecoration:"none",display:"inline-flex",alignItems:"center",justifyContent:"center",gap:5,flexShrink:0}},e(SvgWA,{size:isMobile?14:12}),!isMobile&&"WA")
-                  : cl&&cl.canalPrincipal&&cl.canalPrincipal!=="WhatsApp"&&contactUrl(cl,"Hola")&&e("a",{href:contactUrl(cl,"Hola"),target:"_blank",rel:"noopener noreferrer",title:"Escribir por "+cl.canalPrincipal,"aria-label":"Escribir a "+(cl.nombre||"cliente")+" por "+cl.canalPrincipal,style:{padding:isMobile?0:"0 12px",width:isMobile?44:"auto",height:isMobile?44:pillH,boxSizing:"border-box",borderRadius:8,background:C.purplePale,color:C.purple,border:"0.5px solid "+C.purple+"33",fontSize:12,fontWeight:500,textDecoration:"none",display:"inline-flex",alignItems:"center",justifyContent:"center",gap:5,flexShrink:0}},e(SvgIcon,{canal:cl.canalPrincipal,size:isMobile?14:12}),!isMobile&&cl.canalPrincipal.slice(0,2))
-              );
-              return isMobile
-                ? e("div",{style:{display:"flex",flexDirection:"column",gap:8,marginBottom:esAceptada||esRechazada?10:0}},
-                    segmentado,
-                    acciones
-                  )
-                : e("div",{style:{display:"flex",gap:6,flexWrap:"wrap",alignItems:"center",marginBottom:esAceptada||esRechazada?10:0}},
-                    segmentado,
-                    e("div",{style:{width:1,alignSelf:"stretch",background:C.border,margin:"2px 2px"}}),
-                    acciones
-                  );
-            })(),
-            esAceptada&&e("div",{style:{paddingTop:10,borderTop:"0.5px solid "+C.border}},
-              (function(){
-                var pagos=cot.pagos||[];
-                var totalPagado=pagos.reduce(function(s,p){ return s+Number(p.monto); },0);
-                var saldoReal=cot.monto-totalPagado;
-                return e("div",{style:{display:"flex",alignItems:"center",gap:16,flexWrap:"wrap"}},
-                  e("div",null,
-                    e("div",{style:{fontSize:sc.textLabel,color:C.textDim}},"Pagado"),
-                    e("div",{style:{fontSize:14,fontWeight:600,color:C.green}},"$"+formatoDinero(totalPagado))
-                  ),
-                  e("div",null,
-                    e("div",{style:{fontSize:sc.textLabel,color:C.textDim}},"Saldo pendiente"),
-                    e("div",{style:{fontSize:14,fontWeight:600,color:saldoReal<=0?C.green:C.amber}},"$"+formatoDinero(Math.max(0,saldoReal)))
-                  ),
-                  e("div",{style:{marginLeft:"auto",display:"flex",gap:6}},
-                    e("button",{style:Object.assign({},st.btn,{fontSize:11}),onClick:function(){ setPagosModalId(cot.id); setFormPago({monto:"",fecha:FECHA_HOY,concepto:"Pago"}); }},saldoReal<=0?"Ver pagos":"+ Registrar pago"),
-                    pagos.length>0&&e("button",{style:Object.assign({},st.btn,{fontSize:11,color:C.amber,borderColor:C.amberBorder}),onClick:function(){ manejarGenerarDocumentoFinancieroPDF({tipo:"estado_cuenta",cot:cot,cliente:cl,perfil:perfil,fechaHoy:FECHA_HOY}); }},"Comprobante general")
-                  )
-                );
-              })()
-            ),
-            esRechazada&&cot.motivoPerdida&&e("div",{style:{marginTop:10,paddingTop:10,borderTop:"0.5px solid "+C.redBorder,display:"flex",alignItems:"center",gap:6}},
-              e("span",{style:{fontSize:12,color:C.red,fontWeight:500}},"Motivo:"),
-              e("span",{style:{fontSize:12,color:C.red}},cot.motivoPerdida)
+              )
             )
-          );
-        })
+          ),
+          // ── Cards ─────────────────────────────────────────────────────
+          e("div",{style:{marginTop:16,display:"flex",flexDirection:"column",gap:12}},
+            cotsFiltradas.length===0&&e("div",{style:{fontSize:13,color:C.textDim,textAlign:"center",padding:"24px 0"}},"No hay cotizaciones con esos filtros."),
+            cotsFiltradas.map(function(cot){
+              var cl=clientes.find(function(c){ return c.id===cot.clienteId; });
+              var esAceptada=cot.estatus==="Aceptada";
+              var esRechazada=cot.estatus==="Rechazada";
+              var esHighlightCot=cot.id===highlightCotId;
+              var MESES_COT=["ene","feb","mar","abr","may","jun","jul","ago","sep","oct","nov","dic"];
+              var fmtD=function(f){ if(!f) return ""; var p=f.split("-"); return parseInt(p[2],10)+" "+MESES_COT[parseInt(p[1],10)-1]+" "+p[0]; };
+              var _cotConcepto=cot.concepto||resumenItemsCotizacion(obtenerItemsCotizacion(cot),esProductos?"producto":"servicio")||"tu cotización";
+              var waUrl=cl&&cl.contacto?crearUrlWhatsApp(cl.contacto,"Hola "+(cl.nombre?cl.nombre.split(" ")[0]:"")+",\n\nTe comparto tu cotización:\n"+_cotConcepto+"\nTotal: $"+formatoDinero(Number(cot.monto))+" MXN"+(cot.vigencia?"\nVigencia: "+cot.vigencia:"")+"\n\n"+perfil.mensaje):null;
+              // Status pill colors
+              var pillBg=esAceptada?"#E2F2E8":esRechazada?"#EEF0F5":"#FBF1DC";
+              var pillColor=esAceptada?"#1E5C38":esRechazada?"#4A5068":"#8A5A06";
+              // Status pill with dropdown
+              var statusPill=e("div",{style:{position:"relative",display:"inline-block"}},
+                openEstatusCotId===cot.id&&e("div",{style:{position:"fixed",inset:0,zIndex:49},onClick:function(){ setOpenEstatusCotId(null); }}),
+                e("button",{style:{display:"inline-flex",alignItems:"center",gap:6,height:24,padding:"0 8px 0 11px",borderRadius:14,border:0,background:pillBg,color:pillColor,fontFamily:"inherit",fontSize:12,fontWeight:700,cursor:"pointer",whiteSpace:"nowrap"},
+                  onClick:function(ev){ ev.stopPropagation(); setOpenEstatusCotId(openEstatusCotId===cot.id?null:cot.id); }},
+                  e("span",{style:{width:7,height:7,borderRadius:"50%",background:"currentColor",flexShrink:0}}),
+                  cot.estatus,
+                  e("svg",{width:13,height:13,viewBox:"0 0 24 24",fill:"none",stroke:"currentColor",strokeWidth:2.4,strokeLinecap:"round",strokeLinejoin:"round",style:{opacity:0.7}},e("path",{d:"m6 9 6 6 6-6"}))
+                ),
+                openEstatusCotId===cot.id&&e("div",{style:{position:"absolute",top:"calc(100% + 6px)",left:0,background:"#FFFFFF",border:"1px solid #E3E6EF",borderRadius:12,boxShadow:"0 8px 20px rgba(0,0,0,0.12)",minWidth:150,zIndex:50,overflow:"hidden",padding:4}},
+                  ["Pendiente","Aceptada","Rechazada"].map(function(est){
+                    var activo=cot.estatus===est;
+                    return e("button",{key:est,style:{width:"100%",padding:"8px 12px",border:0,background:activo?"#F4F5FA":"transparent",fontFamily:"inherit",fontSize:12.5,fontWeight:activo?700:500,color:C.text,cursor:"pointer",textAlign:"left",borderRadius:8,boxSizing:"border-box",display:"block"},
+                      onClick:function(){ var eraAceptada=cot.estatus==="Aceptada"; cambiarEstatus(cot.id,est); if(est==="Aceptada"&&!eraAceptada) mostrarToastTrabajo(); setOpenEstatusCotId(null); }
+                    },est);
+                  })
+                )
+              );
+              // Action button base style (32px, outline)
+              var actB={height:32,padding:"0 12px",borderRadius:16,border:"1.5px solid #E3E6EF",background:"#FFFFFF",color:"#0E1328",fontFamily:"inherit",fontSize:12.5,fontWeight:700,display:"inline-flex",alignItems:"center",gap:6,cursor:"pointer",flexShrink:0,boxSizing:"border-box",whiteSpace:"nowrap"};
+              // WA neutral button
+              var waBtn=waUrl
+                ? e("a",{href:waUrl,target:"_blank",rel:"noopener noreferrer",title:"Enviar por WhatsApp","aria-label":"Enviar cotización por WhatsApp"+(cl?" a "+cl.nombre:""),style:Object.assign({},actB,{textDecoration:"none"},isMobile?{padding:0,width:32,justifyContent:"center"}:{})},
+                    e("svg",{width:14,height:14,viewBox:"0 0 24 24",fill:"none",stroke:"currentColor",strokeWidth:1.9,strokeLinecap:"round",strokeLinejoin:"round"},e("path",{d:"M4.5 19.5 5.8 16A8 8 0 1 1 8.3 18.5z"}),e("path",{d:"M9.2 8.8c.2 2.7 2.4 5 5.2 5.6l1.1-1.4"})),
+                    !isMobile&&"WhatsApp"
+                  )
+                : cl&&cl.canalPrincipal&&cl.canalPrincipal!=="WhatsApp"&&contactUrl(cl,"Hola")
+                  ? e("a",{href:contactUrl(cl,"Hola"),target:"_blank",rel:"noopener noreferrer",style:Object.assign({},actB,{textDecoration:"none"},isMobile?{padding:0,width:32,justifyContent:"center"}:{})},
+                      e(SvgIcon,{canal:cl.canalPrincipal,size:14}),
+                      !isMobile&&cl.canalPrincipal
+                    )
+                  : null;
+              // Dates row (12.5px)
+              var datesRow=e("div",{style:{marginTop:6,display:"flex",flexWrap:"wrap",alignItems:"center",gap:"6px 14px",fontSize:12.5,color:"#5A6078"}},
+                e("span",null,
+                  e("svg",{width:14,height:14,viewBox:"0 0 24 24",fill:"none",stroke:"currentColor",strokeWidth:1.9,strokeLinecap:"round",strokeLinejoin:"round",style:{verticalAlign:"-2px",marginRight:4}},e("rect",{x:4,y:5,width:16,height:15,rx:2}),e("path",{d:"M4 10h16M9 3v4M15 3v4"})),
+                  "Enviada "+fmtD(cot.fecha)
+                ),
+                cot.vigencia&&e("span",{style:{color:"#8A5A06",fontWeight:700}},
+                  e("svg",{width:14,height:14,viewBox:"0 0 24 24",fill:"none",stroke:"currentColor",strokeWidth:1.9,strokeLinecap:"round",strokeLinejoin:"round",style:{verticalAlign:"-2px",marginRight:4}},e("circle",{cx:12,cy:12,r:8.5}),e("path",{d:"M12 7.5V12l3 2"})),
+                  "Vence "+fmtD(cot.vigencia)
+                )
+              );
+              // Motivo row (no border-top, no all-red)
+              var motivoRow=esRechazada&&cot.motivoPerdida
+                ? e("div",{style:{marginTop:8,display:"flex",gap:7,alignItems:"center",fontSize:13,color:"#4A5068"}},
+                    e("svg",{width:14,height:14,viewBox:"0 0 24 24",fill:"none",stroke:"#B23A24",strokeWidth:1.9,strokeLinecap:"round",strokeLinejoin:"round",style:{flexShrink:0}},e("circle",{cx:12,cy:12,r:8.5}),e("path",{d:"m9 9 6 6M15 9l-6 6"})),
+                    "Motivo: "+cot.motivoPerdida
+                  )
+                : null;
+              // Aceptada pagos section (full-width in grid)
+              var aceptadaSection=esAceptada
+                ? e("div",{style:{gridColumn:isMobile?undefined:"1/-1",paddingTop:12,borderTop:"0.5px solid "+C.border,marginTop:isMobile?12:0}},
+                    (function(){
+                      var pagos=cot.pagos||[];
+                      var totalPagado=pagos.reduce(function(s,p){ return s+Number(p.monto); },0);
+                      var saldoReal=cot.monto-totalPagado;
+                      return e("div",{style:{display:"flex",alignItems:"center",gap:16,flexWrap:"wrap"}},
+                        e("div",null,e("div",{style:{fontSize:sc.textLabel,color:C.textDim}},"Pagado"),e("div",{style:{fontSize:14,fontWeight:600,color:C.green}},"$"+formatoDinero(totalPagado))),
+                        e("div",null,e("div",{style:{fontSize:sc.textLabel,color:C.textDim}},"Saldo pendiente"),e("div",{style:{fontSize:14,fontWeight:600,color:saldoReal<=0?C.green:C.amber}},"$"+formatoDinero(Math.max(0,saldoReal)))),
+                        e("div",{style:{marginLeft:"auto",display:"flex",gap:6}},
+                          e("button",{style:Object.assign({},st.btn,{fontSize:11}),onClick:function(){ setPagosModalId(cot.id); setFormPago({monto:"",fecha:FECHA_HOY,concepto:"Pago"}); }},saldoReal<=0?"Ver pagos":"+ Registrar pago"),
+                          pagos.length>0&&e("button",{style:Object.assign({},st.btn,{fontSize:11,color:C.amber,borderColor:C.amberBorder}),onClick:function(){ manejarGenerarDocumentoFinancieroPDF({tipo:"estado_cuenta",cot:cot,cliente:cl,perfil:perfil,fechaHoy:FECHA_HOY}); }},"Comprobante general")
+                        )
+                      );
+                    })()
+                  )
+                : null;
+              // Actions row (full-width in grid, 32px buttons)
+              var actionsRow=e("div",{style:{gridColumn:isMobile?undefined:"1/-1",display:"flex",alignItems:"center",gap:6,flexWrap:"wrap",paddingTop:16,borderTop:"1px solid #EDEFF5",marginTop:isMobile?12:0}},
+                waBtn,
+                e("button",{style:actB,title:"Editar","aria-label":"Editar cotización",onClick:function(){ editarCot(cot); }},
+                  e("svg",{width:14,height:14,viewBox:"0 0 24 24",fill:"none",stroke:"currentColor",strokeWidth:1.9,strokeLinecap:"round",strokeLinejoin:"round"},e("path",{d:"M4 20h4L19 9l-4-4L4 16z"})),
+                  "Editar"
+                ),
+                e("button",{style:actB,title:"Descargar o compartir cotización en PDF","aria-label":"Descargar PDF de cotización",onClick:function(){ manejarGenerarCotizacionPDF(cot,cl,perfil); }},
+                  e("svg",{width:14,height:14,viewBox:"0 0 24 24",fill:"none",stroke:"currentColor",strokeWidth:1.9,strokeLinecap:"round",strokeLinejoin:"round"},e("path",{d:"M7 3.5h7l4 4V20a.5.5 0 0 1-.5.5h-10A.5.5 0 0 1 7 20z"}),e("path",{d:"M14 3.5V8h4"})),
+                  "PDF"
+                ),
+                !esProductos&&e("div",{className:"cot-adjunto-btn-wrap",style:{height:32,width:32,display:"inline-flex",alignItems:"center",flexShrink:0}},
+                  e(ArchivoAdjunto,{tipoDocumento:"cotizacion",documento:cot,demoActivo:!!(perfil.modoDemo||props.demoActivo),onActualizarDocumento:actualizarArchivoAdjuntoCotizacion,compacto:true})
+                )
+              );
+              var cardRef=function(el){ if(el&&esHighlightCot){ el.scrollIntoView({behavior:"smooth",block:"start"}); } };
+              // Mobile: single column layout
+              if(isMobile){
+                return e("article",{key:cot.id,ref:cardRef,style:{background:"#FFFFFF",borderRadius:22,padding:"16px 16px 14px",display:"flex",flexDirection:"column",boxShadow:"0 2px 8px rgba(0,0,0,0.05)",border:"1.5px solid "+(esHighlightCot?C.purple:"transparent")}},
+                  e("div",{style:{display:"flex",justifyContent:"space-between",alignItems:"flex-start",gap:10}},
+                    e("div",{style:{minWidth:0}},
+                      e("div",{style:{fontSize:15,fontWeight:800,color:"#0E1328",letterSpacing:"-0.015em",lineHeight:1.3}},cot.concepto||resumenItemsCotizacion(obtenerItemsCotizacion(cot),esProductos?"producto":"servicio")||"Cotización"),
+                      e("div",{style:{marginTop:2,fontSize:13.5,fontWeight:500,color:"#4A5068"}},cl?(cl.nombre+(cl.negocio?" · "+cl.negocio:"")):"--")
+                    ),
+                    e("div",{style:{fontSize:17,fontWeight:800,whiteSpace:"nowrap",flexShrink:0}},"$"+formatoDinero(Number(cot.monto)))
+                  ),
+                  e("div",{style:{marginTop:8,display:"flex",flexWrap:"wrap",alignItems:"center",gap:"6px 14px",fontSize:12.5,color:"#5A6078"}},
+                    statusPill,
+                    e("span",null,
+                      e("svg",{width:14,height:14,viewBox:"0 0 24 24",fill:"none",stroke:"currentColor",strokeWidth:1.9,strokeLinecap:"round",strokeLinejoin:"round",style:{verticalAlign:"-2px",marginRight:4}},e("rect",{x:4,y:5,width:16,height:15,rx:2}),e("path",{d:"M4 10h16M9 3v4M15 3v4"})),
+                      "Enviada "+fmtD(cot.fecha)
+                    ),
+                    cot.vigencia&&e("span",{style:{color:"#8A5A06",fontWeight:700}},
+                      e("svg",{width:14,height:14,viewBox:"0 0 24 24",fill:"none",stroke:"currentColor",strokeWidth:1.9,strokeLinecap:"round",strokeLinejoin:"round",style:{verticalAlign:"-2px",marginRight:4}},e("circle",{cx:12,cy:12,r:8.5}),e("path",{d:"M12 7.5V12l3 2"})),
+                      "Vence "+fmtD(cot.vigencia)
+                    )
+                  ),
+                  motivoRow,
+                  actionsRow,
+                  aceptadaSection
+                );
+              }
+              // Desktop: 2-column grid
+              return e("article",{key:cot.id,ref:cardRef,style:{background:"#FFFFFF",borderRadius:20,padding:"18px 20px 16px",display:"grid",gridTemplateColumns:"minmax(0,1fr) 220px",columnGap:24,rowGap:12,boxShadow:"0 2px 8px rgba(0,0,0,0.05)",border:"1.5px solid "+(esHighlightCot?C.purple:"transparent")}},
+                e("div",{style:{minWidth:0}},
+                  e("div",{style:{display:"flex",alignItems:"center",gap:10,flexWrap:"wrap"}},
+                    e("span",{style:{fontSize:15,fontWeight:800,color:"#0E1328",letterSpacing:"-0.015em"}},cot.concepto||resumenItemsCotizacion(obtenerItemsCotizacion(cot),esProductos?"producto":"servicio")||"Cotización"),
+                    statusPill
+                  ),
+                  e("div",{style:{marginTop:2,fontSize:13.5,fontWeight:500,color:"#4A5068"}},cl?(cl.nombre+(cl.negocio?" · "+cl.negocio:"")):"--"),
+                  datesRow,
+                  motivoRow
+                ),
+                e("div",{style:{alignSelf:"start",textAlign:"right"}},
+                  e("div",{style:{fontSize:12,fontWeight:600,color:"#5A6078"}},"Total"),
+                  e("div",{style:{marginTop:2,fontSize:22,lineHeight:1.1,fontWeight:800,letterSpacing:"-0.03em",color:"#0E1328"}},"$"+formatoDinero(Number(cot.monto)))
+                ),
+                actionsRow,
+                aceptadaSection
+              );
+            })
+          )
+        )
       ),
       // TRABAJOS , cotizaciones aceptadas + ventas con cliente, por completar o completadas
       vista==="trabajos"&&(function(){
@@ -17521,7 +17561,7 @@ export default function CLEO(props){
 
       // RESUMEN
       vista==="resumen"&&e(ResumenAnalyticsProd,{
-        pedidos:pedidos,ventas:ventas,clientes:clientes,
+        pedidos:pedidos,ventas:ventas,cotizaciones:cotizaciones,clientes:clientes,
         productosCat:productosCat,materialesCat:materialesCat,
         eventos:eventosInv,
         esProductos:esProductos,
