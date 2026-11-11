@@ -2900,11 +2900,51 @@ export default function AuthGate() {
               },
               modo === "login" ? "Regístrate" : "Inicia sesión"
             )
+          ),
+
+          React.createElement(
+            "div",
+            {
+              style: {
+                display: "flex",
+                justifyContent: "center",
+                alignItems: "center",
+                gap: 6,
+                marginTop: 20,
+                fontSize: 11.5,
+                color: C.textDim,
+              },
+            },
+            React.createElement(
+              "button",
+              {
+                type: "button",
+                style: { cursor: "pointer", background: "none", border: "none", color: C.textDim, fontSize: 11.5, fontFamily: FONT, padding: 0, textDecoration: "underline", textUnderlineOffset: 2 },
+                onClick: docLegalPantalla.abrirPrivacidad,
+              },
+              "Aviso de Privacidad"
+            ),
+            React.createElement("span", { "aria-hidden": true }, "·"),
+            React.createElement(
+              "button",
+              {
+                type: "button",
+                style: { cursor: "pointer", background: "none", border: "none", color: C.textDim, fontSize: 11.5, fontFamily: FONT, padding: 0, textDecoration: "underline", textUnderlineOffset: 2 },
+                onClick: docLegalPantalla.abrirTerminos,
+              },
+              "Términos"
+            )
           )
         )
         )
       )
-    )
+    ),
+
+    docLegalPantalla.documentoAbierto &&
+      React.createElement(LegalModal, {
+        tipo: docLegalPantalla.documentoAbierto,
+        onClose: docLegalPantalla.cerrarDocumento,
+      })
   );
 }
 
