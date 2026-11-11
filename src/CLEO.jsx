@@ -4547,19 +4547,22 @@ var ventaVacia={tipo:"especifico",clienteId:"",concepto:"",monto:"",fecha:FECHA_
 function BtnCanal(props){
   var e=eSeguro;
   var cliente=props.cliente; var small=props.small; var concepto=props.concepto;
-  var iconOnly=props.iconOnly; var pill=props.pill;
+  var iconOnly=props.iconOnly; var pill=props.pill; var neutral=props.neutral;
   var msg=msgEtapa(cliente,concepto);
   var url=contactUrl(cliente,msg);
   if(!url) return null;
   var canal=cliente.canalPrincipal||"WhatsApp"; var cc=canalColor(canal);
-  // Variante ícono-únicamente (props.iconOnly) , mismo enlace/acción, solo
-  // se oculta el texto del canal para caber en filas angostas (ej. tarjeta
-  // de Pedidos en móvil). El nombre del canal sigue disponible vía title.
   if(iconOnly){
+    if(neutral){
+      return e("a",{href:url,target:"_blank",rel:"noopener noreferrer",title:"Escribir por "+canal,style:{cursor:"pointer",width:38,height:38,borderRadius:"50%",border:"1.5px solid #E3E6EF",textDecoration:"none",display:"inline-flex",alignItems:"center",justifyContent:"center",background:"#FFFFFF",flexShrink:0,color:"#0E1328"}},e(SvgIcon,{canal:canal,size:17}));
+    }
     return e("a",{href:url,target:"_blank",rel:"noopener noreferrer",title:"Escribir por "+canal,style:{cursor:"pointer",width:32,height:32,borderRadius:8,border:"0.5px solid "+cc+"44",textDecoration:"none",display:"inline-flex",alignItems:"center",justifyContent:"center",background:cc+"18",flexShrink:0}},e(SvgIcon,{canal:canal,size:14}));
   }
   if(pill){
     return e("a",{href:url,target:"_blank",rel:"noopener noreferrer",style:{cursor:"pointer",padding:"8px 16px",borderRadius:50,border:"none",fontSize:12,color:cc,fontWeight:600,textDecoration:"none",display:"inline-flex",alignItems:"center",justifyContent:"center",gap:5,background:cc+"20",flex:1}},e(SvgIcon,{canal:canal,size:13}),canal);
+  }
+  if(neutral){
+    return e("a",{href:url,target:"_blank",rel:"noopener noreferrer",title:"Escribir por "+canal,style:{cursor:"pointer",display:"inline-flex",alignItems:"center",gap:7,height:32,padding:"0 13px",borderRadius:16,border:"1.5px solid #E3E6EF",background:"#FFFFFF",color:"#0E1328",fontSize:12.5,fontWeight:700,textDecoration:"none",whiteSpace:"nowrap",minWidth:112,boxSizing:"border-box",flexShrink:0}},e(SvgIcon,{canal:canal,size:14}),canal);
   }
   return e("a",{href:url,target:"_blank",rel:"noopener noreferrer",style:{cursor:"pointer",padding:small?"3px 8px":"5px 10px",borderRadius:8,border:"0.5px solid "+cc+"44",fontSize:small?11:12,color:cc,fontWeight:500,textDecoration:"none",display:"inline-flex",alignItems:"center",gap:4,background:cc+"18"}},e(SvgIcon,{canal:canal,size:small?11:13}),canal);
 }
@@ -12599,90 +12602,88 @@ export default function CLEO(props){
                   onCot:function(){ setModalCot(true); },
                   onVenta:abrirModalVenta})
           ),
-          e("header",null,
-            e("h1",{style:{margin:0,fontSize:sc.titlePage,fontWeight:800,letterSpacing:"-0.03em",color:C.ink,lineHeight:1.2}},"Tus clientes"),
-            e("p",{style:{margin:"6px 0 0",fontSize:14,lineHeight:1.45,color:"#5A6078"}},
-              esProductos?"Las personas que se han interesado en lo que ofreces o ya te han comprado.":"Las personas que se han interesado en tus servicios o te han contratado."
-            )
-          ),
-          e("div",{style:{marginTop:isMobile?24:32}},
-            e("label",{style:{display:"flex",alignItems:"center",gap:10,height:isMobile?46:44,padding:isMobile?"0 16px":"0 18px",borderRadius:isMobile?23:22,background:"#FFFFFF",color:"#6E7489",boxSizing:"border-box"}},
-              e("svg",{width:18,height:18,viewBox:"0 0 24 24",fill:"none",stroke:"currentColor",strokeWidth:1.9,strokeLinecap:"round",strokeLinejoin:"round",style:{flexShrink:0}},
-                e("circle",{cx:11,cy:11,r:6.5}),
-                e("path",{d:"m16 16 4.5 4.5"})
-              ),
-              e("input",{type:"search",placeholder:"Buscar...",value:busqueda,
-                onChange:function(ev){ setBusqueda(ev.target.value); },
-                style:{flex:1,minWidth:0,border:0,outline:"none",background:"transparent",fontFamily:"inherit",fontSize:isMobile?15:14,color:C.ink}})
+          e("div",{style:isMobile?{}:{maxWidth:1120,margin:"0 auto",width:"100%"}},
+            e("header",{style:{display:"flex",alignItems:"flex-end",justifyContent:"space-between",gap:16}},
+              e("div",null,
+                e("h1",{style:{margin:0,fontSize:isMobile?22:24,fontWeight:800,letterSpacing:"-0.03em",color:C.ink}},"Tus clientes"),
+                e("p",{style:{margin:"4px 0 0",fontSize:13.5,color:"#5A6078"}},
+                  esProductos?"Las personas que se han interesado en lo que ofreces o ya te han comprado.":"Las personas que se han interesado en tus servicios o te han contratado."
+                )
+              )
             ),
-            e("div",{style:{display:"flex",gap:isMobile?2:4,padding:4,borderRadius:22,background:"#FFFFFF",marginTop:10}},
-              [
-                {label:"Todos",value:""},
-                {label:"Activos",value:"activos"},
-                {label:"Ganados",value:"Ganado"},
-                {label:"Perdidos",value:"Perdido"},
-              ].map(function(opt){
-                var activo=(filtroGanados.etapaClientes||"")===opt.value;
-                return e("button",{key:opt.value,type:"button",
-                  style:{cursor:"pointer",flex:1,height:36,padding:isMobile?"0 6px":"0 16px",border:0,borderRadius:18,background:activo?"#E4E8FF":"transparent",fontFamily:"inherit",fontSize:sc.textSec,fontWeight:activo?800:600,color:activo?C.ink:"#4A5068"},
-                  onClick:function(){ setFiltroGanados(Object.assign({},filtroGanados,{etapaClientes:opt.value})); }
-                },opt.label);
-              })
-            )
-          ),
-          (function(){
-            var filtroEtapa=filtroGanados.etapaClientes||"";
-            var lista=clientesFiltrados.filter(function(c){
-              if(!filtroEtapa) return true;
-              if(filtroEtapa==="activos") return c.etapa!=="Ganado"&&c.etapa!=="Perdido";
-              return c.etapa===filtroEtapa;
-            });
-            var ultimaLetra="";
-            return e("section",{"aria-label":"Lista de clientes",style:{marginTop:isMobile?20:24,padding:isMobile?"4px 16px 4px 18px":"6px 24px 14px",borderRadius:isMobile?24:22,background:"#FFFFFF"}},
-              lista.map(function(c,idx){
-                var primeraLetra=(c.nombre||"").charAt(0).toUpperCase();
-                var esNuevaLetra=primeraLetra!==ultimaLetra;
-                ultimaLetra=primeraLetra;
-                var segBL=null;
-                if(c.seguimientoFecha){
-                  var dBL=diasHastaFechaCalendario(c.seguimientoFecha);
-                  var esVencido=dBL<0;
-                  var esHoy=dBL===0;
-                  segBL={texto:esVencido?"Vencido":esHoy?"Hoy":dBL===1?"Mañana":"En "+dBL+" días",esHoy:esHoy,esVencido:esVencido};
-                }
-                var segBg=segBL?(segBL.esVencido?"#FEE2E2":segBL.esHoy?"#FEF3C7":"#EEF0FF"):"#EEF0FF";
-                var segColor=segBL?(segBL.esVencido?"#991B1B":segBL.esHoy?"#92400E":"#3F4BD0"):"#3F4BD0";
-                return e("div",{key:c.id,
-                  style:{display:"flex",alignItems:"center",gap:isMobile?12:16,minHeight:isMobile?62:64,padding:isMobile?"0":"0 4px",borderTop:idx===0?"0":"1px solid #EDEFF5",cursor:"pointer"},
-                  onClick:function(){ setClienteAbierto(c.id); setTabCliente("perfil"); }
-                },
-                  e("span",{style:{width:isMobile?16:22,flexShrink:0,fontSize:isMobile?12.5:13,fontWeight:800,color:"#3F4BD0"}},esNuevaLetra?primeraLetra:""),
-                  isMobile
-                    ? e("div",{style:{flex:1,minWidth:0}},
-                        e("div",{style:{fontSize:sc.namePerson,fontWeight:700,color:C.ink,letterSpacing:"-0.01em",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}},c.nombre),
-                        segBL&&e("span",{style:{display:"inline-flex",alignItems:"center",gap:5,marginTop:4,height:24,padding:"0 9px",borderRadius:12,background:segBg,color:segColor,fontSize:12,fontWeight:700,whiteSpace:"nowrap"}},
-                          e("svg",{width:13,height:13,viewBox:"0 0 24 24",fill:"none",stroke:"currentColor",strokeWidth:2.2,strokeLinecap:"round",strokeLinejoin:"round"},e("circle",{cx:12,cy:12,r:8.5}),e("path",{d:"M12 7.5V12l3 2"})),
-                          segBL.texto
+            e("div",{style:{marginTop:isMobile?18:24,display:"flex",flexWrap:"wrap",gap:10,alignItems:"center"}},
+              e("label",{style:{flex:"1 1 280px",display:"flex",alignItems:"center",gap:10,height:isMobile?44:40,padding:"0 16px",borderRadius:22,background:"#FFFFFF",color:"#6E7489",boxSizing:"border-box"}},
+                e("svg",{width:16,height:16,viewBox:"0 0 24 24",fill:"none",stroke:"currentColor",strokeWidth:1.9,strokeLinecap:"round",strokeLinejoin:"round",style:{flexShrink:0}},
+                  e("circle",{cx:11,cy:11,r:6.5}),
+                  e("path",{d:"m16 16 4.5 4.5"})
+                ),
+                e("input",{type:"search",placeholder:"Buscar...",value:busqueda,
+                  onChange:function(ev){ setBusqueda(ev.target.value); },
+                  style:{flex:1,minWidth:0,border:0,outline:"none",background:"transparent",fontFamily:"inherit",fontSize:isMobile?16:14,color:C.ink}})
+              ),
+              e("div",{style:{display:"flex",gap:2,padding:3,borderRadius:21,background:"#FFFFFF",width:isMobile?"100%":undefined}},
+                [{label:"Todos",value:""},{label:"Activos",value:"activos"},{label:"Ganados",value:"Ganado"},{label:"Perdidos",value:"Perdido"}].map(function(opt){
+                  var activo=(filtroGanados.etapaClientes||"")===opt.value;
+                  return e("button",{key:opt.value,type:"button",
+                    style:{cursor:"pointer",flex:isMobile?1:undefined,height:34,padding:"0 16px",border:0,borderRadius:17,background:activo?"#E4E8FF":"transparent",fontFamily:"inherit",fontSize:13,fontWeight:activo?800:600,color:activo?C.ink:"#4A5068",whiteSpace:"nowrap"},
+                    onClick:function(){ setFiltroGanados(Object.assign({},filtroGanados,{etapaClientes:opt.value})); }
+                  },opt.label);
+                })
+              )
+            ),
+            (function(){
+              var filtroEtapa=filtroGanados.etapaClientes||"";
+              var lista=clientesFiltrados.filter(function(c){
+                if(!filtroEtapa) return true;
+                if(filtroEtapa==="activos") return c.etapa!=="Ganado"&&c.etapa!=="Perdido";
+                return c.etapa===filtroEtapa;
+              });
+              var ultimaLetra="";
+              return e("section",{"aria-label":"Lista de clientes",style:{marginTop:isMobile?14:16,padding:isMobile?"2px 16px":"4px 20px",borderRadius:isMobile?22:20,background:"#FFFFFF"}},
+                lista.map(function(c,idx){
+                  var primeraLetra=(c.nombre||"").charAt(0).toUpperCase();
+                  var esNuevaLetra=primeraLetra!==ultimaLetra;
+                  ultimaLetra=primeraLetra;
+                  var segBL=null;
+                  if(c.seguimientoFecha){
+                    var dBL=diasHastaFechaCalendario(c.seguimientoFecha);
+                    var esVencido=dBL<0;
+                    var esHoy=dBL===0;
+                    segBL={texto:esVencido?"Seguimiento vencido":esHoy?"Seguimiento hoy":dBL===1?"Seguimiento mañana":"Seguimiento en "+dBL+" días",esHoy:esHoy,esVencido:esVencido};
+                  }
+                  var segBg=segBL?(segBL.esVencido?"#FBE6E1":segBL.esHoy?"#FBF1DC":"#EEF0FF"):"#EEF0FF";
+                  var segColor=segBL?(segBL.esVencido?"#B23A24":segBL.esHoy?"#8A5A06":"#3F4BD0"):"#3F4BD0";
+                  var segIcon=segBL&&segBL.esVencido
+                    ? e("svg",{width:13,height:13,viewBox:"0 0 24 24",fill:"none",stroke:"currentColor",strokeWidth:2.2,strokeLinecap:"round",strokeLinejoin:"round"},e("circle",{cx:12,cy:12,r:8.5}),e("path",{d:"M12 7.5v5M12 16h.01"}))
+                    : e("svg",{width:13,height:13,viewBox:"0 0 24 24",fill:"none",stroke:"currentColor",strokeWidth:2.2,strokeLinecap:"round",strokeLinejoin:"round"},e("circle",{cx:12,cy:12,r:8.5}),e("path",{d:"M12 7.5V12l3 2"}));
+                  return e("div",{key:c.id,
+                    style:{display:"flex",alignItems:isMobile?"flex-start":"center",gap:14,minHeight:isMobile?0:62,padding:isMobile?"12px 0":"0 4px",borderTop:idx===0?"0":"1px solid #EDEFF5",cursor:"pointer"},
+                    onClick:function(){ setClienteAbierto(c.id); setTabCliente("perfil"); }
+                  },
+                    e("span",{style:{width:18,flexShrink:0,fontSize:12.5,fontWeight:800,color:"#3F4BD0",paddingTop:isMobile?3:0}},esNuevaLetra?primeraLetra:""),
+                    e("div",{style:{flex:1,minWidth:0}},
+                      e("div",{style:{fontSize:15,fontWeight:800,color:C.ink,letterSpacing:"-0.01em",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}},c.nombre),
+                      c.negocio&&e("span",{style:{display:"block",marginTop:1,fontSize:13,color:"#6E7489",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}},c.negocio),
+                      isMobile&&segBL&&e("div",{style:{marginTop:6}},
+                        e("span",{style:{display:"inline-flex",alignItems:"center",gap:6,height:26,padding:"0 10px",borderRadius:13,background:segBg,color:segColor,fontSize:12,fontWeight:700,whiteSpace:"nowrap"}},
+                          segIcon,segBL.texto
                         )
                       )
-                    : e("div",{style:{flex:1,minWidth:0}},
-                        e("div",{style:{fontSize:sc.namePerson,fontWeight:700,color:C.ink,letterSpacing:"-0.01em",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}},c.nombre),
-                        c.negocio&&e("small",{style:{display:"block",fontSize:13,fontWeight:500,color:"#6E7489",marginTop:1,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}},c.negocio)
-                      ),
-                  !isMobile&&segBL&&e("span",{style:{display:"inline-flex",alignItems:"center",gap:6,height:28,padding:"0 11px",borderRadius:14,background:segBg,color:segColor,fontSize:12.5,fontWeight:700,whiteSpace:"nowrap",flexShrink:0}},
-                    e("svg",{width:14,height:14,viewBox:"0 0 24 24",fill:"none",stroke:"currentColor",strokeWidth:2.2,strokeLinecap:"round",strokeLinejoin:"round"},e("circle",{cx:12,cy:12,r:8.5}),e("path",{d:"M12 7.5V12l3 2"})),
-                    segBL.texto
-                  ),
-                  e("div",{style:{flexShrink:0},onClick:function(ev){ ev.stopPropagation(); }},
-                    e(BtnCanal,{cliente:c,iconOnly:isMobile})
-                  ),
-                  !isMobile&&e("svg",{width:18,height:18,viewBox:"0 0 24 24",fill:"none",stroke:"#9AA0B8",strokeWidth:1.9,strokeLinecap:"round",strokeLinejoin:"round",style:{flexShrink:0}},
-                    e("path",{d:"m9 6 6 6-6 6"})
-                  )
-                );
-              })
-            );
-          })()
+                    ),
+                    !isMobile&&segBL&&e("span",{style:{display:"inline-flex",alignItems:"center",gap:6,height:26,padding:"0 10px",borderRadius:13,background:segBg,color:segColor,fontSize:12,fontWeight:700,whiteSpace:"nowrap",flexShrink:0}},
+                      segIcon,segBL.texto
+                    ),
+                    e("div",{style:{flexShrink:0},onClick:function(ev){ ev.stopPropagation(); }},
+                      e(BtnCanal,{cliente:c,iconOnly:isMobile,neutral:true})
+                    ),
+                    !isMobile&&e("svg",{width:16,height:16,viewBox:"0 0 24 24",fill:"none",stroke:"#9AA0B8",strokeWidth:1.9,strokeLinecap:"round",strokeLinejoin:"round",style:{flexShrink:0}},
+                      e("path",{d:"m9 6 6 6-6 6"})
+                    )
+                  );
+                })
+              );
+            })()
+          )
         );
       })(),
 
@@ -15289,118 +15290,121 @@ export default function CLEO(props){
             );
           })(),
 
-          // LISTA DE URGENTES — card style (mismo que productos)
+          // URGENTES + COBROS — grid 12 col en desktop, stacked en móvil (mismo patrón que Productos)
           (function(){
+            var cobrosPendientes=obtenerCobrosPendientesHoy(cotizaciones,ventas,clientes);
+            if(urgentes.length===0&&cobrosPendientes.length===0) return null;
             var prioColorH={"alta":"#EF4444","media":"#F59E0B","baja":"#3B82F6"};
             var prioLabelH={"alta":"LO MÁS IMPORTANTE","media":"CONVIENE HOY","baja":"SE ESTÁ ENFRIANDO"};
             var prioBgH={"alta":"#FEF2F2","media":"#FFFBEB","baja":"#EFF6FF"};
             var btnPrimHoy={cursor:"pointer",display:"inline-flex",alignItems:"center",justifyContent:"center",gap:7,height:isMobile?sc.btnH:sc.btnSmH,padding:"0 16px",borderRadius:999,border:"none",background:C.ink,color:"#fff",fontSize:isMobile?sc.btnText:sc.btnSmText,fontWeight:700,fontFamily:"inherit",whiteSpace:"nowrap",boxSizing:"border-box"};
             var btnGhostHoy={cursor:"pointer",display:"inline-flex",alignItems:"center",justifyContent:"center",gap:6,height:isMobile?sc.btnH:sc.btnSmH,padding:"0 10px",borderRadius:999,border:"none",background:"transparent",color:C.text,fontSize:isMobile?sc.btnText:sc.btnSmText,fontWeight:700,fontFamily:"inherit",whiteSpace:"nowrap",boxSizing:"border-box"};
             var btnSecHoy={cursor:"pointer",display:"inline-flex",alignItems:"center",justifyContent:"center",gap:7,height:isMobile?sc.btnH:sc.btnSmH,padding:"0 14px",borderRadius:999,border:"1.5px solid #D5D8E4",background:C.surface,color:C.text,fontSize:isMobile?sc.btnText:sc.btnSmText,fontWeight:700,fontFamily:"inherit",whiteSpace:"nowrap",boxSizing:"border-box"};
-            var cardHoy={background:C.surface,borderRadius:20,padding:isMobile?"18px 16px":"18px 20px"};
-            return e("div",{style:{display:"flex",flexDirection:"column",gap:12}},
-              urgentes.length>0&&(
-                isMobile
-                  ? e("div",{style:{fontSize:11,fontWeight:800,letterSpacing:".08em",color:C.textMuted,textTransform:"uppercase",marginBottom:4,display:"flex",alignItems:"center",gap:8}},
-                      "CONVERSACIONES POR RETOMAR",
-                      e("span",{style:{color:C.purple}},urgentes.length)
-                    )
-                  : e("div",{style:{display:"flex",alignItems:"center",gap:14,padding:"16px 20px",borderRadius:22,background:"#8D9BFF"}},
-                      e("span",{style:{fontSize:44,lineHeight:1,fontWeight:800,letterSpacing:"-0.04em",color:C.ink}},urgentes.length),
-                      e("span",{style:{fontSize:sc.namePerson,lineHeight:1.25,fontWeight:800,color:C.ink}},urgentes.length===1?"Conversación\npor retomar":"Conversaciones\npor retomar")
-                    )
-              ),
-              urgentes.map(function(u){
-                  try {
-                    var c=u.cliente;
-                    var esHighlightHoy=c.id===highlightHoyClienteId;
-                    return e("article",{key:u.accionId||c.id,style:Object.assign({},cardHoy,esHighlightHoy?{outline:"2px solid "+C.purple,outlineOffset:2}:{}),ref:function(el){ if(el&&esHighlightHoy){ el.scrollIntoView({behavior:"smooth",block:"start"}); } }},
-                      e("div",{style:{display:"flex",alignItems:"flex-start",justifyContent:"space-between",gap:8,marginBottom:2}},
-                        e("div",{style:{fontSize:sc.namePerson,fontWeight:800,letterSpacing:"-0.01em",color:C.text}},c.nombre),
-                        e("span",{style:{fontSize:10,fontWeight:700,padding:"3px 8px",borderRadius:10,background:prioBgH[u.prioridad],color:prioColorH[u.prioridad],flexShrink:0,marginTop:1}},prioLabelH[u.prioridad])
-                      ),
-                      c.etapa==="Perdido"&&e("span",{style:{display:"inline-block",fontSize:sc.textLabel,fontWeight:600,padding:"2px 7px",borderRadius:10,background:"#FEE2E2",color:"#991B1B",marginBottom:4}},"Perdido"+(c.motivoPerdida?" · "+c.motivoPerdida:"")),
-                      e("p",{style:{margin:"4px 0 0",fontSize:14,lineHeight:1.55,color:C.textMuted}},u.razon),
-                      u.mensajeSugerido&&!u.recordatorioEsManualOPersonalizado&&e("p",{style:{display:"flex",alignItems:"center",gap:7,margin:"8px 0 0",fontSize:sc.textSec,fontWeight:600,color:"#2E37A3"}},
-                        e("svg",{width:15,height:15,viewBox:"0 0 24 24",fill:"none",stroke:"#3F4BD0",strokeWidth:1.9,strokeLinecap:"round",strokeLinejoin:"round"},e("path",{d:"M9 18h6M10 21h4M12 3a6 6 0 0 0-3.6 10.8c.6.5 1 1.2 1 2V16h5.2v-.2c0-.8.4-1.5 1-2A6 6 0 0 0 12 3z"})),
-                        u.mensajeSugerido
-                      ),
-                      u.recordatorioEsManualOPersonalizado&&u.recordatorioNota&&e("p",{style:{display:"flex",gap:7,alignItems:"flex-start",margin:"6px 0 0",fontSize:sc.textSec,lineHeight:1.5,color:"#545A72"}},
-                        e("svg",{width:15,height:15,viewBox:"0 0 24 24",fill:"none",stroke:"#7C8CFF",strokeWidth:1.9,strokeLinecap:"round",strokeLinejoin:"round",style:{flexShrink:0,marginTop:2}},e("path",{d:"M4 20h4L19 9l-4-4L4 16z"})),
-                        e("span",null,'"'+u.recordatorioNota+'"'+(u.recordatorioHora?" · "+u.recordatorioHora:""))
-                      ),
-                      u.monto>0&&e("div",{style:{fontSize:sc.figHero,lineHeight:1.1,fontWeight:800,letterSpacing:"-0.03em",color:C.text,marginTop:8}},"$"+formatoDinero(Number(u.monto))),
-                      u.origenAccion==="cotizacion_independiente"
-                        ? e("div",{style:{display:"flex",gap:6,marginTop:14,flexWrap:"wrap"}},
-                            e("button",{key:"contactar",style:btnPrimHoy,onClick:function(){ contactarCotizacionIndependiente(u.cotizacionId); }},
-                              e("svg",{width:16,height:16,viewBox:"0 0 24 24",fill:"none",stroke:"currentColor",strokeWidth:1.9,strokeLinecap:"round",strokeLinejoin:"round"},e("path",{d:"M4 5.5A1.5 1.5 0 0 1 5.5 4h13A1.5 1.5 0 0 1 20 5.5v9a1.5 1.5 0 0 1-1.5 1.5H9.5L4 20z"})),
-                              "Contactar"
-                            ),
-                            e("button",{key:"atendida",style:btnGhostHoy,onClick:function(){ atenderSeguimientoCotizacion(u.cotizacionId); }},"✓ Ya la revisó"),
-                            e("button",{key:"reprogramar",style:btnSecHoy,onClick:function(){ setModalReprogSeguimientoCot(u.cotizacionId); }},"Reprogramar"),
-                            e("button",{key:"abrir",style:btnSecHoy,onClick:function(){ abrirCotizacionIndependiente(u.cotizacionId); }},"Abrir cotización")
-                          )
-                        : e("div",{style:{marginTop:14}},
-                            e("div",{style:{display:"flex",gap:4}},
-                              e("button",{key:"contactar",style:btnPrimHoy,onClick:function(){ manejarClickContactar(c,u.recordatorioId,u.recordatorioNota,u.recordatorioEsManualOPersonalizado); }},
-                                e("svg",{width:16,height:16,viewBox:"0 0 24 24",fill:"none",stroke:"currentColor",strokeWidth:1.9,strokeLinecap:"round",strokeLinejoin:"round"},e("path",{d:"M4 5.5A1.5 1.5 0 0 1 5.5 4h13A1.5 1.5 0 0 1 20 5.5v9a1.5 1.5 0 0 1-1.5 1.5H9.5L4 20z"})),
-                                "Contactar"
-                              ),
-                              u.recordatorioEsManualOPersonalizado
-                                ? e("button",{key:"atendida",style:btnGhostHoy,onClick:function(){
-                                    var resultado=completarRecordatorioManual(c.id,u.recordatorioId);
-                                    if(resultado.ok) mostrarToast("✓ Marcaste tu recordatorio como atendido para "+resultado.nombreCliente+".");
-                                  }},"✓ Ya lo atendí")
-                                : e("button",{key:"atendida",style:btnGhostHoy,onClick:function(){ setContactadoClienteId(c.id); setContactadoRecordatorioId(u.recordatorioId); }},"✓ Ya le hablé")
-                            ),
-                            u.estancado&&e("button",{key:"perdido",style:{cursor:"pointer",marginTop:8,padding:"0 16px",height:isMobile?sc.btnH:sc.btnSmH,borderRadius:999,border:"1.5px solid "+C.amber+"55",background:C.amberBg,fontSize:isMobile?sc.btnText:sc.btnSmText,color:C.amber,fontWeight:700,whiteSpace:"nowrap",width:"100%",textAlign:"center",display:"flex",alignItems:"center",justifyContent:"center",fontFamily:"inherit"},onClick:function(){ moverEtapa(c.id,"Perdido"); }},"Marcar como perdido")
-                          )
-                    );
-                  } catch(err){ return e("div",{key:u.cliente&&u.cliente.id,style:{padding:8,fontSize:11,color:C.red}},"Error cargando cliente"); }
-                })
-            );
-          })(),
-
-
-          // COBROS PENDIENTES — card style (mismo que productos)
-          (function(){
-            var cobrosPendientes=obtenerCobrosPendientesHoy(cotizaciones,ventas,clientes);
-            if(cobrosPendientes.length===0) return null;
             var btnPrimCob={cursor:"pointer",display:"inline-flex",alignItems:"center",justifyContent:"center",gap:7,height:isMobile?sc.btnH:sc.btnSmH,padding:"0 16px",borderRadius:999,border:"none",background:C.ink,color:"#fff",fontSize:isMobile?sc.btnText:sc.btnSmText,fontWeight:700,fontFamily:"inherit",whiteSpace:"nowrap",boxSizing:"border-box"};
             var btnGhostCob={cursor:"pointer",display:"inline-flex",alignItems:"center",justifyContent:"center",gap:6,height:isMobile?sc.btnH:sc.btnSmH,padding:"0 10px",borderRadius:999,border:"none",background:"transparent",color:C.text,fontSize:isMobile?sc.btnText:sc.btnSmText,fontWeight:700,fontFamily:"inherit",whiteSpace:"nowrap",boxSizing:"border-box"};
-            return e("div",{style:{marginTop:16,display:"flex",flexDirection:"column",gap:12}},
-              isMobile
-                ? e("div",{style:{fontSize:11,fontWeight:800,letterSpacing:".08em",color:C.amber,textTransform:"uppercase",marginBottom:4,display:"flex",alignItems:"center",gap:8}},
+            var cardHoy={background:C.surface,borderRadius:20,padding:isMobile?"18px 16px":"18px 20px"};
+
+            var urgentesCards=urgentes.map(function(u){
+              try {
+                var c=u.cliente;
+                var esHighlightHoy=c.id===highlightHoyClienteId;
+                return e("article",{key:u.accionId||c.id,style:Object.assign({},cardHoy,esHighlightHoy?{outline:"2px solid "+C.purple,outlineOffset:2}:{}),ref:function(el){ if(el&&esHighlightHoy){ el.scrollIntoView({behavior:"smooth",block:"start"}); } }},
+                  e("div",{style:{fontSize:sc.namePerson,fontWeight:800,letterSpacing:"-0.01em",color:C.text}},c.nombre),
+                  c.etapa==="Perdido"&&e("span",{style:{display:"inline-block",fontSize:sc.textLabel,fontWeight:600,padding:"2px 7px",borderRadius:10,background:"#FEE2E2",color:"#991B1B",marginBottom:4}},"Perdido"+(c.motivoPerdida?" · "+c.motivoPerdida:"")),
+                  e("p",{style:{margin:"4px 0 0",fontSize:14,lineHeight:1.55,color:C.textMuted}},u.razon),
+                  u.mensajeSugerido&&!u.recordatorioEsManualOPersonalizado&&e("p",{style:{display:"flex",alignItems:"center",gap:7,margin:"8px 0 0",fontSize:sc.textSec,fontWeight:600,color:"#2E37A3"}},
+                    e("svg",{width:15,height:15,viewBox:"0 0 24 24",fill:"none",stroke:"#3F4BD0",strokeWidth:1.9,strokeLinecap:"round",strokeLinejoin:"round"},e("path",{d:"M9 18h6M10 21h4M12 3a6 6 0 0 0-3.6 10.8c.6.5 1 1.2 1 2V16h5.2v-.2c0-.8.4-1.5 1-2A6 6 0 0 0 12 3z"})),
+                    u.mensajeSugerido
+                  ),
+                  u.recordatorioEsManualOPersonalizado&&u.recordatorioNota&&e("p",{style:{display:"flex",gap:7,alignItems:"flex-start",margin:"6px 0 0",fontSize:sc.textSec,lineHeight:1.5,color:"#545A72"}},
+                    e("svg",{width:15,height:15,viewBox:"0 0 24 24",fill:"none",stroke:"#7C8CFF",strokeWidth:1.9,strokeLinecap:"round",strokeLinejoin:"round",style:{flexShrink:0,marginTop:2}},e("path",{d:"M4 20h4L19 9l-4-4L4 16z"})),
+                    e("span",null,'"'+u.recordatorioNota+'"'+(u.recordatorioHora?" · "+u.recordatorioHora:""))
+                  ),
+                  u.monto>0&&e("div",{style:{fontSize:sc.figHero,lineHeight:1.1,fontWeight:800,letterSpacing:"-0.03em",color:C.text,marginTop:8}},"$"+formatoDinero(Number(u.monto))),
+                  u.origenAccion==="cotizacion_independiente"
+                    ? e("div",{style:{display:"flex",gap:6,marginTop:14,flexWrap:"wrap"}},
+                        e("button",{key:"contactar",style:btnPrimHoy,onClick:function(){ contactarCotizacionIndependiente(u.cotizacionId); }},
+                          e("svg",{width:16,height:16,viewBox:"0 0 24 24",fill:"none",stroke:"currentColor",strokeWidth:1.9,strokeLinecap:"round",strokeLinejoin:"round"},e("path",{d:"M4 5.5A1.5 1.5 0 0 1 5.5 4h13A1.5 1.5 0 0 1 20 5.5v9a1.5 1.5 0 0 1-1.5 1.5H9.5L4 20z"})),
+                          "Contactar"
+                        ),
+                        e("button",{key:"atendida",style:btnGhostHoy,onClick:function(){ atenderSeguimientoCotizacion(u.cotizacionId); }},"✓ Ya la revisó"),
+                        e("button",{key:"reprogramar",style:btnSecHoy,onClick:function(){ setModalReprogSeguimientoCot(u.cotizacionId); }},"Reprogramar"),
+                        e("button",{key:"abrir",style:btnSecHoy,onClick:function(){ abrirCotizacionIndependiente(u.cotizacionId); }},"Abrir cotización")
+                      )
+                    : e("div",{style:{marginTop:14}},
+                        e("div",{style:{display:"flex",gap:4}},
+                          e("button",{key:"contactar",style:btnPrimHoy,onClick:function(){ manejarClickContactar(c,u.recordatorioId,u.recordatorioNota,u.recordatorioEsManualOPersonalizado); }},
+                            e("svg",{width:16,height:16,viewBox:"0 0 24 24",fill:"none",stroke:"currentColor",strokeWidth:1.9,strokeLinecap:"round",strokeLinejoin:"round"},e("path",{d:"M4 5.5A1.5 1.5 0 0 1 5.5 4h13A1.5 1.5 0 0 1 20 5.5v9a1.5 1.5 0 0 1-1.5 1.5H9.5L4 20z"})),
+                            "Contactar"
+                          ),
+                          u.recordatorioEsManualOPersonalizado
+                            ? e("button",{key:"atendida",style:btnGhostHoy,onClick:function(){
+                                var resultado=completarRecordatorioManual(c.id,u.recordatorioId);
+                                if(resultado.ok) mostrarToast("✓ Marcaste tu recordatorio como atendido para "+resultado.nombreCliente+".");
+                              }},"✓ Ya lo atendí")
+                            : e("button",{key:"atendida",style:btnGhostHoy,onClick:function(){ setContactadoClienteId(c.id); setContactadoRecordatorioId(u.recordatorioId); }},"✓ Ya le hablé")
+                        ),
+                        u.estancado&&e("button",{key:"perdido",style:{cursor:"pointer",marginTop:8,padding:"0 16px",height:isMobile?sc.btnH:sc.btnSmH,borderRadius:999,border:"1.5px solid "+C.amber+"55",background:C.amberBg,fontSize:isMobile?sc.btnText:sc.btnSmText,color:C.amber,fontWeight:700,whiteSpace:"nowrap",width:"100%",textAlign:"center",display:"flex",alignItems:"center",justifyContent:"center",fontFamily:"inherit"},onClick:function(){ moverEtapa(c.id,"Perdido"); }},"Marcar como perdido")
+                      )
+                );
+              } catch(err){ return e("div",{key:u.cliente&&u.cliente.id,style:{padding:8,fontSize:11,color:C.red}},"Error cargando cliente"); }
+            });
+
+            var cobrosCards=cobrosPendientes.map(function(x,i){
+              var pagado=Number(x.cot.monto)-x.saldo;
+              var descSaldo=pagado<=0
+                ?"Aún no ha pagado nada de esta cotización."
+                :"Ya pagó $"+formatoDinero(pagado)+". Quedó pendiente un saldo de $"+formatoDinero(x.saldo)+".";
+              return e("article",{key:i,style:{background:"#FFFBEB",borderRadius:20,padding:isMobile?"18px 16px":"18px 20px"}},
+                e("div",{style:{fontSize:sc.namePerson,fontWeight:800,letterSpacing:"-0.01em",color:C.text}},x.cliente.nombre),
+                e("p",{style:{margin:"4px 0 0",fontSize:14,lineHeight:1.55,color:C.textMuted}},descSaldo),
+                e("div",{style:{fontSize:sc.figHero,lineHeight:1.1,fontWeight:800,letterSpacing:"-0.03em",color:"#92400E",marginTop:8}},"$"+formatoDinero(x.saldo)),
+                e("div",{style:{display:"flex",gap:4,marginTop:14}},
+                  e("button",{style:btnPrimCob,onClick:function(){ var url=contactUrl(x.cliente,"Hola "+x.cliente.nombre.split(" ")[0]+", te escribo para preguntar cómo va el pago pendiente de "+(x.cot.concepto||"tu cotización")+"."); if(url) abrirEnlaceExternoSeguro(url); else setClienteCompletarId(x.cliente.id); }},
+                    e("svg",{width:16,height:16,viewBox:"0 0 24 24",fill:"none",stroke:"currentColor",strokeWidth:1.9,strokeLinecap:"round",strokeLinejoin:"round"},e("path",{d:"M4 5.5A1.5 1.5 0 0 1 5.5 4h13A1.5 1.5 0 0 1 20 5.5v9a1.5 1.5 0 0 1-1.5 1.5H9.5L4 20z"})),
+                    "Contactar"
+                  ),
+                  e("button",{style:btnGhostCob,onClick:function(){ setPagosModalTipo(x.tipo); setPagosModalId(x.cot.id); setFormPago({monto:"",fecha:FECHA_HOY,concepto:"Pago"}); }},
+                    "+ Registrar pago"
+                  )
+                )
+              );
+            });
+
+            if(isMobile){
+              return e("div",{style:{display:"flex",flexDirection:"column",gap:12}},
+                urgentes.length>0&&e("div",{style:{display:"flex",flexDirection:"column",gap:10}},
+                  e("div",{style:{fontSize:11,fontWeight:800,letterSpacing:".08em",color:C.textMuted,textTransform:"uppercase",marginBottom:4,display:"flex",alignItems:"center",gap:8}},
+                    "CONVERSACIONES POR RETOMAR",
+                    e("span",{style:{color:C.purple}},urgentes.length)
+                  ),
+                  urgentesCards
+                ),
+                cobrosPendientes.length>0&&e("div",{style:{display:"flex",flexDirection:"column",gap:10}},
+                  e("div",{style:{fontSize:11,fontWeight:800,letterSpacing:".08em",color:C.amber,textTransform:"uppercase",marginBottom:4,display:"flex",alignItems:"center",gap:8}},
                     "COBROS PENDIENTES",
                     e("span",{style:{color:C.amber}},cobrosPendientes.length)
-                  )
-                : e("div",{style:{display:"flex",alignItems:"center",gap:14,padding:"16px 20px",borderRadius:22,background:"radial-gradient(110% 90% at 100% 0%, #24307A 0%, rgba(36,48,122,0) 62%), #0E1328",color:"#fff"}},
-                    e("span",{style:{fontSize:44,lineHeight:1,fontWeight:800,letterSpacing:"-0.04em",color:"#FFD36B"}},cobrosPendientes.length),
-                    e("span",{style:{fontSize:sc.namePerson,lineHeight:1.25,fontWeight:800,color:"#fff"}},cobrosPendientes.length===1?"Cobro\npendiente":"Cobros\npendientes")
                   ),
-              cobrosPendientes.map(function(x,i){
-                  var pagado=Number(x.cot.monto)-x.saldo;
-                  var descSaldo=pagado<=0
-                    ?"Aún no ha pagado nada de esta cotización."
-                    :"Ya pagó $"+formatoDinero(pagado)+". Quedó pendiente un saldo de $"+formatoDinero(x.saldo)+".";
-                  return e("article",{key:i,style:{background:"#FFFBEB",borderRadius:20,padding:isMobile?"18px 16px":"18px 20px"}},
-                    e("div",{style:{display:"flex",alignItems:"flex-start",justifyContent:"space-between",gap:8,marginBottom:2}},
-                      e("div",{style:{fontSize:sc.namePerson,fontWeight:800,letterSpacing:"-0.01em",color:C.text}},x.cliente.nombre),
-                      e("span",{style:{fontSize:10,fontWeight:700,padding:"3px 8px",borderRadius:10,background:"#FCD34D33",color:"#92400E",flexShrink:0,marginTop:1}},"COBRO PENDIENTE")
-                    ),
-                    e("p",{style:{margin:"4px 0 0",fontSize:14,lineHeight:1.55,color:C.textMuted}},descSaldo),
-                    e("div",{style:{fontSize:sc.figHero,lineHeight:1.1,fontWeight:800,letterSpacing:"-0.03em",color:"#92400E",marginTop:8}},"$"+formatoDinero(x.saldo)),
-                    e("div",{style:{display:"flex",gap:4,marginTop:14}},
-                      e("button",{style:btnPrimCob,onClick:function(){ var url=contactUrl(x.cliente,"Hola "+x.cliente.nombre.split(" ")[0]+", te escribo para preguntar cómo va el pago pendiente de "+(x.cot.concepto||"tu cotización")+"."); if(url) abrirEnlaceExternoSeguro(url); else setClienteCompletarId(x.cliente.id); }},
-                        e("svg",{width:16,height:16,viewBox:"0 0 24 24",fill:"none",stroke:"currentColor",strokeWidth:1.9,strokeLinecap:"round",strokeLinejoin:"round"},e("path",{d:"M4 5.5A1.5 1.5 0 0 1 5.5 4h13A1.5 1.5 0 0 1 20 5.5v9a1.5 1.5 0 0 1-1.5 1.5H9.5L4 20z"})),
-                        "Contactar"
-                      ),
-                      e("button",{style:btnGhostCob,onClick:function(){ setPagosModalTipo(x.tipo); setPagosModalId(x.cot.id); setFormPago({monto:"",fecha:FECHA_HOY,concepto:"Pago"}); }},
-                        "+ Registrar pago"
-                      )
-                    )
-                  );
-                })
+                  cobrosCards
+                )
+              );
+            }
+
+            return e("div",{style:{display:"grid",gridTemplateColumns:"repeat(12,minmax(0,1fr))",gap:16,alignItems:"start"}},
+              urgentes.length>0&&e("section",{style:{gridColumn:cobrosPendientes.length===0?"span 12":"span 7",display:"flex",flexDirection:"column",gap:12}},
+                e("div",{style:{display:"flex",alignItems:"center",gap:14,padding:"16px 20px",borderRadius:22,background:"#8D9BFF"}},
+                  e("span",{style:{fontSize:44,lineHeight:1,fontWeight:800,letterSpacing:"-0.04em",color:C.ink}},urgentes.length),
+                  e("span",{style:{fontSize:sc.namePerson,lineHeight:1.25,fontWeight:800,color:C.ink}},urgentes.length===1?"Conversación\npor retomar":"Conversaciones\npor retomar")
+                ),
+                urgentesCards
+              ),
+              cobrosPendientes.length>0&&e("section",{style:{gridColumn:urgentes.length===0?"span 12":"span 5",display:"flex",flexDirection:"column",gap:12}},
+                e("div",{style:{display:"flex",alignItems:"center",gap:14,padding:"16px 20px",borderRadius:22,background:"radial-gradient(110% 90% at 100% 0%, #24307A 0%, rgba(36,48,122,0) 62%), #0E1328",color:"#fff"}},
+                  e("span",{style:{fontSize:44,lineHeight:1,fontWeight:800,letterSpacing:"-0.04em",color:"#FFD36B"}},cobrosPendientes.length),
+                  e("span",{style:{fontSize:sc.namePerson,lineHeight:1.25,fontWeight:800,color:"#fff"}},cobrosPendientes.length===1?"Cobro\npendiente":"Cobros\npendientes")
+                ),
+                cobrosCards
+              )
             );
           })()
           ) // cierre !esProductos
@@ -17532,969 +17536,6 @@ export default function CLEO(props){
         setModalReporteComercial:setModalReporteComercial,setFormReporteComercial:setFormReporteComercial,
         rangoReporteComercialPorDefecto:rangoReporteComercialPorDefecto,setErrorReporteComercial:setErrorReporteComercial,
       }),
-      vista==="resumen"&&false&&(function(){
-        var PERIODOS=[["semana","Semana"],["mes","Mes"],["trimestre","Trimestre"],["todo","Todo"]];
-        var periodoRes=periodo||"mes";
-
-        function enPeriodoRes(fecha){
-          if(periodoRes==="todo") return true;
-          if(!fecha) return false;
-          var f=new Date(fecha+"T12:00:00"); f.setHours(0,0,0,0);
-          var hoyD=new Date(HOY); hoyD.setHours(0,0,0,0);
-          if(periodoRes==="semana"){ var s=new Date(hoyD); s.setDate(hoyD.getDate()-hoyD.getDay()); return f>=s; }
-          if(periodoRes==="mes"){ return f.getMonth()===hoyD.getMonth()&&f.getFullYear()===hoyD.getFullYear(); }
-          if(periodoRes==="trimestre"){ var t=new Date(hoyD); t.setMonth(hoyD.getMonth()-3); return f>=t; }
-          return true;
-        }
-
-        // Ingresos del período (pagos de pedidos + ventas rápidas) , se
-        // suma cada movimiento por SU PROPIA fecha, igual que pedidos ,
-        // nunca se usa tipoPago ni el monto total de la venta como fuente.
-        // Un pedido cancelado resta su anticipo el día de la cancelación
-        // (obtenerReversionIngresoPedido), no se le quita silenciosamente
-        // del día en que realmente se cobró.
-        var ingresosPer=0;
-        pedidos.forEach(function(ped){
-          (ped.pagos||[]).forEach(function(p){ if(enPeriodoRes(p.fecha)) ingresosPer+=Number(p.monto); });
-          var reversionPed=obtenerReversionIngresoPedido(ped);
-          if(reversionPed&&enPeriodoRes(reversionPed.fecha)) ingresosPer+=reversionPed.monto;
-        });
-        var ventasPer=ventas.filter(function(v){ return enPeriodoRes(v.fecha); });
-        var ingresoVentasPer=0;
-        ventas.forEach(function(v){
-          (v.pagos||[]).forEach(function(p){ if(enPeriodoRes(p.fecha)) ingresoVentasPer+=Number(p.monto); });
-        });
-        var totalCobrado=ingresosPer+ingresoVentasPer;
-
-        // Pedidos del período
-        var pedidosPer=pedidos.filter(function(p){ return enPeriodoRes(p.fecha||p.fechaCreado); });
-        var pedidosEntregados=pedidosPer.filter(function(p){ return p.estadoPedido==="entregado"; });
-
-        // Pedidos cancelados EN el período , se cuenta por fechaCancelacion
-        // (cuándo se canceló de verdad), no por cuándo se creó el pedido ,
-        // mismo criterio que ya usa la reversión de ingresos de arriba. Se
-        // guarda también el motivo más común entre esos, para el insight.
-        var canceladosPer=pedidos.filter(function(p){ return p.estadoPedido==="cancelado"&&enPeriodoRes(p.fechaCancelacion||p.fecha||p.fechaCreado); });
-        var motivoCancelPerCount={};
-        canceladosPer.forEach(function(p){ if(p.motivoCancelacion) motivoCancelPerCount[p.motivoCancelacion]=(motivoCancelPerCount[p.motivoCancelacion]||0)+1; });
-        var topMotivoCancelPer=Object.entries(motivoCancelPerCount).sort(function(a,b){ return b[1]-a[1]; })[0]||null;
-
-        // Saldo por cobrar
-        var saldoPorCobrar=pedidos.filter(function(p){ return p.estadoPedido!=="cancelado"; }).reduce(function(s,p){
-          var pagado=(p.pagos||[]).reduce(function(a,pg){ return a+Number(pg.monto); },0);
-          return s+Math.max(0,Number(p.total||0)-pagado);
-        },0);
-
-        // Si cobraras todo
-        var potencial=totalCobrado+saldoPorCobrar;
-
-        // Tasa de conversión oportunidades → pedidos
-        var oportunidadesTot=clientes.filter(function(c){ return c.estadoProspecto; }).length;
-        var convertidosTot=clientes.filter(function(c){ return c.estadoProspecto==="Convertido"; }).length;
-        var tasaConv=oportunidadesTot>0?Math.round((convertidosTot/oportunidadesTot)*100):null;
-
-        // Producto más vendido , se cuenta cada item de cada pedido por
-        // separado (no el resumen corto), así un pedido de varios productos
-        // no infla ni esconde el conteo real de cada uno.
-        var productoCount={};
-        pedidos.forEach(function(p){ if(p.estadoPedido!=="cancelado"){ obtenerItemsPedido(p).forEach(function(it){ if(it.nombre){ var k=it.nombre.trim(); productoCount[k]=(productoCount[k]||0)+1; } }); } });
-        ventasPer.forEach(function(v){ if(v.concepto){ var k=v.concepto.trim(); productoCount[k]=(productoCount[k]||0)+1; } });
-        var topProducto=Object.entries(productoCount).sort(function(a,b){ return b[1]-a[1]; })[0]||null;
-
-        // Canal que más trae , se excluyen los que no tienen origen registrado (no es un canal real)
-        // Sin depender de estadoProspecto, ya que ese campo es exclusivo de Productos y en Servicios nunca existe
-        var canalCount={};
-        clientes.forEach(function(c){ if(c.origen) canalCount[c.origen]=(canalCount[c.origen]||0)+1; });
-        var topCanal=Object.entries(canalCount).sort(function(a,b){ return b[1]-a[1]; })[0]||null;
-        var sinOrigenCount=clientes.filter(function(c){ return !c.origen; }).length;
-
-        // Por qué compraron (razones de cierre)
-        var razonCount={};
-        clientes.filter(function(c){ return c.razonCierre; }).forEach(function(c){
-          (Array.isArray(c.razonCierre)?c.razonCierre:[c.razonCierre]).forEach(function(r){ razonCount[r]=(razonCount[r]||0)+1; });
-        });
-        var topRazon=Object.entries(razonCount).sort(function(a,b){ return b[1]-a[1]; })[0]||null;
-
-        // Motivo más común de por qué se pierden clientes (oportunidades perdidas + pedidos cancelados)
-        var motivoPerdidaCount={};
-        clientes.filter(function(c){ return c.estadoProspecto==="Perdido"&&c.motivoPerdida; }).forEach(function(c){ motivoPerdidaCount[c.motivoPerdida]=(motivoPerdidaCount[c.motivoPerdida]||0)+1; });
-        pedidos.filter(function(p){ return p.estadoPedido==="cancelado"&&p.motivoCancelacion; }).forEach(function(p){ motivoPerdidaCount[p.motivoCancelacion]=(motivoPerdidaCount[p.motivoCancelacion]||0)+1; });
-        var motivosPerdidaRank=Object.entries(motivoPerdidaCount).sort(function(a,b){ return b[1]-a[1]; });
-        var topMotivoPerdida=motivosPerdidaRank[0]||null;
-        var totalPerdidasProd=clientes.filter(function(c){ return c.estadoProspecto==="Perdido"; }).length+pedidos.filter(function(p){ return p.estadoPedido==="cancelado"; }).length;
-
-        // Ticket promedio
-        var pedidosConTotal=pedidos.filter(function(p){ return Number(p.total)>0&&p.estadoPedido==="entregado"; });
-        var ticketProm=pedidosConTotal.length>0?Math.round(pedidosConTotal.reduce(function(s,p){ return s+Number(p.total); },0)/pedidosConTotal.length):null;
-
-        // Tiempo promedio oportunidad → pedido
-        var tiemposConv=[];
-        clientes.filter(function(c){ return c.estadoProspecto==="Convertido"&&c.fecha&&c.fechaPedido; }).forEach(function(c){
-          var dias=Math.floor((parseFechaLocal(c.fechaPedido)-parseFechaLocal(c.fecha))/86400000);
-          if(dias>=0) tiemposConv.push(dias);
-        });
-        var promDiasConv=tiemposConv.length>0?Math.round(tiemposConv.reduce(function(s,d){ return s+d; },0)/tiemposConv.length):null;
-
-        // Racha
-        var todasFechas={};
-        pedidos.forEach(function(p){ (p.pagos||[]).forEach(function(pg){ if(pg.fecha) todasFechas[pg.fecha.slice(0,10)]=true; }); });
-        ventas.forEach(function(v){ if(v.fecha) todasFechas[v.fecha.slice(0,10)]=true; });
-        clientes.filter(function(c){ return c.estadoProspecto; }).forEach(function(c){ if(c.fecha) todasFechas[c.fecha.slice(0,10)]=true; });
-        var rachaActual=0; var dR=new Date(HOY);
-        for(var ri=0;ri<365;ri++){
-          if(todasFechas[fmtFechaLocal(dR)]) rachaActual++;
-          else if(ri>0) break;
-          dR.setDate(dR.getDate()-1);
-        }
-
-        // Barras últimos 6 meses
-        var MESES_LABELS=["Ene","Feb","Mar","Abr","May","Jun","Jul","Ago","Sep","Oct","Nov","Dic"];
-        var MESES_LARGO=["enero","febrero","marzo","abril","mayo","junio","julio","agosto","septiembre","octubre","noviembre","diciembre"];
-        function diasEnMes(mes,anio){ return new Date(anio,mes+1,0).getDate(); }
-        // Pedidos cancelados: su(s) anticipo(s) siguen en el mes en que
-        // realmente se cobraron, y se descuentan aparte en el mes en que
-        // se canceló el pedido (obtenerReversionIngresoPedido) , mismo
-        // criterio en todo "Ingresos por mes".
-        var mesesData=[];
-        for(var mi=5;mi>=0;mi--){
-          var fechaMes=new Date(HOY.getFullYear(),HOY.getMonth()-mi,1);
-          var mes=fechaMes.getMonth(); var anio=fechaMes.getFullYear();
-          var ingMes=0;
-          pedidos.forEach(function(p){
-            (p.pagos||[]).forEach(function(pg){ var d=new Date(pg.fecha+"T12:00:00"); if(d.getMonth()===mes&&d.getFullYear()===anio) ingMes+=Number(pg.monto); });
-            var revP=obtenerReversionIngresoPedido(p);
-            if(revP){ var dr=new Date(revP.fecha+"T12:00:00"); if(dr.getMonth()===mes&&dr.getFullYear()===anio) ingMes+=revP.monto; }
-          });
-          ventas.forEach(function(v){
-            v.pagos&&v.pagos.forEach(function(pg){ var d=new Date((pg.fecha||v.fecha)+"T12:00:00"); if(d.getMonth()===mes&&d.getFullYear()===anio) ingMes+=Number(pg.monto); });
-          });
-          mesesData.push({label:MESES_LABELS[mes],total:ingMes,mes:mes,anio:anio,esMesActual:mi===0});
-        }
-        var maxMes=Math.max.apply(null,mesesData.map(function(m){ return m.total; }).concat([1]));
-        var mesActual=mesesData[5]; var mesAnterior=mesesData[4];
-
-        // Comparación justa: mismo número de días transcurridos en ambos meses (no mes completo vs parcial)
-        var diaHoy=HOY.getDate();
-        var diaCorte=Math.min(diaHoy,diasEnMes(mesAnterior.mes,mesAnterior.anio));
-        var mesAnteriorParcial=0;
-        pedidos.forEach(function(p){
-          (p.pagos||[]).forEach(function(pg){ var d=new Date(pg.fecha+"T12:00:00"); if(d.getMonth()===mesAnterior.mes&&d.getFullYear()===mesAnterior.anio&&d.getDate()<=diaCorte) mesAnteriorParcial+=Number(pg.monto); });
-          var revP2=obtenerReversionIngresoPedido(p);
-          if(revP2){ var dr2=new Date(revP2.fecha+"T12:00:00"); if(dr2.getMonth()===mesAnterior.mes&&dr2.getFullYear()===mesAnterior.anio&&dr2.getDate()<=diaCorte) mesAnteriorParcial+=revP2.monto; }
-        });
-        ventas.forEach(function(v){
-          v.pagos&&v.pagos.forEach(function(pg){ var d=new Date((pg.fecha||v.fecha)+"T12:00:00"); if(d.getMonth()===mesAnterior.mes&&d.getFullYear()===mesAnterior.anio&&d.getDate()<=diaCorte) mesAnteriorParcial+=Number(pg.monto); });
-        });
-        var numTransaccionesMes=0;
-        pedidos.forEach(function(p){
-          (p.pagos||[]).forEach(function(pg){ var d=new Date(pg.fecha+"T12:00:00"); if(d.getMonth()===mesActual.mes&&d.getFullYear()===mesActual.anio) numTransaccionesMes++; });
-          var revP3=obtenerReversionIngresoPedido(p);
-          if(revP3){ var dr3=new Date(revP3.fecha+"T12:00:00"); if(dr3.getMonth()===mesActual.mes&&dr3.getFullYear()===mesActual.anio) numTransaccionesMes++; }
-        });
-        ventas.forEach(function(v){ var d=new Date(v.fecha+"T12:00:00"); if(d.getMonth()===mesActual.mes&&d.getFullYear()===mesActual.anio) numTransaccionesMes++; });
-        var suficienteData=diaHoy>=3&&numTransaccionesMes>=2;
-        var cambioMes=(suficienteData&&mesAnteriorParcial>0)?Math.round(((mesActual.total-mesAnteriorParcial)/mesAnteriorParcial)*100):null;
-
-        // Meta: cuánto falta para superar el total del mes anterior completo
-        var faltaParaSuperar=Math.max(0,mesAnterior.total-mesActual.total);
-
-        // Texto resumen
-        var resumenTexto;
-        if(pedidosPer.length===0&&ventasPer.length===0){
-          resumenTexto="Aún no hay ventas registradas este período. Cuando entregues un pedido o registres una venta, aquí verás cómo te va.";
-        } else if(tasaConv!==null&&tasaConv>=50){
-          resumenTexto="Convertiste "+convertidosTot+" de "+oportunidadesTot+" oportunidades en pedido. Más de la mitad de las personas que te contactan terminan comprando.";
-        } else if(tasaConv!==null&&tasaConv>=30){
-          resumenTexto="Convertiste el "+tasaConv+"% de tus oportunidades en pedidos y cobraste $"+formatoDinero(totalCobrado)+". Hay margen para crecer con seguimiento.";
-        } else {
-          resumenTexto="Tienes "+(oportunidadesTot-convertidosTot)+" oportunidades que aún no se convirtieron en pedido. Un seguimiento a tiempo puede rescatar algunas.";
-        }
-
-        // Insights
-        var insights=[];
-        if(topProducto) insights.push({ic:"📦",color:"#DCFCE7",icBg:"#166534",titulo:"Tu producto más pedido es "+topProducto[0],desc:topProducto[1]+" veces pedido. Asegúrate de tenerlo siempre disponible y con precio actualizado."});
-        if(topCanal) insights.push({ic:"📣",color:"#EDE9FE",icBg:"#4C1D95",titulo:"La mayoría de tus clientes llegan por "+topCanal[0],desc:topCanal[1]+(topCanal[1]===1?" cliente vino":" clientes vinieron")+" de ahí. Ese canal merece más atención y presencia."});
-        if(sinOrigenCount>0) insights.push({ic:"❓",color:"#FEF3C7",icBg:"#92400E",titulo:sinOrigenCount+(sinOrigenCount===1?" cliente no tiene":" clientes no tienen")+" registrado cómo te encontró",desc:"Registrarlo te ayuda a ver con más claridad qué canal te está trayendo clientes de verdad."});
-        if(promDiasConv!==null) insights.push({ic:"⏱️",color:promDiasConv<=3?"#DCFCE7":"#FEF3C7",icBg:promDiasConv<=3?"#166534":"#92400E",titulo:promDiasConv===0?"Tus clientes deciden rápido":"En promedio tardas "+promDiasConv+" días en cerrar",desc:promDiasConv<=3?"La mayoría de tus ventas se cierran muy rápido. Eso es buena señal de confianza.":"Entre más rápido le mandas el precio, más probabilidad de que compre."});
-        if(topRazon) insights.push({ic:"🏆",color:"#FEF9C3",icBg:"#713F12",titulo:"La razón de compra más común es "+topRazon[0],desc:"Registrada "+topRazon[1]+" veces. Eso es lo que más convence a tus clientes — úsalo en tu comunicación."});
-        if(topMotivoPerdida&&topMotivoPerdida[1]>=2) insights.push({ic:"⚠️",color:"#FEE2E2",icBg:"#991B1B",titulo:'"'+topMotivoPerdida[0]+'" es el motivo más común de que se te vayan clientes',desc:"Apareció en "+topMotivoPerdida[1]+" de "+totalPerdidasProd+" oportunidades o pedidos que no se concretaron."});
-        if(canceladosPer.length>0) insights.push({ic:"❌",color:"#FEE2E2",icBg:"#991B1B",titulo:canceladosPer.length+" pedido"+(canceladosPer.length>1?"s":"")+" cancelado"+(canceladosPer.length>1?"s":"")+" en este período",desc:topMotivoCancelPer?"El motivo más común fue \""+topMotivoCancelPer[0]+"\" ("+topMotivoCancelPer[1]+" de "+canceladosPer.length+").":"Todavía sin un motivo dominante."});
-        if(saldoPorCobrar>0) insights.push({ic:"💰",color:"#FEF3C7",icBg:"#92400E",titulo:"Tienes $"+formatoDinero(saldoPorCobrar)+" pendientes de cobrar",desc:"Pedidos entregados o en proceso con saldo sin liquidar. Un mensaje puede acelerar el pago."});
-
-        // Stats para card oscura
-        var stats=[
-          {label:"Ya ganaste",val:"$"+formatoDinero(totalCobrado),sub:"",color:"#4ADE80",ic:"💼"},
-          {label:"Todavía te deben",val:"$"+formatoDinero(saldoPorCobrar),sub:"por cobrar",color:"#FBBF24",ic:null},
-          {label:"Si cobras todo hoy, terminarías el periodo con",val:"$"+formatoDinero(potencial),sub:"",color:"#A78BFA",ic:"🏆"},
-        ];
-
-        // Acciones semanales
-        var accionesSemana=[];
-        var opsEnSeguimiento=clientes.filter(function(c){ return c.estadoProspecto==="En seguimiento"; });
-        // !tienePrecioReal(c) , no `!c.precioInteres` (ver comentario junto
-        // a la función) , un precio "0" (string, sin definir todavía) era
-        // truthy y esta oportunidad se perdía silenciosamente del conteo.
-        var opsSinPrecio=clientes.filter(function(c){ return c.estadoProspecto==="Nueva"&&c.productoInteres&&!tienePrecioReal(c); });
-        var opsSinProducto=clientes.filter(function(c){ return c.estadoProspecto==="Nueva"&&!c.productoInteres; });
-        if(opsEnSeguimiento.length>0) accionesSemana.push({n:1,ic:"💬",tipo:"seguimiento_espera",titulo:"Da seguimiento a "+opsEnSeguimiento.length+" oportunidad"+(opsEnSeguimiento.length>1?"es":"")+" en espera",desc:"Ya saben el precio. Un mensaje puede cerrar la venta esta semana."});
-        if(saldoPorCobrar>0) accionesSemana.push({n:accionesSemana.length+1,ic:"💰",tipo:"saldo_cobrar",titulo:"Cobra los $"+formatoDinero(saldoPorCobrar)+" pendientes",desc:"Ya entregaste o tienes pedidos activos con saldo. Un mensaje rápido lo resuelve."});
-        if(opsSinPrecio.length>0) accionesSemana.push({n:accionesSemana.length+1,ic:"🏷️",tipo:"sin_precio",titulo:"Manda precio a "+opsSinPrecio.length+" oportunidad"+(opsSinPrecio.length>1?"es":"")+" sin precio",desc:"Ya tienen producto de interés. Solo falta el precio para avanzar."});
-        if(opsSinProducto.length>0) accionesSemana.push({n:accionesSemana.length+1,ic:"🎯",tipo:"sin_producto",titulo:opsSinProducto.length+" contacto"+(opsSinProducto.length>1?"s":"")+" sin producto definido",desc:"Pregúntales qué les interesa. Ese dato vale mucho."});
-        if(accionesSemana.length===0) accionesSemana.push({n:1,ic:"✨",tipo:"agregar_nuevas",titulo:"Agrega nuevas oportunidades",desc:"Cuando alguien te pregunte por tus productos, regístralo. Cada contacto cuenta."});
-        accionesSemana=accionesSemana.slice(0,3);
-
-        // Detectar si la acción principal lleva varios días repitiéndose sin resolverse
-        var diasRepetidoAccion=1;
-        (function(){
-          if(!accionesSemana[0]) return;
-          try{
-            var raw=localStorage.getItem("cleo_streak_accion_prod");
-            var prev=raw?JSON.parse(raw):null;
-            if(prev&&prev.tipo===accionesSemana[0].tipo){
-              diasRepetidoAccion=prev.fecha===FECHA_HOY?(prev.dias||1):(prev.dias||1)+1;
-            }
-            localStorage.setItem("cleo_streak_accion_prod",JSON.stringify({tipo:accionesSemana[0].tipo,dias:diasRepetidoAccion,fecha:FECHA_HOY}));
-          }catch(e){}
-        })();
-
-        var animo=totalCobrado>0&&tasaConv>=50?"Vas por buen camino. Más de la mitad de las personas que te contactan terminan comprando.":
-          totalCobrado>0&&tasaConv>=30?"Estás generando ventas. Un par de cierres más y este período cambia por completo.":
-          saldoPorCobrar>0?"Tienes $"+formatoDinero(saldoPorCobrar)+" esperando cobro. Eso ya es tuyo — solo falta pedirlo.":
-          "Cada pedido registrado es información valiosa. Los patrones aparecen cuando más datos tienes.";
-
-        // ── Ganancia estimada del período ────────────────────────────────
-        function fp(n){ return "$"+(Math.round((n||0)*100)/100).toFixed(2); }
-        var ganVentasBrutas=0; var ganCostos=0;
-        var ganItemsConCosto=0; var ganItemsSinCosto=0;
-        pedidosPer.filter(function(p){ return p.estadoPedido!=="cancelado"; }).forEach(function(ped){
-          obtenerItemsPedido(ped).forEach(function(item){
-            ganVentasBrutas+=Number(item.total||Number(item.precioUnitario||0)*Number(item.cantidad||1));
-            var prod=productosCat.find(function(pr){ return pr.id===item.catalogoId; });
-            if(prod&&prod.costoConfig){
-              var res=calcularCostoUnitario(prod.costoConfig,materialesCat);
-              if(res&&res.costoTotal!=null&&!res.incompleto){
-                ganCostos+=res.costoTotal*Number(item.cantidad||1);
-                ganItemsConCosto++;
-              } else { ganItemsSinCosto++; }
-            } else { ganItemsSinCosto++; }
-          });
-        });
-        var ganancia=ganVentasBrutas-ganCostos;
-        var ganMargen=ganVentasBrutas>0?Math.round((ganancia/ganVentasBrutas)*100):null;
-        var hayGanancias=ganItemsConCosto>0;
-        var ganParcial=ganItemsConCosto>0&&ganItemsSinCosto>0;
-        var colorGan=ganMargen==null?C.textDim:ganMargen>=40?C.green:ganMargen>=20?C.amber:"#EF4444";
-
-        return e("div",{style:{display:"flex",flexDirection:"column",gap:0}},
-
-          // TOP BAR
-          e("div",{style:{display:"flex",alignItems:"center",justifyContent:"space-between",marginLeft:isMobile?-16:0,marginRight:isMobile?-16:0,marginTop:isMobile?-20:0,padding:isMobile?"12px 16px":"0 0 16px",background:isMobile?C.bg:"none"}},
-            e("div",{style:{display:"flex",gap:3,background:C.surfaceUp,border:"1px solid "+C.border,borderRadius:10,padding:3}},
-              PERIODOS.map(function(p){
-                var activo=periodo===p[0];
-                return e("button",{key:p[0],style:{padding:"5px 12px",borderRadius:8,border:"none",cursor:"pointer",fontSize:12,background:activo?C.surface:"transparent",color:activo?C.text:C.textMuted,fontWeight:activo?600:400,boxShadow:activo?"0 1px 3px rgba(0,0,0,0.08)":"none",transition:"all 0.15s"},onClick:function(){ setPeriodo(p[0]); }},p[1]);
-              })
-            )
-          ),
-
-          // TÍTULO
-          e("div",{style:{paddingTop:24,marginBottom:24}},
-            e("div",{style:{fontSize:28,fontWeight:700,color:C.text,lineHeight:1.1,marginBottom:6}},"Así va tu negocio"),
-            e("div",{style:{fontSize:14,color:C.textMuted}},"Una revisión de cómo estás vendiendo, no solo cuánto.")
-          ),
-
-          e("div",{style:{display:"flex",flexDirection:"column",gap:24}},
-
-          // CARD OSCURA — igual que servicios
-          e("div",{style:{background:"#0F1729",borderRadius:24,padding:isMobile?"24px 20px":"28px 24px",position:"relative",overflow:"hidden",boxShadow:"0 8px 32px rgba(0,0,0,0.18)"}},
-            e("div",{style:{display:"grid",gridTemplateColumns:isMobile?"1fr":"1fr 1px 1fr 1px 1fr",gap:isMobile?0:0,alignItems:"center"}},
-              stats.map(function(k,i){
-                var isLast=i===stats.length-1;
-                return [
-                  e("div",{key:"s"+i,style:{padding:isMobile?"10px 8px":"0 10px",textAlign:"center",borderBottom:isMobile&&!isLast?"1px solid rgba(255,255,255,0.08)":"none"}},
-                    e("div",{style:{fontSize:isMobile?11:11,color:"rgba(255,255,255,0.5)",letterSpacing:"0.2px",marginBottom:6,lineHeight:1.3}},k.label),
-                    e("div",{style:{fontSize:isMobile?24:22,fontWeight:700,color:k.color,lineHeight:1,marginBottom:4,whiteSpace:"nowrap"}},k.val),
-                    e("div",{style:{fontSize:isMobile?11:11,color:"rgba(255,255,255,0.35)",lineHeight:1.3,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}},k.sub)
-                  ),
-                  !isLast&&!isMobile?e("div",{key:"d"+i,style:{width:1,background:"rgba(255,255,255,0.08)",alignSelf:"stretch"}}):null
-                ];
-              }).flat().filter(Boolean)
-            ),
-            e("div",{style:{marginTop:14,paddingTop:14,borderTop:"1px solid rgba(255,255,255,0.06)",fontSize:13,color:"rgba(255,255,255,0.5)",lineHeight:1.6}},resumenTexto)
-          ),
-
-          // GANANCIA ESTIMADA — solo si hay ítems con costo configurado
-          hayGanancias&&e("div",{style:{background:C.surface,borderRadius:20,padding:isMobile?"16px 16px":"18px 24px",border:"1px solid "+C.border}},
-            e("div",{style:{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:14,flexWrap:"wrap",gap:8}},
-              e("div",{style:{display:"flex",alignItems:"center",gap:8}},
-                e("div",{style:{fontSize:11,fontWeight:700,color:C.textDim,textTransform:"uppercase",letterSpacing:"1px"}},"Ganancia estimada del período"),
-                ganParcial&&e("div",{style:{fontSize:sc.textLabel,fontWeight:600,color:C.amber,background:C.amber+"18",borderRadius:6,padding:"2px 8px",border:"1px solid "+C.amber+"30"}},"Parcial")
-              ),
-              ganMargen!=null&&e("div",{style:{display:"flex",alignItems:"baseline",gap:3}},
-                e("div",{style:{fontSize:26,fontWeight:800,color:colorGan,lineHeight:1}},ganMargen+"%"),
-                e("div",{style:{fontSize:11,color:C.textDim,marginLeft:2}},"margen")
-              )
-            ),
-            e("div",{style:{display:"grid",gridTemplateColumns:isMobile?"1fr 1fr":"1fr 1fr 1fr",gap:10}},
-              e("div",{style:{background:C.bg,borderRadius:12,padding:"12px 14px"}},
-                e("div",{style:{fontSize:9,fontWeight:700,color:C.textDim,textTransform:"uppercase",letterSpacing:"0.8px",marginBottom:4}},"Ventas del período"),
-                e("div",{style:{fontSize:18,fontWeight:700,color:C.text,lineHeight:1}},fp(ganVentasBrutas)),
-                e("div",{style:{fontSize:sc.textLabel,color:C.textDim,marginTop:3}},"Incluye pedidos por cobrar")
-              ),
-              e("div",{style:{background:C.bg,borderRadius:12,padding:"12px 14px"}},
-                e("div",{style:{fontSize:9,fontWeight:700,color:C.textDim,textTransform:"uppercase",letterSpacing:"0.8px",marginBottom:4}},"Costos estimados"),
-                e("div",{style:{fontSize:18,fontWeight:700,color:C.text,lineHeight:1}},fp(ganCostos))
-              ),
-              e("div",{style:{background:ganancia>=0?C.greenBg:"#FEF2F2",borderRadius:12,padding:"12px 14px",border:"1px solid "+(ganancia>=0?"#86EFAC":"#FCA5A5")}},
-                e("div",{style:{fontSize:9,fontWeight:700,color:ganancia>=0?C.green:"#EF4444",textTransform:"uppercase",letterSpacing:"0.8px",marginBottom:4}},"Ganancia bruta"),
-                e("div",{style:{fontSize:18,fontWeight:700,color:ganancia>=0?C.green:"#EF4444",lineHeight:1}},(ganancia<0?"-":"")+fp(Math.abs(ganancia)))
-              )
-            ),
-            ganParcial&&e("div",{style:{fontSize:11,color:C.textMuted,marginTop:10,lineHeight:1.5}},
-              ganItemsSinCosto+" producto"+(ganItemsSinCosto>1?"s":"")+" sin costo configurado. Agrégalo"+(ganItemsSinCosto>1?"s":"")+" en el catálogo para ver la ganancia completa."
-            )
-          ),
-
-          // GRÁFICA BARRAS
-          e("div",{style:{background:C.surface,borderRadius:20,padding:isMobile?"16px":"24px",border:"1px solid "+C.border}},
-            e("div",{style:{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:4}},
-              e("div",{style:{fontSize:14,fontWeight:700,color:C.text}},"Ingresos por mes"),
-              cambioMes!==null&&e("div",{style:{textAlign:"right"}},
-                e("div",{style:{fontSize:12,color:cambioMes>=0?C.green:"#EF4444",fontWeight:600}},(cambioMes>=0?"+":"")+cambioMes+"%"),
-                e("div",{style:{fontSize:9,color:C.textDim}},"vs mismo punto de "+MESES_LARGO[mesAnterior.mes])
-              )
-            ),
-            mesActual.total>0&&faltaParaSuperar>0&&e("div",{style:{fontSize:isMobile?13:14,color:C.textMuted,marginBottom:16,lineHeight:1.4}},
-              "Te faltan ",e("span",{style:{fontWeight:700,color:C.purple}},"$"+formatoDinero(faltaParaSuperar))," para superar "+MESES_LARGO[mesAnterior.mes]
-            ),
-            mesActual.total>0&&faltaParaSuperar===0&&e("div",{style:{fontSize:isMobile?13:14,color:C.green,fontWeight:600,marginBottom:16,lineHeight:1.4}},"🎉 Vas $"+formatoDinero((mesActual.total-mesAnterior.total))+" arriba de "+MESES_LARGO[mesAnterior.mes]),
-            mesActual.total===0&&e("div",{style:{fontSize:12,color:C.textDim,marginBottom:16,lineHeight:1.4}},"Aún no registras ingresos en "+MESES_LARGO[mesActual.mes]+". En cuanto llegue el primero, verás tu avance aquí."),
-            e("div",{style:{display:"flex",gap:isMobile?4:8,alignItems:"flex-end",height:80}},
-              mesesData.map(function(m,i){
-                var h=Math.max(4,Math.round((m.total/maxMes)*80));
-                return e("div",{key:i,style:{flex:1,display:"flex",flexDirection:"column",alignItems:"center",gap:4}},
-                  e("div",{style:{width:"100%",height:h,borderRadius:"4px 4px 0 0",background:m.esMesActual?C.purple:C.purple+"44",transition:"height 0.3s"}}),
-                  e("div",{style:{fontSize:isMobile?8:9,color:C.textDim,textAlign:"center"}},m.label),
-                  m.total>0&&e("div",{style:{fontSize:8,color:C.textDim,textAlign:"center"}},"$"+(m.total>=1000?Math.round(m.total/1000)+"k":m.total))
-                );
-              })
-            )
-          ),
-
-          // TARJETA: REPORTE COMERCIAL , reutiliza el mismo modal/estado/
-          // funciones ya existentes (modalReporteComercial,
-          // formReporteComercial, construirDatosReporteComercial,
-          // manejarGenerarReporteComercialPDF) , nunca los reconstruye.
-          // Misma esProductos ya vigente en este render, así que el reporte
-          // que abre siempre corresponde al perfil actual.
-          e("div",{style:Object.assign({},st.card,{display:"flex",flexDirection:isMobile?"column":"row",alignItems:isMobile?"stretch":"center",justifyContent:"space-between",gap:16})},
-            e("div",null,
-              e("div",{style:{fontSize:15,fontWeight:700,color:C.text,marginBottom:4}},"Reporte comercial"),
-              e("div",{style:{fontSize:13,color:C.textMuted,lineHeight:1.5}},"Elige un periodo y descarga un resumen de tus ventas, cobros, pendientes y oportunidades.")
-            ),
-            e("button",{style:Object.assign({},st.btnP,{whiteSpace:"nowrap",flexShrink:0}),onClick:function(){
-              setErrorReporteComercial("");
-              setFormReporteComercial(rangoReporteComercialPorDefecto());
-              setModalReporteComercial(true);
-            }},"Generar reporte PDF")
-          ),
-
-          e("div",{style:{display:"grid",gridTemplateColumns:isMobile?"1fr":"1fr 1fr",gap:20}},
-
-          // CARD 3: LO QUE APRENDIÓ CLEO (insights + canales)
-          e("div",{style:{background:C.surface,borderRadius:20,padding:"24px",border:"1px solid "+C.border,boxShadow:"0 2px 12px rgba(0,0,0,0.04)"}},
-            e("div",{style:{display:"flex",alignItems:"center",gap:10,marginBottom:6}},
-              e("div",{style:{width:28,height:28,borderRadius:8,background:C.purplePale,display:"flex",alignItems:"center",justifyContent:"center",fontSize:14}},"🧠"),
-              e("div",{style:{fontSize:11,fontWeight:700,color:C.purple,textTransform:"uppercase",letterSpacing:"1.5px"}},"Lo que aprendió CLEO")
-            ),
-            e("div",{style:{fontSize:13,color:C.textMuted,marginBottom:20}},"Patrones de tus ventas este período"),
-
-            // Insights
-            insights.length>0&&e("div",{style:{display:"flex",flexDirection:"column",gap:10,marginBottom:20}},
-              insights.map(function(ins,i){
-                return e("div",{key:i,style:{background:C.bg,borderRadius:14,padding:"14px 16px",border:"1px solid "+C.border,display:"flex",gap:12,alignItems:"flex-start"}},
-                  e("div",{style:{width:32,height:32,borderRadius:9,background:ins.color,display:"flex",alignItems:"center",justifyContent:"center",fontSize:16,flexShrink:0}},ins.ic),
-                  e("div",null,
-                    e("div",{style:{fontSize:13,fontWeight:600,color:C.text,marginBottom:3,lineHeight:1.3}},ins.titulo),
-                    e("div",{style:{fontSize:12,color:C.textMuted,lineHeight:1.5}},ins.desc)
-                  )
-                );
-              })
-            ),
-          ),
-
-          e("div",{style:{display:"flex",flexDirection:"column",gap:20}},
-
-          (function(){
-            var canalesP=["Instagram","Facebook","WhatsApp","Referido","Otro"].map(function(o){
-              var total=clientes.filter(function(c){ return c.origen===o&&c.estadoProspecto; }).length;
-              var convertidos=clientes.filter(function(c){ return c.origen===o&&c.estadoProspecto==="Convertido"; }).length;
-              var sinConvertir=total-convertidos;
-              return {canal:o,total:total,convertidos:convertidos,sinConvertir:sinConvertir};
-            }).filter(function(c){ return c.total>0; }).sort(function(a,b){ return b.total-a.total; });
-            if(canalesP.length===0) return null;
-            return e("div",{style:{background:C.surface,borderRadius:20,padding:"24px",border:"1px solid "+C.border,boxShadow:"0 2px 12px rgba(0,0,0,0.04)"}},
-              e("div",{style:{fontSize:11,fontWeight:700,color:C.textDim,textTransform:"uppercase",letterSpacing:"1px",marginBottom:12}},"De dónde vienen tus clientes"),
-              e("div",{style:{display:"flex",flexDirection:"column",gap:8}},
-                canalesP.map(function(c){
-                  var msg=c.convertidos===c.total&&c.total>0?"Todos compraron — tu mejor canal":
-                          c.sinConvertir>0?c.sinConvertir+" sin comprar aún — dales seguimiento":
-                          "Sin ventas registradas aún";
-                  var color=c.convertidos===c.total&&c.total>0?C.green:c.sinConvertir>0?C.amber:C.textDim;
-                  return e("div",{key:c.canal,style:{display:"flex",alignItems:"center",gap:12,padding:"10px 12px",background:C.bg,borderRadius:10,border:"1px solid "+C.border}},
-                    e("div",{style:{flex:1}},
-                      e("div",{style:{display:"flex",justifyContent:"space-between",alignItems:"center"}},
-                        e("span",{style:{fontSize:13,fontWeight:600,color:C.text}},c.canal),
-                        e("span",{style:{fontSize:12,color:C.textMuted}},c.total+" cliente"+(c.total>1?"s":""))
-                      ),
-                      e("div",{style:{fontSize:11,color:color,marginTop:2}},msg)
-                    )
-                  );
-                })
-              )
-            );
-          })(),
-
-          // CARD 4: TU PRÓXIMO PASO (una sola acción principal + secundarias discretas)
-          e("div",{style:{background:C.surface,borderRadius:20,padding:"24px",border:"1px solid "+C.border,boxShadow:"0 2px 12px rgba(0,0,0,0.04)"}},
-            e("div",{style:{display:"flex",alignItems:"center",gap:10,marginBottom:6}},
-              e("div",{style:{width:28,height:28,borderRadius:8,background:"#DCFCE7",display:"flex",alignItems:"center",justifyContent:"center",fontSize:14}},"🎯"),
-              e("div",{style:{fontSize:11,fontWeight:700,color:C.green,textTransform:"uppercase",letterSpacing:"1.5px"}},"Tu próximo paso")
-            ),
-            e("div",{style:{fontSize:13,color:C.textMuted,marginBottom:20}},diasRepetidoAccion>=3?"Llevas "+diasRepetidoAccion+" días con esto pendiente. ¿Qué te está deteniendo?":"Esto es lo que más impacto tendría hoy."),
-            // Acción principal, grande y sola
-            accionesSemana[0]&&e("div",{style:{background:"linear-gradient(135deg,#ECFDF5 0%,#F0FDF4 100%)",borderRadius:16,padding:"18px 20px",border:"1px solid #86EFAC",display:"flex",gap:14,alignItems:"flex-start",marginBottom:accionesSemana.length>1?14:20}},
-              e("div",{style:{fontSize:26,flexShrink:0}},accionesSemana[0].ic),
-              e("div",null,
-                e("div",{style:{fontSize:15,fontWeight:700,color:C.text,marginBottom:4,lineHeight:1.3}},accionesSemana[0].titulo),
-                e("div",{style:{fontSize:13,color:C.textMuted,lineHeight:1.5}},accionesSemana[0].desc)
-              )
-            ),
-            // Secundarias, discretas
-            accionesSemana.length>1&&e("div",{style:{marginBottom:20}},
-              e("div",{style:{fontSize:11,color:C.textDim,marginBottom:8}},"Si te sobra tiempo, también:"),
-              e("div",{style:{display:"flex",flexDirection:"column",gap:6}},
-                accionesSemana.slice(1).map(function(ac){
-                  return e("div",{key:ac.n,style:{display:"flex",gap:8,alignItems:"center",fontSize:12,color:C.textMuted}},
-                    e("span",{style:{fontSize:13,flexShrink:0}},ac.ic),
-                    e("span",null,ac.titulo)
-                  );
-                })
-              )
-            ),
-            // Ánimo integrado
-            e("div",{style:{background:C.purplePale,borderRadius:12,padding:"14px 16px",border:"1px solid "+C.purple+"22",display:"flex",alignItems:"center",gap:12}},
-              e("div",{style:{fontSize:22,flexShrink:0}},"✨"),
-              e("div",{style:{fontSize:13,color:C.text,lineHeight:1.6}},animo)
-            )
-          )
-
-          ) // cierra columna 2 (canales + Tu próximo paso)
-
-          ) // cierra grid Card3/Card4
-          ,
-          // 🔥 TU RITMO DE VENTAS (compacta, proporcional)
-          e("div",{style:{background:"#0F1729",borderRadius:14,padding:"12px 18px",display:"flex",alignItems:"center",gap:14,flexWrap:isMobile?"wrap":"nowrap"}},(function(){
-            var todasFechas=[];
-            ventas.forEach(function(v){ if(v.fecha) todasFechas.push(v.fecha.slice(0,10)); });
-            cotizaciones.forEach(function(c){ if(c.fecha) todasFechas.push(c.fecha.slice(0,10)); });
-            clientes.forEach(function(c){ if(c.fecha) todasFechas.push(c.fecha.slice(0,10)); });
-            var fechasSet={}; todasFechas.forEach(function(f){ fechasSet[f]=true; });
-            var hoyStr=fmtFechaLocal(HOY);
-            var rachaActual=0;
-            var d=new Date(HOY);
-            for(var ri=0;ri<365;ri++){
-              var ds=fmtFechaLocal(d);
-              if(fechasSet[ds]) rachaActual++;
-              else if(ri>0) break;
-              d.setDate(d.getDate()-1);
-            }
-            // hayAlgunaActividad: si nunca hubo NINGUNA venta/cotización/
-            // cliente con fecha, el ciclo de abajo nunca encuentra una
-            // coincidencia y se agota en los 365 intentos , antes eso hacía
-            // que diasSinAct terminara en 365 y el mensaje dijera "Han
-            // pasado 365 días desde tu última actividad" para una cuenta
-            // recién creada que en realidad nunca tuvo actividad alguna.
-            var hayAlgunaActividad=todasFechas.length>0;
-            var diasSinAct=0;
-            if(hayAlgunaActividad){
-              var d2=new Date(HOY); d2.setDate(d2.getDate()-1);
-              for(var ri2=0;ri2<365;ri2++){
-                if(fechasSet[fmtFechaLocal(d2)]) break;
-                diasSinAct++; d2.setDate(d2.getDate()-1);
-              }
-            }
-            var tieneHoy=!!fechasSet[hoyStr];
-            var ultimos7=[];
-            for(var ui=6;ui>=0;ui--){ var ud=new Date(HOY); ud.setDate(ud.getDate()-ui); ultimos7.push(fmtFechaLocal(ud)); }
-            var horaActual=new Date().getHours();
-            var esTarde=horaActual>=18;
-            var mensajeRacha=(!tieneHoy&&esTarde&&rachaActual>=2)?"Se está acabando el día y aún no registras nada.":
-              rachaActual>=7?"¡Llevas "+rachaActual+" días seguidos activo en CLEO!":
-              rachaActual>=3?"Llevas "+rachaActual+" días registrando actividad.":
-              tieneHoy?"Hoy ya registraste actividad. Buen comienzo.":
-              !hayAlgunaActividad?"Registra tu primera venta, cotización o cliente para empezar a ver tu ritmo aquí.":
-              diasSinAct===0?"Empieza hoy, registrar algo tarda menos de un minuto.":
-              diasSinAct===1?"Ayer no registraste nada. Hoy puedes retomar el ritmo.":
-              "Han pasado "+diasSinAct+" días desde tu última actividad.";
-            var colorRacha=(!tieneHoy&&esTarde&&rachaActual>=2)?"#F87171":rachaActual>=7?"#FBBF24":rachaActual>=3?"#4ADE80":"#94A3B8";
-            return [
-              e("div",{key:"e",style:{fontSize:20,flexShrink:0}},rachaActual>=7?"🔥":rachaActual>=3?"⚡":"🌱"),
-              e("div",{key:"n",style:{flexShrink:0}},
-                e("div",{style:{fontSize:sc.namePerson,fontWeight:800,color:colorRacha,lineHeight:1}},rachaActual+" días"),
-                e("div",{style:{fontSize:9,color:"rgba(255,255,255,0.35)",marginTop:1}},"de racha")
-              ),
-              e("div",{key:"s",style:{width:1,height:24,background:"rgba(255,255,255,0.1)",flexShrink:0}}),
-              e("div",{key:"m",style:{flex:1,fontSize:12,color:"rgba(255,255,255,0.55)",lineHeight:1.35,minWidth:150}},mensajeRacha),
-              e("div",{key:"h",style:{display:"flex",gap:4,flexShrink:0}},
-                ultimos7.map(function(f,i){
-                  var activo=!!fechasSet[f];
-                  var esHoy=f===hoyStr;
-                  return e("div",{key:i,style:{width:14,height:14,borderRadius:4,background:activo?(esHoy?colorRacha:"rgba(75,94,252,0.6)"):"rgba(255,255,255,0.06)",border:esHoy?"1px solid "+colorRacha+"66":"none"}});
-                })
-              )
-            ];
-          })()),
-
-          ) // fin gap:24
-        ); // fin return
-      })(),
-      vista==="resumen"&&!esProductos&&(function(){
-        var aceptadas=cotsPeriodo.filter(function(c){ return c.estatus==="Aceptada"; });
-        var rechazadas=cotsPeriodo.filter(function(c){ return c.estatus==="Rechazada"; });
-        // totalG = lo que realmente se ha cobrado, contado en el periodo en que cada pago entró
-        var totalG=totalPagadoCotizacionesPeriodo(cotizaciones,periodo);
-        var totalR=rechazadas.reduce(function(s,c){ return s+c.monto; },0);
-        var totalP=cotsPeriodo.filter(function(c){ return c.estatus==="Pendiente"; }).reduce(function(s,c){ return s+c.monto; },0);
-        var tasa=cotsPeriodo.length?Math.round((aceptadas.length/cotsPeriodo.length)*100):0;
-        var prom=aceptadas.length?Math.round(totalG/aceptadas.length):0;
-        var totalSaldos=cotizaciones.filter(function(c){ return c.estatus==="Aceptada"; }).reduce(function(s,c){ return s+saldoPendienteDe(c,c.monto); },0)
-          +ventas.reduce(function(s,v){ return s+saldoPendienteDe(v,v.monto); },0);
-        var motivoCount={};
-        rechazadas.forEach(function(c){ if(c.motivoPerdida) motivoCount[c.motivoPerdida]=(motivoCount[c.motivoPerdida]||0)+1; });
-        var motivosRank=Object.entries(motivoCount).sort(function(a,b){ return b[1]-a[1]; });
-        var canalCierres={};
-        clientes.filter(function(c){ return c.etapa==="Ganado"; }).forEach(function(c){ canalCierres[c.origen]=(canalCierres[c.origen]||0)+1; });
-        var mejorCanalCierre=Object.entries(canalCierres).sort(function(a,b){ return b[1]-a[1]; })[0];
-
-        // Ventas directas: se cuentan en el periodo en que realmente entró el dinero
-        var ventasPer=ventas.filter(function(v){ return enPeriodo(v.fecha,periodo); });
-        var totalVD=totalPagadoVentasPeriodo(ventas,periodo);
-        var vdConContacto=ventasPer.filter(function(v){ return v.tipo==="especifico"; }).length;
-        var vdSinContacto=ventasPer.filter(function(v){ return v.tipo!=="especifico"; }).length;
-        var pctCapturado=ventasPer.length>0?Math.round((vdConContacto/ventasPer.length)*100):null;
-
-        // Servicio/concepto más vendido (cotizaciones aceptadas + ventas
-        // rápidas) , se cuenta cada item de cada cotización por separado
-        // (no el resumen corto "X + N más"), para que el conteo real de
-        // cada servicio no se pierda dentro de cotizaciones multi-item.
-        var conceptoCount={};
-        aceptadas.forEach(function(c){ obtenerItemsCotizacion(c).forEach(function(it){ if(it.nombre){ var k=it.nombre.trim(); conceptoCount[k]=(conceptoCount[k]||0)+1; } }); });
-        ventasPer.forEach(function(v){ if(v.concepto){ var k=v.concepto.trim(); conceptoCount[k]=(conceptoCount[k]||0)+1; } });
-        var topConcepto=Object.entries(conceptoCount).sort(function(a,b){ return b[1]-a[1]; })[0]||null;
-
-        // Tiempo promedio de cierre (dias desde registro hasta cotizacion aceptada)
-        var tiemposCierre=[];
-        aceptadas.forEach(function(cot){
-          var cl=clientes.find(function(c){ return c.id===cot.clienteId; });
-          if(cl&&cl.fecha&&cot.fecha){
-            var dias=Math.floor((parseFechaLocal(cot.fecha)-parseFechaLocal(cl.fecha))/86400000);
-            if(dias>=0) tiemposCierre.push(dias);
-          }
-        });
-        var promDiasCierre=tiemposCierre.length>0?Math.round(tiemposCierre.reduce(function(s,d){ return s+d; },0)/tiemposCierre.length):null;
-        // Comparar con periodo anterior para ver tendencia
-        var cotsPeriodoAnterior=cotizaciones.filter(function(c){
-          if(periodo==="mes"){ var d=parseFechaLocal(c.fecha); var prev=new Date(HOY); prev.setMonth(prev.getMonth()-1); return d.getMonth()===prev.getMonth()&&d.getFullYear()===prev.getFullYear()&&c.estatus==="Aceptada"; }
-          return false;
-        });
-        var tiemposAnterior=[];
-        cotsPeriodoAnterior.forEach(function(cot){
-          var cl=clientes.find(function(c){ return c.id===cot.clienteId; });
-          if(cl&&cl.fecha){ var dias=Math.floor((parseFechaLocal(cot.fecha)-parseFechaLocal(cl.fecha))/86400000); if(dias>=0) tiemposAnterior.push(dias); }
-        });
-        var promAnterior=tiemposAnterior.length>0?Math.round(tiemposAnterior.reduce(function(s,d){ return s+d; },0)/tiemposAnterior.length):null;
-        var tendenciaCierre=promDiasCierre!==null&&promAnterior!==null?(promDiasCierre<promAnterior?"mejorando":promDiasCierre>promAnterior?"empeorando":"igual"):null;
-
-        var motivoPrincipal=motivosRank.length>0?motivosRank[0][0]:null;
-        var resumenTexto;
-        if(cotsPeriodo.length===0){
-          resumenTexto=esProductos?"Aun no hay precios registrados este periodo. Cuando registres uno, aqui veras cuantos clientes te compran.":"Aun no hay cotizaciones en este periodo. Cuando mandes una, aqui veras como te va.";
-        } else if(aceptadas.length===0){
-          resumenTexto="Mandaste "+cotsPeriodo.length+" cotizacion"+(cotsPeriodo.length>1?"es":"")+" este periodo pero ninguna cerro todavia."+(motivoPrincipal?" El motivo mas frecuente fue '"+motivoPrincipal+"'.":" Registra el motivo cuando pierdas una , te ayuda a mejorar.");
-        } else if(tasa>=50){
-          resumenTexto="Cerraste "+aceptadas.length+" de "+cotsPeriodo.length+" cotizaciones. Excelente , mas de la mitad de lo que mandas se convierte en venta.";
-        } else if(tasa>=30){
-          resumenTexto="Cerraste "+aceptadas.length+" de "+cotsPeriodo.length+" cotizaciones y cobraste $"+formatoDinero(totalG)+"."+(motivoPrincipal?" Las que no cerraron fue principalmente por '"+motivoPrincipal+"'.":"");
-        } else {
-          resumenTexto="Cerraste "+aceptadas.length+" de "+cotsPeriodo.length+" cotizaciones."+(motivoPrincipal?" El motivo mas frecuente de rechazo fue '"+motivoPrincipal+"' , un seguimiento a tiempo puede rescatar algunas.":" Registra por que no cerraron , ese dato vale oro.");
-        }
-        var maxLeads=Math.max.apply(null,ORIGENES.map(function(o){ return clientes.filter(function(c){ return c.origen===o; }).length; }).concat([1]));
-
-        // Clientes recuperados: estaban Perdidos y ahora son Ganados o tienen cotización Aceptada
-        var recuperados=clientes.filter(function(c){
-          if(c.etapa!=="Ganado") return false;
-          // Tiene historial de cotización rechazada o motivoPerdida registrado
-          var tuvoRechazo=cotizaciones.some(function(cot){ return cot.clienteId===c.id&&(cot.estatus==="Rechazada"||cot.motivoPerdida); });
-          return tuvoRechazo||c.motivoPerdida;
-        });
-        var perdidosActuales=clientes.filter(function(c){ return c.etapa==="Perdido"; });
-        var tasaRecuperacion=perdidosActuales.length+recuperados.length>0?Math.round((recuperados.length/(perdidosActuales.length+recuperados.length))*100):null;
-
-        // ── DATOS PARA GRAFICAS ──────────────────────────────────────────────
-
-        // Dona: cotizaciones vs ventas directas (sobre lo REALMENTE cobrado)
-        var totalCotHist=cotizaciones.filter(function(c){ return c.estatus==="Aceptada"; }).reduce(function(s,c){ return s+totalPagadoDe(c); },0);
-        var totalVDHist=ventas.reduce(function(s,v){ return s+totalPagadoDe(v); },0);
-        var totalDona=totalCotHist+totalVDHist||1;
-        var pctCot=Math.round((totalCotHist/totalDona)*100);
-        var pctVD=100-pctCot;
-        // SVG dona: radio=54, stroke=18, circunferencia=2*pi*54=339.3
-        var circ=339.3;
-        var dashCot=(pctCot/100)*circ;
-        var dashVD=(pctVD/100)*circ;
-
-        // Barras por mes , ultimos 6 meses , se suma cada movimiento real
-        // por SU PROPIA fecha, igual que la versión de Productos, nunca el
-        // monto total del documento filtrado por su fecha de creación.
-        var MESES_LABELS=["Ene","Feb","Mar","Abr","May","Jun","Jul","Ago","Sep","Oct","Nov","Dic"];
-        var MESES_LARGO=["enero","febrero","marzo","abril","mayo","junio","julio","agosto","septiembre","octubre","noviembre","diciembre"];
-        var mesesData=[];
-        for(var mi=5;mi>=0;mi--){
-          var fechaMes=new Date(HOY.getFullYear(),HOY.getMonth()-mi,1);
-          var mes=fechaMes.getMonth(); var anio=fechaMes.getFullYear();
-          var ingMesServ=0;
-          cotizaciones.forEach(function(c){ (c.pagos||[]).forEach(function(pg){ var d=parseFechaLocal(pg.fecha); if(d.getMonth()===mes&&d.getFullYear()===anio) ingMesServ+=Number(pg.monto); }); });
-          ventas.forEach(function(v){ (v.pagos||[]).forEach(function(pg){ var d=parseFechaLocal(pg.fecha); if(d.getMonth()===mes&&d.getFullYear()===anio) ingMesServ+=Number(pg.monto); }); });
-          mesesData.push({label:MESES_LABELS[mes],total:ingMesServ,mes:mes,anio:anio,esMesActual:mi===0});
-        }
-        var maxMes=Math.max.apply(null,mesesData.map(function(m){ return m.total; }).concat([1]));
-        var mesActual=mesesData[5]; var mesAnterior=mesesData[4];
-        var diaHoy2=HOY.getDate();
-        var diaCorte2=Math.min(diaHoy2,new Date(mesAnterior.anio,mesAnterior.mes+1,0).getDate());
-        var mesAnteriorParcial2=0;
-        cotizaciones.forEach(function(c){ (c.pagos||[]).forEach(function(pg){ var d=parseFechaLocal(pg.fecha); if(d.getMonth()===mesAnterior.mes&&d.getFullYear()===mesAnterior.anio&&d.getDate()<=diaCorte2) mesAnteriorParcial2+=Number(pg.monto); }); });
-        ventas.forEach(function(v){ (v.pagos||[]).forEach(function(pg){ var d=parseFechaLocal(pg.fecha); if(d.getMonth()===mesAnterior.mes&&d.getFullYear()===mesAnterior.anio&&d.getDate()<=diaCorte2) mesAnteriorParcial2+=Number(pg.monto); }); });
-        var cambioMes=(diaHoy2>=3&&mesAnteriorParcial2>0)?Math.round(((mesActual.total-mesAnteriorParcial2)/mesAnteriorParcial2)*100):null;
-        var faltaParaSuperar=Math.max(0,mesAnterior.total-mesActual.total);
-
-        return e("div",{style:{display:"flex",flexDirection:"column",gap:0}},
-
-          // TOP BAR
-          e("div",{style:{display:"flex",alignItems:"center",justifyContent:"space-between",marginLeft:isMobile?-16:0,marginRight:isMobile?-16:0,marginTop:isMobile?-20:0,padding:isMobile?"12px 16px":"0 0 16px",background:isMobile?C.bg:"none"}},
-            e("div",{style:{display:"flex",gap:3,background:C.surfaceUp,border:"1px solid "+C.border,borderRadius:10,padding:3}},
-              [["semana","Semana"],["mes","Mes"],["trimestre","Trimestre"],["todo","Todo"]].map(function(p){
-                var activo=periodo===p[0];
-                return e("button",{key:p[0],style:{padding:"5px 12px",borderRadius:8,border:"none",cursor:"pointer",fontSize:12,background:activo?C.surface:"transparent",color:activo?C.text:C.textMuted,fontWeight:activo?600:400,boxShadow:activo?"0 1px 3px rgba(0,0,0,0.08)":"none",transition:"all 0.15s"},onClick:function(){ setPeriodo(p[0]); }},p[1]);
-              })
-            )
-          ),
-
-          // TITULO
-          e("div",{style:{paddingTop:24,marginBottom:24}},
-            e("div",{style:{fontSize:28,fontWeight:700,color:C.text,lineHeight:1.1,marginBottom:6}},"Así va tu negocio"),
-            e("div",{style:{fontSize:14,color:C.textMuted,marginBottom:6}},"Una revisión de cómo estás vendiendo, no solo cuánto.")
-          ),
-
-          (function(){
-            var cobradoMes=totalG+totalVD;
-            var enJuego=cotsPeriodo.filter(function(c){ return c.estatus==="Pendiente"; }).reduce(function(s,c){ return s+c.monto; },0);
-            var potencial=cobradoMes+enJuego;
-
-            // ── CARD OSCURA 4 MÉTRICAS ──
-            var stats=[
-              {label:"Ya ganaste",val:"$"+formatoDinero(cobradoMes),sub:"",color:"#4ADE80",ic:"💼"},
-              {label:"Todavía tienes",val:"$"+formatoDinero(enJuego),sub:"por cerrar",color:"#A78BFA",ic:null},
-              {label:"Si das seguimiento hoy, podrías terminar el periodo con",val:"$"+formatoDinero(potencial),sub:"",color:"#FBBF24",ic:"🏆"},
-            ];
-
-            // ── INSIGHTS DINÁMICOS (Lo que CLEO descubrió) ──
-            var insights=[];
-            // Recuperaciones
-            if(recuperados.length>0){
-              insights.push({ic:"🔄",color:"#DCFCE7",icBg:"#166534",titulo:recuperados.length===1?"Recuperaste 1 cliente perdido":"Recuperaste "+recuperados.length+" clientes perdidos",desc:tasaRecuperacion!==null?"El "+tasaRecuperacion+"% de los clientes que parecían perdidos volvieron. El seguimiento funciona.":"Esos clientes valían la pena. El seguimiento marcó la diferencia."});
-            } else if(perdidosActuales.length>=3){
-              insights.push({ic:"🔄",color:"#FEF3C7",icBg:"#92400E",titulo:perdidosActuales.length+" clientes perdidos sin recuperar",desc:"Algunos pueden volver si los contactas. Las situaciones cambian con el tiempo."});
-            }
-            if(promDiasCierre!==null){
-              if(promDiasCierre===0) insights.push({ic:"⏱️",color:"#DCFCE7",icBg:"#166534",titulo:"Tus clientes deciden rápido",desc:"La mayoría de tus ventas se cierran el mismo día que envías el precio."});
-              else if(promDiasCierre<=2) insights.push({ic:"⏱️",color:"#DCFCE7",icBg:"#166534",titulo:"Decisiones muy rápidas",desc:"Tus clientes deciden en "+promDiasCierre+" día"+(promDiasCierre>1?"s":"")+" en promedio. Tienes que estar listo desde el primer mensaje."});
-              else insights.push({ic:"⏱️",color:"#DCFCE7",icBg:"#166534",titulo:"Tus clientes tardan "+promDiasCierre+" días",desc:"Haz seguimiento a los "+Math.round(promDiasCierre/2)+" días,antes de que se enfríe el interés."});
-            }
-            if(mejorCanalCierre&&mejorCanalCierre[1]>=2){
-              var pctCanal=Math.round((mejorCanalCierre[1]/(clientes.filter(function(c){ return c.origen===mejorCanalCierre[0]; }).length||1))*100);
-              insights.push({ic:"🎯",color:"#FCE7F3",icBg:"#9D174D",titulo:mejorCanalCierre[0]+" es tu mejor canal",desc:"El "+pctCanal+"% de tus clientes de ese canal terminan comprando. Es donde más cierras."});
-            }
-            if(motivoPrincipal){
-              insights.push({ic:"⚠️",color:"#FEF3C7",icBg:"#92400E",titulo:'"'+motivoPrincipal+'" es la objeción más común',desc:"Apareció en el "+Math.round((cotsPeriodo.filter(function(c){ return c.motivoPerdida===motivoPrincipal; }).length/Math.max(cotsPeriodo.filter(function(c){ return c.estatus==="Rechazada"; }).length,1))*100)+"% de las cotizaciones que no cerraste."});
-            }
-            var saldosPend=aceptadas.reduce(function(s,cot){ var p=cot.pagos||[]; var pagado=p.reduce(function(x,pg){ return x+Number(pg.monto); },0); return s+(cot.monto-pagado>0?cot.monto-pagado:0); },0);
-            if(saldosPend>0) insights.push({ic:"💼",color:"#DBEAFE",icBg:"#1E40AF",titulo:"Tienes $"+formatoDinero(saldosPend)+" pendientes de cobro",desc:"Son ventas ya cerradas que aún no has cobrado. Recuérdaselo a tu cliente."});
-            if(prom>0) insights.push({ic:"📊",color:"#F3E8FF",icBg:"#6B21A8",titulo:"Tu ticket promedio es de $"+formatoDinero(prom),desc:aceptadas.length>=3?"Está basado en tus últimas "+aceptadas.length+" ventas cerradas. Ese es tu punto de referencia.":"Con más ventas registradas CLEO podrá darte un análisis más preciso."});
-            if(topConcepto&&topConcepto[1]>=2){
-              var enCots=aceptadas.filter(function(c){ return obtenerItemsCotizacion(c).some(function(it){ return it.nombre&&it.nombre.trim()===topConcepto[0]; }); }).length;
-              var enVD=ventasPer.filter(function(v){ return v.concepto&&v.concepto.trim()===topConcepto[0]; }).length;
-              var origen=enCots>0&&enVD>0?"cotizaciones y ventas rápidas":enCots>0?"cotizaciones":"ventas rápidas";
-              var consejo=enCots>0&&enVD>0?"Funciona tanto en propuestas formales como en ventas al momento. Es tu producto estrella.":enCots>0?"Tus clientes lo aceptan bien cuando lo propones formalmente. Sigue incluyéndolo en tus cotizaciones.":"Tus clientes lo compran fácil y rápido. Tenlo siempre en mente cuando alguien pregunte.";
-              insights.push({ic:"⭐",color:"#FEF9C3",icBg:"#713F12",titulo:'"'+topConcepto[0]+'" es lo que más vendes',desc:"Lo vendiste "+topConcepto[1]+" veces este periodo (vía "+origen+"). "+consejo});
-            }
-            var etAtas=["Cotizacion enviada","Negociacion"].map(function(et){ return {et:et,n:clientes.filter(function(c){ return c.etapa===et&&diasDesde(c.fechaEtapa||c.fecha)>=7; }).length}; }).sort(function(a,b){ return b.n-a.n; })[0];
-            if(etAtas&&etAtas.n>=2) insights.push({ic:"🔍",color:"#FEE2E2",icBg:"#991B1B",titulo:etAtas.n+" clientes llevan +7 días sin avanzar",desc:"Están atascados en el proceso. Un mensaje directo puede desbloquear esas conversaciones."});
-            if(insights.length===0) insights.push({ic:"🌱",color:"#DCFCE7",icBg:"#166534",titulo:"CLEO está aprendiendo tu negocio",desc:"Registra más ventas y conversaciones para ver patrones reales sobre cómo vendes."});
-
-            // ── ACCIONES SEMANALES DINÁMICAS ──
-            var acciones=[];
-            var cotsPend=cotsPeriodo.filter(function(c){ return c.estatus==="Pendiente"; });
-            if(cotsPend.length>0) acciones.push({n:1,ic:"💬",tipo:"cotizaciones_pendientes",titulo:"Contacta las "+cotsPend.length+" cotizacion"+(cotsPend.length>1?"es":"")+" pendiente"+(cotsPend.length>1?"s":""),desc:"Representan $"+formatoDinero(enJuego)+" posibles."});
-            if(promDiasCierre!==null&&promDiasCierre<=2) acciones.push({n:acciones.length+1,ic:"📅",tipo:"seguimiento_48h",titulo:"Da seguimiento antes de 48 horas",desc:"Tus ventas más rápidas vienen de ahí."});
-            else if(saldosPend>0) acciones.push({n:acciones.length+1,ic:"📅",tipo:"cobrar_saldo",titulo:"Cobra los $"+formatoDinero(saldosPend)+" pendientes",desc:"Ya cerraste la venta, ahora cierra el pago."});
-            if(motivoPrincipal) acciones.push({n:acciones.length+1,ic:"🎯",tipo:"preparar_respuesta_objecion",titulo:"Prepara una respuesta para '"+motivoPrincipal+"'",desc:"Si lo tienes listo, no perderás la próxima vez."});
-            else if(promDiasCierre!==null&&promDiasCierre===0) acciones.push({n:acciones.length+1,ic:"🎯",tipo:"enfocarse_cerrar_rapido",titulo:"Enfócate en cerrar rápido",desc:"Tus clientes deciden el mismo día. Mantén el ritmo."});
-            else acciones.push({n:acciones.length+1,ic:"🎯",tipo:"registrar_motivo",titulo:"Registra el motivo cuando pierdas una venta",desc:"Con ese dato CLEO puede mostrarte qué mejorar."});
-            acciones=acciones.slice(0,3);
-
-            // Detectar si la acción principal lleva varios días repitiéndose sin resolverse
-            var diasRepetidoAccion=1;
-            (function(){
-              if(!acciones[0]) return;
-              try{
-                var raw=localStorage.getItem("cleo_streak_accion_serv");
-                var prev=raw?JSON.parse(raw):null;
-                if(prev&&prev.tipo===acciones[0].tipo){
-                  diasRepetidoAccion=prev.fecha===FECHA_HOY?(prev.dias||1):(prev.dias||1)+1;
-                }
-                localStorage.setItem("cleo_streak_accion_serv",JSON.stringify({tipo:acciones[0].tipo,dias:diasRepetidoAccion,fecha:FECHA_HOY}));
-              }catch(e){}
-            })();
-
-            // ── MENSAJE DE ÁNIMO DINÁMICO ──
-            var animo=cobradoMes>0&&tasa>=50?"Vas por buen camino. Sigue haciendo seguimiento rápido y este periodo puede ser tu mejor mes.":
-              cobradoMes>0&&tasa>=30?"Estás generando ventas y tienes propuestas activas. Un par de cierres más y este periodo cambia por completo.":
-              enJuego>0?"Tienes $"+formatoDinero(enJuego)+" esperando respuesta. Un mensaje a tiempo puede cerrar todo esto.":
-              "Cada venta registrada es información valiosa. Los patrones empiezan a aparecer cuando más datos tienes.";
-
-            return e("div",{style:{display:"flex",flexDirection:"column",gap:24}},
-
-              // CARD OSCURA
-              e("div",{style:{background:"#0F1729",borderRadius:24,padding:isMobile?"24px 20px":"28px 24px",position:"relative",overflow:"hidden",boxShadow:"0 8px 32px rgba(0,0,0,0.18)"}},
-                e("div",{style:{display:"grid",gridTemplateColumns:isMobile?"1fr":"1fr 1px 1fr 1px 1fr",gap:isMobile?0:0,alignItems:"center"}},
-                  stats.map(function(k,i){
-                    var isLast=i===stats.length-1;
-                    return [
-                      e("div",{key:"s"+i,style:{padding:isMobile?"10px 8px":"0 10px",textAlign:"center",borderBottom:isMobile&&!isLast?"1px solid rgba(255,255,255,0.08)":"none"}},
-                        e("div",{style:{fontSize:isMobile?11:11,color:"rgba(255,255,255,0.5)",letterSpacing:"0.2px",marginBottom:6,lineHeight:1.3}},k.label),
-                        e("div",{style:{fontSize:isMobile?24:22,fontWeight:700,color:k.color,lineHeight:1,marginBottom:4,whiteSpace:"nowrap"}},k.val),
-                        e("div",{style:{fontSize:isMobile?11:11,color:"rgba(255,255,255,0.35)",lineHeight:1.3,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}},k.sub)
-                      ),
-                      !isLast&&!isMobile?e("div",{key:"d"+i,style:{width:1,background:"rgba(255,255,255,0.08)",alignSelf:"stretch"}}):null
-                    ];
-                  }).flat().filter(Boolean)
-                )
-              ),
-
-
-              // GRÁFICA BARRAS , idéntica a la de Productos
-              e("div",{style:{background:C.surface,borderRadius:20,padding:isMobile?"16px":"24px",border:"1px solid "+C.border}},
-                e("div",{style:{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:4}},
-                  e("div",{style:{fontSize:14,fontWeight:700,color:C.text}},"Ingresos por mes"),
-                  cambioMes!==null&&e("div",{style:{textAlign:"right"}},
-                    e("div",{style:{fontSize:12,color:cambioMes>=0?C.green:"#EF4444",fontWeight:600}},(cambioMes>=0?"+":"")+cambioMes+"%"),
-                    e("div",{style:{fontSize:9,color:C.textDim}},"vs mismo punto de "+MESES_LARGO[mesAnterior.mes])
-                  )
-                ),
-                mesActual.total>0&&faltaParaSuperar>0&&e("div",{style:{fontSize:isMobile?13:14,color:C.textMuted,marginBottom:16,lineHeight:1.4}},
-                  "Te faltan ",e("span",{style:{fontWeight:700,color:C.purple}},"$"+formatoDinero(faltaParaSuperar))," para superar "+MESES_LARGO[mesAnterior.mes]
-                ),
-                mesActual.total>0&&faltaParaSuperar===0&&e("div",{style:{fontSize:isMobile?13:14,color:C.green,fontWeight:600,marginBottom:16,lineHeight:1.4}},"🎉 Vas $"+formatoDinero((mesActual.total-mesAnterior.total))+" arriba de "+MESES_LARGO[mesAnterior.mes]),
-                mesActual.total===0&&e("div",{style:{fontSize:12,color:C.textDim,marginBottom:16,lineHeight:1.4}},"Aún no registras ingresos en "+MESES_LARGO[mesActual.mes]+". En cuanto llegue el primero, verás tu avance aquí."),
-                e("div",{style:{display:"flex",gap:isMobile?4:8,alignItems:"flex-end",height:80}},
-                  mesesData.map(function(m,i){
-                    var h=Math.max(4,Math.round((m.total/maxMes)*80));
-                    return e("div",{key:i,style:{flex:1,display:"flex",flexDirection:"column",alignItems:"center",gap:4}},
-                      e("div",{style:{width:"100%",height:h,borderRadius:"4px 4px 0 0",background:m.esMesActual?C.purple:C.purple+"44",transition:"height 0.3s"}}),
-                      e("div",{style:{fontSize:isMobile?8:9,color:C.textDim,textAlign:"center"}},m.label),
-                      m.total>0&&e("div",{style:{fontSize:8,color:C.textDim,textAlign:"center"}},"$"+(m.total>=1000?Math.round(m.total/1000)+"k":m.total))
-                    );
-                  })
-                )
-              ),
-
-              // TARJETA: REPORTE COMERCIAL , reutiliza el mismo modal/estado/
-              // funciones ya existentes (modalReporteComercial,
-              // formReporteComercial, construirDatosReporteComercial,
-              // manejarGenerarReporteComercialPDF) , nunca los reconstruye.
-              // Misma esProductos ya vigente en este render (false aquí), así
-              // que el reporte que abre siempre corresponde a Servicios.
-              e("div",{style:Object.assign({},st.card,{display:"flex",flexDirection:isMobile?"column":"row",alignItems:isMobile?"stretch":"center",justifyContent:"space-between",gap:16})},
-                e("div",null,
-                  e("div",{style:{fontSize:15,fontWeight:700,color:C.text,marginBottom:4}},"Reporte comercial"),
-                  e("div",{style:{fontSize:13,color:C.textMuted,lineHeight:1.5}},"Elige un periodo y descarga un resumen de tus ventas, cobros, pendientes y oportunidades.")
-                ),
-                e("button",{style:Object.assign({},st.btnP,{whiteSpace:"nowrap",flexShrink:0}),onClick:function(){
-                  setErrorReporteComercial("");
-                  setFormReporteComercial(rangoReporteComercialPorDefecto());
-                  setModalReporteComercial(true);
-                }},"Generar reporte PDF")
-              ),
-
-              e("div",{style:{display:"grid",gridTemplateColumns:isMobile?"1fr":"1fr 1fr",gap:20}},
-
-              // CARD 3: LO QUE APRENDIÓ CLEO (insights + canales)
-              e("div",{style:{background:C.surface,borderRadius:20,padding:"24px",border:"1px solid "+C.border,boxShadow:"0 2px 12px rgba(0,0,0,0.04)"}},
-                e("div",{style:{display:"flex",alignItems:"center",gap:10,marginBottom:6}},
-                  e("div",{style:{width:28,height:28,borderRadius:8,background:C.purplePale,display:"flex",alignItems:"center",justifyContent:"center",fontSize:14}},"🧠"),
-                  e("div",{style:{fontSize:11,fontWeight:700,color:C.purple,textTransform:"uppercase",letterSpacing:"1.5px"}},"Lo que aprendió CLEO")
-                ),
-                e("div",{style:{fontSize:13,color:C.textMuted,marginBottom:20}},"Patrones de tus ventas este periodo"),
-                insights.length>0&&e("div",{style:{display:"flex",flexDirection:"column",gap:10,marginBottom:20}},
-                  insights.map(function(ins,i){
-                    return e("div",{key:i,style:{background:C.bg,borderRadius:14,padding:"14px 16px",border:"1px solid "+C.border,display:"flex",gap:12,alignItems:"flex-start"}},
-                      e("div",{style:{width:32,height:32,borderRadius:9,background:ins.color,display:"flex",alignItems:"center",justifyContent:"center",fontSize:16,flexShrink:0}},ins.ic),
-                      e("div",null,
-                        e("div",{style:{fontSize:13,fontWeight:600,color:C.text,marginBottom:3,lineHeight:1.3}},ins.titulo),
-                        e("div",{style:{fontSize:12,color:C.textMuted,lineHeight:1.5}},ins.desc)
-                      )
-                    );
-                  })
-                ),
-              ),
-
-              e("div",{style:{display:"flex",flexDirection:"column",gap:20}},
-
-              (function(){
-                var totalClientes=clientes.filter(function(c){ return c.origen; }).length;
-                if(totalClientes===0) return null;
-                var canales=ORIGENES.map(function(o){
-                  var total=clientes.filter(function(c){ return c.origen===o; }).length;
-                  var convertidos=clientes.filter(function(c){ return c.origen===o&&c.etapa==="Ganado"; }).length;
-                  var sinConvertir=total-convertidos;
-                  return {canal:o,total:total,convertidos:convertidos,sinConvertir:sinConvertir};
-                }).filter(function(c){ return c.total>0; }).sort(function(a,b){ return b.total-a.total; });
-                if(canales.length===0) return null;
-                return e("div",{style:{background:C.surface,borderRadius:20,padding:"24px",border:"1px solid "+C.border,boxShadow:"0 2px 12px rgba(0,0,0,0.04)"}},
-                  e("div",{style:{fontSize:11,fontWeight:700,color:C.textDim,textTransform:"uppercase",letterSpacing:"1px",marginBottom:12}},"De dónde vienen tus clientes"),
-                  e("div",{style:{display:"flex",flexDirection:"column",gap:8}},
-                    canales.map(function(c){
-                      var msg=c.convertidos===c.total&&c.total>0?"Todos cerraron — tu mejor canal":
-                              c.sinConvertir>0?c.sinConvertir+" sin cerrar aún — dales seguimiento":
-                              "Sin ventas registradas aún";
-                      var color=c.convertidos===c.total&&c.total>0?C.green:c.sinConvertir>0?C.amber:C.textDim;
-                      return e("div",{key:c.canal,style:{display:"flex",alignItems:"center",gap:12,padding:"10px 12px",background:C.bg,borderRadius:10,border:"1px solid "+C.border}},
-                        e("div",{style:{flex:1}},
-                          e("div",{style:{display:"flex",justifyContent:"space-between",alignItems:"center"}},
-                            e("span",{style:{fontSize:13,fontWeight:600,color:C.text}},c.canal),
-                            e("span",{style:{fontSize:12,color:C.textMuted}},c.total+" cliente"+(c.total>1?"s":""))
-                          ),
-                          e("div",{style:{fontSize:11,color:color,marginTop:2}},msg)
-                        )
-                      );
-                    })
-                  )
-                );
-              })(),
-
-              // CARD 4: TU PRÓXIMO PASO (una sola acción principal + secundarias discretas)
-              e("div",{style:{background:C.surface,borderRadius:20,padding:"24px",border:"1px solid "+C.border,boxShadow:"0 2px 12px rgba(0,0,0,0.04)"}},
-                e("div",{style:{display:"flex",alignItems:"center",gap:10,marginBottom:6}},
-                  e("div",{style:{width:28,height:28,borderRadius:8,background:"#DCFCE7",display:"flex",alignItems:"center",justifyContent:"center",fontSize:14}},"🎯"),
-                  e("div",{style:{fontSize:11,fontWeight:700,color:C.green,textTransform:"uppercase",letterSpacing:"1.5px"}},"Tu próximo paso")
-                ),
-                e("div",{style:{fontSize:13,color:C.textMuted,marginBottom:20}},diasRepetidoAccion>=3?"Llevas "+diasRepetidoAccion+" días con esto pendiente. ¿Qué te está deteniendo?":"Esto es lo que más impacto tendría hoy."),
-                acciones[0]&&e("div",{style:{background:"linear-gradient(135deg,#ECFDF5 0%,#F0FDF4 100%)",borderRadius:16,padding:"18px 20px",border:"1px solid #86EFAC",display:"flex",gap:14,alignItems:"flex-start",marginBottom:acciones.length>1?14:20}},
-                  e("div",{style:{fontSize:26,flexShrink:0}},acciones[0].ic),
-                  e("div",null,
-                    e("div",{style:{fontSize:15,fontWeight:700,color:C.text,marginBottom:4,lineHeight:1.3}},acciones[0].titulo),
-                    e("div",{style:{fontSize:13,color:C.textMuted,lineHeight:1.5}},acciones[0].desc)
-                  )
-                ),
-                acciones.length>1&&e("div",{style:{marginBottom:20}},
-                  e("div",{style:{fontSize:11,color:C.textDim,marginBottom:8}},"Si te sobra tiempo, también:"),
-                  e("div",{style:{display:"flex",flexDirection:"column",gap:6}},
-                    acciones.slice(1).map(function(ac){
-                      return e("div",{key:ac.n,style:{display:"flex",gap:8,alignItems:"center",fontSize:12,color:C.textMuted}},
-                        e("span",{style:{fontSize:13,flexShrink:0}},ac.ic),
-                        e("span",null,ac.titulo)
-                      );
-                    })
-                  )
-                ),
-                e("div",{style:{background:C.purplePale,borderRadius:12,padding:"14px 16px",border:"1px solid "+C.purple+"22",display:"flex",alignItems:"center",gap:12}},
-                  e("div",{style:{fontSize:22,flexShrink:0}},"✨"),
-                  e("div",{style:{fontSize:13,color:C.text,lineHeight:1.6}},animo)
-                )
-              ),
-
-              ) // cierra columna 2 (canales + Tu próximo paso)
-
-              ) // cierra grid Card3/Card4
-              ,
-              e("div",{style:{background:"#0F1729",borderRadius:14,padding:"12px 18px",display:"flex",alignItems:"center",gap:14,flexWrap:isMobile?"wrap":"nowrap"}},(function(){
-                var todasFechas=[];
-                ventas.forEach(function(v){ if(v.fecha) todasFechas.push(v.fecha.slice(0,10)); });
-                cotizaciones.forEach(function(c){ if(c.fecha) todasFechas.push(c.fecha.slice(0,10)); });
-                clientes.forEach(function(c){ if(c.fecha) todasFechas.push(c.fecha.slice(0,10)); });
-                var fechasSet={}; todasFechas.forEach(function(f){ fechasSet[f]=true; });
-                var hoyStr=fmtFechaLocal(HOY);
-                var rachaActual=0;
-                var d=new Date(HOY);
-                for(var ri=0;ri<365;ri++){
-                  var ds=fmtFechaLocal(d);
-                  if(fechasSet[ds]) rachaActual++;
-                  else if(ri>0) break;
-                  d.setDate(d.getDate()-1);
-                }
-                // hayAlgunaActividad: si nunca hubo NINGUNA venta/cotización/
-                // cliente con fecha, el ciclo de abajo nunca encuentra una
-                // coincidencia y se agota en los 365 intentos , antes eso
-                // hacía que diasSinAct terminara en 365 y el mensaje dijera
-                // "Han pasado 365 días desde tu última actividad" para una
-                // cuenta recién creada que en realidad nunca tuvo actividad.
-                var hayAlgunaActividad=todasFechas.length>0;
-                var diasSinAct=0;
-                if(hayAlgunaActividad){
-                  var d2=new Date(HOY); d2.setDate(d2.getDate()-1);
-                  for(var ri2=0;ri2<365;ri2++){
-                    if(fechasSet[fmtFechaLocal(d2)]) break;
-                    diasSinAct++; d2.setDate(d2.getDate()-1);
-                  }
-                }
-                var tieneHoy=!!fechasSet[hoyStr];
-                var ultimos7=[];
-                for(var ui=6;ui>=0;ui--){ var ud=new Date(HOY); ud.setDate(ud.getDate()-ui); ultimos7.push(fmtFechaLocal(ud)); }
-                var horaActual=new Date().getHours();
-                var esTarde=horaActual>=18;
-                var mensajeRacha=(!tieneHoy&&esTarde&&rachaActual>=2)?"Se está acabando el día y aún no registras nada.":
-                  rachaActual>=7?"¡Llevas "+rachaActual+" días seguidos activo en CLEO!":
-                  rachaActual>=3?"Llevas "+rachaActual+" días registrando actividad.":
-                  tieneHoy?"Hoy ya registraste actividad. Buen comienzo.":
-                  !hayAlgunaActividad?"Registra tu primera venta, cotización o cliente para empezar a ver tu ritmo aquí.":
-                  diasSinAct===0?"Empieza hoy, registrar algo tarda menos de un minuto.":
-                  diasSinAct===1?"Ayer no registraste nada. Hoy puedes retomar el ritmo.":
-                  "Han pasado "+diasSinAct+" días desde tu última actividad.";
-                var colorRacha=(!tieneHoy&&esTarde&&rachaActual>=2)?"#F87171":rachaActual>=7?"#FBBF24":rachaActual>=3?"#4ADE80":"#94A3B8";
-                return [
-                  e("div",{key:"e",style:{fontSize:20,flexShrink:0}},rachaActual>=7?"🔥":rachaActual>=3?"⚡":"🌱"),
-                  e("div",{key:"n",style:{flexShrink:0}},
-                    e("div",{style:{fontSize:sc.namePerson,fontWeight:800,color:colorRacha,lineHeight:1}},rachaActual+" días"),
-                    e("div",{style:{fontSize:9,color:"rgba(255,255,255,0.35)",marginTop:1}},"de racha")
-                  ),
-                  e("div",{key:"s",style:{width:1,height:24,background:"rgba(255,255,255,0.1)",flexShrink:0}}),
-                  e("div",{key:"m",style:{flex:1,fontSize:12,color:"rgba(255,255,255,0.55)",lineHeight:1.35,minWidth:150}},mensajeRacha),
-                  e("div",{key:"h",style:{display:"flex",gap:4,flexShrink:0}},
-                    ultimos7.map(function(f,i){
-                      var activo=!!fechasSet[f];
-                      var esHoy=f===hoyStr;
-                      return e("div",{key:i,style:{width:14,height:14,borderRadius:4,background:activo?(esHoy?colorRacha:"rgba(75,94,252,0.6)"):"rgba(255,255,255,0.06)",border:esHoy?"1px solid "+colorRacha+"66":"none"}});
-                    })
-                  )
-                ];
-              })()),
-
-            );
-          })(),
-
-        )
-      })()
     ),// cierra padding div
     )// cierra contenido principal div
     ),// cierra body div
