@@ -6673,6 +6673,7 @@ export default function CLEO(props){
   var sModalRecibi=useState(false); var modalRecibi=sModalRecibi[0]; var setModalRecibi=sModalRecibi[1];
   var sFiltroTrabajo=useState("porCompletar"); var filtroTrabajo=sFiltroTrabajo[0]; var setFiltroTrabajo=sFiltroTrabajo[1];
   var sFiltroTrabajoPeriodo=useState("todo"); var filtroTrabajoPeriodo=sFiltroTrabajoPeriodo[0]; var setFiltroTrabajoPeriodo=sFiltroTrabajoPeriodo[1];
+  var sOpenFiltroTrabajoPeriodo=useState(false); var openFiltroTrabajoPeriodo=sOpenFiltroTrabajoPeriodo[0]; var setOpenFiltroTrabajoPeriodo=sOpenFiltroTrabajoPeriodo[1];
   var sCerreExito=useState(false); var cerreExito=sCerreExito[0]; var setCerreExito=sCerreExito[1];
   var sToastTrabajo=useState(""); var toastTrabajo=sToastTrabajo[0]; var setToastTrabajo=sToastTrabajo[1];
   function mostrarToast(mensaje){
@@ -14828,8 +14829,6 @@ export default function CLEO(props){
       // TRABAJOS , cotizaciones aceptadas + ventas con cliente, por completar o completadas
       vista==="trabajos"&&(function(){
         var trabajosTodos=obtenerTrabajos();
-        // Período aplica antes que el filtro de estado , para que los
-        // contadores de cada pestaña ya reflejen el período elegido.
         var trabajosPer=filtroTrabajoPeriodo==="todo"?trabajosTodos:trabajosTodos.filter(function(t){ return enPeriodo(t.fecha,filtroTrabajoPeriodo); });
         var trabajos=filtroTrabajo==="todos"?trabajosPer
           :filtroTrabajo==="conSaldo"?trabajosPer.filter(function(t){ return (t.total-t.cobrado)>0; })
@@ -14854,155 +14853,199 @@ export default function CLEO(props){
           });
         }
         var sinFechaCount=trabajos.filter(function(t){ return !t.fechaEntrega; }).length;
-        return e("div",{style:{display:"flex",flexDirection:"column",gap:0}},
-          e("div",{style:{marginBottom:16}},
-            e("div",{style:{fontSize:28,fontWeight:700,color:C.text}},"Tus trabajos"),
-            e("div",{style:{fontSize:14,color:C.textMuted,marginTop:2}},"Lo que tus clientes ya contrataron y tienes por completar.")
+        function fmtDT(iso){
+          var d=new Date(iso+"T00:00:00");
+          var ms=["ene","feb","mar","abr","may","jun","jul","ago","sep","oct","nov","dic"];
+          return d.getDate()+" "+ms[d.getMonth()]+" "+d.getFullYear();
+        }
+        var periodoLabels={"todo":"Todo el tiempo","semana":"Esta semana","mes":"Este mes","trimestre":"Trimestre"};
+        return e("div",{style:{maxWidth:1120,margin:"0 auto",display:"flex",flexDirection:"column",gap:0}},
+          e("header",{style:{marginBottom:22}},
+            e("h1",{style:{margin:0,fontSize:24,fontWeight:800,letterSpacing:"-0.03em",color:C.text}},"Tus trabajos"),
+            e("p",{style:{margin:"4px 0 0",fontSize:13.5,color:"#5A6078"}},"Lo que tus clientes ya contrataron y tienes por completar.")
           ),
-          e("div",{style:{display:"flex",gap:8,marginBottom:20,alignItems:"center",flexWrap:"wrap"}},
-            // En móvil los 3 filtros se acomodan en cuadrícula de 3 columnas
-            // iguales, siempre parejos , antes, si envolvían, el último
-            // quedaba flotando solo y angosto en su propia fila.
-            e("div",{style:isMobile?{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:8,width:"100%"}:{display:"flex",gap:8,flexWrap:"wrap",flex:"0 1 auto"}},
-              [{k:"porCompletar",l:"Por completar",n:nPorCompletar,color:C.purple},{k:"completado",l:"Completados",n:nCompletados,color:C.green},{k:"conSaldo",l:"Con saldo",n:nConSaldo,color:C.amber}].map(function(f){
-                var activo=filtroTrabajo===f.k;
-                return e("button",{key:f.k,style:{cursor:"pointer",padding:isMobile?"12px 8px":"7px 14px",borderRadius:isMobile?14:20,border:"1.5px solid "+(activo?f.color:C.border),background:activo?f.color+"18":"transparent",fontSize:isMobile?12:13,color:activo?f.color:C.textMuted,fontWeight:activo?700:500,display:"flex",flexDirection:isMobile?"column":"row",alignItems:"center",justifyContent:"center",gap:isMobile?4:6,whiteSpace:isMobile?"normal":"nowrap",textAlign:"center",lineHeight:1.15,minWidth:0},onClick:function(){ setFiltroTrabajo(f.k); }},
-                  f.l,
-                  e("span",{style:{fontSize:11,padding:"1px 7px",borderRadius:20,background:activo?f.color:C.border,color:activo?"#fff":C.textMuted,fontWeight:700,flexShrink:0}},f.n)
-                );
-              })
-            ),
-            // Mismo tratamiento que ya se corrigió en Cotizaciones: en
-            // escritorio el select nativo se veía chico/genérico (flechita
-            // de doble punta del navegador, borde claro) junto a los pills
-            // de filtro , ahora usa el mismo patrón de flecha propia +
-            // appearance:"none" con alto/borde/tipografía de st.inp y
-            // minWidth fijo. Móvil sigue con su tratamiento compacto
-            // original (no se toca).
+          e("div",{style:{display:"flex",flexWrap:"wrap",gap:8,alignItems:"center",justifyContent:"space-between"}},
             isMobile
-              ? e("select",{
-                  "aria-label":"Filtrar por período",
-                  value:filtroTrabajoPeriodo,
-                  onChange:function(ev){ setFiltroTrabajoPeriodo(ev.target.value); },
-                  style:{cursor:"pointer",padding:"7px 12px",borderRadius:12,border:"1px solid "+C.border,background:C.surface,fontSize:12,color:C.textMuted,outline:"none",width:"100%",minWidth:0}
-                },
-                  [["todo","Todo el tiempo"],["semana","Esta semana"],["mes","Este mes"],["trimestre","Trimestre"]].map(function(p){ return e("option",{key:p[0],value:p[0]},p[1]); })
+              ? e("div",{style:{display:"flex",width:"100%",gap:2,padding:3,borderRadius:21,background:"#FFFFFF",boxSizing:"border-box"}},
+                  [{k:"porCompletar",l:"Por completar",n:nPorCompletar},{k:"completado",l:"Completados",n:nCompletados},{k:"conSaldo",l:"Con saldo",n:nConSaldo}].map(function(f){
+                    var on=filtroTrabajo===f.k;
+                    return e("button",{key:f.k,style:{flex:1,display:"inline-flex",alignItems:"center",justifyContent:"center",gap:5,height:34,padding:0,border:0,borderRadius:17,background:on?"#E4E8FF":"transparent",fontFamily:"inherit",fontSize:12,fontWeight:on?800:600,color:on?"#0E1328":"#4A5068",cursor:"pointer",whiteSpace:"nowrap"},onClick:function(){ setFiltroTrabajo(f.k); }},
+                      f.l,e("small",{style:{fontSize:11.5,fontWeight:800,color:"#3F4BD0"}},f.n));
+                  })
                 )
-              : e("div",{style:{position:"relative",flexShrink:0,marginLeft:"auto"}},
-                  e("select",{
-                    "aria-label":"Filtrar por período",
-                    value:filtroTrabajoPeriodo,
-                    onChange:function(ev){ setFiltroTrabajoPeriodo(ev.target.value); },
-                    style:Object.assign({},st.inp,{cursor:"pointer",appearance:"none",WebkitAppearance:"none",padding:"10px 30px 10px 14px",width:"auto",minWidth:170,outline:"none"})
-                  },
-                    [["todo","Todo el tiempo"],["semana","Esta semana"],["mes","Este mes"],["trimestre","Trimestre"]].map(function(p){ return e("option",{key:p[0],value:p[0]},p[1]); })
-                  ),
-                  e("span",{style:{position:"absolute",right:12,top:"50%",transform:"translateY(-50%)",pointerEvents:"none",fontSize:sc.textLabel,color:C.textMuted}},"▾")
-                )
+              : e("div",{style:{display:"inline-flex",gap:2,padding:3,borderRadius:21,background:"#FFFFFF"}},
+                  [{k:"porCompletar",l:"Por completar",n:nPorCompletar},{k:"completado",l:"Completados",n:nCompletados},{k:"conSaldo",l:"Con saldo",n:nConSaldo}].map(function(f){
+                    var on=filtroTrabajo===f.k;
+                    return e("button",{key:f.k,style:{display:"inline-flex",alignItems:"center",gap:6,height:34,padding:"0 14px",border:0,borderRadius:17,background:on?"#E4E8FF":"transparent",fontFamily:"inherit",fontSize:13,fontWeight:on?800:600,color:on?"#0E1328":"#4A5068",cursor:"pointer",whiteSpace:"nowrap"},onClick:function(){ setFiltroTrabajo(f.k); }},
+                      f.l,e("small",{style:{fontSize:11.5,fontWeight:800,color:"#3F4BD0"}},f.n));
+                  })
+                ),
+            e("div",{style:{position:"relative",flexShrink:0}},
+              openFiltroTrabajoPeriodo&&e("div",{style:{position:"fixed",inset:0,zIndex:49},onClick:function(){ setOpenFiltroTrabajoPeriodo(false); }}),
+              e("button",{style:{display:"inline-flex",alignItems:"center",gap:6,height:40,padding:"0 15px",border:0,borderRadius:20,background:"#FFFFFF",fontFamily:"inherit",fontSize:13,fontWeight:700,color:"#0E1328",cursor:"pointer"},onClick:function(){ setOpenFiltroTrabajoPeriodo(function(v){ return !v; }); }},
+                periodoLabels[filtroTrabajoPeriodo]||"Todo el tiempo",
+                e("svg",{width:13,height:13,viewBox:"0 0 24 24",fill:"none",stroke:"currentColor",strokeWidth:2,strokeLinecap:"round",strokeLinejoin:"round"},e("path",{d:"m6 9 6 6 6-6"}))
+              ),
+              openFiltroTrabajoPeriodo&&e("div",{style:{position:"absolute",right:0,top:"calc(100% + 4px)",background:"#FFFFFF",borderRadius:14,border:"1px solid #E3E6EF",boxShadow:"0 4px 16px rgba(0,0,0,0.10)",zIndex:50,minWidth:170,overflow:"hidden"}},
+                [["todo","Todo el tiempo"],["semana","Esta semana"],["mes","Este mes"],["trimestre","Trimestre"]].map(function(p){
+                  return e("button",{key:p[0],style:{display:"block",width:"100%",padding:"10px 16px",border:0,background:filtroTrabajoPeriodo===p[0]?"#EEF0FF":"transparent",fontFamily:"inherit",fontSize:13,fontWeight:filtroTrabajoPeriodo===p[0]?700:500,color:filtroTrabajoPeriodo===p[0]?"#3F4BD0":"#0E1328",textAlign:"left",cursor:"pointer"},onClick:function(){ setFiltroTrabajoPeriodo(p[0]); setOpenFiltroTrabajoPeriodo(false); }},p[1]);
+                })
+              )
+            )
           ),
-          sinFechaCount>=2&&filtroTrabajo!=="completado"&&e("div",{style:{fontSize:13,color:C.textMuted,padding:"14px 16px",background:C.surface,borderRadius:12,marginBottom:14,border:"1px solid "+C.border,display:"flex",alignItems:"center",gap:10}},
-            e("svg",{width:16,height:16,viewBox:"0 0 24 24",fill:"none",stroke:"currentColor",strokeWidth:2,strokeLinecap:"round",strokeLinejoin:"round",style:{flexShrink:0,color:C.textMuted}},e("rect",{x:"3",y:"4",width:"18",height:"18",rx:"2",ry:"2"}),e("line",{x1:"16",y1:"2",x2:"16",y2:"6"}),e("line",{x1:"8",y1:"2",x2:"8",y2:"6"}),e("line",{x1:"3",y1:"10",x2:"21",y2:"10"})),
+          sinFechaCount>=2&&filtroTrabajo!=="completado"&&e("div",{style:{marginTop:14,display:"flex",alignItems:"center",gap:10,padding:"11px 16px",borderRadius:16,background:"#FBF1DC",color:"#6E4806",fontSize:13}},
+            e("svg",{width:16,height:16,viewBox:"0 0 24 24",fill:"none",stroke:"currentColor",strokeWidth:1.9,strokeLinecap:"round",strokeLinejoin:"round",style:{flexShrink:0,color:"#8A5A06"}},e("rect",{x:"4",y:"5",width:"16",height:"15",rx:"2"}),e("path",{d:"M4 10h16M9 3v4M15 3v4"})),
             sinFechaCount+" trabajos necesitan una fecha de entrega. Agregarla ayudará a que ninguno se te pase."
           ),
           trabajos.length===0
-            ? e("div",{style:{fontSize:13,color:C.textDim,textAlign:"center",padding:"40px 0"}},
+            ? e("div",{style:{fontSize:13,color:C.textDim,textAlign:"center",padding:"40px 0",marginTop:12}},
                 filtroTrabajoPeriodo!=="todo"
                   ? "No hay trabajos con esos filtros en el período elegido."
-                  : (filtroTrabajo==="completado"?"Todavía no has marcado ningún trabajo como completado.":filtroTrabajo==="conSaldo"?"No tienes ningún trabajo con saldo pendiente en este momento.":"No tienes trabajos por completar en este momento , buen momento para revisar si algo quedó pendiente de registrar.")
+                  : (filtroTrabajo==="completado"?"Todavía no has marcado ningún trabajo como completado.":filtroTrabajo==="conSaldo"?"No tienes ningún trabajo con saldo pendiente en este momento.":"No tienes trabajos por completar en este momento, buen momento para revisar si algo quedó pendiente de registrar.")
               )
-            : e("div",{style:{display:"flex",flexDirection:"column",gap:12}},
+            : e("div",{style:{marginTop:12,display:"flex",flexDirection:"column",gap:12}},
                 trabajos.map(function(t){
-                  var ac=avatarColor(t.cliente.id);
                   var saldoT=t.total-t.cobrado;
-                  var pctPagado=t.total>0?Math.round((t.cobrado/t.total)*100):100;
-                  var nombreCortoT=t.cliente.nombre.split(" ")[0];
-                  var nivel=nivelUrgenciaT(t);
+                  var pctPagado=t.total>0?Math.min(100,Math.round((t.cobrado/t.total)*100)):100;
+                  var esPagado=saldoT<=0;
+                  var urlContactarT=contactUrl(t.cliente,"Hola "+t.cliente.nombre.split(" ")[0]+", te escribo para contarte una actualización sobre "+t.servicio+".");
 
-                  var fechaColor=C.textMuted,fechaTexto;
+                  var fechaRow;
                   if(t.entregado&&t.fechaEntrega){
-                    fechaTexto="Completado: "+formatearFechaLarga(t.fechaEntrega); fechaColor=C.green;
-                  } else if(!t.fechaEntrega){ fechaTexto="Sin fecha de entrega"; }
-                  else {
+                    fechaRow=e("div",{style:{marginTop:8,display:"flex",alignItems:"center",gap:5,fontSize:12.5,color:C.green,fontWeight:600}},
+                      e("svg",{width:14,height:14,viewBox:"0 0 24 24",fill:"none",stroke:"currentColor",strokeWidth:1.9,strokeLinecap:"round",strokeLinejoin:"round"},e("rect",{x:"4",y:"5",width:"16",height:"15",rx:"2"}),e("path",{d:"M4 10h16M9 3v4M15 3v4"})),
+                      "Completado: "+fmtDT(t.fechaEntrega)
+                    );
+                  } else if(!t.fechaEntrega){
+                    fechaRow=e("div",{style:{marginTop:8,position:"relative",display:"inline-flex",alignItems:"center",gap:5,fontSize:12.5,fontWeight:700,color:"#3F4BD0"}},
+                      e("svg",{width:14,height:14,viewBox:"0 0 24 24",fill:"none",stroke:"currentColor",strokeWidth:1.9,strokeLinecap:"round",strokeLinejoin:"round"},e("rect",{x:"4",y:"5",width:"16",height:"15",rx:"2"}),e("path",{d:"M4 10h16M9 3v4M15 3v4"})),
+                      "Agregar fecha de entrega",
+                      e("input",{type:"date","aria-label":"Fecha de entrega de "+t.cliente.nombre,value:"",onChange:function(ev){ actualizarFechaEntrega(t,ev.target.value); },style:{position:"absolute",inset:0,opacity:0,cursor:"pointer",width:"100%",height:"100%"}})
+                    );
+                  } else {
                     var diasF=Math.round((new Date(t.fechaEntrega+"T00:00:00")-new Date(new Date().setHours(0,0,0,0)))/86400000);
-                    if(diasF<0){ fechaTexto=diasF===-1?"Debía entregarse ayer":"Debía entregarse el "+formatearFechaLarga(t.fechaEntrega); fechaColor=C.red; }
-                    else if(diasF===0){ fechaTexto="Entrega hoy"; fechaColor=C.red; }
-                    else if(diasF===1){ fechaTexto="Entrega mañana"; fechaColor=C.info; }
-                    else { fechaTexto="Entrega: "+formatearFechaLarga(t.fechaEntrega); }
+                    var fechaTextoT,fechaColorT=C.textMuted;
+                    if(diasF<0){ fechaTextoT=diasF===-1?"Debía entregarse ayer":"Debía entregarse el "+fmtDT(t.fechaEntrega); fechaColorT=C.red; }
+                    else if(diasF===0){ fechaTextoT="Entrega hoy"; fechaColorT=C.red; }
+                    else if(diasF===1){ fechaTextoT="Entrega mañana"; fechaColorT=C.info; }
+                    else { fechaTextoT="Entrega "+fmtDT(t.fechaEntrega); }
+                    fechaRow=e("div",{style:{marginTop:8,display:"flex",alignItems:"center",gap:5,fontSize:12.5,color:fechaColorT,fontWeight:fechaColorT!==C.textMuted?600:500}},
+                      e("svg",{width:14,height:14,viewBox:"0 0 24 24",fill:"none",stroke:"currentColor",strokeWidth:1.9,strokeLinecap:"round",strokeLinejoin:"round",style:{color:fechaColorT}},e("rect",{x:"4",y:"5",width:"16",height:"15",rx:"2"}),e("path",{d:"M4 10h16M9 3v4M15 3v4"})),
+                      fechaTextoT
+                    );
                   }
 
-                  var urlContactarT=contactUrl(t.cliente,"Hola "+nombreCortoT+", te escribo para contarte una actualización sobre "+t.servicio+".");
+                  var doneStyle={width:36,height:36,flexShrink:0,borderRadius:"50%",border:"2px solid "+(esPagado?"#3F4BD0":"#C9D0FF"),background:esPagado?"#EEF0FF":"#FFFFFF",color:esPagado?"#3F4BD0":"#C9D0FF",display:"grid",placeItems:"center",cursor:"pointer"};
+                  var doneBtn=e("button",{type:"button","aria-label":"Marcar como completado",title:"Marcar como completado",style:doneStyle,onClick:function(ev){ ev.preventDefault(); ev.stopPropagation(); if(!t.entregado){ marcarTrabajoCompletado(t); } }},
+                    e("svg",{width:16,height:16,viewBox:"0 0 24 24",fill:"none",stroke:"currentColor",strokeWidth:2.6,strokeLinecap:"round",strokeLinejoin:"round"},e("path",{d:"m5 12.5 4.5 4.5L19 7.5"}))
+                  );
 
-                  return e("div",{key:t.tipo+"_"+t.id,style:{display:"flex",alignItems:isMobile?"stretch":"center",gap:isMobile?14:20,padding:"18px 20px",background:C.surface,border:"1px solid "+C.border,borderRadius:16,flexWrap:isMobile?"wrap":"nowrap",boxShadow:"0 1px 3px rgba(0,0,0,0.04)",opacity:t.entregado?0.75:1}},
-
-                    // Grupo: avatar + nombre/servicio/fecha, siempre en la misma fila
-                    e("div",{style:{display:"flex",alignItems:"flex-start",gap:12,flex:isMobile?"1 1 100%":"0 1 320px",minWidth:isMobile?"100%":180,maxWidth:isMobile?"100%":340}},
-
-                    e("div",{style:{width:44,height:44,borderRadius:"50%",background:ac+"22",display:"flex",alignItems:"center",justifyContent:"center",fontSize:14,fontWeight:700,color:ac,flexShrink:0}},iniciales(t.cliente.nombre)),
-
-                    // Columna 1: nombre + servicio + fecha
-                    e("div",{style:{flex:1,minWidth:0}},
-                      e("div",{style:{fontSize:sc.namePerson,fontWeight:700,color:C.text,marginBottom:2}},t.cliente.nombre),
-                      e("div",{style:{fontSize:13,color:C.textMuted,marginBottom:6}},t.servicio),
-                      e("div",{style:{display:"flex",alignItems:"center",gap:6,fontSize:13,flexWrap:"wrap"}},
-                        e("svg",{width:13,height:13,viewBox:"0 0 24 24",fill:"none",stroke:"currentColor",strokeWidth:2,strokeLinecap:"round",strokeLinejoin:"round",style:{flexShrink:0,color:fechaColor}},e("rect",{x:"3",y:"4",width:"18",height:"18",rx:"2",ry:"2"}),e("line",{x1:"16",y1:"2",x2:"16",y2:"6"}),e("line",{x1:"8",y1:"2",x2:"8",y2:"6"}),e("line",{x1:"3",y1:"10",x2:"21",y2:"10"})),
-                        t.fechaEntrega
-                          ? e("span",{style:{color:fechaColor,fontWeight:fechaColor!==C.textMuted?600:400}},fechaTexto)
-                          : e("span",{style:{color:C.textMuted}},"Sin fecha"),
-                        e("input",{type:"date","aria-label":"Fecha de entrega de "+t.cliente.nombre,value:t.fechaEntrega||"",onChange:function(ev){ actualizarFechaEntrega(t,ev.target.value); },style:{border:"1px solid "+C.border,borderRadius:6,background:C.bg,fontSize:16,color:C.purple,fontWeight:600,cursor:"pointer",padding:"3px 5px",minHeight:40,height:40}})
+                  var mnyCol=esPagado
+                    ? e("div",{style:{alignSelf:"start",textAlign:"right"}},
+                        e("div",{style:{height:16}}),
+                        e("div",{style:{display:"inline-flex",alignItems:"center",gap:5,color:"#1E5C38",fontWeight:700,fontSize:14}},
+                          e("svg",{width:14,height:14,viewBox:"0 0 24 24",fill:"none",stroke:"currentColor",strokeWidth:2.6,strokeLinecap:"round",strokeLinejoin:"round"},e("path",{d:"m5 12.5 4.5 4.5L19 7.5"})),
+                          "Pagado completo"
+                        ),
+                        e("div",{style:{marginTop:10,height:6,borderRadius:3,background:"#EEF0F5",overflow:"hidden"}},e("div",{style:{height:"100%",borderRadius:3,background:"#3E9A64",width:"100%"}}))
                       )
-                    ),
+                    : e("div",{style:{alignSelf:"start",textAlign:"right"}},
+                        e("div",{style:{fontSize:12.5,fontWeight:600,color:"#5A6078"}},"Falta"),
+                        e("div",{style:{fontSize:22,fontWeight:800,letterSpacing:"-0.03em",lineHeight:1.1,color:"#5E3D04"}},"$"+formatoDinero(saldoT)),
+                        e("div",{style:{marginTop:10,height:6,borderRadius:3,background:"#EEF0F5",overflow:"hidden"}},e("div",{style:{height:"100%",borderRadius:3,background:"#C99A3E",width:pctPagado+"%"}})),
+                        e("div",{style:{marginTop:6,fontSize:12.5,color:"#5A6078"}},e("b",{style:{color:"#0E1328"}},"$"+formatoDinero(t.cobrado))," pagado de $"+formatoDinero(t.total))
+                      );
 
-                    ) // cierra grupo avatar + columna 1
-                    ,
+                  var actB={display:"inline-flex",alignItems:"center",gap:7,height:32,padding:"0 12px",borderRadius:18,border:"1.5px solid #E3E6EF",background:"#FFFFFF",color:"#0E1328",fontFamily:"inherit",fontSize:12.5,fontWeight:700,cursor:"pointer",whiteSpace:"nowrap",boxSizing:"border-box"};
+                  var actBPr=Object.assign({},actB,{background:"#0E1328",borderColor:"#0E1328",color:"#FFFFFF",padding:"0 18px"});
 
-                    // Columna 2: pago , solo lo esencial, un dato principal y una acción
-                    e("div",{style:{flex:isMobile?"1 1 100%":"0 0 180px",minWidth:isMobile?"100%":160,paddingTop:isMobile?14:0,borderTop:isMobile?"1px solid "+C.border:"none"}},
-                      saldoT<=0
-                        ? e("div",null,
-                            e("div",{style:{fontSize:13,fontWeight:700,color:C.green,display:"flex",alignItems:"center",gap:6,marginBottom:6}},e("svg",{width:13,height:13,viewBox:"0 0 24 24",fill:"none",stroke:"currentColor",strokeWidth:2.5,strokeLinecap:"round",strokeLinejoin:"round"},e("polyline",{points:"20 6 9 17 4 12"})),"Pagado completo"),
-                            e("button",{type:"button",style:{cursor:"pointer",padding:"11px 14px",borderRadius:8,border:"1px solid "+C.border,background:"transparent",fontSize:12,color:C.textMuted,fontWeight:600},onClick:function(ev){ ev.preventDefault(); ev.stopPropagation(); setPagosModalTipo(t.tipo==="venta"?"venta":"cotizacion"); setPagosModalId(t.id); setFormPago({monto:"",fecha:FECHA_HOY,concepto:"Pago"}); }},"Ver pagos")
-                          )
-                        : e("div",null,
-                            e("div",{style:{fontSize:14,fontWeight:700,color:C.amber,marginBottom:2}},"Falta $"+formatoDinero(saldoT)),
-                            e("div",{style:{fontSize:12,color:C.textDim,marginBottom:8}},"$"+formatoDinero(t.cobrado)+" pagado de $"+formatoDinero(t.total)),
-                            e("button",{type:"button",style:{cursor:"pointer",padding:"12px 16px",borderRadius:10,border:"none",background:C.purple,fontSize:12,color:"#fff",fontWeight:600,width:isMobile?"100%":"auto"},onClick:function(ev){ ev.preventDefault(); ev.stopPropagation(); setPagosModalTipo(t.tipo==="venta"?"venta":"cotizacion"); setPagosModalId(t.id); setFormPago({monto:"",fecha:FECHA_HOY,concepto:"Pago"}); }},"Registrar pago")
-                          )
-                    ),
-
-                    // Columna 3: acciones , los 4 botones de esta columna (y
-                    // los 2 de pago de la columna 2, arriba) reciben ahora el
-                    // evento y llaman ev.preventDefault()/ev.stopPropagation()
-                    // antes de su acción real. Auditado: ninguno de los
-                    // contenedores que envuelven esta tarjeta (el div de la
-                    // fila, el grupo avatar+columna 1, columna 2, columna 3)
-                    // tiene su propio onClick, y no hay ningún <a>/<label>/
-                    // <form> en todo el archivo que pueda estar envolviendo
-                    // esta tarjeta , el guardado es puramente defensivo, para
-                    // que ningún clic dentro de esta tarjeta pueda burbujear
-                    // hacia un contenedor navegable si algo cambia alrededor
-                    // más adelante.
-                    e("div",{style:{display:"flex",gap:10,flexShrink:0,flexWrap:"wrap",marginLeft:isMobile?0:"auto",paddingTop:isMobile?14:0,borderTop:isMobile?"1px solid "+C.border:"none",width:isMobile?"100%":"auto"}},
-                      e("button",{type:"button",style:{cursor:"pointer",padding:"10px 18px",borderRadius:10,border:"1px solid "+C.border,background:"transparent",fontSize:13,color:C.textMuted,fontWeight:600,display:"flex",alignItems:"center",justifyContent:"center",gap:6,whiteSpace:"nowrap",flex:isMobile?1:"none"},onClick:function(ev){ ev.preventDefault(); ev.stopPropagation(); if(urlContactarT){ abrirEnlaceExternoSeguro(urlContactarT); } else { setClienteCompletarId(t.cliente.id); } }},
-                        e("svg",{width:14,height:14,viewBox:"0 0 24 24",fill:"none",stroke:"currentColor",strokeWidth:2,strokeLinecap:"round",strokeLinejoin:"round"},e("path",{d:"M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"})),
+                  var actionsRow=e("div",{style:{gridColumn:"1/-1",display:"flex",alignItems:"center",justifyContent:"space-between",gap:12,flexWrap:"wrap",paddingTop:16,borderTop:"1px solid #EDEFF5"}},
+                    e("div",{style:{display:"flex",gap:6,flexWrap:"wrap"}},
+                      e("button",{type:"button",style:actB,onClick:function(ev){ ev.preventDefault(); ev.stopPropagation(); if(urlContactarT){ abrirEnlaceExternoSeguro(urlContactarT); } else { setClienteCompletarId(t.cliente.id); } }},
+                        e("svg",{width:15,height:15,viewBox:"0 0 24 24",fill:"none",stroke:"currentColor",strokeWidth:2,strokeLinecap:"round",strokeLinejoin:"round"},e("path",{d:"M4 5.5A1.5 1.5 0 0 1 5.5 4h13A1.5 1.5 0 0 1 20 5.5v9a1.5 1.5 0 0 1-1.5 1.5H9.5L4 20z"})),
                         "Contactar"
                       ),
-                      // Retoma el asistente de pago/seguimiento de esta
-                      // misma cotización , mismo cotAceptadaId (id crudo de
-                      // cotización) que usan cambiarEstatus/"Ya cerró", así
-                      // que reabre exactamente donde se quedó, nunca crea
-                      // un trabajo/pago/recordatorio nuevo. abrirConfiguracion
-                      // PostVenta() no toca `vista` (verificado línea por
-                      // línea) , el asistente se abre siempre encima de la
-                      // sección que ya estaba activa, sin navegar.
-                      t.pendientePostVenta&&e("button",{type:"button",style:{cursor:"pointer",padding:"10px 18px",borderRadius:10,border:"1px solid "+C.amber+"55",background:C.amberBg,fontSize:13,color:C.amber,fontWeight:600,whiteSpace:"nowrap",display:"flex",alignItems:"center",justifyContent:"center",gap:6,flex:isMobile?1:"none"},onClick:function(ev){ ev.preventDefault(); ev.stopPropagation(); abrirConfiguracionPostVenta(t.tipo==="venta"?"venta_"+t.id:t.id); }},
-                        e("svg",{width:14,height:14,viewBox:"0 0 24 24",fill:"none",stroke:"currentColor",strokeWidth:2,strokeLinecap:"round",strokeLinejoin:"round"},e("circle",{cx:"12",cy:"12",r:"3"}),e("path",{d:"M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"})),
-                        "Completar configuración"
+                      esPagado&&e("button",{type:"button",style:actB,onClick:function(ev){ ev.preventDefault(); ev.stopPropagation(); setPagosModalTipo(t.tipo==="venta"?"venta":"cotizacion"); setPagosModalId(t.id); setFormPago({monto:"",fecha:FECHA_HOY,concepto:"Pago"}); }},
+                        e("svg",{width:15,height:15,viewBox:"0 0 24 24",fill:"none",stroke:"currentColor",strokeWidth:2,strokeLinecap:"round",strokeLinejoin:"round"},e("path",{d:"M6 3.5h12V21l-3-2-3 2-3-2-3 2z"}),e("path",{d:"M9 8.5h6M9 12h6"})),
+                        "Ver pagos"
                       ),
-                      !t.entregado&&e("button",{type:"button",style:{cursor:"pointer",padding:"10px 18px",borderRadius:10,border:"none",background:C.green,fontSize:13,color:"#fff",fontWeight:700,whiteSpace:"nowrap",display:"flex",alignItems:"center",justifyContent:"center",gap:6,flex:isMobile?1:"none"},onClick:function(ev){ ev.preventDefault(); ev.stopPropagation(); marcarTrabajoCompletado(t); }},
-                        e("svg",{width:14,height:14,viewBox:"0 0 24 24",fill:"none",stroke:"currentColor",strokeWidth:2.5,strokeLinecap:"round",strokeLinejoin:"round"},e("polyline",{points:"20 6 9 17 4 12"})),
-                        "Completar"
+                      t.pendientePostVenta&&e("button",{type:"button",style:Object.assign({},actB,{borderColor:C.amber+"55",background:C.amberBg,color:C.amber}),onClick:function(ev){ ev.preventDefault(); ev.stopPropagation(); abrirConfiguracionPostVenta(t.tipo==="venta"?"venta_"+t.id:t.id); }},
+                        e("svg",{width:15,height:15,viewBox:"0 0 24 24",fill:"none",stroke:"currentColor",strokeWidth:2,strokeLinecap:"round",strokeLinejoin:"round"},e("circle",{cx:"12",cy:"12",r:"3"}),e("path",{d:"M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"})),
+                        "Completar configuración"
+                      )
+                    ),
+                    e("div",{style:{display:"flex",gap:6}},
+                      !esPagado&&e("button",{type:"button",style:actBPr,onClick:function(ev){ ev.preventDefault(); ev.stopPropagation(); setPagosModalTipo(t.tipo==="venta"?"venta":"cotizacion"); setPagosModalId(t.id); setFormPago({monto:"",fecha:FECHA_HOY,concepto:"Pago"}); }},
+                        e("svg",{width:15,height:15,viewBox:"0 0 24 24",fill:"none",stroke:"currentColor",strokeWidth:2,strokeLinecap:"round",strokeLinejoin:"round"},e("rect",{x:"3",y:"6",width:"18",height:"12",rx:"2"}),e("circle",{cx:"12",cy:"12",r:"2.5"})),
+                        "Registrar pago"
                       )
                     )
+                  );
+
+                  if(isMobile){
+                    return e("article",{key:t.tipo+"_"+t.id,style:{background:"#FFFFFF",borderRadius:22,padding:16,display:"flex",flexDirection:"column",gap:0,boxShadow:"0 1px 3px rgba(0,0,0,0.04)",opacity:t.entregado?0.75:1}},
+                      e("div",{style:{display:"flex",justifyContent:"space-between",gap:10}},
+                        e("div",{style:{minWidth:0,flex:1}},
+                          e("div",{style:{display:"flex",gap:14,alignItems:"flex-start"}},
+                            doneBtn,
+                            e("div",{style:{minWidth:0,flex:1}},
+                              e("div",{style:{fontSize:16,fontWeight:800,letterSpacing:"-0.015em",color:C.text}},t.servicio),
+                              e("div",{style:{marginTop:2,fontSize:13.5,color:"#4A5068",display:"flex",alignItems:"center",gap:6}},
+                                e("svg",{width:14,height:14,viewBox:"0 0 24 24",fill:"none",stroke:"currentColor",strokeWidth:1.9,strokeLinecap:"round",strokeLinejoin:"round",style:{flexShrink:0,color:"#8E94AE"}},e("circle",{cx:"12",cy:"8",r:"4"}),e("path",{d:"M4 21c.8-4 4-6 8-6s7.2 2 8 6"})),
+                                t.cliente.nombre
+                              ),
+                              fechaRow
+                            )
+                          )
+                        ),
+                        e("div",{style:{textAlign:"right",flexShrink:0}},
+                          esPagado
+                            ? [e("div",{key:"l",style:{fontSize:11.5,color:"#5A6078",fontWeight:600}}," "),e("div",{key:"v",style:{fontSize:17,fontWeight:800,color:"#1E5C38"}},"Pagado")]
+                            : [e("div",{key:"l",style:{fontSize:11.5,color:"#5A6078",fontWeight:600}},"Falta"),e("div",{key:"v",style:{fontSize:17,fontWeight:800,color:"#5E3D04"}},"$"+formatoDinero(saldoT))]
+                        )
+                      ),
+                      e("div",{style:{paddingLeft:50,marginTop:12}},
+                        e("div",{style:{height:6,borderRadius:3,background:"#EEF0F5",overflow:"hidden"}},
+                          e("div",{style:{height:"100%",borderRadius:3,background:esPagado?"#3E9A64":"#C99A3E",width:(esPagado?100:pctPagado)+"%"}})
+                        ),
+                        !esPagado&&e("div",{style:{marginTop:4,fontSize:12.5,color:"#5A6078"}},e("b",{style:{color:"#0E1328"}},"$"+formatoDinero(t.cobrado))," pagado de $"+formatoDinero(t.total))
+                      ),
+                      e("div",{style:{marginTop:12,paddingTop:12,borderTop:"1px solid #EDEFF5",display:"flex",flexDirection:"column",gap:8}},
+                        e("div",{style:{display:"flex",gap:6,flexWrap:"wrap"}},
+                          e("button",{type:"button",style:actB,onClick:function(ev){ ev.preventDefault(); ev.stopPropagation(); if(urlContactarT){ abrirEnlaceExternoSeguro(urlContactarT); } else { setClienteCompletarId(t.cliente.id); } }},
+                            e("svg",{width:15,height:15,viewBox:"0 0 24 24",fill:"none",stroke:"currentColor",strokeWidth:2,strokeLinecap:"round",strokeLinejoin:"round"},e("path",{d:"M4 5.5A1.5 1.5 0 0 1 5.5 4h13A1.5 1.5 0 0 1 20 5.5v9a1.5 1.5 0 0 1-1.5 1.5H9.5L4 20z"})),
+                            "Contactar"
+                          ),
+                          esPagado&&e("button",{type:"button",style:actB,onClick:function(ev){ ev.preventDefault(); ev.stopPropagation(); setPagosModalTipo(t.tipo==="venta"?"venta":"cotizacion"); setPagosModalId(t.id); setFormPago({monto:"",fecha:FECHA_HOY,concepto:"Pago"}); }},
+                            e("svg",{width:15,height:15,viewBox:"0 0 24 24",fill:"none",stroke:"currentColor",strokeWidth:2,strokeLinecap:"round",strokeLinejoin:"round"},e("path",{d:"M6 3.5h12V21l-3-2-3 2-3-2-3 2z"}),e("path",{d:"M9 8.5h6M9 12h6"})),
+                            "Ver pagos"
+                          ),
+                          t.pendientePostVenta&&e("button",{type:"button",style:Object.assign({},actB,{borderColor:C.amber+"55",background:C.amberBg,color:C.amber}),onClick:function(ev){ ev.preventDefault(); ev.stopPropagation(); abrirConfiguracionPostVenta(t.tipo==="venta"?"venta_"+t.id:t.id); }},"Completar config.")
+                        ),
+                        !esPagado&&e("button",{type:"button",style:Object.assign({},actBPr,{flex:1,justifyContent:"center",height:40,borderRadius:20}),onClick:function(ev){ ev.preventDefault(); ev.stopPropagation(); setPagosModalTipo(t.tipo==="venta"?"venta":"cotizacion"); setPagosModalId(t.id); setFormPago({monto:"",fecha:FECHA_HOY,concepto:"Pago"}); }},
+                          e("svg",{width:15,height:15,viewBox:"0 0 24 24",fill:"none",stroke:"currentColor",strokeWidth:2,strokeLinecap:"round",strokeLinejoin:"round"},e("rect",{x:"3",y:"6",width:"18",height:"12",rx:"2"}),e("circle",{cx:"12",cy:"12",r:"2.5"})),
+                          "Registrar pago"
+                        )
+                      )
+                    );
+                  }
+
+                  return e("article",{key:t.tipo+"_"+t.id,style:{background:"#FFFFFF",borderRadius:20,padding:"18px 20px 16px",display:"grid",gridTemplateColumns:"minmax(0,1fr) 220px",columnGap:24,rowGap:12,boxShadow:"0 1px 3px rgba(0,0,0,0.04)",opacity:t.entregado?0.75:1}},
+                    e("div",{style:{minWidth:0}},
+                      e("div",{style:{display:"flex",gap:14,alignItems:"flex-start"}},
+                        doneBtn,
+                        e("div",{style:{minWidth:0,flex:1}},
+                          e("div",{style:{fontSize:16,fontWeight:800,letterSpacing:"-0.015em",color:C.text}},t.servicio),
+                          e("div",{style:{marginTop:2,fontSize:13.5,color:"#4A5068",display:"flex",alignItems:"center",gap:6}},
+                            e("svg",{width:14,height:14,viewBox:"0 0 24 24",fill:"none",stroke:"currentColor",strokeWidth:1.9,strokeLinecap:"round",strokeLinejoin:"round",style:{flexShrink:0,color:"#8E94AE"}},e("circle",{cx:"12",cy:"8",r:"4"}),e("path",{d:"M4 21c.8-4 4-6 8-6s7.2 2 8 6"})),
+                            t.cliente.nombre
+                          ),
+                          fechaRow
+                        )
+                      )
+                    ),
+                    mnyCol,
+                    actionsRow
                   );
                 })
               )
