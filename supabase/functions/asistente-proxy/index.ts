@@ -1,64 +1,21 @@
-// Edge Function: intermediario entre el chat del Asistente (navegador) y el
-// webhook de n8n. NO DESPLEGADA todavía. Para desplegar en cleo-pruebas
-// (nunca en producción sin aprobación explícita):
-//   supabase secrets set \
-//     CLEO_ASISTENTE_N8N_URL=<URL de producción del webhook de n8n> \
-//     CLEO_ASISTENTE_N8N_SECRET=<secreto compartido, elegido por Danna> \
-//     --project-ref <ref de cleo-pruebas>
-//   supabase functions deploy asistente-proxy --project-ref <ref de cleo-pruebas>
-// (SUPABASE_URL / SUPABASE_ANON_KEY ya los inyecta Supabase en el entorno
-// de la función al desplegar.)
-//
-// Por qué existe esta función -- la URL y el secreto de n8n NUNCA deben
-// estar en el navegador. El navegador le habla a ESTA función (con su
-// propia sesión de Supabase ya iniciada), y es la función quien agrega el
-// secreto y llama a n8n del lado del servidor.
-//
-// Autenticación en dos capas (nunca asumir que la plataforma ya la
-// resuelve sola):
-//   1. `supabase/config.toml` pide verify_jwt=true para esta función --
-//      eso protege la llamada a nivel de plataforma UNA VEZ DESPLEGADA,
-//      pero no existe ningún gateway cuando se corre localmente con
-//      dev-local-serve.ts, así que NO basta por sí sola.
-//   2. Por eso el código de abajo TAMBIÉN valida la sesión explícitamente
-//      con supabase.auth.getUser() contra el propio Authorization del
-//      que llama -- rechaza sesión ausente, inválida o vencida ANTES de
-//      tocar nada más. Esta es la capa que de verdad corre siempre, tanto
-//      en local como desplegada.
-//
-// La URL de destino en n8n SIEMPRE sale de una variable de entorno del
-// servidor (CLEO_ASISTENTE_N8N_URL) -- el cuerpo de la solicitud del
-// navegador nunca puede elegir a dónde se reenvía, aunque lo intente.
-//
-// Límites (evitar consumo ilimitado de IA): tamaño máximo de mensaje y de
-// historial, y un límite de solicitudes por minuto por usuaria (ver
-// limitarTasa). El límite de tasa es EN MEMORIA del proceso -- válido
-// mientras la función corre en una sola instancia (como aquí, en local);
-// una vez desplegada en varias instancias/regiones el límite ya no es
-// exacto entre ellas (limitación conocida, documentada aquí a propósito
-// en vez de prometer algo que esta implementación mínima no garantiza).
-//
-// Nunca se registran el secreto, el mensaje ni el historial completos en
-// los logs -- solo metadatos (duración, longitud, código de resultado).
+import { instrucciones, formato } from './contrato.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.110.0';
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL') ?? '';
 const SUPABASE_ANON_KEY = Deno.env.get('SUPABASE_ANON_KEY') ?? '';
-const N8N_URL = Deno.env.get('CLEO_ASISTENTE_N8N_URL') ?? '';
-const N8N_SECRET = Deno.env.get('CLEO_ASISTENTE_N8N_SECRET') ?? '';
+const OPENAI_API_KEY = Deno.env.get('CLEO_ASISTENTE_OPENAI_API_KEY') ?? '';
 
 const MAX_MENSAJE_CHARS = Number(Deno.env.get('CLEO_ASISTENTE_MAX_MENSAJE_CHARS') ?? '4000');
 const MAX_HISTORIAL_ENTRADAS = Number(Deno.env.get('CLEO_ASISTENTE_MAX_HISTORIAL_ENTRADAS') ?? '60');
 const MAX_HISTORIAL_CHARS = Number(Deno.env.get('CLEO_ASISTENTE_MAX_HISTORIAL_CHARS') ?? '60000');
 const RATE_LIMIT_POR_MINUTO = Number(Deno.env.get('CLEO_ASISTENTE_RATE_LIMIT_POR_MINUTO') ?? '20');
-const N8N_TIMEOUT_MS = Number(Deno.env.get('CLEO_ASISTENTE_N8N_TIMEOUT_MS') ?? '20000');
+const OPENAI_TIMEOUT_MS = Number(Deno.env.get('CLEO_ASISTENTE_OPENAI_TIMEOUT_MS') ?? '20000');
 
 // CORS: la llama el navegador (origen distinto al de la función), así que
 // el navegador manda un preflight OPTIONS antes del POST real -- sin
 // manejarlo, el navegador bloquea la solicitud real ANTES de que llegue
 // aquí, sin importar que la autenticación/validación de abajo esté bien.
-// La protección real sigue siendo la sesión (capa de abajo) y el secreto
-// hacia n8n, no el origen -- por eso se permite cualquier origen, como en
+// La protección real sigue siendo la sesión (capa de abajo) de la usuaria, no el origen -- por eso se permite cualquier origen, como en
 // el patrón oficial de Supabase para Edge Functions llamadas desde un
 // navegador.
 const CORS_HEADERS = {
@@ -150,67 +107,64 @@ async function manejarSolicitud(req) {
     return rechazo('historial_muy_largo', 400);
   }
 
-  if (!N8N_URL || !N8N_SECRET) {
-    // Falta configurar el servidor -- nunca un problema de quien llama.
-    console.error('[asistente-proxy] faltan CLEO_ASISTENTE_N8N_URL/CLEO_ASISTENTE_N8N_SECRET');
-    return rechazo('no_configurado', 500);
-  }
+  if (!OPENAI_API_KEY) return rechazo('no_configurado', 500);
 
-  // ── Reenvío a n8n: SOLO estos 2 campos, la URL SIEMPRE es la fija del
-  // servidor (el cuerpo del navegador nunca puede elegir destino) ──────
-  const controlador = new AbortController();
-  const temporizador = setTimeout(() => controlador.abort(), N8N_TIMEOUT_MS);
-  let respuestaN8n;
+  const zona = 'America/Merida';
+  const partes = new Intl.DateTimeFormat('en', {
+    timeZone: zona, year: 'numeric', month: '2-digit', day: '2-digit',
+  }).formatToParts(new Date());
+  const parte = (tipo) => partes.find(p => p.type === tipo).value;
+  const fecha = [parte('year'), parte('month'), parte('day')].join('-');
+
   try {
-    respuestaN8n = await fetch(N8N_URL, {
+    const respuesta = await fetch('https://api.openai.com/v1/responses', {
       method: 'POST',
-      headers: {
-        'content-type': 'application/json',
-        'x-cleo-asistente-secret': N8N_SECRET,
-      },
-      body: JSON.stringify({ mensaje, historial }),
-      signal: controlador.signal,
+      headers: { 'content-type': 'application/json', authorization: 'Bearer ' + OPENAI_API_KEY },
+      body: JSON.stringify({
+        model: 'gpt-4.1',
+        instructions: instrucciones,
+        input: JSON.stringify({ fecha_referencia: fecha, zona_horaria: zona, historial, mensaje }),
+        text: { format: formato },
+        store: false,
+        max_output_tokens: 2500,
+      }),
+      signal: AbortSignal.timeout(OPENAI_TIMEOUT_MS),
+    });
+    if (!respuesta.ok) {
+      console.warn('[asistente-proxy] error del modelo', { status: respuesta.status });
+      return rechazo('modelo_no_disponible', 502);
+    }
+    const datos = await respuesta.json();
+    const contenido = (datos.output ?? [])
+      .filter(item => item.type === 'message' && item.role === 'assistant')
+      .flatMap(item => item.content ?? []);
+    if (datos.status !== 'completed' || contenido.some(c => c.type === 'refusal')) {
+      return rechazo('respuesta_modelo_incompleta', 502);
+    }
+    const textos = contenido.filter(c => c.type === 'output_text');
+    if (textos.length !== 1 || typeof textos[0].text !== 'string') {
+      return rechazo('respuesta_modelo_invalida', 502);
+    }
+    let resultado;
+    try {
+      resultado = JSON.parse(textos[0].text);
+    } catch {
+      return rechazo('respuesta_modelo_invalida', 502);
+    }
+    if (!resultado || !['pregunta', 'completo'].includes(resultado.estado)
+        || !Array.isArray(resultado.acciones)
+        || resultado.acciones.some(a => !formato.schema.properties.acciones.items.enum.includes(a))) {
+      return rechazo('respuesta_modelo_invalida', 502);
+    }
+    return new Response(JSON.stringify(resultado), {
+      status: 200,
+      headers: { 'content-type': 'application/json', ...CORS_HEADERS },
     });
   } catch (err) {
-    const duracionMs = Date.now() - inicio;
-    if (err && err.name === 'AbortError') {
-      console.log('[asistente-proxy] tiempo agotado', { duracionMs, usuariaId: usuaria.id, mensajeChars: mensaje.length });
-      return rechazo('tiempo_agotado', 504);
-    }
-    console.log('[asistente-proxy] n8n no disponible', { duracionMs, usuariaId: usuaria.id });
-    return rechazo('n8n_no_disponible', 502);
-  } finally {
-    clearTimeout(temporizador);
+    const timeout = err?.name === 'TimeoutError' || err?.name === 'AbortError';
+    console.warn('[asistente-proxy] fallo de conexión al modelo', { timeout, duracionMs: Date.now() - inicio });
+    return rechazo(timeout ? 'tiempo_agotado' : 'modelo_no_disponible', timeout ? 504 : 502);
   }
-
-  if (!respuestaN8n.ok) {
-    console.log('[asistente-proxy] n8n respondió con error', { status: respuestaN8n.status, usuariaId: usuaria.id });
-    return rechazo('n8n_error', 502);
-  }
-
-  let datosN8n;
-  try {
-    datosN8n = await respuestaN8n.json();
-  } catch {
-    console.log('[asistente-proxy] respuesta de n8n no es JSON válido', { usuariaId: usuaria.id });
-    return rechazo('n8n_error', 502);
-  }
-
-  console.log('[asistente-proxy] ok', {
-    duracionMs: Date.now() - inicio,
-    usuariaId: usuaria.id,
-    mensajeChars: mensaje.length,
-    historialEntradas: historial.length,
-    estado: datosN8n && datosN8n.estado,
-  });
-
-  // Se devuelve la respuesta de n8n tal cual -- CLEO ya sabe interpretar
-  // ese contrato (estado/pregunta/cliente/acciones/venta/oportunidad/
-  // recordatorio), ningún cambio de lógica de este lado.
-  return new Response(JSON.stringify(datosN8n), {
-    status: 200,
-    headers: { 'content-type': 'application/json', ...CORS_HEADERS },
-  });
 }
 
 export default { fetch: manejarSolicitud };

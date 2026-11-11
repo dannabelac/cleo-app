@@ -10496,15 +10496,20 @@ export default function CLEO(props){
   // ── ONBOARDING ─────────────────────────────────────────────────────────────
   var tienesDatos=clientes.length>0||cotizaciones.length>0||ventas.length>0;
   var necesitaOnboarding=(function(){ try{ return localStorage.getItem('cleo_necesita_onboarding')==='1'; }catch(e){ return false; } })();
-  var tipoPerfilGuardado=perfil.tipoPerfil||(function(){
-    try{ 
-      var p=localStorage.getItem("cleo_perfil"); 
-      var tp=p?JSON.parse(p).tipoPerfil||"":"";
-      if(!tp) tp=localStorage.getItem("cleo_tipo_perfil")||"";
-      return tp;
-    }catch(e){ return ""; } 
-  })();
-  if((!tipoPerfilGuardado||necesitaOnboarding)&&!tienesDatos){
+  // ?onboarding=1 en la URL fuerza el onboarding independientemente de los datos (solo dev/pruebas)
+  var forzarOnboarding=(function(){ try{ return new URLSearchParams(window.location.search).get('onboarding')==='1'; }catch(e){ return false; } })();
+  // En modo forzado lee sessionStorage (se limpia al cerrar pestaña, no toca perfil real)
+  var tipoPerfilGuardado=forzarOnboarding
+    ? (function(){ try{ return sessionStorage.getItem('cleo_onb_forzado_perfil')||""; }catch(e){ return ""; } })()
+    : (perfil.tipoPerfil||(function(){
+        try{
+          var p=localStorage.getItem("cleo_perfil");
+          var tp=p?JSON.parse(p).tipoPerfil||"":"";
+          if(!tp) tp=localStorage.getItem("cleo_tipo_perfil")||"";
+          return tp;
+        }catch(e){ return ""; }
+      })());
+  if((!tipoPerfilGuardado||necesitaOnboarding)&&(!tienesDatos||forzarOnboarding)){
     var r16Grad="radial-gradient(90% 70% at 85% 10%, #24307A 0%, rgba(36,48,122,0) 60%), radial-gradient(70% 60% at 0% 100%, #1B2560 0%, rgba(27,37,96,0) 70%), #0E1328";
     var r16Opts=[
       {k:"productos",titulo:"Vendo productos",desc:"Ropa, alimentos, joyería, cosméticos, artesanías y otros productos.",bg:"#EEF0FF",ic:"#3F4BD0",
@@ -10519,6 +10524,12 @@ export default function CLEO(props){
         onMouseEnter:function(ev){ ev.currentTarget.style.borderColor="#8D9BFF"; ev.currentTarget.style.boxShadow="0 0 0 4px #EEF0FF"; },
         onMouseLeave:function(ev){ ev.currentTarget.style.borderColor=C.border; ev.currentTarget.style.boxShadow="none"; },
         onClick:function(){
+          if(forzarOnboarding){
+            try{ sessionStorage.setItem('cleo_onb_forzado_perfil',op.k); }catch(_){}
+            setOnbSubPaso("bienvenida");
+            setVista("inicio");
+            return;
+          }
           try{ localStorage.removeItem('cleo_necesita_onboarding'); }catch(_){}
           var nuevoPerfil=Object.assign({},perfil,{tipoPerfil:op.k});
           setPerfil(nuevoPerfil);
@@ -10755,7 +10766,7 @@ export default function CLEO(props){
       vista==="inicio"&&(function(){
         var tieneRegistroApp=clientes.length>0||ventas.length>0||pedidos.length>0;
         var enPantallaFinal=!!onbFlujoActivo||((onbSubPaso==="confirmacion"||onbSubPaso==="omitido")&&!perfil.onboardingListo);
-        var necesitaOnboarding=enPantallaFinal||(!tieneRegistroApp&&(!perfil.tuNombre||perfil.nombre==="Mi Negocio"||!perfil.onboardingListo));
+        var necesitaOnboarding=enPantallaFinal||forzarOnboarding||(!tieneRegistroApp&&(!perfil.tuNombre||perfil.nombre==="Mi Negocio"||!perfil.onboardingListo));
         if(!necesitaOnboarding) return null;
 
         var nombreNegocioTxt=perfil.nombre&&perfil.nombre!=="Mi Negocio"?perfil.nombre:"";
@@ -10922,13 +10933,13 @@ export default function CLEO(props){
                     // Campo de texto
                     e("div",{style:{marginTop:26,display:"flex",flexDirection:"column",gap:10,padding:"16px 16px 14px 20px",borderRadius:22,border:"1.5px solid #8D9BFF",boxShadow:"0 0 0 5px #EEF0FF",background:"#FFFFFF"}},
                       e("textarea",{value:asistenteChatInput,onChange:function(ev){ setAsistenteChatInput(ev.target.value); },
-                        onKeyDown:function(ev){ if(ev.key==="Enter"&&!ev.shiftKey){ ev.preventDefault(); if(asistenteChatInput.trim()){ enviarMensajeAsistente(); setAsistenteAbierto(true); } } },
+                        onKeyDown:function(ev){ if(ev.key==="Enter"&&!ev.shiftKey){ ev.preventDefault(); if(asistenteChatInput.trim()) enviarMensajeAsistente(); } },
                         placeholder:"Escribe aquí algo de tu negocio…",rows:3,
                         style:{width:"100%",border:"none",outline:"none",background:"transparent",fontSize:16,lineHeight:1.5,color:C.ink,fontFamily:FONT_CLEO,resize:"none",boxSizing:"border-box",padding:0,minHeight:48}
                       }),
                       e("div",{style:{display:"flex",justifyContent:"flex-end"}},
                         e("button",{type:"button","aria-label":"Enviar",
-                          onClick:function(){ if(asistenteChatInput.trim()){ enviarMensajeAsistente(); setAsistenteAbierto(true); } },
+                          onClick:function(){ if(asistenteChatInput.trim()) enviarMensajeAsistente(); },
                           disabled:!asistenteChatInput.trim(),
                           style:{cursor:asistenteChatInput.trim()?"pointer":"default",width:36,height:36,flexShrink:0,border:"none",borderRadius:"50%",background:asistenteChatInput.trim()?"#3F4BD0":"#E4E8FF",color:asistenteChatInput.trim()?"#FFFFFF":"#3F4BD0",display:"flex",alignItems:"center",justifyContent:"center"}
                         }, r21UpSvg)
