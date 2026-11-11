@@ -6674,6 +6674,7 @@ export default function CLEO(props){
   var sFiltroTrabajo=useState("porCompletar"); var filtroTrabajo=sFiltroTrabajo[0]; var setFiltroTrabajo=sFiltroTrabajo[1];
   var sFiltroTrabajoPeriodo=useState("todo"); var filtroTrabajoPeriodo=sFiltroTrabajoPeriodo[0]; var setFiltroTrabajoPeriodo=sFiltroTrabajoPeriodo[1];
   var sOpenFiltroTrabajoPeriodo=useState(false); var openFiltroTrabajoPeriodo=sOpenFiltroTrabajoPeriodo[0]; var setOpenFiltroTrabajoPeriodo=sOpenFiltroTrabajoPeriodo[1];
+  var sConfirmDesmarcarId=useState(null); var confirmDesmarcarId=sConfirmDesmarcarId[0]; var setConfirmDesmarcarId=sConfirmDesmarcarId[1];
   var sCerreExito=useState(false); var cerreExito=sCerreExito[0]; var setCerreExito=sCerreExito[1];
   var sToastTrabajo=useState(""); var toastTrabajo=sToastTrabajo[0]; var setToastTrabajo=sToastTrabajo[1];
   function mostrarToast(mensaje){
@@ -6837,6 +6838,14 @@ export default function CLEO(props){
     } else {
       mostrarToast("✓ "+nombreCortoTrabajo+" — trabajo entregado y cobrado. Uno menos, bien hecho.");
     }
+  }
+  function desmarcarTrabajoEntregado(trabajo){
+    if(trabajo.tipo==="cotizacion"){
+      setCotizaciones(cotizaciones.map(function(c){ return c.id===trabajo.id?Object.assign({},c,conCambiosEntregaTrabajo(c,{entregado:false})):c; }));
+    } else {
+      setVentas(ventas.map(function(v){ return v.id===trabajo.id?Object.assign({},v,conCambiosEntregaTrabajo(v,{entregado:false})):v; }));
+    }
+    mostrarToast("Desmarcado como entregado.");
   }
   function actualizarFechaEntrega(trabajo,nuevaFecha){
     if(trabajo.tipo==="cotizacion"){
@@ -14935,9 +14944,21 @@ export default function CLEO(props){
                     );
                   }
 
-                  var doneStyle={width:36,height:36,flexShrink:0,borderRadius:"50%",border:"2px solid "+(esPagado?"#3F4BD0":"#C9D0FF"),background:esPagado?"#EEF0FF":"#FFFFFF",color:esPagado?"#3F4BD0":"#C9D0FF",display:"grid",placeItems:"center",cursor:"pointer"};
-                  var doneBtn=e("button",{type:"button","aria-label":"Marcar como completado",title:"Marcar como completado",style:doneStyle,onClick:function(ev){ ev.preventDefault(); ev.stopPropagation(); if(!t.entregado){ marcarTrabajoCompletado(t); } }},
-                    e("svg",{width:16,height:16,viewBox:"0 0 24 24",fill:"none",stroke:"currentColor",strokeWidth:2.6,strokeLinecap:"round",strokeLinejoin:"round"},e("path",{d:"m5 12.5 4.5 4.5L19 7.5"}))
+                  var tKey=t.tipo+"_"+t.id;
+                  var showConfirmDesmarcar=confirmDesmarcarId===tKey;
+                  var doneStyle={width:36,height:36,flexShrink:0,borderRadius:"50%",border:"2px solid "+(t.entregado?"#3F4BD0":"#C9D0FF"),background:t.entregado?"#EEF0FF":"#FFFFFF",color:t.entregado?"#3F4BD0":"#C9D0FF",display:"grid",placeItems:"center",cursor:"pointer"};
+                  var doneBtn=e("div",{style:{position:"relative",flexShrink:0}},
+                    showConfirmDesmarcar&&e("div",{style:{position:"fixed",inset:0,zIndex:49},onClick:function(){ setConfirmDesmarcarId(null); }}),
+                    e("button",{type:"button","aria-label":t.entregado?"Desmarcar como entregado":"Marcar como completado",title:t.entregado?"Desmarcar como entregado":"Marcar como completado",style:doneStyle,onClick:function(ev){ ev.preventDefault(); ev.stopPropagation(); if(t.entregado){ setConfirmDesmarcarId(showConfirmDesmarcar?null:tKey); } else { marcarTrabajoCompletado(t); } }},
+                      e("svg",{width:16,height:16,viewBox:"0 0 24 24",fill:"none",stroke:"currentColor",strokeWidth:2.6,strokeLinecap:"round",strokeLinejoin:"round"},e("path",{d:"m5 12.5 4.5 4.5L19 7.5"}))
+                    ),
+                    showConfirmDesmarcar&&e("div",{style:{position:"absolute",left:0,top:"calc(100% + 6px)",zIndex:50,background:"#FFFFFF",borderRadius:12,border:"1px solid #E3E6EF",boxShadow:"0 4px 16px rgba(0,0,0,0.12)",padding:"12px 14px",minWidth:200,whiteSpace:"nowrap"}},
+                      e("div",{style:{fontSize:13,fontWeight:600,color:"#0E1328",marginBottom:10}},"¿Desmarcar como entregado?"),
+                      e("div",{style:{display:"flex",gap:6}},
+                        e("button",{type:"button",style:{flex:1,height:30,borderRadius:15,border:"1.5px solid #E3E6EF",background:"#FFFFFF",fontFamily:"inherit",fontSize:12.5,fontWeight:700,color:"#4A5068",cursor:"pointer"},onClick:function(ev){ ev.preventDefault(); ev.stopPropagation(); setConfirmDesmarcarId(null); }},"Cancelar"),
+                        e("button",{type:"button",style:{flex:1,height:30,borderRadius:15,border:0,background:"#0E1328",fontFamily:"inherit",fontSize:12.5,fontWeight:700,color:"#FFFFFF",cursor:"pointer"},onClick:function(ev){ ev.preventDefault(); ev.stopPropagation(); desmarcarTrabajoEntregado(t); setConfirmDesmarcarId(null); }},"Desmarcar")
+                      )
+                    )
                   );
 
                   var mnyCol=esPagado
