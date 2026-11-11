@@ -1264,7 +1264,7 @@ export default function ResumenAnalyticsProd({
   ventas.forEach(v => {
     (v.pagos || []).forEach(p => { if (p.fecha && p.fecha.slice(0, 7) === mesActualStr) cobradoPeriodo += Number(p.monto); });
   });
-  (cotizaciones || []).forEach(c => {
+  if (!esProductos) (cotizaciones || []).forEach(c => {
     (c.pagos || []).forEach(p => { if (p.fecha && p.fecha.slice(0, 7) === mesActualStr) cobradoPeriodo += Number(p.monto); });
   });
 
