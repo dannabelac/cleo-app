@@ -3504,6 +3504,15 @@ function buildItemsCompat(itemsFinal,tipoPlural){
     cantidad:cantidadItems
   };
 }
+// precioReferenciaItems: precio de referencia para un conjunto de items donde
+// cantidad puede ser 0 (el asistente capturó precio sin cantidad). Si hay
+// total calculado (cantidad×precio) se usa ese; si solo hay precioUnitario
+// sin cantidad, se suma precioUnitario directamente — sin inventar nada.
+function precioReferenciaItems(items){
+  var t=redondearDinero((items||[]).reduce(function(s,it){ return s+(Number(it.total)||0); },0));
+  if(t>0) return t;
+  return redondearDinero((items||[]).reduce(function(s,it){ return s+(Number(it.precioUnitario)||0); },0));
+}
 // ── Función central ÚNICA de validación para "Precio enviado" (Productos) ──
 // Pura , no muta nada ni lee estado de React, solo audita el arreglo de
 // items CRUDO tal como viene del formulario (ANTES de normalizarlo con
@@ -6137,7 +6146,7 @@ export default function CLEO(props){
           if(Number(c.id)!==clienteIdFinal) return c;
           return Object.assign({},c,{
             fechaEtapa:FECHA_HOY,etapa:"Nuevo contacto",estadoProspecto:"Nueva",
-            items:itemsOportunidadFinal,productoInteres:compatOp.resumen,precioInteres:String(compatOp.total),cantidadInteres:String(compatOp.cantidad),
+            items:itemsOportunidadFinal,productoInteres:compatOp.resumen,precioInteres:String(precioReferenciaItems(itemsOportunidadFinal)),cantidadInteres:String(compatOp.cantidad),
             notasProspecto:draft.oportunidad.notas||c.notasProspecto||"",
             ultimoContacto:FECHA_HOY
           });
@@ -6149,7 +6158,7 @@ export default function CLEO(props){
     }
     if(itemsOportunidadFinal&&!esProductos){
       var _totSv=calcularTotalesCotizacion(itemsOportunidadFinal,"","porcentaje");
-      var _montoSv=_totSv.total;
+      var _montoSv=precioReferenciaItems(itemsOportunidadFinal);
       var _resumenSv=resumenItemsCotizacion(itemsOportunidadFinal,"servicio");
       var _cantSv=itemsOportunidadFinal.reduce(function(s,it){ return s+(it.cantidad||0); },0);
       var _datosFinSv={subtotal:_totSv.subtotal,descuento:_totSv.descuento,tipoDescuento:_totSv.tipoDescuento,monto:_montoSv,items:itemsOportunidadFinal,concepto:_resumenSv,cantidad:_cantSv,precioUnit:_cantSv>0?_montoSv/_cantSv:(itemsOportunidadFinal[0]?itemsOportunidadFinal[0].precioUnitario:0)};
@@ -6165,7 +6174,7 @@ export default function CLEO(props){
       setClientes(function(prev){ return prev.map(function(c){
         if(Number(c.id)!==clienteIdFinal) return c;
         var _etapaSv=ESTADOS_ACTIVOS_ETAPA_SV.indexOf(c.etapa)!==-1?c.etapa:"Nuevo contacto";
-        return Object.assign({},c,{fechaEtapa:FECHA_HOY,etapa:_etapaSv,items:itemsOportunidadFinal,servicioInteres:_compatSv.resumen,precioInteres:String(_compatSv.total),cantidadInteres:String(_compatSv.cantidad),notasProspecto:draft.oportunidad.notas||c.notasProspecto||"",ultimoContacto:FECHA_HOY});
+        return Object.assign({},c,{fechaEtapa:FECHA_HOY,etapa:_etapaSv,items:itemsOportunidadFinal,servicioInteres:_compatSv.resumen,precioInteres:String(precioReferenciaItems(itemsOportunidadFinal)),cantidadInteres:String(_compatSv.cantidad),notasProspecto:draft.oportunidad.notas||c.notasProspecto||"",ultimoContacto:FECHA_HOY});
       }); });
       setAsistenteOportunidadesGuardadas(function(prev){ return prev.concat([firmaOportunidadAsistente(draft.clienteNombre,draft.oportunidad.producto)]); });
       registrarEvento("oportunidad_creada",{tipo_perfil:perfil.tipoPerfil||"",origen:"asistente",dispositivo:dispositivoActual()});
@@ -20715,7 +20724,7 @@ export default function CLEO(props){
                 var onClickVer=m.verPedidoId
                   ?function(){ cerrarAsistente(); setVista("pedidos"); }
                   :m.verOportunidadClienteId
-                  ?function(){ setVista("prospectos"); setHighlightOpoId(m.verOportunidadClienteId); }
+                  ?function(){ setVista(esProductos?"prospectos":"pipeline"); setHighlightOpoId(m.verOportunidadClienteId); }
                   :function(){ setVista("clientes"); setClienteAbierto(m.verRecordatorioClienteId); setTabCliente("seguimiento"); };
                 return e("div",{key:i,style:{flexShrink:0,alignSelf:"stretch",marginTop:2,padding:"14px 16px",borderRadius:16,background:"#fff",boxShadow:"inset 0 0 0 1.5px #C9D0FF"}},
                   e("div",{style:{display:"flex",alignItems:"center",gap:8,fontSize:12,fontWeight:800,letterSpacing:".04em",color:"#1E5C38"}},
@@ -20891,7 +20900,7 @@ export default function CLEO(props){
                     etiquetaSeccion("Producto de interés"),
                     e("div",{key:"v",style:{fontSize:14,marginTop:6,color:draft.oportunidad.completa?"#0E1328":"#8A5A06"}},
                       draft.oportunidad.completa
-                        ?(draft.oportunidad.producto+(draft.oportunidad.cantidad!=null&&draft.oportunidad.precioUnitario!=null?(" · "+draft.oportunidad.cantidad+" x $"+formatoDinero(draft.oportunidad.precioUnitario)):""))
+                        ?(function(){var _op=draft.oportunidad;if(_op.cantidad!=null&&_op.precioUnitario!=null)return _op.producto+" · "+_op.cantidad+" × $"+formatoDinero(_op.precioUnitario);if(_op.precioUnitario!=null)return _op.producto+" · $"+formatoDinero(_op.precioUnitario);if(_op.cantidad!=null)return _op.producto+" · "+_op.cantidad+" unidades";return _op.producto;})()
                         :"Falta el producto de interés"
                     )
                   ]);
