@@ -351,6 +351,21 @@ Basada en la tarjeta de Pedidos (R9) con identidad propia de "lista de pendiente
 - Móvil: círculo + servicio + cliente + importe a la derecha arriba; barra de pago debajo (alineada con el texto); Contactar de contorno y "Registrar pago" azul noche a lo ancho (40px). Barra de navegación inferior.
 No cambies la lógica de completar, pagos, fecha de entrega, filtros ni contacto.
 
+### R25 · Seguimientos (tablero por etapas, perfil servicios) — `R25-Seguimientos.html`, `R25-Movil-Seguimientos.html`
+Mismas etapas, datos y arrastrar/soltar. Escala v2, contenido `maxWidth:1120`.
+- Encabezado: "Tus seguimientos" 24px/800 + subtítulo actual.
+- Desktop: 5 columnas iguales (grid `repeat(5,minmax(0,1fr))`, gap 12).
+- Encabezado de etapa: tarjeta blanca de ALTURA FIJA 124px (radio 18, padding 14px 14px 12px), en columna: puntito de color 8px + nombre de etapa 13px/800 (una línea) + contador en pastilla #F4F5FA a la derecha; total de la etapa 13px/800 (si no hay monto, el renglón queda vacío — se quita la coma suelta ","); abajo, pegada al fondo, la pregunta de CLEO con foco #8A5A06, 12px #5A6078, máximo 2 líneas. Colores de puntito: Nuevo contacto #8D9BFF, Cotización enviada #E0A93B, Esperando respuesta #B88A3A, Cliente ganado #3E9A64, Sin cerrar #9AA0B8.
+- Tarjetita: blanca, ALTURA FIJA 142px, radio 16, padding 12px 13px, sin borde de color (hover/arrastre: borde #C9D0FF). Se quitan los círculos de iniciales y los botones de adjuntar, red social y editar. Renglones fijos (si un dato no existe, su renglón queda vacío, no se recorre nada):
+  1. Nombre 14px/800 (una línea, "…").
+  2. Negocio 12.5px #6E7489 (una línea).
+  3. Servicio 13px/600 azul noche, texto normal (ya no en cajita de color), una línea con "…".
+  4. Importe: "$600.00" 12.5px/800 #5E3D04 + "pendiente" #8A5A06.
+  5. Aviso pegado abajo (22px): días sin movimiento "9 días" (antes "9d") o "Seguimiento hoy" (antes "Seg: hoy") en pastilla #FBF1DC/#8A5A06 con reloj; vencido en #FBE6E1/#B23A24 con alerta. Rojo solo para vencido.
+  Toda la tarjeta abre el detalle al tocarla y se arrastra para cambiar de etapa, como hoy.
+- Columna vacía: recuadro punteado #D5D8E4 de 142px con "Arrastra aquí".
+- Móvil: pastillas con las etapas (puntito + nombre + contador), que se acomodan en varias líneas (NO deslizables); la elegida en azul noche con contador #A3AFFF. Debajo, el encabezado de esa etapa y su lista de tarjetitas (mismas medidas). Cambiar de etapa en móvil con el mecanismo que ya exista. Barra de navegación inferior.
+
 ## 5. Fase 3 — Pedidos (y el resto de secciones)
 
 Referencias: `R5-Pedidos.html`, `R5-Movil-Pedidos.html`.
