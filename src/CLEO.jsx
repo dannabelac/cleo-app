@@ -15298,13 +15298,19 @@ export default function CLEO(props){
             var btnGhostHoy={cursor:"pointer",display:"inline-flex",alignItems:"center",justifyContent:"center",gap:6,height:isMobile?sc.btnH:sc.btnSmH,padding:"0 10px",borderRadius:999,border:"none",background:"transparent",color:C.text,fontSize:isMobile?sc.btnText:sc.btnSmText,fontWeight:700,fontFamily:"inherit",whiteSpace:"nowrap",boxSizing:"border-box"};
             var btnSecHoy={cursor:"pointer",display:"inline-flex",alignItems:"center",justifyContent:"center",gap:7,height:isMobile?sc.btnH:sc.btnSmH,padding:"0 14px",borderRadius:999,border:"1.5px solid #D5D8E4",background:C.surface,color:C.text,fontSize:isMobile?sc.btnText:sc.btnSmText,fontWeight:700,fontFamily:"inherit",whiteSpace:"nowrap",boxSizing:"border-box"};
             var cardHoy={background:C.surface,borderRadius:20,padding:isMobile?"18px 16px":"18px 20px"};
-            return e("div",null,
-              urgentes.length>0&&e("div",{style:{fontSize:11,fontWeight:700,color:C.textMuted,textTransform:"uppercase",letterSpacing:"0.5px",marginBottom:10,display:"flex",alignItems:"center",gap:8}},
-                "💬 CONVERSACIONES POR RETOMAR",
-                e("span",{style:{fontSize:11,padding:"2px 8px",borderRadius:10,background:C.purple+"18",color:C.purple,fontWeight:700}},urgentes.length)
+            return e("div",{style:{display:"flex",flexDirection:"column",gap:12}},
+              urgentes.length>0&&(
+                isMobile
+                  ? e("div",{style:{fontSize:11,fontWeight:800,letterSpacing:".08em",color:C.textMuted,textTransform:"uppercase",marginBottom:4,display:"flex",alignItems:"center",gap:8}},
+                      "CONVERSACIONES POR RETOMAR",
+                      e("span",{style:{color:C.purple}},urgentes.length)
+                    )
+                  : e("div",{style:{display:"flex",alignItems:"center",gap:14,padding:"16px 20px",borderRadius:22,background:"#8D9BFF"}},
+                      e("span",{style:{fontSize:44,lineHeight:1,fontWeight:800,letterSpacing:"-0.04em",color:C.ink}},urgentes.length),
+                      e("span",{style:{fontSize:sc.namePerson,lineHeight:1.25,fontWeight:800,color:C.ink}},urgentes.length===1?"Conversación\npor retomar":"Conversaciones\npor retomar")
+                    )
               ),
-              e("div",{style:{display:"flex",flexDirection:"column",gap:12}},
-                urgentes.map(function(u){
+              urgentes.map(function(u){
                   try {
                     var c=u.cliente;
                     var esHighlightHoy=c.id===highlightHoyClienteId;
@@ -15352,7 +15358,6 @@ export default function CLEO(props){
                     );
                   } catch(err){ return e("div",{key:u.cliente&&u.cliente.id,style:{padding:8,fontSize:11,color:C.red}},"Error cargando cliente"); }
                 })
-              )
             );
           })(),
 
@@ -15363,13 +15368,17 @@ export default function CLEO(props){
             if(cobrosPendientes.length===0) return null;
             var btnPrimCob={cursor:"pointer",display:"inline-flex",alignItems:"center",justifyContent:"center",gap:7,height:isMobile?sc.btnH:sc.btnSmH,padding:"0 16px",borderRadius:999,border:"none",background:C.ink,color:"#fff",fontSize:isMobile?sc.btnText:sc.btnSmText,fontWeight:700,fontFamily:"inherit",whiteSpace:"nowrap",boxSizing:"border-box"};
             var btnGhostCob={cursor:"pointer",display:"inline-flex",alignItems:"center",justifyContent:"center",gap:6,height:isMobile?sc.btnH:sc.btnSmH,padding:"0 10px",borderRadius:999,border:"none",background:"transparent",color:C.text,fontSize:isMobile?sc.btnText:sc.btnSmText,fontWeight:700,fontFamily:"inherit",whiteSpace:"nowrap",boxSizing:"border-box"};
-            return e("div",{style:{marginTop:20}},
-              e("div",{style:{fontSize:11,fontWeight:700,color:C.amber,textTransform:"uppercase",letterSpacing:"0.5px",marginBottom:10,display:"flex",alignItems:"center",gap:8}},
-                "💰 COBROS PENDIENTES",
-                e("span",{style:{fontSize:11,padding:"2px 8px",borderRadius:10,background:C.amber+"22",color:C.amber,fontWeight:700}},cobrosPendientes.length)
-              ),
-              e("div",{style:{display:"flex",flexDirection:"column",gap:12}},
-                cobrosPendientes.map(function(x,i){
+            return e("div",{style:{marginTop:16,display:"flex",flexDirection:"column",gap:12}},
+              isMobile
+                ? e("div",{style:{fontSize:11,fontWeight:800,letterSpacing:".08em",color:C.amber,textTransform:"uppercase",marginBottom:4,display:"flex",alignItems:"center",gap:8}},
+                    "COBROS PENDIENTES",
+                    e("span",{style:{color:C.amber}},cobrosPendientes.length)
+                  )
+                : e("div",{style:{display:"flex",alignItems:"center",gap:14,padding:"16px 20px",borderRadius:22,background:"radial-gradient(110% 90% at 100% 0%, #24307A 0%, rgba(36,48,122,0) 62%), #0E1328",color:"#fff"}},
+                    e("span",{style:{fontSize:44,lineHeight:1,fontWeight:800,letterSpacing:"-0.04em",color:"#FFD36B"}},cobrosPendientes.length),
+                    e("span",{style:{fontSize:sc.namePerson,lineHeight:1.25,fontWeight:800,color:"#fff"}},cobrosPendientes.length===1?"Cobro\npendiente":"Cobros\npendientes")
+                  ),
+              cobrosPendientes.map(function(x,i){
                   var pagado=Number(x.cot.monto)-x.saldo;
                   var descSaldo=pagado<=0
                     ?"Aún no ha pagado nada de esta cotización."
@@ -15392,7 +15401,6 @@ export default function CLEO(props){
                     )
                   );
                 })
-              )
             );
           })()
           ) // cierre !esProductos
