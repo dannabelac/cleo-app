@@ -4186,6 +4186,7 @@ function ModalVenta(props){
   var ventaDirectaOriginal=props.ventaDirectaOriginal; var setVentaDirectaOriginal=props.setVentaDirectaOriginal||function(){};
   var setClientes=props.setClientes||function(){}; var FECHA_HOY=props.FECHA_HOY||"";
   var eventosInv=props.eventosInv||[];
+  var promosRapidas=props.promosRapidas||[]; var eliminarPromoRapida=props.eliminarPromoRapida||function(){};
   if(!modalVenta) return null;
   // Función central usada por TODAS las rutas de cierre sin confirmar
   // (X, Cancelar, clic en el fondo) , nunca se usa después de que la
@@ -18554,7 +18555,7 @@ export default function CLEO(props){
     )
   ,
 
-    e(ModalVenta,{modalVenta:modalVenta,setModalVenta:setModalVenta,formVenta:formVenta,setFormVenta:setFormVenta,pasoVenta:pasoVenta,setPasoVenta:setPasoVenta,clientes:clientes,setClientes:setClientes,guardarVentaDirecta:guardarVentaDirecta,avanzarVenta:avanzarVenta,st:st,productos:productos,sugerenciasConcepto:sugerenciasConcepto,setSugerenciasConcepto:setSugerenciasConcepto,esProductos:esProductos,servicios:servicios,productosCat:productosCat,cotAceptadaId:cotAceptadaId,setCotAceptadaId:setCotAceptadaId,etapaAnteriorGanado:etapaAnteriorGanado,setEtapaAnteriorGanado:setEtapaAnteriorGanado,ventaDirectaOriginal:ventaDirectaOriginal,setVentaDirectaOriginal:setVentaDirectaOriginal,FECHA_HOY:FECHA_HOY,eventosInv:eventosInv}),
+    e(ModalVenta,{modalVenta:modalVenta,setModalVenta:setModalVenta,formVenta:formVenta,setFormVenta:setFormVenta,pasoVenta:pasoVenta,setPasoVenta:setPasoVenta,clientes:clientes,setClientes:setClientes,guardarVentaDirecta:guardarVentaDirecta,avanzarVenta:avanzarVenta,st:st,productos:productos,sugerenciasConcepto:sugerenciasConcepto,setSugerenciasConcepto:setSugerenciasConcepto,esProductos:esProductos,servicios:servicios,productosCat:productosCat,cotAceptadaId:cotAceptadaId,setCotAceptadaId:setCotAceptadaId,etapaAnteriorGanado:etapaAnteriorGanado,setEtapaAnteriorGanado:setEtapaAnteriorGanado,ventaDirectaOriginal:ventaDirectaOriginal,setVentaDirectaOriginal:setVentaDirectaOriginal,FECHA_HOY:FECHA_HOY,eventosInv:eventosInv,promosRapidas:promosRapidas,eliminarPromoRapida:eliminarPromoRapida}),
 
     // PANEL MOVER , móvil pipeline
     isMobile&&moverClienteId&&(function(){
