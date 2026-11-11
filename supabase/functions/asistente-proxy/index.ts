@@ -1,4 +1,4 @@
-import { instrucciones, formato } from './contrato.ts';
+import { instrucciones, instruccionesServicios, formato } from './contrato.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.110.0';
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL') ?? '';
@@ -88,6 +88,7 @@ async function manejarSolicitud(req) {
 
   const mensaje = typeof body?.mensaje === 'string' ? body.mensaje : '';
   const historial = Array.isArray(body?.historial) ? body.historial : [];
+  const tipoPerfil = typeof body?.tipoPerfil === 'string' ? body.tipoPerfil : '';
   if (!mensaje.trim()) {
     return rechazo('mensaje_vacio', 400);
   }
@@ -122,7 +123,7 @@ async function manejarSolicitud(req) {
       headers: { 'content-type': 'application/json', authorization: 'Bearer ' + OPENAI_API_KEY },
       body: JSON.stringify({
         model: 'gpt-4.1',
-        instructions: instrucciones,
+        instructions: tipoPerfil === 'servicios' ? instruccionesServicios : instrucciones,
         input: JSON.stringify({ fecha_referencia: fecha, zona_horaria: zona, historial, mensaje }),
         text: { format: formato },
         store: false,
