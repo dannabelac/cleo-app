@@ -207,6 +207,25 @@ var METODOS_PAGO=[
 ];
 var METODOS_PAGO_BY_KEY={};
 METODOS_PAGO.forEach(function(m){ METODOS_PAGO_BY_KEY[m.k]=m; });
+// ── PWA: detección de plataforma/estado de instalación ───────────────────
+// appEstaInstalada: true cuando CLEO ya corre como app instalada (abierta
+// desde el ícono, no desde una pestaña normal) , en ambos casos se revisa
+// porque Android/Chrome expone display-mode:standalone y iOS/Safari expone
+// navigator.standalone , ninguno de los dos cambia mientras la sesión sigue
+// abierta, así que es seguro leerlo directo en el render, no necesita ser
+// estado de React.
+function appEstaInstalada(){
+  try{
+    if(typeof window!=="undefined"&&window.matchMedia&&window.matchMedia("(display-mode: standalone)").matches) return true;
+    if(typeof navigator!=="undefined"&&navigator.standalone) return true;
+  }catch(e){}
+  return false;
+}
+function esIOS(){
+  try{
+    return /iphone|ipad|ipod/i.test((typeof navigator!=="undefined"&&navigator.userAgent)||"");
+  }catch(e){ return false; }
+}
 // ── Pluralización central del Reporte comercial ─────────────────────────
 // Única fuente para "cantidad + palabra" en singular/plural dentro del
 // reporte (Sección 5 "Lectura de CLEO") , nunca se repite un ternario
@@ -7253,6 +7272,36 @@ export default function CLEO(props){
   var s31d=useState(""); var seguimientoFechaCal=s31d[0]; var setSeguimientoFechaCal=s31d[1]; // fecha de calendario para el modo "nuevo"
   var s31e=useState(null); var seguimientoEditandoId=s31e[0]; var setSeguimientoEditandoId=s31e[1]; // id del recordatorio específico que se reprograma
   var s31f=useState(""); var horaRecordatorio=s31f[0]; var setHoraRecordatorio=s31f[1]; // hora opcional ("HH:MM"), solo para recordatorios personales , "" = sin hora específica, igual que siempre
+
+  // ── PWA: banner de instalación en Hoy + empujón al usar hora ──────────
+  // installPromptEvt: el evento beforeinstallprompt de Chrome/Android,
+  // guardado para poder disparar el instalador nativo desde nuestro propio
+  // botón (Chrome exige que sea un gesto del usuario , por eso se captura
+  // aquí y se usa después, nunca se dispara solo).
+  var sInstallPrompt=useState(null); var installPromptEvt=sInstallPrompt[0]; var setInstallPromptEvt=sInstallPrompt[1];
+  useEffect(function(){
+    function onBip(ev){ ev.preventDefault(); setInstallPromptEvt(ev); }
+    window.addEventListener("beforeinstallprompt",onBip);
+    return function(){ window.removeEventListener("beforeinstallprompt",onBip); };
+  },[]);
+  // pwaBannerCerrado: una vez que la persona lo cierra, no vuelve a
+  // aparecer , igual que cualquier aviso que ya se descartó a propósito.
+  var sPwaBanner=useState(function(){ try{ return localStorage.getItem("cleo_pwa_banner_cerrado")==="true"; }catch(e){ return false; } });
+  var pwaBannerCerrado=sPwaBanner[0]; var setPwaBannerCerrado=sPwaBanner[1];
+  function cerrarBannerPWA(){ setPwaBannerCerrado(true); try{ localStorage.setItem("cleo_pwa_banner_cerrado","true"); }catch(e){} }
+  // pwaNudgeHoraMostrado: el empujón contextual al usar hora en un
+  // recordatorio personal solo se muestra UNA vez en la vida de la cuenta,
+  // nunca cada vez que agregues una hora.
+  var sPwaNudge=useState(null); var pwaNudgeHora=sPwaNudge[0]; var setPwaNudgeHora=sPwaNudge[1];
+  function mostrarNudgePWASiAplica(nombreCliente){
+    if(appEstaInstalada()) return;
+    try{ if(localStorage.getItem("cleo_pwa_nudge_hora_mostrado")==="true") return; }catch(e){}
+    setPwaNudgeHora(nombreCliente);
+  }
+  function cerrarNudgePWAHora(){
+    setPwaNudgeHora(null);
+    try{ localStorage.setItem("cleo_pwa_nudge_hora_mostrado","true"); }catch(e){}
+  }
 
   // Estados de carpeta cliente
   var s32=useState(null); var clienteAbierto=s32[0]; var setClienteAbierto=s32[1];
@@ -14740,6 +14789,27 @@ export default function CLEO(props){
             )
           ),
 
+          // BANNER DE INSTALACIÓN PWA , solo si no está instalada todavía y
+          // no se cerró antes. Esta pantalla (Hoy) es justo lo que se
+          // convertiría en notificación, así que es el lugar más relevante
+          // para ofrecerlo , no un banner genérico en Inicio.
+          (function(){
+            if(appEstaInstalada()||pwaBannerCerrado) return null;
+            if(!esIOS()&&!installPromptEvt) return null; // nada accionable que ofrecer todavía
+            return e("div",{style:{display:"flex",alignItems:"center",gap:12,marginBottom:20,padding:"14px 16px",borderRadius:16,background:C.purplePale||"rgba(75,94,252,0.08)",border:"1px solid "+(C.purple||"#4B5EFC")+"33"}},
+              e("div",{style:{flex:1,minWidth:0}},
+                e("div",{style:{fontSize:13.5,fontWeight:700,color:C.text}},esIOS()?"Instala CLEO en tu iPhone":"Instala CLEO en tu celular"),
+                e("div",{style:{marginTop:3,fontSize:12.5,color:C.textMuted,lineHeight:1.5}},
+                  esIOS()
+                    ?"Toca Compartir (el ícono con la flecha) y luego \"Agregar a pantalla de inicio\" , así puedes recibir avisos directo en tu celular."
+                    :"Ábrela como app y recibe avisos directo, sin tener que entrar al navegador."
+                )
+              ),
+              !esIOS()&&installPromptEvt&&e("button",{onClick:function(){ installPromptEvt.prompt(); setInstallPromptEvt(null); },style:{cursor:"pointer",flexShrink:0,height:36,padding:"0 16px",borderRadius:999,border:"none",background:C.purple||"#4B5EFC",color:"#fff",fontSize:13,fontWeight:700,fontFamily:"inherit"}},"Instalar"),
+              e("button",{"aria-label":"Cerrar",onClick:cerrarBannerPWA,style:{background:"none",border:"none",cursor:"pointer",color:C.textMuted,fontSize:18,lineHeight:1,padding:0,flexShrink:0}},"×")
+            );
+          })(),
+
           // HOY EN MODO PRODUCTOS
           esProductos?(function(){
             // 1. Oportunidades por retomar (sin contacto >=2 días, no Convertido salvo seguimiento vencido, no Perdido)
@@ -21079,12 +21149,35 @@ export default function CLEO(props){
               // seguimiento_programado , único botón "Guardar" de este modal,
               // compartido por Productos y Servicios (nuevo o reprogramado).
               registrarEvento("seguimiento_programado",{tipo_perfil:perfil.tipoPerfil||"",dispositivo:dispositivoActual()});
+              // Empujón de instalación PWA: solo la primera vez en la vida
+              // de la cuenta que se guarda un recordatorio personal CON
+              // hora , ver mostrarNudgePWASiAplica (nunca se repite, nunca
+              // se muestra si ya está instalada).
+              if(seguimientoModo==="nuevo"&&horaRecordatorio&&cl) mostrarNudgePWASiAplica(cl.nombre.split(" ")[0]);
               setSeguimientoClienteId(null); setSeguimientoDias(""); setNotaReprogramar(""); setSeguimientoFechaCal(""); setSeguimientoEditandoId(null); setHoraRecordatorio("");
             }},"Guardar")
           )
         )
       );
     })(),
+
+    // EMPUJÓN PWA , solo la primera vez que se guarda un recordatorio
+    // personal con hora (ver mostrarNudgePWASiAplica), nunca si ya está
+    // instalada. Vive a nivel de toda la app (no dentro del modal de
+    // Seguimiento) porque ese modal ya se cerró para cuando esto aparece.
+    pwaNudgeHora&&e("div",{style:st.ov,onClick:cerrarNudgePWAHora},
+      e("div",{style:Object.assign({},st.modal,{textAlign:"center"}),onClick:function(ev){ ev.stopPropagation(); }},
+        e("div",{style:{fontSize:15,fontWeight:600,color:C.text,marginBottom:8}},"Para avisarte justo a esa hora..."),
+        e("div",{style:{fontSize:13,color:C.textMuted,lineHeight:1.6,marginBottom:20}},
+          esIOS()
+            ?"...instala CLEO en tu iPhone: toca Compartir y luego \"Agregar a pantalla de inicio\". Así podemos avisarte cuando sea hora de escribirle a "+pwaNudgeHora+"."
+            :"...instala CLEO en tu celular. Así podemos avisarte cuando sea hora de escribirle a "+pwaNudgeHora+", directo en tu pantalla de bloqueo."
+        ),
+        installPromptEvt&&!esIOS()
+          ?e("button",{style:Object.assign({},st.btnP,{width:"100%"}),onClick:function(){ installPromptEvt.prompt(); setInstallPromptEvt(null); cerrarNudgePWAHora(); }},"Instalar ahora")
+          :e("button",{style:st.btnP,onClick:cerrarNudgePWAHora},"Entendido")
+      )
+    ),
 
     // BOTÓN FLOTANTE "Hablar con CLEO" (MVP InnovaFest, prueba). Sin logo ni
     // mascota propia (CLEO no tiene símbolo) , ícono genérico de burbuja de
