@@ -763,6 +763,7 @@ create table public.pedidos (
   monto_total             numeric     not null default 0,
   notas                   text,
   etiqueta                text,
+  promo_venta             text,
 
   -- Ciclo de vida
   estado_pedido           text        not null default 'preparando'
@@ -1660,6 +1661,12 @@ create trigger trg_negocios_delete_marker
 create or replace function public.cleo_guard_cotizacion_delete()
 returns trigger language plpgsql set search_path = '' as $$
 begin
+  -- CAMBIO 58: cleo_dual_flush activa 'cleo.procesando_tombstones' = 'true'
+  -- (local a la TX) al borrar cotizaciones tombstoneadas. En ese contexto se
+  -- permite el borrado aunque siga vinculada a una oportunidad activa.
+  if current_setting('cleo.procesando_tombstones', true) = 'true' then
+    return old;
+  end if;
   -- Permitir solo si el marcador coincide con el negocio de ESTA cotización.
   -- Un marcador de otro negocio (o ausente) → rechazar.
   if old.oportunidad_id is not null
