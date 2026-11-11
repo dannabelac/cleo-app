@@ -5060,8 +5060,9 @@ export default function CLEO(props){
       function _lsg(k,fb){try{var v=localStorage.getItem(k);return v?JSON.parse(v):fb;}catch(e){return fb;}}
       if(!localStorage.getItem("cleo_oportunidades")){
         try{
+          // cleo_tipo_perfil es string crudo, no JSON — no usar _lsg aquí
           localStorage.setItem("cleo_oportunidades",
-            JSON.stringify(clientesAOportunidades(_lsg("cleo_clientes",[]),_lsg("cleo_tipo_perfil",null))));
+            JSON.stringify(clientesAOportunidades(_lsg("cleo_clientes",[]),localStorage.getItem("cleo_tipo_perfil")||null)));
         }catch(e){}
       }
       if(!localStorage.getItem("cleo_tombstones")){
@@ -7734,8 +7735,11 @@ export default function CLEO(props){
     // Solo regenerar la clave si el flag está desactivado (comportamiento legacy).
     if(!multiOpEnabled){
       try{
+        // cleo_tipo_perfil se guarda como string crudo (no JSON), lsGet(JSON.parse)
+        // lo devuelve null — leer con getItem directo para no romper esProd.
+        var _tpRaw=localStorage.getItem("cleo_tipo_perfil")||null;
         writeGuard.write("cleo_oportunidades",
-          JSON.stringify(clientesAOportunidades(lsGet("cleo_clientes",[]),lsGet("cleo_tipo_perfil",null),lsGet("cleo_oportunidades",[]))));
+          JSON.stringify(clientesAOportunidades(lsGet("cleo_clientes",[]),_tpRaw,lsGet("cleo_oportunidades",[]))));
       }catch(e){}
     }
   }
