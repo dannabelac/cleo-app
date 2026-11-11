@@ -323,6 +323,20 @@ Corrige la versión actual de Clientes (ambos perfiles) para que coincida con R8
 - Canal: botón NEUTRO de contorno (#E3E6EF, 32px, ícono + "WhatsApp"/"Instagram", texto azul noche). Se quitan los fondos verde y rosa. Chevron gris a la derecha. Móvil: botón redondo de 38px solo con ícono, y el aviso debajo del negocio.
 - Móvil con la barra de navegación inferior.
 
+### R23 · Cotizaciones (perfil servicios) — `R23-Cotizaciones.html`, `R23-Movil-Cotizaciones.html`
+Usa la misma tarjeta de R9 (Pedidos/Oportunidades) con la escala v2. Contenido `maxWidth:1120`.
+- Encabezado: "Cotizaciones" 24px/800 + subtítulo actual 13.5px; "+ Nuevo ▾" a la derecha.
+- Buscador (40px) + filtros "Todas ▾" y "Todo el tiempo ▾" como pastillas blancas de 40px (mismas opciones que los selects actuales).
+- Tarjeta (radio 20, padding 18px 20px, grid `minmax(0,1fr) 220px`):
+  - Línea 1: título de la cotización 15px/800 + pastilla de estado tocable (24px) que abre las MISMAS opciones Pendiente / Aceptada / Rechazada. Colores: Pendiente #FBF1DC/#8A5A06, Aceptada #E2F2E8/#1E5C38, Rechazada #EEF0F5/#4A5068. Se quitan el selector segmentado y la etiqueta de estado de la derecha.
+  - Línea 2: "Cliente · Negocio" 13.5px #4A5068.
+  - Línea 3 (12.5px #5A6078): "Enviada 8 nov 2026" con ícono calendario; si tiene vencimiento, "Vence 21 nov 2026" en #8A5A06/700 con reloj. Formato de fecha "d mmm aaaa".
+  - Si está rechazada con motivo: línea "Motivo: …" 13px #4A5068 con ícono ✕ en círculo #B23A24 (sin línea divisoria y sin texto todo en rojo).
+  - Derecha: "Total" 12px + importe 22px/800.
+  - Acciones (separadas por línea #EDEFF5), todas de 32px con contorno #E3E6EF: WhatsApp (ícono + texto, neutro; antes "WA" verde), Editar (lápiz), PDF (documento), Adjuntar archivo como botón de solo ícono (clip, con title).
+- Móvil: tarjeta en una columna (radio 22, padding 16): título + importe 17px a la derecha arriba; cliente debajo; pastilla de estado + fechas; motivo; acciones con WhatsApp solo ícono. Barra de navegación inferior.
+No cambies la lógica de estados, motivo de rechazo, edición, PDF, adjuntos ni WhatsApp.
+
 ## 5. Fase 3 — Pedidos (y el resto de secciones)
 
 Referencias: `R5-Pedidos.html`, `R5-Movil-Pedidos.html`.
