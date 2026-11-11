@@ -313,6 +313,59 @@ Reemplaza la pantalla "¿Qué quieres organizar primero?" (las 3 tarjetas Alguie
 - Abajo: "← Atrás" (texto 13px/700 #6E7489) a la izquierda y "Explorar datos de ejemplo" a la derecha como botón de contorno de 40px con ícono de play; hace lo mismo que el actual "Ver cómo funciona con datos de ejemplo". "Prefiero empezar después" se conserva como texto chico 13px #6E7489 junto a "Atrás" (misma acción de hoy).
 - Al enviar: la pantalla pasa a la conversación con CLEO (mismo diseño del chat R15: burbuja del usuario en #8D9BFF, respuesta de CLEO en blanco sobre #F4F5FA y la ficha para revisar con Cliente · Pedido · Total · Guardar pedido / Editar / Cancelar), con el campo de escribir debajo. Usa el mismo asistente y flujo de guardado que el chat. Al guardar o al terminar, continúa a Inicio como hoy.
 
+### R22 · Clientes, ajuste sobre lo implementado — `R22-Clientes.html`, `R22-Movil-Clientes.html`
+Corrige la versión actual de Clientes (ambos perfiles) para que coincida con R8 y la escala v2:
+- Contenido con `maxWidth:1120` centrado y padding 28px 40px (hoy se estira a todo el ancho).
+- Encabezado: "Tus clientes" 24px/800 + subtítulo 13.5px; "+ Nuevo ▾" a la derecha alineado con el título (móvil: solo arriba a la derecha y el título debajo).
+- Buscador (40px; 44 móvil) y filtros en UNA fila. Filtros como pastillas compactas en pista blanca (34px, elegida #E4E8FF); NO estirados a todo el ancho en desktop (en móvil sí, a lo ancho debajo del buscador).
+- Lista en bloque blanco radio 20, filas de ~62px separadas por línea #EDEFF5: letra inicial (#3F4BD0 12.5px/800, solo en la primera fila de cada letra), nombre 15px/800, negocio 13px #6E7489 debajo.
+- Aviso de seguimiento con texto completo: "Seguimiento hoy" (#FBF1DC/#8A5A06 + reloj), "Seguimiento vencido" (#FBE6E1/#B23A24 + alerta), "Seguimiento en N días / mañana" (#EEF0FF/#3F4BD0 + reloj). Pastilla 26px, 12px/700.
+- Canal: botón NEUTRO de contorno (#E3E6EF, 32px, ícono + "WhatsApp"/"Instagram", texto azul noche). Se quitan los fondos verde y rosa. Chevron gris a la derecha. Móvil: botón redondo de 38px solo con ícono, y el aviso debajo del negocio.
+- Móvil con la barra de navegación inferior.
+
+### R23 · Cotizaciones (perfil servicios) — `R23-Cotizaciones.html`, `R23-Movil-Cotizaciones.html`
+Usa la misma tarjeta de R9 (Pedidos/Oportunidades) con la escala v2. Contenido `maxWidth:1120`.
+- Encabezado: "Cotizaciones" 24px/800 + subtítulo actual 13.5px; "+ Nuevo ▾" a la derecha.
+- Buscador (40px) + filtros "Todas ▾" y "Todo el tiempo ▾" como pastillas blancas de 40px (mismas opciones que los selects actuales).
+- Tarjeta (radio 20, padding 18px 20px, grid `minmax(0,1fr) 220px`):
+  - Línea 1: título de la cotización 15px/800 + pastilla de estado tocable (24px) que abre las MISMAS opciones Pendiente / Aceptada / Rechazada. Colores: Pendiente #FBF1DC/#8A5A06, Aceptada #E2F2E8/#1E5C38, Rechazada #EEF0F5/#4A5068. Se quitan el selector segmentado y la etiqueta de estado de la derecha.
+  - Línea 2: "Cliente · Negocio" 13.5px #4A5068.
+  - Línea 3 (12.5px #5A6078): "Enviada 8 nov 2026" con ícono calendario; si tiene vencimiento, "Vence 21 nov 2026" en #8A5A06/700 con reloj. Formato de fecha "d mmm aaaa".
+  - Si está rechazada con motivo: línea "Motivo: …" 13px #4A5068 con ícono ✕ en círculo #B23A24 (sin línea divisoria y sin texto todo en rojo).
+  - Derecha: "Total" 12px + importe 22px/800.
+  - Acciones (separadas por línea #EDEFF5), todas de 32px con contorno #E3E6EF: WhatsApp (ícono + texto, neutro; antes "WA" verde), Editar (lápiz), PDF (documento), Adjuntar archivo como botón de solo ícono (clip, con title).
+- Móvil: tarjeta en una columna (radio 22, padding 16): título + importe 17px a la derecha arriba; cliente debajo; pastilla de estado + fechas; motivo; acciones con WhatsApp solo ícono. Barra de navegación inferior.
+No cambies la lógica de estados, motivo de rechazo, edición, PDF, adjuntos ni WhatsApp.
+
+### R24 · Trabajos (perfil servicios) — `R24-Trabajos.html`, `R24-Movil-Trabajos.html`
+Basada en la tarjeta de Pedidos (R9) con identidad propia de "lista de pendientes" para no confundirse con Cotizaciones. Escala v2, contenido `maxWidth:1120`.
+- Encabezado: "Tus trabajos" 24px/800 + subtítulo actual.
+- Filtros como pastillas en pista blanca con contador pervinca: Por completar 4 · Completados 3 · Con saldo 4 (mismos filtros). "Todo el tiempo ▾" como pastilla blanca 40px a la derecha.
+- Aviso "N trabajos necesitan una fecha de entrega…" en franja #FBF1DC, texto #6E4806 13px, ícono calendario #8A5A06, radio 16.
+- Tarjeta (radio 20, padding 18px 20px, grid `minmax(0,1fr) 220px`):
+  - A la izquierda un círculo de 36px (borde 2px #C9D0FF, ✓ #C9D0FF) que ejecuta la MISMA acción "Completar" de hoy (title/aria-label "Marcar como completado"; si hoy pide confirmación, se conserva). Cuando ya está pagado completo: borde y ✓ #3F4BD0 con fondo #EEF0FF.
+  - Título = nombre del servicio 16px/800; debajo cliente 13.5px #4A5068 con ícono de persona. Sin círculos de iniciales.
+  - Fecha: si no tiene, enlace "Agregar fecha de entrega" (#3F4BD0/700 con calendario) que abre el selector de fecha actual; ya no se muestra el campo dd/mm/aaaa vacío. Si tiene, "Entrega 1 oct 2026" con calendario.
+  - Derecha: con saldo, "Falta" 12px + importe 22px/800 #5E3D04, barra 6px (#EEF0F5, relleno #C99A3E al % pagado) y "$1,000.00 pagado de $3,000.00". Pagado: "✓ Pagado completo" #1E5C38 15px/800 y barra verde llena #3E9A64.
+  - Acciones (separadas por línea #EDEFF5, 32px, contorno #E3E6EF): Contactar (globo) y, si está pagado, Ver pagos. A la derecha "Registrar pago" azul noche solo si falta dinero. Se quitan el botón verde "Completar" (lo reemplaza el círculo) y el azul brillante.
+- Móvil: círculo + servicio + cliente + importe a la derecha arriba; barra de pago debajo (alineada con el texto); Contactar de contorno y "Registrar pago" azul noche a lo ancho (40px). Barra de navegación inferior.
+No cambies la lógica de completar, pagos, fecha de entrega, filtros ni contacto.
+
+### R25 · Seguimientos (tablero por etapas, perfil servicios) — `R25-Seguimientos.html`, `R25-Movil-Seguimientos.html`
+Mismas etapas, datos y arrastrar/soltar. Escala v2, contenido `maxWidth:1120`.
+- Encabezado: "Tus seguimientos" 24px/800 + subtítulo actual.
+- Desktop: 5 columnas iguales (grid `repeat(5,minmax(0,1fr))`, gap 12).
+- Encabezado de etapa: tarjeta blanca de ALTURA FIJA 124px (radio 18, padding 14px 14px 12px), en columna: puntito de color 8px + nombre de etapa 13px/800 (una línea) + contador en pastilla #F4F5FA a la derecha; total de la etapa 13px/800 (si no hay monto, el renglón queda vacío — se quita la coma suelta ","); abajo, pegada al fondo, la pregunta de CLEO con foco #8A5A06, 12px #5A6078, máximo 2 líneas. Colores de puntito: Nuevo contacto #8D9BFF, Cotización enviada #E0A93B, Esperando respuesta #B88A3A, Cliente ganado #3E9A64, Sin cerrar #9AA0B8.
+- Tarjetita: blanca, ALTURA FIJA 142px, radio 16, padding 12px 13px, sin borde de color (hover/arrastre: borde #C9D0FF). Se quitan los círculos de iniciales y los botones de adjuntar, red social y editar. Renglones fijos (si un dato no existe, su renglón queda vacío, no se recorre nada):
+  1. Nombre 14px/800 (una línea, "…").
+  2. Negocio 12.5px #6E7489 (una línea).
+  3. Servicio 13px/600 azul noche, texto normal (ya no en cajita de color), una línea con "…".
+  4. Importe: "$600.00" 12.5px/800 #5E3D04 + "pendiente" #8A5A06.
+  5. Aviso pegado abajo (22px): días sin movimiento "9 días" (antes "9d") o "Seguimiento hoy" (antes "Seg: hoy") en pastilla #FBF1DC/#8A5A06 con reloj; vencido en #FBE6E1/#B23A24 con alerta. Rojo solo para vencido.
+  Toda la tarjeta abre el detalle al tocarla y se arrastra para cambiar de etapa, como hoy.
+- Columna vacía: recuadro punteado #D5D8E4 de 142px con "Arrastra aquí".
+- Móvil: pastillas con las etapas (puntito + nombre + contador), que se acomodan en varias líneas (NO deslizables); la elegida en azul noche con contador #A3AFFF. Debajo, el encabezado de esa etapa y su lista de tarjetitas (mismas medidas). Cambiar de etapa en móvil con el mecanismo que ya exista. Barra de navegación inferior.
+
 ## 5. Fase 3 — Pedidos (y el resto de secciones)
 
 Referencias: `R5-Pedidos.html`, `R5-Movil-Pedidos.html`.
