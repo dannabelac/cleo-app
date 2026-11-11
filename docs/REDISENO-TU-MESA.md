@@ -313,6 +313,16 @@ Reemplaza la pantalla "¿Qué quieres organizar primero?" (las 3 tarjetas Alguie
 - Abajo: "← Atrás" (texto 13px/700 #6E7489) a la izquierda y "Explorar datos de ejemplo" a la derecha como botón de contorno de 40px con ícono de play; hace lo mismo que el actual "Ver cómo funciona con datos de ejemplo". "Prefiero empezar después" se conserva como texto chico 13px #6E7489 junto a "Atrás" (misma acción de hoy).
 - Al enviar: la pantalla pasa a la conversación con CLEO (mismo diseño del chat R15: burbuja del usuario en #8D9BFF, respuesta de CLEO en blanco sobre #F4F5FA y la ficha para revisar con Cliente · Pedido · Total · Guardar pedido / Editar / Cancelar), con el campo de escribir debajo. Usa el mismo asistente y flujo de guardado que el chat. Al guardar o al terminar, continúa a Inicio como hoy.
 
+### R22 · Clientes, ajuste sobre lo implementado — `R22-Clientes.html`, `R22-Movil-Clientes.html`
+Corrige la versión actual de Clientes (ambos perfiles) para que coincida con R8 y la escala v2:
+- Contenido con `maxWidth:1120` centrado y padding 28px 40px (hoy se estira a todo el ancho).
+- Encabezado: "Tus clientes" 24px/800 + subtítulo 13.5px; "+ Nuevo ▾" a la derecha alineado con el título (móvil: solo arriba a la derecha y el título debajo).
+- Buscador (40px; 44 móvil) y filtros en UNA fila. Filtros como pastillas compactas en pista blanca (34px, elegida #E4E8FF); NO estirados a todo el ancho en desktop (en móvil sí, a lo ancho debajo del buscador).
+- Lista en bloque blanco radio 20, filas de ~62px separadas por línea #EDEFF5: letra inicial (#3F4BD0 12.5px/800, solo en la primera fila de cada letra), nombre 15px/800, negocio 13px #6E7489 debajo.
+- Aviso de seguimiento con texto completo: "Seguimiento hoy" (#FBF1DC/#8A5A06 + reloj), "Seguimiento vencido" (#FBE6E1/#B23A24 + alerta), "Seguimiento en N días / mañana" (#EEF0FF/#3F4BD0 + reloj). Pastilla 26px, 12px/700.
+- Canal: botón NEUTRO de contorno (#E3E6EF, 32px, ícono + "WhatsApp"/"Instagram", texto azul noche). Se quitan los fondos verde y rosa. Chevron gris a la derecha. Móvil: botón redondo de 38px solo con ícono, y el aviso debajo del negocio.
+- Móvil con la barra de navegación inferior.
+
 ## 5. Fase 3 — Pedidos (y el resto de secciones)
 
 Referencias: `R5-Pedidos.html`, `R5-Movil-Pedidos.html`.

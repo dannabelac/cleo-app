@@ -1,0 +1,66 @@
+<!doctype html>
+<html lang="es"><head><meta charset="utf-8"><title>CLEO · Clientes v2 móvil</title><script src="./support.js"></script></head><body>
+<x-dc><helmet><link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&amp;display=swap" rel="stylesheet"><style>body{margin:0;background:#ECEEF5}
+.cl{font-family:'Plus Jakarta Sans',system-ui,sans-serif;color:#0E1328;-webkit-font-smoothing:antialiased}
+.i{width:17px;height:17px;flex:none;fill:none;stroke:currentColor;stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round}
+.rl{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;width:76px;min-height:44px;padding:6px 2px;box-sizing:border-box;border-radius:14px;color:#B9BED3;font-size:10.5px;font-weight:600;text-align:center;text-decoration:none;white-space:nowrap}
+.rl.on{background:rgba(124,140,255,0.2);color:#FFFFFF;font-weight:800}.rl.on .i{color:#9AA7FF}
+.sep{width:36px;height:1px;background:rgba(255,255,255,.12);margin:6px 0}
+.hero{position:relative;overflow:hidden;border-radius:28px;color:#FFFFFF;background:radial-gradient(90% 120% at 100% 0%,#24307A 0%,rgba(36,48,122,0) 60%),radial-gradient(60% 80% at 0% 100%,#1B2560 0%,rgba(27,37,96,0) 70%),#0E1328}
+.bw{display:inline-flex;align-items:center;gap:8px;height:46px;padding:0 22px;border:0;border-radius:23px;background:#FFFFFF;color:#0E1328;font-family:inherit;font-size:14.5px;font-weight:800;cursor:pointer}
+.bw .i{width:16px;height:16px;stroke-width:2.4}
+.st{display:flex;align-items:center;gap:10px;padding:12px 14px;border-radius:16px;background:rgba(255,255,255,0.06);box-shadow:inset 0 0 0 1px rgba(255,255,255,0.07);font-size:13.5px;font-weight:700;color:#E7E9F3}
+.st span{width:30px;height:30px;flex:none;border-radius:10px;display:grid;place-items:center}
+.st .i{width:15px;height:15px}
+.fl{display:inline-flex;gap:2px;padding:3px;border-radius:21px;background:#FFFFFF}
+.fl button{height:34px;padding:0 16px;border:0;border-radius:17px;background:transparent;font-family:inherit;font-size:13px;font-weight:600;color:#4A5068;white-space:nowrap}
+.fl button.on{background:#E4E8FF;color:#0E1328;font-weight:800}
+.cr{display:flex;align-items:center;gap:14px;min-height:62px;padding:0 4px;border-top:1px solid #EDEFF5}
+.cr:first-child{border-top:0}
+.lt{width:18px;flex:none;font-size:12.5px;font-weight:800;color:#3F4BD0}
+.nm2{flex:1;min-width:0}
+.nm2 b{display:block;font-size:15px;font-weight:800}
+.nm2>span{display:block;margin-top:1px;font-size:13px;color:#6E7489;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.sg{display:inline-flex;align-items:center;gap:6px;height:26px;padding:0 10px;border-radius:13px;font-size:12px;font-weight:700;white-space:nowrap}
+.sg .i{width:13px;height:13px;stroke-width:2.2}
+.sg.today{background:#FBF1DC;color:#8A5A06}.sg.late{background:#FBE6E1;color:#B23A24}.sg.fut{background:#EEF0FF;color:#3F4BD0}
+.ch{display:inline-flex;align-items:center;gap:7px;height:32px;padding:0 13px;border-radius:16px;border:1.5px solid #E3E6EF;background:#FFFFFF;color:#0E1328;font-size:12.5px;font-weight:700;text-decoration:none;white-space:nowrap;min-width:112px;box-sizing:border-box}
+.ch .i{width:14px;height:14px}
+.go2{width:16px;height:16px;color:#9AA0B8}
+.ch.ic{min-width:0;width:38px;height:38px;padding:0;justify-content:center;border-radius:50%}
+.btnN{display:inline-flex;align-items:center;gap:7px;height:36px;padding:0 16px;border:0;border-radius:18px;background:#0E1328;color:#FFFFFF;font-family:inherit;font-size:13px;font-weight:700}
+.btnN .i{width:15px;height:15px;stroke-width:2.4}
+.tb{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;min-width:44px;min-height:56px;text-decoration:none;color:#5A6078;font-size:11px;font-weight:600;white-space:nowrap}
+.tb .pill{width:46px;height:28px;border-radius:14px;display:grid;place-items:center}.tb .i{width:20px;height:20px}
+.tb.on{color:#0E1328;font-weight:800}.tb.on .pill{background:#E4E8FF;color:#3F4BD0}
+</style></helmet>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+<symbol id="i-home" viewBox="0 0 24 24"><path d="M3.5 10.5 12 3.5l8.5 7V20h-5.5v-5.5h-6V20H3.5z"/></symbol>
+<symbol id="i-sun" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 2.5v2M12 19.5v2M2.5 12h2M19.5 12h2M5.3 5.3l1.4 1.4M17.3 17.3l1.4 1.4M5.3 18.7l1.4-1.4M17.3 6.7l1.4-1.4"/></symbol>
+<symbol id="i-seg" viewBox="0 0 24 24"><path d="M5 20V9M10 20V5M15 20v-8M20 20V8"/></symbol>
+<symbol id="i-users" viewBox="0 0 24 24"><circle cx="9" cy="8" r="3.5"/><path d="M2.5 20c.6-3.5 3.3-5.5 6.5-5.5s5.9 2 6.5 5.5M16 4.6a3.5 3.5 0 0 1 0 6.8M18 14.8c2 .8 3.2 2.6 3.5 5.2"/></symbol>
+<symbol id="i-doc" viewBox="0 0 24 24"><path d="M7 3.5h7l4 4V20a.5.5 0 0 1-.5.5h-10A.5.5 0 0 1 7 20z"/><path d="M14 3.5V8h4M9.5 12.5h5M9.5 16h5"/></symbol>
+<symbol id="i-job" viewBox="0 0 24 24"><rect x="5" y="4" width="14" height="17" rx="2"/><path d="M9 4V2.8h6V4M9 12.5l2 2 4-4"/></symbol>
+<symbol id="i-cash" viewBox="0 0 24 24"><rect x="3" y="6" width="18" height="12" rx="2"/><circle cx="12" cy="12" r="2.5"/></symbol>
+<symbol id="i-chart" viewBox="0 0 24 24"><path d="M5 20v-8M11 20V5M17 20v-6M3 20h18"/></symbol>
+<symbol id="i-book" viewBox="0 0 24 24"><rect x="5" y="4" width="14" height="17" rx="2"/><path d="M9 4V2.8h6V4M9 10h6M9 14h4"/></symbol>
+<symbol id="i-chev" viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"/></symbol>
+<symbol id="i-menu" viewBox="0 0 24 24"><path d="M4 7h16M4 12h16M4 17h10"/></symbol>
+<symbol id="i-arrow" viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></symbol>
+<symbol id="i-check" viewBox="0 0 24 24"><path d="m5 12.5 4.5 4.5L19 7.5"/></symbol>
+<symbol id="i-clock" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><path d="M12 7.5V12l3 2"/></symbol>
+<symbol id="i-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="6.5"/><path d="m16 16 4.5 4.5"/></symbol>
+<symbol id="i-right" viewBox="0 0 24 24"><path d="m9 6 6 6-6 6"/></symbol>
+<symbol id="i-wa" viewBox="0 0 24 24"><path d="M4.5 19.5 5.8 16A8 8 0 1 1 8.3 18.5z"/><path d="M9.2 8.8c.2 2.7 2.4 5 5.2 5.6l1.1-1.4"/></symbol>
+<symbol id="i-ig" viewBox="0 0 24 24"><rect x="3.5" y="3.5" width="17" height="17" rx="5"/><circle cx="12" cy="12" r="4"/><path d="M17 7h.01"/></symbol>
+<symbol id="i-alert" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><path d="M12 7.5v5M12 16h.01"/></symbol>
+<symbol id="i-plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></symbol>
+<symbol id="i-dots" viewBox="0 0 24 24"><circle cx="5" cy="12" r="1.3"/><circle cx="12" cy="12" r="1.3"/><circle cx="19" cy="12" r="1.3"/></symbol></svg>
+<div class="cl" style="width:390px;height:1000px;position:relative;background:#ECEEF5"><div style="padding:20px 16px 110px">
+<div style="display:flex;justify-content:flex-end"><button class="btnN" style="height:42px;border-radius:21px"><svg class="i"><use href="#i-plus"></use></svg>Nuevo<svg class="i" style="width:13px;height:13px"><use href="#i-chev"></use></svg></button></div>
+<div style="margin-top:18px"><h1 style="margin:0;font-size:22px;font-weight:800;letter-spacing:-0.03em">Tus clientes</h1><p style="margin:4px 0 0;font-size:13.5px;color:#5A6078">Las personas que se han interesado en tus servicios o te han contratado.</p></div><div style="margin-top:18px;display:flex;flex-wrap:wrap;gap:10px;align-items:center"><label style="flex:1 1 280px;display:flex;align-items:center;gap:10px;height:44px;padding:0 16px;border-radius:22px;background:#FFFFFF;color:#6E7489"><svg class="i" style="width:16px;height:16px"><use href="#i-search"></use></svg><input placeholder="Buscar..." style="flex:1;min-width:0;border:0;outline:0;background:transparent;font-family:inherit;font-size:16px"></label><div class="fl" style="display:flex;width:100%"><button class="on" style=flex:1;padding:0>Todos</button><button class="" style=flex:1;padding:0>Activos</button><button class="" style=flex:1;padding:0>Ganados</button><button class="" style=flex:1;padding:0>Perdidos</button></div></div>
+<section style="margin-top:14px;padding:2px 16px;border-radius:22px;background:#FFFFFF"><div class="cr" style="align-items:flex-start;padding:12px 0;min-height:0"><span class="lt" style="padding-top:3px">A</span><div class="nm2"><b>Ana Garcia</b><span>Tienda Ropa</span></div><a href="#" class="ch ic" aria-label="Instagram"><svg class="i" style="width:17px;height:17px"><use href="#i-ig"></use></svg></a></div><div class="cr" style="align-items:flex-start;padding:12px 0;min-height:0"><span class="lt" style="padding-top:3px">C</span><div class="nm2"><b>Carlos Lopez</b><span>Restaurante El Fogón</span><div style=margin-top:6px><span class="sg today"><svg class="i"><use href="#i-clock"></use></svg>Seguimiento hoy</span></div></div><a href="#" class="ch ic" aria-label="WhatsApp"><svg class="i" style="width:17px;height:17px"><use href="#i-wa"></use></svg></a></div><div class="cr" style="align-items:flex-start;padding:12px 0;min-height:0"><span class="lt" style="padding-top:3px">D</span><div class="nm2"><b>Diego Torres</b><span>Bar La Noche</span></div><a href="#" class="ch ic" aria-label="WhatsApp"><svg class="i" style="width:17px;height:17px"><use href="#i-wa"></use></svg></a></div><div class="cr" style="align-items:flex-start;padding:12px 0;min-height:0"><span class="lt" style="padding-top:3px">L</span><div class="nm2"><b>Luis Aguilar</b><span>Café Aguilar</span></div><a href="#" class="ch ic" aria-label="WhatsApp"><svg class="i" style="width:17px;height:17px"><use href="#i-wa"></use></svg></a></div><div class="cr" style="align-items:flex-start;padding:12px 0;min-height:0"><span class="lt" style="padding-top:3px">M</span><div class="nm2"><b>Maria Rodriguez</b><span>Clínica Dental</span><div style=margin-top:6px><span class="sg late"><svg class="i"><use href="#i-alert"></use></svg>Seguimiento vencido</span></div></div><a href="#" class="ch ic" aria-label="WhatsApp"><svg class="i" style="width:17px;height:17px"><use href="#i-wa"></use></svg></a></div><div class="cr" style="align-items:flex-start;padding:12px 0;min-height:0"><span class="lt" style="padding-top:3px">R</span><div class="nm2"><b>Roberto Mendez</b><span>Constructora RM</span></div><a href="#" class="ch ic" aria-label="WhatsApp"><svg class="i" style="width:17px;height:17px"><use href="#i-wa"></use></svg></a></div></section></div>
+<nav style="position:absolute;left:0;right:0;bottom:0;background:#FFFFFF;border-top:1px solid #DADDE8;padding:4px 8px 20px;display:flex;justify-content:space-between"><a href="#" class="tb"><span class="pill"><svg class="i"><use href="#i-home"></use></svg></span>Inicio</a><a href="#" class="tb"><span class="pill"><svg class="i"><use href="#i-sun"></use></svg></span>Hoy</a><a href="#" class="tb"><span class="pill"><svg class="i"><use href="#i-seg"></use></svg></span>Seguimientos</a><a href="#" class="tb"><span class="pill"><svg class="i"><use href="#i-job"></use></svg></span>Trabajos</a><a href="#" class="tb"><span class="pill"><svg class="i"><use href="#i-cash"></use></svg></span>Ingresos</a><a href="#" class="tb on"><span class="pill"><svg class="i"><use href="#i-dots"></use></svg></span>Más</a></nav></div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":390,"height":1000}}'>class Component extends DCLogic { renderVals() { return {}; } }</script>
+</body></html>
