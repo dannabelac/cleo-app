@@ -1256,7 +1256,7 @@ export default function ResumenAnalyticsProd({
   // encabezado de "Explora tus ventas")
   let cobradoPeriodo = 0;
   const mesActualStr = FECHA_HOY.slice(0, 7);
-  pedidos.forEach(ped => {
+  if (esProductos) pedidos.forEach(ped => {
     (ped.pagos || []).forEach(p => { if (p.fecha && p.fecha.slice(0, 7) === mesActualStr) cobradoPeriodo += Number(p.monto); });
     const rev = obtenerReversionIngresoPedido(ped);
     if (rev && rev.fecha && rev.fecha.slice(0, 7) === mesActualStr) cobradoPeriodo += rev.monto;
@@ -1268,12 +1268,12 @@ export default function ResumenAnalyticsProd({
     (c.pagos || []).forEach(p => { if (p.fecha && p.fecha.slice(0, 7) === mesActualStr) cobradoPeriodo += Number(p.monto); });
   });
 
-  let saldoPorCobrar = pedidos
-    .filter(p => p.estadoPedido !== "cancelado")
-    .reduce((s, p) => {
-      const pagado = (p.pagos || []).reduce((a, pg) => a + Number(pg.monto), 0);
-      return s + Math.max(0, Number(p.total || 0) - pagado);
-    }, 0);
+  let saldoPorCobrar = esProductos
+    ? pedidos.filter(p => p.estadoPedido !== "cancelado").reduce((s, p) => {
+        const pagado = (p.pagos || []).reduce((a, pg) => a + Number(pg.monto), 0);
+        return s + Math.max(0, Number(p.total || 0) - pagado);
+      }, 0)
+    : 0;
   if (!esProductos) {
     (cotizaciones || []).filter(c => c.estatus === "Aceptada").forEach(c => {
       const pagado = (c.pagos || []).reduce((a, pg) => a + Number(pg.monto), 0);
