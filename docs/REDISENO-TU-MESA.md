@@ -337,6 +337,20 @@ Usa la misma tarjeta de R9 (Pedidos/Oportunidades) con la escala v2. Contenido `
 - Móvil: tarjeta en una columna (radio 22, padding 16): título + importe 17px a la derecha arriba; cliente debajo; pastilla de estado + fechas; motivo; acciones con WhatsApp solo ícono. Barra de navegación inferior.
 No cambies la lógica de estados, motivo de rechazo, edición, PDF, adjuntos ni WhatsApp.
 
+### R24 · Trabajos (perfil servicios) — `R24-Trabajos.html`, `R24-Movil-Trabajos.html`
+Basada en la tarjeta de Pedidos (R9) con identidad propia de "lista de pendientes" para no confundirse con Cotizaciones. Escala v2, contenido `maxWidth:1120`.
+- Encabezado: "Tus trabajos" 24px/800 + subtítulo actual.
+- Filtros como pastillas en pista blanca con contador pervinca: Por completar 4 · Completados 3 · Con saldo 4 (mismos filtros). "Todo el tiempo ▾" como pastilla blanca 40px a la derecha.
+- Aviso "N trabajos necesitan una fecha de entrega…" en franja #FBF1DC, texto #6E4806 13px, ícono calendario #8A5A06, radio 16.
+- Tarjeta (radio 20, padding 18px 20px, grid `minmax(0,1fr) 220px`):
+  - A la izquierda un círculo de 36px (borde 2px #C9D0FF, ✓ #C9D0FF) que ejecuta la MISMA acción "Completar" de hoy (title/aria-label "Marcar como completado"; si hoy pide confirmación, se conserva). Cuando ya está pagado completo: borde y ✓ #3F4BD0 con fondo #EEF0FF.
+  - Título = nombre del servicio 16px/800; debajo cliente 13.5px #4A5068 con ícono de persona. Sin círculos de iniciales.
+  - Fecha: si no tiene, enlace "Agregar fecha de entrega" (#3F4BD0/700 con calendario) que abre el selector de fecha actual; ya no se muestra el campo dd/mm/aaaa vacío. Si tiene, "Entrega 1 oct 2026" con calendario.
+  - Derecha: con saldo, "Falta" 12px + importe 22px/800 #5E3D04, barra 6px (#EEF0F5, relleno #C99A3E al % pagado) y "$1,000.00 pagado de $3,000.00". Pagado: "✓ Pagado completo" #1E5C38 15px/800 y barra verde llena #3E9A64.
+  - Acciones (separadas por línea #EDEFF5, 32px, contorno #E3E6EF): Contactar (globo) y, si está pagado, Ver pagos. A la derecha "Registrar pago" azul noche solo si falta dinero. Se quitan el botón verde "Completar" (lo reemplaza el círculo) y el azul brillante.
+- Móvil: círculo + servicio + cliente + importe a la derecha arriba; barra de pago debajo (alineada con el texto); Contactar de contorno y "Registrar pago" azul noche a lo ancho (40px). Barra de navegación inferior.
+No cambies la lógica de completar, pagos, fecha de entrega, filtros ni contacto.
+
 ## 5. Fase 3 — Pedidos (y el resto de secciones)
 
 Referencias: `R5-Pedidos.html`, `R5-Movil-Pedidos.html`.
