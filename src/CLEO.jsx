@@ -6674,6 +6674,7 @@ export default function CLEO(props){
   var sFiltroTrabajo=useState("porCompletar"); var filtroTrabajo=sFiltroTrabajo[0]; var setFiltroTrabajo=sFiltroTrabajo[1];
   var sFiltroTrabajoPeriodo=useState("todo"); var filtroTrabajoPeriodo=sFiltroTrabajoPeriodo[0]; var setFiltroTrabajoPeriodo=sFiltroTrabajoPeriodo[1];
   var sOpenFiltroTrabajoPeriodo=useState(false); var openFiltroTrabajoPeriodo=sOpenFiltroTrabajoPeriodo[0]; var setOpenFiltroTrabajoPeriodo=sOpenFiltroTrabajoPeriodo[1];
+  var sEtapaMovilSel=useState(ETAPAS[0]); var etapaMovilSel=sEtapaMovilSel[0]; var setEtapaMovilSel=sEtapaMovilSel[1];
   var sConfirmDesmarcarId=useState(null); var confirmDesmarcarId=sConfirmDesmarcarId[0]; var setConfirmDesmarcarId=sConfirmDesmarcarId[1];
   var sCerreExito=useState(false); var cerreExito=sCerreExito[0]; var setCerreExito=sCerreExito[1];
   var sToastTrabajo=useState(""); var toastTrabajo=sToastTrabajo[0]; var setToastTrabajo=sToastTrabajo[1];
@@ -11839,7 +11840,7 @@ export default function CLEO(props){
 
       })(),
 
-      // PIPELINE
+      // PIPELINE R25
       vista==="pipeline"&&(function(){
 
         // Frase educativa , detecta patron en el kanban
@@ -11858,16 +11859,163 @@ export default function CLEO(props){
         else if(clientesActivos>=3) frase="Tus clientes están bien distribuidos entre etapas. Eso significa que estás dándole atención a cada uno, sigue así.";
         else frase="Cada cliente que registras es una conversación que no se va a perder. Sigue moviéndolos de etapa conforme avancen.";
 
-        return e("div",{style:{display:"flex",flexDirection:"column",gap:0}},
+        // Builds cols + pipelineItems for a given etapa (shared desktop/mobile)
+        function buildEtapaData(etapa){
+          var cols,opsEnEtapa;
+          if(multiOpEnabled&&!esProductos){
+            opsEnEtapa=oportunidades.filter(function(op){
+              if(op.modo!=='servicios'||op.etapa!==etapa) return false;
+              if(etapa==='Ganado'){
+                if(op.estatus!=='ganada'&&op.estatus!=='activa') return false;
+                var cotAcepOp=op.cotizacionId&&cotizaciones.find(function(co){ return String(co.id)===String(op.cotizacionId)&&co.estatus==="Aceptada"; });
+                if(cotAcepOp){ var ppO=cotAcepOp.pagos||[]; var tpO=ppO.reduce(function(s,p){ return s+Number(p.monto); },0); if(cotAcepOp.monto-tpO>0) return true; }
+                return mostrarArchivados||diasDesde(op.fechaCierre||op.fechaEtapa||op.fechaCreacion)<=7;
+              }
+              if(etapa==='Perdido'){
+                if(op.estatus!=='perdida'&&op.estatus!=='activa') return false;
+                return mostrarArchivados||diasDesde(op.fechaCierre||op.fechaEtapa||op.fechaCreacion)<=7;
+              }
+              return op.estatus==='activa';
+            });
+            cols=opsEnEtapa.map(function(op){ return clientes.find(function(c){ return String(c.id)===String(op.clienteId); }); }).filter(Boolean);
+          } else {
+            opsEnEtapa=[];
+            cols=clientesFiltrados.filter(function(c){
+              if(c.etapa!==etapa) return false;
+              if(etapa!=="Ganado"&&etapa!=="Perdido") return true;
+              if(mostrarArchivados) return true;
+              var cotC=cotizaciones.find(function(cot){ return Number(cot.clienteId)===Number(c.id)&&cot.estatus==="Aceptada"&&(esProductos||cotizacionVinculadaOportunidad(cot)); });
+              if(cotC){ var pagosC=cotC.pagos||[]; var totalPagadoC=pagosC.reduce(function(s,p){ return s+Number(p.monto); },0); if(cotC.monto-totalPagadoC>0) return true; }
+              return diasDesde(c.fechaEtapa||c.fecha)<=7;
+            });
+          }
+          var pipelineItems=[];
+          if(multiOpEnabled&&!esProductos){
+            opsEnEtapa.forEach(function(op){
+              var c=clientes.find(function(cl){ return String(cl.id)===String(op.clienteId); });
+              if(!c) return;
+              var cotFija=op.cotizacionId?cotizaciones.find(function(co){ return String(co.id)===String(op.cotizacionId); }):null;
+              pipelineItems.push({c:c,cotFija:cotFija||null,opId:op.id,key:op.id});
+            });
+          } else {
+            cols.forEach(function(c){
+              if(!esProductos){
+                var cotsActivas=cotizaciones.filter(function(cot){
+                  return Number(cot.clienteId)===Number(c.id)&&(cot.estatus==="Pendiente"||cot.estatus==="Aceptada");
+                }).sort(function(a,b){ return new Date(b.fecha)-new Date(a.fecha); });
+                if(cotsActivas.length>1){
+                  cotsActivas.forEach(function(cot){ pipelineItems.push({c:c,cotFija:cot,opId:'op_cli_'+c.id,key:String(c.id)+"_cot_"+String(cot.id)}); });
+                  return;
+                }
+              }
+              pipelineItems.push({c:c,cotFija:null,opId:'op_cli_'+c.id,key:String(c.id)});
+            });
+          }
+          var totalCol=pipelineItems.reduce(function(s,item){
+            var cot=item.cotFija||cotizaciones.find(function(q){ return Number(q.clienteId)===Number(item.c.id)&&(q.estatus==="Pendiente"||q.estatus==="Aceptada")&&(esProductos||cotizacionVinculadaOportunidad(q)); });
+            return s+(cot?Number(cot.monto):0);
+          },0);
+          return {cols:cols,pipelineItems:pipelineItems,totalCol:totalCol};
+        }
 
-          // BOTONES , arriba a la derecha solos
+        // Renders a single card: fixed 142px, 5 rows, no avatar/buttons
+        function renderCard(item,etapa){
+          var c=item.c;
+          var ec=ETAPA_COLOR[etapa]||C.purple;
+          var cotPend=item.cotFija?(item.cotFija.estatus==="Pendiente"?item.cotFija:null):cotizaciones.find(function(cot){ return Number(cot.clienteId)===Number(c.id)&&cot.estatus==="Pendiente"&&(esProductos||cotizacionVinculadaOportunidad(cot)); });
+          var cotAcep=item.cotFija?(item.cotFija.estatus==="Aceptada"?item.cotFija:null):cotizaciones.find(function(cot){ return Number(cot.clienteId)===Number(c.id)&&cot.estatus==="Aceptada"&&(esProductos||cotizacionVinculadaOportunidad(cot)); });
+          var cot=cotAcep||cotPend;
+          var pagos=cot?(cot.pagos||[]):[];
+          var totalPagado=pagos.reduce(function(s,p){ return s+Number(p.monto); },0);
+          var saldoReal=cot?Number(cot.monto)-totalPagado:0;
+          var concepto=cot?(cot.concepto||resumenItemsCotizacion(obtenerItemsCotizacion(cot),esProductos?"producto":"servicio")||""):"";
+          var dias=diasDesde(c.fechaEtapa||c.fecha);
+          var _dragId=multiOpEnabled&&!esProductos?item.opId:c.id;
+          var avisoEl=null;
+          if(c.seguimientoFecha){
+            var dSeg=diasHastaFechaCalendario(c.seguimientoFecha);
+            var aBg,aColor,aTexto;
+            if(dSeg<0){ aBg="#FBE6E1"; aColor="#B23A24"; aTexto="Seguimiento vencido"; }
+            else if(dSeg===0){ aBg="#FBF1DC"; aColor="#8A5A06"; aTexto="Seguimiento hoy"; }
+            else if(dSeg===1){ aBg="#FBF1DC"; aColor="#8A5A06"; aTexto="Seguimiento mañana"; }
+            else { aBg="#EEF0FF"; aColor="#3F4BD0"; aTexto="Seg. en "+dSeg+" días"; }
+            avisoEl=e("span",{style:{display:"inline-flex",alignItems:"center",gap:4,height:22,padding:"0 8px",borderRadius:11,fontSize:11.5,fontWeight:700,background:aBg,color:aColor}},
+              e("svg",{width:12,height:12,viewBox:"0 0 24 24",fill:"none",stroke:"currentColor",strokeWidth:2.2,strokeLinecap:"round",strokeLinejoin:"round"},e("circle",{cx:"12",cy:"12",r:"8.5"}),e("path",{d:"M12 7.5V12l3 2"})),
+              aTexto
+            );
+          } else if(etapa!=="Ganado"&&etapa!=="Perdido"&&dias>=1){
+            avisoEl=e("span",{style:{display:"inline-flex",alignItems:"center",gap:4,height:22,padding:"0 8px",borderRadius:11,fontSize:11.5,fontWeight:700,background:"#FBF1DC",color:"#8A5A06"}},
+              e("svg",{width:12,height:12,viewBox:"0 0 24 24",fill:"none",stroke:"currentColor",strokeWidth:2.2,strokeLinecap:"round",strokeLinejoin:"round"},e("circle",{cx:"12",cy:"12",r:"8.5"}),e("path",{d:"M12 7.5V12l3 2"})),
+              dias+" día"+(dias!==1?"s":"")
+            );
+          }
+          return e("div",{key:item.key,
+            draggable:true,
+            onDragStart:function(ev){ onDragStart(ev,_dragId); },
+            onDragEnd:onDragEnd,
+            style:{display:"flex",flexDirection:"column",height:142,overflow:"hidden",boxSizing:"border-box",padding:"12px 13px",borderRadius:16,background:"#FFFFFF",border:"1.5px solid transparent",boxShadow:"0 1px 2px rgba(14,19,40,0.05)",cursor:"grab",opacity:dragging===_dragId?0.4:1},
+            onClick:function(){ setCotRapidaId(c.id); setCotRapidaCotFijada(item.cotFija?item.cotFija.id:null); }
+          },
+            e("b",{style:{display:"block",fontSize:14,fontWeight:800,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}},c.nombre),
+            e("div",{style:{fontSize:12.5,color:"#6E7489",marginTop:1,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}},c.negocio||" "),
+            e("div",{style:{marginTop:7,fontSize:13,fontWeight:600,color:"#0E1328",whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}},concepto||" "),
+            e("div",{style:{marginTop:6,height:18,lineHeight:"18px"}},
+              saldoReal>0
+                ? e("span",{style:{fontSize:12.5,fontWeight:800,color:"#5E3D04"}},
+                    "$"+formatoDinero(saldoReal)+" ",
+                    e("small",{style:{fontWeight:600,color:"#8A5A06"}},"pendiente")
+                  )
+                : " "
+            ),
+            e("div",{style:{marginTop:"auto",height:22,display:"flex",alignItems:"center",gap:6}},
+              avisoEl||null,
+              isMobile&&e("button",{type:"button",style:{marginLeft:"auto",padding:"3px 8px",borderRadius:8,border:"1px solid "+C.border,background:C.surfaceUp,fontSize:11,color:C.textMuted,cursor:"pointer",flexShrink:0},onClick:function(ev){ ev.stopPropagation(); setMoverClienteId(c.id); }},"Mover →")
+            )
+          );
+        }
+
+        // Renders a full column (header + cards/drop zone)
+        function renderColumna(etapa,data){
+          var ec=ETAPA_COLOR[etapa]||C.purple;
+          var isDragOver=dragOver===etapa;
+          var pipelineItems=data.pipelineItems;
+          var totalCol=data.totalCol;
+          return e("div",{key:etapa,
+            style:{display:"flex",flexDirection:"column",gap:8,minWidth:0},
+            onDragOver:function(ev){ onDragOver(ev,etapa); },
+            onDrop:function(ev){ onDrop(ev,etapa); },
+            onDragLeave:function(){ setDragOver(null); }
+          },
+            e("div",{style:{height:124,boxSizing:"border-box",display:"flex",flexDirection:"column",padding:"14px 14px 12px",borderRadius:18,background:"#FFFFFF",flexShrink:0}},
+              e("div",{style:{display:"flex",alignItems:"center",justifyContent:"space-between",gap:8}},
+                e("b",{style:{display:"flex",alignItems:"center",gap:7,fontSize:13,fontWeight:800,whiteSpace:"nowrap",minWidth:0,color:"#0E1328"}},
+                  e("i",{style:{width:8,height:8,borderRadius:"50%",flexShrink:0,background:ec,fontStyle:"normal"}}),
+                  ETAPAS_LABEL[etapa]||etapa
+                ),
+                e("span",{style:{minWidth:22,height:22,padding:"0 6px",boxSizing:"border-box",borderRadius:11,background:"#F4F5FA",fontSize:12,fontWeight:800,color:"#4A5068",display:"grid",placeItems:"center"}},pipelineItems.length)
+              ),
+              e("div",{style:{marginTop:4,fontSize:13,fontWeight:700,color:totalCol>0?"#0E1328":"#B9BED3",minHeight:18}},
+                totalCol>0?"$"+formatoDinero(totalCol):" "
+              ),
+              e("div",{style:{display:"flex",gap:6,marginTop:"auto",paddingTop:10,borderTop:"1px solid #EDEFF5",fontSize:12,lineHeight:1.45,color:"#5A6078"}},
+                e("svg",{width:13,height:13,viewBox:"0 0 24 24",fill:"none",stroke:"currentColor",strokeWidth:1.9,strokeLinecap:"round",strokeLinejoin:"round",style:{flexShrink:0,color:"#8A5A06",marginTop:1}},e("path",{d:"M9 18h6M10 21h4M12 3a6 6 0 0 0-3.6 10.8c.6.5 1 1.2 1 2V16h5.2v-.2c0-.8.4-1.5 1-2A6 6 0 0 0 12 3z"})),
+                e("span",{style:{display:"-webkit-box",WebkitLineClamp:2,WebkitBoxOrient:"vertical",overflow:"hidden"}},ETAPAS_PREGUNTA[etapa]||"")
+              )
+            ),
+            pipelineItems.length===0
+              ? e("div",{style:{height:142,borderRadius:16,border:"1.5px dashed #D5D8E4",display:"grid",placeItems:"center",fontSize:12.5,color:"#8E94AE",background:isDragOver?"#F4F5FA":"transparent",transition:"background 0.15s"}},"Arrastra aquí")
+              : e("div",{style:{display:"flex",flexDirection:"column",gap:8,background:isDragOver?"#F4F5FA":"transparent",borderRadius:12,transition:"background 0.15s",padding:isDragOver?4:0}},
+                  pipelineItems.map(function(item){ return renderCard(item,etapa); }),
+                  isDragOver&&dragging&&e("div",{style:{height:142,borderRadius:16,border:"1.5px dashed "+ec+"60",display:"grid",placeItems:"center",fontSize:12.5,color:ec}},
+                    e("span",{},"Soltar aquí")
+                  )
+                )
+          );
+        }
+
+        return e("div",{style:{maxWidth:1120,margin:"0 auto",display:"flex",flexDirection:"column",gap:0}},
           e("div",{style:{display:"flex",alignItems:"center",justifyContent:isMobile?"space-between":"flex-end",gap:isMobile?6:8,marginLeft:isMobile?-16:0,marginRight:isMobile?-16:0,marginTop:isMobile?-20:0,padding:isMobile?"12px 16px":"0 0 16px",background:isMobile?C.bg:"none",flexWrap:"nowrap"}},
-            isMobile&&e("div",{style:{
-              width:36,height:36,borderRadius:10,
-              background:C.dark,
-              display:"flex",alignItems:"center",justifyContent:"center",
-              flexShrink:0,marginRight:"auto"
-            }},
+            isMobile&&e("div",{style:{width:36,height:36,borderRadius:10,background:C.dark,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,marginRight:"auto"}},
               e("svg",{width:22,height:22,viewBox:"0 0 100 100",fill:"none"},
                 e("path",{d:"M72 28C65 20 54 16 44 18C28 21 17 35 17 50C17 65 28 79 44 82C54 84 65 80 72 72",stroke:"#fff",strokeWidth:12,strokeLinecap:"round",fill:"none"}),
                 e("path",{d:"M62 38C57 33 50 30 44 31C34 33 27 41 27 50C27 59 34 67 44 69C50 70 57 67 62 62",stroke:"rgba(255,255,255,0.35)",strokeWidth:8,strokeLinecap:"round",fill:"none"})
@@ -11883,238 +12031,28 @@ export default function CLEO(props){
                   onCot:function(){ setModalCot(true); },
                   onVenta:abrirModalVenta})
           ),
-
-          // TÍTULO + FRASE EDUCATIVA
-          e("div",{style:{paddingTop:24,marginBottom:24}},
-            e("div",{style:{fontSize:28,fontWeight:700,color:C.text,lineHeight:1.1,marginBottom:6}},esProductos?"Tus clientes":"Tus seguimientos"),
-            e("div",{style:{fontSize:14,color:C.textMuted}},esProductos?frase:"Mira en qué va cada conversación y qué necesita para avanzar.")
+          e("header",{style:{marginBottom:22}},
+            e("h1",{style:{margin:0,fontSize:24,fontWeight:800,letterSpacing:"-0.03em",color:C.text}},esProductos?"Tus clientes":"Tus seguimientos"),
+            e("p",{style:{margin:"4px 0 0",fontSize:13.5,color:"#5A6078"}},esProductos?frase:"Mira en qué va cada conversación y qué necesita para avanzar.")
           ),
-
-          // KANBAN
-          e("div",{style:{overflowX:"auto",paddingBottom:8,marginLeft:isMobile?-16:0,marginRight:isMobile?-16:0}},
-            e("div",{style:{display:"flex",gap:12,minWidth:isMobile?"unset":"max-content",width:"100%"}},
+          !isMobile&&e("div",{style:{display:"grid",gridTemplateColumns:"repeat(5,minmax(0,1fr))",gap:12,alignItems:"start"}},
+            ETAPAS.map(function(etapa){ return renderColumna(etapa,buildEtapaData(etapa)); })
+          ),
+          isMobile&&e("div",null,
+            e("div",{style:{display:"flex",flexWrap:"wrap",gap:6}},
               ETAPAS.map(function(etapa){
-                // Con multiOp activo (Servicios): cols y pipelineItems vienen
-                // de oportunidades, no de c.etapa. Sin él: comportamiento legacy.
-                var cols;
-                if(multiOpEnabled&&!esProductos){
-                  // cols = array sintético de clientes desde oportunidades en esta etapa
-                  var opsEnEtapa=oportunidades.filter(function(op){
-                    if(op.modo!=='servicios'||op.etapa!==etapa) return false;
-                    if(etapa==='Ganado'){
-                      if(op.estatus!=='ganada'&&op.estatus!=='activa') return false;
-                      var cotAcepOp=op.cotizacionId&&cotizaciones.find(function(co){ return String(co.id)===String(op.cotizacionId)&&co.estatus==="Aceptada"; });
-                      if(cotAcepOp){ var ppO=cotAcepOp.pagos||[]; var tpO=ppO.reduce(function(s,p){ return s+Number(p.monto); },0); if(cotAcepOp.monto-tpO>0) return true; }
-                      return mostrarArchivados||diasDesde(op.fechaCierre||op.fechaEtapa||op.fechaCreacion)<=7;
-                    }
-                    if(etapa==='Perdido'){
-                      if(op.estatus!=='perdida'&&op.estatus!=='activa') return false;
-                      return mostrarArchivados||diasDesde(op.fechaCierre||op.fechaEtapa||op.fechaCreacion)<=7;
-                    }
-                    return op.estatus==='activa';
-                  });
-                  cols=opsEnEtapa.map(function(op){ return clientes.find(function(c){ return String(c.id)===String(op.clienteId); }); }).filter(Boolean);
-                } else {
-                  cols=clientesFiltrados.filter(function(c){
-                    if(c.etapa!==etapa) return false;
-                    if(etapa!=="Ganado"&&etapa!=="Perdido") return true;
-                    if(mostrarArchivados) return true;
-                    var cotC=cotizaciones.find(function(cot){ return Number(cot.clienteId)===Number(c.id)&&cot.estatus==="Aceptada"&&(esProductos||cotizacionVinculadaOportunidad(cot)); });
-                    if(cotC){
-                      var pagosC=cotC.pagos||[];
-                      var totalPagadoC=pagosC.reduce(function(s,p){ return s+Number(p.monto); },0);
-                      if(cotC.monto-totalPagadoC>0) return true;
-                    }
-                    return diasDesde(c.fechaEtapa||c.fecha)<=7;
-                  });
-                }
                 var ec=ETAPA_COLOR[etapa]||C.purple;
-                var isDragOver=dragOver===etapa;
-                // Con multiOp: un item por oportunidad (usa op.id como key y drag id).
-                // Legacy: un item por cliente (o por cotización si tiene múltiples).
-                var pipelineItems=[];
-                if(multiOpEnabled&&!esProductos){
-                  var opsEnEtapaItems=opsEnEtapa;
-                  opsEnEtapaItems.forEach(function(op){
-                    var c=clientes.find(function(cl){ return String(cl.id)===String(op.clienteId); });
-                    if(!c) return;
-                    var cotFija=op.cotizacionId?cotizaciones.find(function(co){ return String(co.id)===String(op.cotizacionId); }):null;
-                    pipelineItems.push({c:c,cotFija:cotFija||null,opId:op.id,key:op.id});
-                  });
-                } else {
-                  cols.forEach(function(c){
-                    if(!esProductos){
-                      var cotsActivas=cotizaciones.filter(function(cot){
-                        return Number(cot.clienteId)===Number(c.id)&&(cot.estatus==="Pendiente"||cot.estatus==="Aceptada");
-                      }).sort(function(a,b){ return new Date(b.fecha)-new Date(a.fecha); });
-                      if(cotsActivas.length>1){
-                        cotsActivas.forEach(function(cot){ pipelineItems.push({c:c,cotFija:cot,opId:'op_cli_'+c.id,key:String(c.id)+"_cot_"+String(cot.id)}); });
-                        return;
-                      }
-                    }
-                    pipelineItems.push({c:c,cotFija:null,opId:'op_cli_'+c.id,key:String(c.id)});
-                  });
-                }
-                var totalCol=pipelineItems.reduce(function(s,item){
-                  var cot=item.cotFija||cotizaciones.find(function(q){ return Number(q.clienteId)===Number(item.c.id)&&(q.estatus==="Pendiente"||q.estatus==="Aceptada")&&(esProductos||cotizacionVinculadaOportunidad(q)); });
-                  return s+(cot?cot.monto:0);
-                },0);
-                return e("div",{key:etapa,
-                  style:{flex:isMobile?"0 0 85vw":"1 1 0",minWidth:isMobile?"85vw":150,display:"flex",flexDirection:"column"},
-                  onDragOver:function(ev){ onDragOver(ev,etapa); },
-                  onDrop:function(ev){ onDrop(ev,etapa); },
-                  onDragLeave:function(){ setDragOver(null); }
-                },
-
-                  // ENCABEZADO columna
-                  e("div",{style:{
-                    background:C.surface,borderRadius:14,
-                    border:"1px solid "+C.border,
-                    boxShadow:"0 2px 8px rgba(0,0,0,0.04)",
-                    padding:"12px 12px 10px",marginBottom:8,
-                    height:88,boxSizing:"border-box",
-                    flexShrink:0,overflow:"hidden",
-                    display:"flex",flexDirection:"column",justifyContent:"space-between"
-                  }},
-                    e("div",{style:{display:"flex",justifyContent:"space-between",alignItems:"flex-start"}},
-                      e("div",{style:{flex:1,minWidth:0,marginRight:6}},
-                        e("div",{style:{fontSize:11,fontWeight:700,color:ec,marginBottom:2,lineHeight:1.3}},ETAPAS_LABEL[etapa]||etapa),
-                        e("div",{style:{fontSize:sc.textLabel,color:totalCol>0?C.textMuted:C.textDim,whiteSpace:"nowrap"}},totalCol>0?"$"+formatoDinero(totalCol):",")
-                      ),
-                      e("div",{style:{
-                        width:22,height:22,borderRadius:"50%",flexShrink:0,
-                        background:ec+"18",display:"flex",alignItems:"center",
-                        justifyContent:"center",fontSize:11,fontWeight:700,color:ec
-                      }},pipelineItems.length)
-                    ),
-                    e("div",{style:{
-                      fontSize:sc.textLabel,color:C.textDim,lineHeight:1.4,
-                      paddingTop:6,borderTop:"1px solid "+ec+"18",
-                      fontStyle:"italic"
-                    }},ETAPAS_PREGUNTA[etapa]||"")
-                  ),
-
-                  // ZONA FICHAS
-                  e("div",{style:{
-                    background:isDragOver?ec+"06":C.bg,
-                    borderRadius:12,padding:"6px",minHeight:80,
-                    display:"flex",flexDirection:"column",gap:6,
-                    transition:"background 0.15s",
-                    border:isDragOver?"1.5px dashed "+ec+"50":"1.5px solid transparent"
-                  }},
-                    pipelineItems.map(function(item){
-                      var c=item.c;
-                      var cotPend=item.cotFija?(item.cotFija.estatus==="Pendiente"?item.cotFija:null):cotizaciones.find(function(cot){ return Number(cot.clienteId)===Number(c.id)&&cot.estatus==="Pendiente"&&(esProductos||cotizacionVinculadaOportunidad(cot)); });
-                      var cotAcep=item.cotFija?(item.cotFija.estatus==="Aceptada"?item.cotFija:null):cotizaciones.find(function(cot){ return Number(cot.clienteId)===Number(c.id)&&cot.estatus==="Aceptada"&&(esProductos||cotizacionVinculadaOportunidad(cot)); });
-                      var dias=diasDesde(c.fechaEtapa||c.fecha);
-                      var ref=c.ultimoContacto||c.fecha;
-                      var dSinContacto=Math.floor((HOY-new Date(ref))/86400000);
-                      var umbral=c.etapa==="Nuevo contacto"?5:c.etapa==="Cotizacion enviada"?3:c.etapa==="Negociacion"?3:null;
-                      var esUrgente=umbral!==null&&!c.seguimientoFecha&&dSinContacto>=umbral;
-                      var cot=cotAcep||cotPend;
-                      var pagos=cot?(cot.pagos||[]):[];
-                      var totalPagado=pagos.reduce(function(s,p){ return s+Number(p.monto); },0);
-                      var saldoReal=cot?cot.monto-totalPagado:0;
-                      var urlContactar=contactUrl(c,"Hola "+c.nombre.split(" ")[0]+", quería darle seguimiento"+(cotPend?" a la cotización de "+cotPend.concepto:"")+".");
-                      var borderColor=esUrgente?C.red:ec;
-                      var _dragId=multiOpEnabled&&!esProductos?item.opId:c.id;
-                      return e("div",{key:item.key,
-                        draggable:true,
-                        onDragStart:function(ev){ onDragStart(ev,_dragId); },
-                        onDragEnd:onDragEnd,
-                        style:{
-                          background:C.surface,
-                          borderRadius:12,
-                          padding:"12px 14px",
-                          cursor:"grab",
-                          opacity:dragging===_dragId?0.4:1,
-                          border:"1.5px solid "+(esUrgente?C.red:ec)+"45",
-                          boxShadow:"0 1px 4px rgba(0,0,0,0.05)",
-                          boxSizing:"border-box",minHeight:135,
-                          display:"flex",flexDirection:"column",gap:5,overflow:"hidden"
-                        },
-                        onClick:function(){
-                          setCotRapidaId(c.id);
-                          setCotRapidaCotFijada(item.cotFija?item.cotFija.id:null);
-                        }
-                      },
-                        // Fila 1 , avatar + nombre
-                        e("div",{style:{display:"flex",gap:8,alignItems:"center"}},
-                          e("div",{style:{
-                            width:32,height:32,borderRadius:"50%",flexShrink:0,
-                            background:ec+"18",display:"flex",alignItems:"center",
-                            justifyContent:"center",fontSize:11,fontWeight:700,color:ec
-                          }},iniciales(c.nombre)),
-                          e("div",{style:{flex:1,minWidth:0}},
-                            e("div",{style:{fontWeight:600,fontSize:12,color:C.text,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}},c.nombre),
-                            e("div",{style:{fontSize:sc.textLabel,color:C.textMuted,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}},c.negocio||(" "))
-                          )
-                        ),
-                        // Fila 2 , contenido según etapa
-                        (function(){
-                          var esPerdidoG=c.etapa==="Perdido";
-                          var esGanadoG=c.etapa==="Ganado";
-                          // Perdido: solo servicio + seguimiento si hay
-                          if(esPerdidoG){
-                            var cotPerd=cotAcep||cotPend||cotizaciones.find(function(q){ return Number(q.clienteId)===Number(c.id)&&(esProductos||cotizacionVinculadaOportunidad(q)); });
-                            var concepto=cotPerd?(cotPerd.concepto||resumenItemsCotizacion(obtenerItemsCotizacion(cotPerd),esProductos?"producto":"servicio")||null):null;
-                            return e("div",{style:{fontSize:sc.textLabel,lineHeight:"22px",height:22,padding:"0 7px",borderRadius:6,flexShrink:0,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis",color:C.textMuted,background:"#F8FAFC",border:"0.5px solid "+C.border}},
-                              concepto?concepto.slice(0,22)+(concepto.length>22?"...":""):"Sin cotización"
-                            );
-                          }
-                          // Ganado: solo servicio
-                          if(esGanadoG){
-                            var cot2=cotAcep||cotPend;
-                            var concepto2=cot2?(cot2.concepto||resumenItemsCotizacion(obtenerItemsCotizacion(cot2),esProductos?"producto":"servicio")||null):null;
-                            return e("div",{style:{fontSize:sc.textLabel,lineHeight:"22px",height:22,padding:"0 7px",borderRadius:6,flexShrink:0,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis",color:C.green,background:C.green+"08",border:"0.5px solid "+C.green+"30"}},
-                              concepto2?concepto2.slice(0,22)+(concepto2.length>22?"...":""):"Venta cerrada"
-                            );
-                          }
-                          // Activo: días + concepto + rojo si urgente
-                          if(c.etapa==="Perdido"){
-                            return e("div",{style:{fontSize:sc.textLabel,lineHeight:"22px",height:22,padding:"0 7px",borderRadius:6,flexShrink:0,whiteSpace:"nowrap",color:C.red,background:C.red+"08",border:"0.5px solid "+C.red+"30"}},"Por recuperar");
-                          }
-                          var umbral=c.etapa==="Nuevo contacto"?5:3;
-                          var diasRojo=dias>=umbral;
-                          var cot3=cotAcep||cotPend;
-                          var concepto3=cot3?(cot3.concepto||resumenItemsCotizacion(obtenerItemsCotizacion(cot3),esProductos?"producto":"servicio")||null):null;
-                          var texto=dias+"d"+(concepto3?" · "+concepto3.slice(0,16)+(concepto3.length>16?"...":""):"");
-                          return e("div",{style:{fontSize:sc.textLabel,lineHeight:"22px",height:22,padding:"0 7px",borderRadius:6,flexShrink:0,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis",color:diasRojo?C.red:C.textMuted,background:diasRojo?C.red+"08":"#F8FAFC",border:"0.5px solid "+(diasRojo?C.red+"30":C.border)}},texto);
-                        })(),
-                        // Fila 3 , monto pendiente (solo si no es Perdido)
-                        e("div",{style:{fontSize:sc.textLabel,fontWeight:600,color:saldoReal>0&&c.etapa!=="Perdido"?C.amber:"transparent",height:16,lineHeight:"16px",flexShrink:0,whiteSpace:"nowrap",overflow:"hidden"}},
-                          saldoReal>0&&c.etapa!=="Perdido"?"$"+formatoDinero(saldoReal)+" pendiente":"\u00a0"
-                        ),
-                        // Fila 4 — iconos: PDF cot, canal, lápiz editar cot
-                        e("div",{style:{flexShrink:0,display:"flex",gap:5,alignItems:"center",marginTop:"auto"},onClick:function(ev){ ev.stopPropagation(); }},
-                          cot&&e(ArchivoAdjunto,{tipoDocumento:"cotizacion",documento:cot,demoActivo:!!(perfil.modoDemo||props.demoActivo),onActualizarDocumento:actualizarArchivoAdjuntoCotizacion,compacto:true}),
-                          e(BtnCanal,{cliente:c,iconOnly:true}),
-                          cot&&e("button",{type:"button",title:"Editar cotización",
-                            style:{width:34,height:34,borderRadius:9,border:"1.5px solid "+C.border,background:"#FFFFFF",color:"#9299A8",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0},
-                            onClick:function(ev){ ev.stopPropagation(); editarCot(cot); }},
-                            e("svg",{width:14,height:14,viewBox:"0 0 24 24",fill:"none",stroke:"currentColor",strokeWidth:1.8,strokeLinecap:"round",strokeLinejoin:"round"},
-                              e("path",{d:"M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"}),
-                              e("path",{d:"M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"})
-                            )
-                          ),
-                          (c.etapa==="Perdido"||c.etapa==="Ganado")&&c.seguimientoFecha&&(function(){
-                            var dSeg=diasHastaFechaCalendario(c.seguimientoFecha);
-                            return e("div",{title:motivoSeguimientoDe(c),style:{fontSize:sc.textLabel,color:"#5B5CF6",fontWeight:500,cursor:"help",marginLeft:"auto"}},"Seg: "+(dSeg<=0?"hoy":dSeg===1?"mañana":"en "+dSeg+" días"));
-                          })(),
-                          isMobile&&e("button",{
-                            style:{marginLeft:"auto",padding:"4px 8px",borderRadius:8,border:"1px solid "+C.border,background:C.surfaceUp,fontSize:sc.textLabel,color:C.textMuted,cursor:"pointer",flexShrink:0},
-                            onClick:function(ev){ ev.stopPropagation(); setMoverClienteId(c.id); }
-                          },"Mover →")
-                        )
-                      );
-                    }),
-                    cols.length===0&&e("div",{style:{padding:"24px 8px",textAlign:"center",fontSize:11,color:ec,opacity:0.3}},"Arrastra aquí"),
-                    dragOver===etapa&&dragging&&e("div",{style:{border:"1.5px dashed "+ec+"40",borderRadius:10,height:44,display:"flex",alignItems:"center",justifyContent:"center",background:ec+"06"}},
-                      e("span",{style:{fontSize:11,color:ec}},"Soltar aquí")
-                    )
-                  )
+                var n=buildEtapaData(etapa).pipelineItems.length;
+                var on=etapaMovilSel===etapa;
+                return e("button",{key:etapa,style:{display:"inline-flex",alignItems:"center",gap:6,height:34,padding:"0 12px",borderRadius:17,background:on?"#0E1328":"#FFFFFF",border:0,fontFamily:"inherit",fontSize:12.5,fontWeight:700,color:on?"#FFFFFF":"#4A5068",cursor:"pointer"},onClick:function(){ setEtapaMovilSel(etapa); }},
+                  e("i",{style:{width:7,height:7,borderRadius:"50%",background:on?"#A3AFFF":ec,flexShrink:0,fontStyle:"normal"}}),
+                  ETAPAS_LABEL[etapa]||etapa,
+                  e("small",{style:{fontWeight:800,color:on?"#A3AFFF":"#6E7489"}},n)
                 );
               })
+            ),
+            e("div",{style:{marginTop:14}},
+              renderColumna(etapaMovilSel,buildEtapaData(etapaMovilSel))
             )
           ),
 
