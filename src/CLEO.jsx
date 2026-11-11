@@ -5971,9 +5971,9 @@ export default function CLEO(props){
     if(draft.recordatorio&&draft.recordatorio.incluir&&(!draft.recordatorio.texto||!draft.recordatorio.texto.trim()||!draft.recordatorio.fecha)){
       alert("Completa el texto y la fecha del recordatorio, o desmárcalo."); return;
     }
-    // Etapa 1: en Servicios solo recordatorios están habilitados
-    if(!esProductos&&(draft.venta||draft.oportunidad)){
-      alert("Las ventas y oportunidades desde el chat llegarán pronto a Servicios. Por ahora puedo ayudarte a crear recordatorios.");
+    // Etapa 2: en Servicios, oportunidades habilitadas; ventas aún pendientes
+    if(!esProductos&&draft.venta){
+      alert("El registro de ventas desde el chat llegará pronto a Servicios. Por ahora puedo ayudarte a crear recordatorios y oportunidades.");
       return;
     }
     asistenteGuardandoRef.current=true;
@@ -6067,9 +6067,9 @@ export default function CLEO(props){
     // combinar/deduplicar, ver confirmarAgregarOportunidad), más una
     // opción de Reemplazar, ambas explícitas, nunca automáticas.
     if(draft.oportunidad){
-      var itemNuevoOp=draft.oportunidad.cantidad!=null&&draft.oportunidad.precioUnitario!=null
-        ?{id:"it_"+Date.now(),catalogoId:null,nombre:draft.oportunidad.producto,cantidad:draft.oportunidad.cantidad,precioUnitario:draft.oportunidad.precioUnitario,total:redondearDinero(draft.oportunidad.cantidad*draft.oportunidad.precioUnitario)}
-        :{id:"it_"+Date.now(),catalogoId:null,nombre:draft.oportunidad.producto,cantidad:0,precioUnitario:0,total:0};
+      var _cantOp=draft.oportunidad.cantidad!=null?Number(draft.oportunidad.cantidad):0;
+      var _precOp=draft.oportunidad.precioUnitario!=null?redondearDinero(Number(draft.oportunidad.precioUnitario)):0;
+      var itemNuevoOp={id:"it_"+Date.now(),catalogoId:null,nombre:draft.oportunidad.producto,cantidad:_cantOp,precioUnitario:_precOp,total:redondearDinero(_cantOp*_precOp)};
       var clienteExistenteOp=asistenteClienteElegido!=="nuevo"?clientes.find(function(c){ return c.id===clienteIdFinal; }):null;
       if(clienteExistenteOp&&tieneOportunidadActivaProductos(clienteExistenteOp)){
         var itemsActualesOp=obtenerItemsInteres(clienteExistenteOp);
@@ -6089,6 +6089,30 @@ export default function CLEO(props){
           return;
         }
       }
+      // Servicios: si existe una cotización Pendiente con un servicio distinto, preguntar
+      if(!esProductos&&clienteExistenteOp){
+        var _cotSvExist=cotizaciones.find(function(cot){ return String(cot.clienteId)===String(clienteIdFinal)&&cot.estatus==="Pendiente"; });
+        if(_cotSvExist){
+          var _itemsSvExist=_cotSvExist.items||[];
+          var _nomNuevoNorm=normalizarNombreItem(draft.oportunidad.producto);
+          var _yaIncluidoSv=_itemsSvExist.some(function(it){ return normalizarNombreItem(it.nombre)===_nomNuevoNorm; });
+          if(!_yaIncluidoSv){
+            asistenteGuardandoRef.current=false;
+            setAsistentePaso("revision");
+            setAsistenteConflictoOportunidad({
+              clienteId:clienteIdFinal,
+              clienteNombre:draft.clienteNombre,
+              itemsActuales:_itemsSvExist,
+              resumenActual:_cotSvExist.concepto||resumenItemsCotizacion(_itemsSvExist,"servicio")||"sus servicios",
+              itemNuevo:itemNuevoOp,
+              draft:draft,
+              modoServicios:true,
+              cotExistenteId:_cotSvExist.id
+            });
+            return;
+          }
+        }
+      }
       terminarGuardadoAsistente(clienteIdFinal,draft,[itemNuevoOp],pedidoIdGuardado);
       return;
     }
@@ -6101,8 +6125,10 @@ export default function CLEO(props){
   // por el flujo normal (sin conflicto) como por las 2 resoluciones del
   // conflicto de interés (Agregar/Reemplazar). itemsOportunidadFinal es
   // null cuando no hay draft.oportunidad en absoluto (pedido o solo
-  // recordatorio).
-  function terminarGuardadoAsistente(clienteIdFinal,draft,itemsOportunidadFinal,pedidoIdGuardado){
+  // recordatorio). cotActualizarIdSv: solo en Servicios, cuando el usuario
+  // eligió "Agregar a esta cotización" — actualiza la cot existente en lugar
+  // de crear una nueva.
+  function terminarGuardadoAsistente(clienteIdFinal,draft,itemsOportunidadFinal,pedidoIdGuardado,cotActualizarIdSv){
     var oportunidadGuardada=false;
     if(itemsOportunidadFinal&&esProductos){
       var compatOp=buildItemsCompat(itemsOportunidadFinal,"producto");
@@ -6117,6 +6143,30 @@ export default function CLEO(props){
           });
         });
       });
+      setAsistenteOportunidadesGuardadas(function(prev){ return prev.concat([firmaOportunidadAsistente(draft.clienteNombre,draft.oportunidad.producto)]); });
+      registrarEvento("oportunidad_creada",{tipo_perfil:perfil.tipoPerfil||"",origen:"asistente",dispositivo:dispositivoActual()});
+      oportunidadGuardada=true;
+    }
+    if(itemsOportunidadFinal&&!esProductos){
+      var _totSv=calcularTotalesCotizacion(itemsOportunidadFinal,"","porcentaje");
+      var _montoSv=_totSv.total;
+      var _resumenSv=resumenItemsCotizacion(itemsOportunidadFinal,"servicio");
+      var _cantSv=itemsOportunidadFinal.reduce(function(s,it){ return s+(it.cantidad||0); },0);
+      var _datosFinSv={subtotal:_totSv.subtotal,descuento:_totSv.descuento,tipoDescuento:_totSv.tipoDescuento,monto:_montoSv,items:itemsOportunidadFinal,concepto:_resumenSv,cantidad:_cantSv,precioUnit:_cantSv>0?_montoSv/_cantSv:(itemsOportunidadFinal[0]?itemsOportunidadFinal[0].precioUnitario:0)};
+      if(cotActualizarIdSv){
+        // Agregar a cotización existente
+        setCotizaciones(function(prev){ return prev.map(function(cot){ return cot.id===cotActualizarIdSv?Object.assign({},cot,_datosFinSv):cot; }); });
+      } else {
+        // Crear cotización nueva
+        var _cotIdSv=Date.now();
+        setCotizaciones(function(prev){ return [...prev,Object.assign({},{clienteId:Number(clienteIdFinal),descuento:"",tipoDescuento:"porcentaje",estatus:"Pendiente",vigencia:"",vigenciaDias:"",notas:draft.oportunidad.notas||"",svCondiciones:"",svCondicionesHtml:""},{id:_cotIdSv,fecha:FECHA_HOY,fechaHoraCreacion:new Date().toISOString(),motivoPerdida:"",pagos:[],condicionesPago:perfil.condicionesPago||"",vinculadaOportunidadActual:true,seguimientoFecha:"",seguimientoEstado:"",seguimientoAtendidoFecha:""},_datosFinSv)]; });
+      }
+      var _compatSv=buildItemsCompat(itemsOportunidadFinal,"servicio");
+      setClientes(function(prev){ return prev.map(function(c){
+        if(Number(c.id)!==clienteIdFinal) return c;
+        var _etapaSv=ESTADOS_ACTIVOS_ETAPA_SV.indexOf(c.etapa)!==-1?c.etapa:"Nuevo contacto";
+        return Object.assign({},c,{fechaEtapa:FECHA_HOY,etapa:_etapaSv,items:itemsOportunidadFinal,servicioInteres:_compatSv.resumen,precioInteres:String(_compatSv.total),cantidadInteres:String(_compatSv.cantidad),notasProspecto:draft.oportunidad.notas||c.notasProspecto||"",ultimoContacto:FECHA_HOY});
+      }); });
       setAsistenteOportunidadesGuardadas(function(prev){ return prev.concat([firmaOportunidadAsistente(draft.clienteNombre,draft.oportunidad.producto)]); });
       registrarEvento("oportunidad_creada",{tipo_perfil:perfil.tipoPerfil||"",origen:"asistente",dispositivo:dispositivoActual()});
       oportunidadGuardada=true;
@@ -6153,7 +6203,7 @@ export default function CLEO(props){
     var lineaPrincipal=draft.venta
       ?("Pedido guardado para "+draft.clienteNombre+" · $"+formatoDinero(draft.venta.total)+" · "+detallePagoTexto)
       :oportunidadGuardada
-      ?("Oportunidad guardada para "+draft.clienteNombre+": "+buildItemsCompat(itemsOportunidadFinal,"producto").resumen)
+      ?("Oportunidad guardada para "+draft.clienteNombre+": "+buildItemsCompat(itemsOportunidadFinal,esProductos?"producto":"servicio").resumen)
       :recordatorioGuardado
       ?("Recordatorio guardado para "+draft.clienteNombre)
       :("Listo, "+draft.clienteNombre+".");
@@ -6188,6 +6238,8 @@ export default function CLEO(props){
   // de deduplicación que ya usa confirmarAgregarOportunidad (por
   // catalogoId, o por nombre normalizado) , nunca suma ni fusiona en
   // silencio, solo evita duplicar el mismo renglón.
+  // En Servicios, actualiza la cotización Pendiente existente (cotExistenteId)
+  // en lugar de crear una nueva.
   function agregarOportunidadAsistente(){
     var conf=asistenteConflictoOportunidad;
     if(!conf) return;
@@ -6199,17 +6251,17 @@ export default function CLEO(props){
         return normalizarNombreItem(it.nombre)===normalizarNombreItem(conf.itemNuevo.nombre);
       })?[]:[conf.itemNuevo]
     );
-    terminarGuardadoAsistente(conf.clienteId,conf.draft,itemsCombinados,null);
+    terminarGuardadoAsistente(conf.clienteId,conf.draft,itemsCombinados,null,conf.modoServicios?conf.cotExistenteId:null);
   }
-  // "Reemplazar": usa SOLO el interés nuevo , el anterior se pierde, pero
-  // únicamente porque la persona lo confirmó explícitamente aquí, nunca
-  // como comportamiento por defecto.
+  // "Reemplazar" (Productos) / "Crear cotización nueva" (Servicios):
+  // en Productos usa SOLO el interés nuevo (el anterior se pierde, confirmado
+  // explícitamente). En Servicios crea una cotización nueva sin tocar la existente.
   function reemplazarOportunidadAsistente(){
     var conf=asistenteConflictoOportunidad;
     if(!conf) return;
     if(asistenteGuardandoRef.current) return;
     asistenteGuardandoRef.current=true;
-    terminarGuardadoAsistente(conf.clienteId,conf.draft,[conf.itemNuevo],null);
+    terminarGuardadoAsistente(conf.clienteId,conf.draft,[conf.itemNuevo],null,null);
   }
   // "Cancelar": nada se guarda , ni la oportunidad ni el recordatorio de
   // este turno , la oportunidad anterior queda exactamente como estaba.
@@ -20704,18 +20756,19 @@ export default function CLEO(props){
                 var resumenNuevo=conf.itemNuevo.cantidad&&conf.itemNuevo.precioUnitario
                   ?(conf.itemNuevo.cantidad+" "+conf.itemNuevo.nombre+" · $"+formatoDinero(conf.itemNuevo.total))
                   :conf.itemNuevo.nombre;
+                var esModoSvConf=!!conf.modoServicios;
                 return e("div",{key:"ficha-conflicto",style:{flexShrink:0,alignSelf:"stretch",marginTop:2,borderRadius:18,background:"#fff",border:"1.5px solid #C9D0FF",overflow:"hidden"}},
                   e("div",{style:{padding:"14px 16px"}},
                     e("div",{style:{fontSize:11,fontWeight:800,letterSpacing:".08em",color:"#6E7489"}},"CONFLICTO"),
-                    e("div",{style:{fontSize:15,fontWeight:800,marginTop:6,color:"#0E1328"}},conf.clienteNombre+" ya tiene un interés distinto"),
+                    e("div",{style:{fontSize:15,fontWeight:800,marginTop:6,color:"#0E1328"}},esModoSvConf?conf.clienteNombre+" ya tiene una cotización pendiente":conf.clienteNombre+" ya tiene un interés distinto"),
                     e("div",{style:{fontSize:12.5,color:"#8A5A06",background:"#FBF1DC",borderRadius:10,padding:"8px 10px",marginTop:8,lineHeight:1.5}},
-                      "Actualmente: ",e("b",null,conf.resumenActual),". Nuevo: ",e("b",null,resumenNuevo),". CLEO no guarda ningún cambio hasta que elijas qué hacer."
+                      "Cotización actual: ",e("b",null,conf.resumenActual),". Quieres agregar: ",e("b",null,resumenNuevo),". CLEO no guarda ningún cambio hasta que elijas qué hacer."
                     )
                   ),
                   e("div",{style:{display:"flex",gap:6,flexWrap:"wrap",padding:"12px 16px 14px",background:"#F8F9FC",borderTop:"1px solid #EDEFF5"}},
                     e("button",{type:"button",onClick:cancelarConflictoOportunidadAsistente,style:{height:40,padding:"0 10px",border:"none",background:"transparent",color:"#6E7489",fontFamily:"inherit",fontSize:13,fontWeight:700,cursor:"pointer"}},"Cancelar"),
-                    e("button",{type:"button",onClick:agregarOportunidadAsistente,style:{height:40,padding:"0 14px",borderRadius:20,border:"1.5px solid #E3E6EF",background:"#fff",color:"#0E1328",fontFamily:"inherit",fontSize:13,fontWeight:700,cursor:"pointer"}},"Agregar a la oportunidad"),
-                    e("button",{type:"button",onClick:reemplazarOportunidadAsistente,style:{flex:1,height:40,border:"none",borderRadius:20,background:"#B23A24",color:"#fff",fontFamily:"inherit",fontSize:13.5,fontWeight:700,cursor:"pointer"}},"Reemplazar interés")
+                    e("button",{type:"button",onClick:agregarOportunidadAsistente,style:{height:40,padding:"0 14px",borderRadius:20,border:"1.5px solid #E3E6EF",background:"#fff",color:"#0E1328",fontFamily:"inherit",fontSize:13,fontWeight:700,cursor:"pointer"}},esModoSvConf?"Agregar a esta cotización":"Agregar a la oportunidad"),
+                    e("button",{type:"button",onClick:reemplazarOportunidadAsistente,style:{flex:1,height:40,border:"none",borderRadius:20,background:esModoSvConf?"#3F4BD0":"#B23A24",color:"#fff",fontFamily:"inherit",fontSize:13.5,fontWeight:700,cursor:"pointer"}},esModoSvConf?"Crear cotización nueva":"Reemplazar interés")
                   )
                 );
               }
