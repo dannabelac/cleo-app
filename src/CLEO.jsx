@@ -20446,36 +20446,49 @@ export default function CLEO(props){
       if(esGanadoC){
         var opExpandG=contactadoOpcion==="expand_ganado_nuevo"?"nuevo":contactadoOpcion==="expand_ganado_contacto"?"contacto":null;
         return e("div",{style:st.ov,onClick:cerrar},
-          e("div",{style:Object.assign({},st.modal2.outer,{overflowY:"auto"}),onClick:function(ev){ ev.stopPropagation(); }},
-            e("div",{style:{padding:"20px 20px 12px",borderBottom:"1px solid "+C.border,flexShrink:0}},
-              e("div",{style:{fontSize:17,fontWeight:700,color:C.text,marginBottom:4}},"¿Qué pasó con "+nombre+"?"),
-              e("div",{style:{fontSize:13,color:C.textMuted}},"Elige lo que mejor describe la conversación.")
+          e("div",{style:{position:"relative",background:"#FFFFFF",borderRadius:isMobile?"26px 26px 0 0":"26px",padding:"26px 24px 16px",width:isMobile?"100%":480,maxWidth:isMobile?"100%":"95vw",boxShadow:"0 30px 70px rgba(14,19,40,.30)",boxSizing:"border-box",overflowY:"auto",maxHeight:isMobile?"92vh":"88vh"},onClick:function(ev){ ev.stopPropagation(); }},
+            isMobile&&e("div",{style:{width:36,height:4,borderRadius:2,background:"#E3E6EF",margin:"0 auto 20px"}}),
+            e("div",{style:{display:"flex",alignItems:"flex-start",justifyContent:"space-between",gap:12,marginBottom:18}},
+              e("div",null,
+                e("h2",{style:{margin:0,fontSize:22,fontWeight:800,letterSpacing:"-0.025em",color:C.ink}},"¿Qué pasó con "+nombre+"?"),
+                e("p",{style:{margin:"4px 0 0",fontSize:14,color:"#5A6078"}},"Elige lo que mejor describe la conversación.")
+              ),
+              e("button",{type:"button",style:{width:34,height:34,flexShrink:0,border:"none",borderRadius:"50%",background:"#F4F5FA",color:"#4A5068",display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer"},"aria-label":"Cerrar",onClick:cerrar},
+                e("svg",{width:16,height:16,viewBox:"0 0 24 24",fill:"none",stroke:"currentColor",strokeWidth:2,strokeLinecap:"round",strokeLinejoin:"round"},e("path",{d:"M6 6l12 12M18 6 6 18"}))
+              )
             ),
-            e("div",{style:{padding:"12px 16px",display:"flex",flexDirection:"column",gap:8}},
+            e("div",{style:{display:"flex",flexDirection:"column",gap:8,marginBottom:4}},
 
               // Le interesa algo nuevo
-              e("button",{type:"button",style:{borderRadius:12,border:"1px solid "+C.purple+"44",overflow:"hidden",cursor:"pointer",background:"transparent",width:"100%",textAlign:"left",padding:0,display:"block",fontFamily:"inherit"},
+              e("button",{type:"button",
+                style:{display:"flex",alignItems:"center",gap:14,width:"100%",padding:"14px",borderRadius:16,border:"1.5px solid #E3E6EF",background:"#FFFFFF",fontFamily:FONT_CLEO,textAlign:"left",boxSizing:"border-box",cursor:"pointer"},
+                onMouseEnter:function(ev){ ev.currentTarget.style.borderColor="#8D9BFF"; ev.currentTarget.style.boxShadow="0 0 0 4px #EEF0FF"; },
+                onMouseLeave:function(ev){ ev.currentTarget.style.borderColor="#E3E6EF"; ev.currentTarget.style.boxShadow="none"; },
                 onClick:function(){ cerrar(); setFormCot(Object.assign({},cotVacio,{clienteId:String(cl.id)})); setModalCot(true); }
               },
-                e("div",{style:{padding:"12px 14px",display:"flex",justifyContent:"space-between",alignItems:"center"}},
-                  e("div",null,
-                    e("div",{style:{fontSize:14,fontWeight:500,color:C.purple}},"Le interesa algo nuevo"),
-                    e("div",{style:{fontSize:12,color:C.textMuted,marginTop:1}},"Crear nueva cotización")
-                  ),
-                  
-                )
+                e("span",{style:{width:40,height:40,flexShrink:0,borderRadius:13,background:"#EEF0FF",color:"#3F4BD0",display:"flex",alignItems:"center",justifyContent:"center"}},
+                  e("svg",{width:18,height:18,viewBox:"0 0 24 24",fill:"none",stroke:"currentColor",strokeWidth:2,strokeLinecap:"round",strokeLinejoin:"round"},e("path",{d:"M12 4c4.7 0 8.5 3.1 8.5 7s-3.8 7-8.5 7c-1 0-2-.1-2.9-.4L4.5 20l1.3-3.6C4.4 15 3.5 13.1 3.5 11c0-3.9 3.8-7 8.5-7z"}))
+                ),
+                e("span",{style:{flex:1,minWidth:0}},
+                  e("b",{style:{display:"block",fontSize:15,fontWeight:800,color:C.ink}},"Le interesa algo nuevo"),
+                  e("small",{style:{display:"block",marginTop:2,fontSize:13,color:"#5A6078"}},"Crear nueva cotización")
+                ),
+                e("span",{style:{color:"#8E94AE",flexShrink:0}},e("svg",{width:16,height:16,viewBox:"0 0 24 24",fill:"none",stroke:"currentColor",strokeWidth:2.4,strokeLinecap:"round",strokeLinejoin:"round"},e("path",{d:"m9 6 6 6-6 6"})))
               ),
 
               // Solo mantener contacto
-              e("div",{style:{borderRadius:12,border:"1px solid "+(opExpandG==="contacto"?C.border:C.border),overflow:"hidden"}},
-                e("button",{type:"button","aria-expanded":opExpandG==="contacto",style:{padding:"12px 14px",display:"flex",justifyContent:"space-between",alignItems:"center",cursor:"pointer",background:"transparent",width:"100%",textAlign:"left",border:"none",fontFamily:"inherit"},
+              e("div",{style:{borderRadius:16,border:"1.5px solid "+(opExpandG==="contacto"?"#8D9BFF":"#E3E6EF"),overflow:"hidden",boxShadow:opExpandG==="contacto"?"0 0 0 4px #EEF0FF":"none"}},
+                e("button",{type:"button","aria-expanded":opExpandG==="contacto",style:{display:"flex",alignItems:"center",gap:14,width:"100%",padding:"14px",border:"none",background:"#FFFFFF",fontFamily:FONT_CLEO,textAlign:"left",boxSizing:"border-box",cursor:"pointer"},
                   onClick:function(){ setContactadoOpcion(opExpandG==="contacto"?null:"expand_ganado_contacto"); }
                 },
-                  e("div",null,
-                    e("div",{style:{fontSize:14,fontWeight:500,color:C.text}},"Solo mantener contacto"),
-                    e("div",{style:{fontSize:12,color:C.textMuted,marginTop:1}},"¿Cuándo vuelvo a escribirle?")
+                  e("span",{style:{width:40,height:40,flexShrink:0,borderRadius:13,background:"#EEF0FF",color:"#3F4BD0",display:"flex",alignItems:"center",justifyContent:"center"}},
+                    e("svg",{width:18,height:18,viewBox:"0 0 24 24",fill:"none",stroke:"currentColor",strokeWidth:2,strokeLinecap:"round",strokeLinejoin:"round"},e("circle",{cx:12,cy:12,r:8.5}),e("path",{d:"M12 7.5V12l3 2"}))
                   ),
-                  e("span",{style:{fontSize:16,color:C.textMuted}},opExpandG==="contacto"?"▲":"▼")
+                  e("span",{style:{flex:1,minWidth:0}},
+                    e("b",{style:{display:"block",fontSize:15,fontWeight:800,color:C.ink}},"Solo mantener contacto"),
+                    e("small",{style:{display:"block",marginTop:2,fontSize:13,color:"#5A6078"}},"¿Cuándo vuelvo a escribirle?")
+                  ),
+                  e("span",{style:{color:"#8E94AE",flexShrink:0}},e("svg",{width:16,height:16,viewBox:"0 0 24 24",fill:"none",stroke:"currentColor",strokeWidth:2.4,strokeLinecap:"round",strokeLinejoin:"round"},e("path",{d:opExpandG==="contacto"?"m18 15-6-6-6 6":"m6 9 6 6 6-6"})))
                 ),
                 opExpandG==="contacto"&&e("div",{style:{borderTop:"1px solid "+C.border}},
                   e("div",{style:{display:"flex",borderBottom:"1px solid "+C.border}},
@@ -20505,19 +20518,26 @@ export default function CLEO(props){
                 )
               ),
 
-              // Ya no compraría
-              e("div",{style:{borderRadius:12,border:"1px solid "+(contactadoOpcion==="confirmar_inactivo_g"?C.red:C.red+"44"),overflow:"hidden",background:contactadoOpcion==="confirmar_inactivo_g"?C.red+"0A":"transparent"}},
+              e("div",{style:{height:1,background:"#EDEFF5",margin:"4px 2px"}}),
+              e("div",{style:{borderRadius:16,border:"1.5px solid "+(contactadoOpcion==="confirmar_inactivo_g"?"#F3D3CB":"#F3D3CB"),overflow:"hidden"}},
                 contactadoOpcion!=="confirmar_inactivo_g"
-                  ? e("button",{type:"button",style:{padding:"12px 14px",display:"flex",justifyContent:"space-between",alignItems:"center",cursor:"pointer",background:"transparent",width:"100%",textAlign:"left",border:"none",fontFamily:"inherit"},
+                  ? e("button",{type:"button",
+                      style:{display:"flex",alignItems:"center",gap:14,width:"100%",padding:"14px",border:"none",background:"#FFFFFF",fontFamily:FONT_CLEO,textAlign:"left",boxSizing:"border-box",cursor:"pointer"},
+                      onMouseEnter:function(ev){ ev.currentTarget.style.borderColor="#8D9BFF"; },
+                      onMouseLeave:function(ev){ ev.currentTarget.style.borderColor=""; },
                       onClick:function(){ setContactadoOpcion("confirmar_inactivo_g"); }
                     },
-                      e("div",null,
-                        e("div",{style:{fontSize:14,fontWeight:500,color:C.red}},"Ya no compraría"),
-                        e("div",{style:{fontSize:12,color:C.textMuted,marginTop:1}},"Marcar como inactivo")
-                      )
+                      e("span",{style:{width:40,height:40,flexShrink:0,borderRadius:13,background:"#FBE6E1",color:"#B23A24",display:"flex",alignItems:"center",justifyContent:"center"}},
+                        e("svg",{width:18,height:18,viewBox:"0 0 24 24",fill:"none",stroke:"currentColor",strokeWidth:2,strokeLinecap:"round",strokeLinejoin:"round"},e("circle",{cx:12,cy:12,r:8.5}),e("path",{d:"m9 9 6 6M15 9l-6 6"}))
+                      ),
+                      e("span",{style:{flex:1,minWidth:0}},
+                        e("b",{style:{display:"block",fontSize:15,fontWeight:800,color:"#B23A24"}},"Ya no compraría"),
+                        e("small",{style:{display:"block",marginTop:2,fontSize:13,color:"#5A6078"}},"Marcar como inactivo")
+                      ),
+                      e("span",{style:{color:"#8E94AE",flexShrink:0}},e("svg",{width:16,height:16,viewBox:"0 0 24 24",fill:"none",stroke:"currentColor",strokeWidth:2.4,strokeLinecap:"round",strokeLinejoin:"round"},e("path",{d:"m9 6 6 6-6 6"})))
                     )
-                  : e("div",{style:{padding:"12px 14px"}},
-                      e("div",{style:{fontSize:13,fontWeight:600,color:C.red,marginBottom:10}},"¿Confirmas que "+nombre+" ya no compraría?"),
+                  : e("div",{style:{padding:"14px"}},
+                      e("div",{style:{fontSize:13,fontWeight:700,color:C.red,marginBottom:10}},"¿Confirmas que "+nombre+" ya no compraría?"),
                       e("div",{style:{display:"flex",gap:8}},
                         e("button",{type:"button",style:Object.assign({},st.btn,{flex:1,fontSize:12}),onClick:function(){ setContactadoOpcion(null); }},"Cancelar"),
                         e("button",{type:"button",style:Object.assign({},st.btnP,{flex:1,fontSize:12,background:C.red}),onClick:function(){
@@ -20534,22 +20554,24 @@ export default function CLEO(props){
                     )
               ),
 
-              // Ya atendí mi recordatorio , solo visible cuando la tarjeta
-              // vino realmente de un recordatorio manual/personalizado con
-              // id exacto conocido, nunca para sugerencias genéricas.
-              recordatorioPersonalizadoParaCompletar()&&e("button",{type:"button",style:{borderRadius:12,border:"1px solid "+C.green+"44",overflow:"hidden",cursor:"pointer",background:"transparent",width:"100%",textAlign:"left",padding:0,display:"block",fontFamily:"inherit"},
+              recordatorioPersonalizadoParaCompletar()&&e("button",{type:"button",
+                style:{display:"flex",alignItems:"center",gap:14,width:"100%",padding:"14px",borderRadius:16,border:"1.5px solid #E3E6EF",background:"#FFFFFF",fontFamily:FONT_CLEO,textAlign:"left",boxSizing:"border-box",cursor:"pointer"},
+                onMouseEnter:function(ev){ ev.currentTarget.style.borderColor="#8D9BFF"; ev.currentTarget.style.boxShadow="0 0 0 4px #EEF0FF"; },
+                onMouseLeave:function(ev){ ev.currentTarget.style.borderColor="#E3E6EF"; ev.currentTarget.style.boxShadow="none"; },
                 onClick:function(){ atenderRecordatorioPersonalizado(); }
               },
-                e("div",{style:{padding:"12px 14px",display:"flex",justifyContent:"space-between",alignItems:"center"}},
-                  e("div",null,
-                    e("div",{style:{fontSize:14,fontWeight:500,color:C.green}},"Ya atendí mi recordatorio"),
-                    e("div",{style:{fontSize:12,color:C.textMuted,marginTop:1}},"Marcarlo como completado")
-                  )
-                )
+                e("span",{style:{width:40,height:40,flexShrink:0,borderRadius:13,background:"#E2F2E8",color:"#1E5C38",display:"flex",alignItems:"center",justifyContent:"center"}},
+                  e("svg",{width:18,height:18,viewBox:"0 0 24 24",fill:"none",stroke:"currentColor",strokeWidth:2,strokeLinecap:"round",strokeLinejoin:"round"},e("path",{d:"m5 12.5 4.5 4.5L19 7.5"}))
+                ),
+                e("span",{style:{flex:1,minWidth:0}},
+                  e("b",{style:{display:"block",fontSize:15,fontWeight:800,color:C.ink}},"Ya atendí mi recordatorio"),
+                  e("small",{style:{display:"block",marginTop:2,fontSize:13,color:"#5A6078"}},"Marcarlo como completado")
+                ),
+                e("span",{style:{color:"#8E94AE",flexShrink:0}},e("svg",{width:16,height:16,viewBox:"0 0 24 24",fill:"none",stroke:"currentColor",strokeWidth:2.4,strokeLinecap:"round",strokeLinejoin:"round"},e("path",{d:"m9 6 6 6-6 6"})))
               )
             ),
-            e("div",{style:{padding:"4px 16px 16px"}},
-              e("button",{style:Object.assign({},st.btn,{width:"100%",fontSize:13}),onClick:cerrar},"Cancelar")
+            e("div",{style:{display:"flex",justifyContent:"center",paddingTop:12,paddingBottom:2}},
+              e("button",{type:"button",style:{border:"none",background:"transparent",color:"#6E7489",fontFamily:FONT_CLEO,fontSize:13.5,fontWeight:700,padding:"8px 14px",borderRadius:16,cursor:"pointer"},onClick:cerrar},"Cancelar")
             )
           )
         );
@@ -20657,90 +20679,83 @@ export default function CLEO(props){
             )
           );
         }
-        return e("div",{style:st.ov,onClick:cerrar},
-          e("div",{style:Object.assign({},st.modal2.outer,{overflowY:"auto"}),onClick:function(ev){ ev.stopPropagation(); }},
-
-            // Header
-            e("div",{style:{padding:"20px 20px 12px",borderBottom:"1px solid "+C.border,flexShrink:0}},
-              e("div",{style:{fontSize:17,fontWeight:700,color:C.text,marginBottom:4}},"¿Qué pasó con "+nombre+"?"),
-              e("div",{style:{fontSize:13,color:C.textMuted}},"Elige lo que mejor describe la conversación.")
+        // R19 — FLUJO ESPECIALIZADO NC con íconos y tarjetas
+        var r19ChevR=e("svg",{width:16,height:16,viewBox:"0 0 24 24",fill:"none",stroke:"currentColor",strokeWidth:2.4,strokeLinecap:"round",strokeLinejoin:"round"},e("path",{d:"m9 6 6 6-6 6"}));
+        var r19ChevD=e("svg",{width:16,height:16,viewBox:"0 0 24 24",fill:"none",stroke:"currentColor",strokeWidth:2.4,strokeLinecap:"round",strokeLinejoin:"round"},e("path",{d:"m6 9 6 6 6-6"}));
+        var r19ChevU=e("svg",{width:16,height:16,viewBox:"0 0 24 24",fill:"none",stroke:"currentColor",strokeWidth:2.4,strokeLinecap:"round",strokeLinejoin:"round"},e("path",{d:"m18 15-6-6-6 6"}));
+        var r19IcSend=e("svg",{width:18,height:18,viewBox:"0 0 24 24",fill:"none",stroke:"currentColor",strokeWidth:2,strokeLinecap:"round",strokeLinejoin:"round"},e("path",{d:"M20.5 3.5 10 14M20.5 3.5 14 20.5l-4-6.5-6.5-4z"}));
+        var r19IcClock=e("svg",{width:18,height:18,viewBox:"0 0 24 24",fill:"none",stroke:"currentColor",strokeWidth:2,strokeLinecap:"round",strokeLinejoin:"round"},e("circle",{cx:12,cy:12,r:8.5}),e("path",{d:"M12 7.5V12l3 2"}));
+        var r19IcMsg=e("svg",{width:18,height:18,viewBox:"0 0 24 24",fill:"none",stroke:"currentColor",strokeWidth:2,strokeLinecap:"round",strokeLinejoin:"round"},e("path",{d:"M4 5.5A1.5 1.5 0 0 1 5.5 4h13A1.5 1.5 0 0 1 20 5.5v9a1.5 1.5 0 0 1-1.5 1.5H9.5L4 20z"}),e("path",{d:"M9 9h.01M12 9h.01M15 9h.01"}));
+        var r19IcXC=e("svg",{width:18,height:18,viewBox:"0 0 24 24",fill:"none",stroke:"currentColor",strokeWidth:2,strokeLinecap:"round",strokeLinejoin:"round"},e("circle",{cx:12,cy:12,r:8.5}),e("path",{d:"m9 9 6 6M15 9l-6 6"}));
+        var r19CloseX=e("svg",{width:16,height:16,viewBox:"0 0 24 24",fill:"none",stroke:"currentColor",strokeWidth:2,strokeLinecap:"round",strokeLinejoin:"round"},e("path",{d:"M6 6l12 12M18 6 6 18"}));
+        function r19Card(opts){
+          return e("button",{type:"button",
+            style:{display:"flex",alignItems:"center",gap:14,width:"100%",padding:"14px",borderRadius:16,border:"1.5px solid "+(opts.borderColor||"#E3E6EF"),background:"#FFFFFF",fontFamily:FONT_CLEO,textAlign:"left",boxSizing:"border-box",cursor:"pointer"},
+            onMouseEnter:function(ev){ ev.currentTarget.style.borderColor="#8D9BFF"; ev.currentTarget.style.boxShadow="0 0 0 4px #EEF0FF"; },
+            onMouseLeave:function(ev){ ev.currentTarget.style.borderColor=opts.borderColor||"#E3E6EF"; ev.currentTarget.style.boxShadow="none"; },
+            onClick:opts.onClick
+          },
+            e("span",{style:{width:40,height:40,flexShrink:0,borderRadius:13,background:opts.iconBg,color:opts.iconColor,display:"flex",alignItems:"center",justifyContent:"center"}},opts.icon),
+            e("span",{style:{flex:1,minWidth:0}},
+              e("b",{style:{display:"block",fontSize:15,fontWeight:800,color:opts.titleColor||C.ink}},opts.titulo),
+              e("small",{style:{display:"block",marginTop:2,fontSize:13,color:"#5A6078"}},opts.subtitulo)
             ),
-
-            e("div",{style:{padding:"12px 16px",display:"flex",flexDirection:"column",gap:8}},
-
-                  // 1) Ya se lo envié , se abre la cotización (con soporte para
-                  // varios productos/servicios) en vez de un formulario de 1
-                  // solo concepto , el seguimiento se programa antes de abrirla.
-                  e("div",{style:{borderRadius:12,border:"1px solid "+(contactadoOpcion==="expand_ya_envie_nc"?C.purple+"44":C.border),overflow:"hidden"}},
-                    e("button",{type:"button",style:{padding:"12px 14px",display:"flex",justifyContent:"space-between",alignItems:"center",cursor:"pointer",background:"transparent",width:"100%",textAlign:"left",border:"none",fontFamily:"inherit"},
-                      onClick:abrirCotDesdeNC
-                    },
-                      e("div",null,
-                        e("div",{style:{fontSize:14,fontWeight:500,color:C.purple}},"Ya se lo envié"),
-                        e("div",{style:{fontSize:12,color:C.textMuted,marginTop:1}},"Registrar cotización y programar seguimiento")
-                      ),
-                      e("span",{style:{fontSize:16,color:C.textMuted}},"→")
-                    )
+            e("span",{style:{color:"#8E94AE",flexShrink:0}},opts.chevron||r19ChevR)
+          );
+        }
+        return e("div",{style:st.ov,onClick:cerrar},
+          e("div",{style:{position:"relative",background:"#FFFFFF",borderRadius:isMobile?"26px 26px 0 0":"26px",padding:"26px 24px 16px",width:isMobile?"100%":480,maxWidth:isMobile?"100%":"95vw",boxShadow:"0 30px 70px rgba(14,19,40,.30)",boxSizing:"border-box",overflowY:"auto",maxHeight:isMobile?"92vh":"88vh"},onClick:function(ev){ ev.stopPropagation(); }},
+            isMobile&&e("div",{style:{width:36,height:4,borderRadius:2,background:"#E3E6EF",margin:"0 auto 20px",flexShrink:0}}),
+            e("div",{style:{display:"flex",alignItems:"flex-start",justifyContent:"space-between",gap:12,marginBottom:18}},
+              e("div",null,
+                e("h2",{style:{margin:0,fontSize:22,fontWeight:800,letterSpacing:"-0.025em",color:C.ink}},"¿Qué pasó con "+nombre+"?"),
+                e("p",{style:{margin:"4px 0 0",fontSize:14,color:"#5A6078"}},"Elige lo que mejor describe la conversación.")
+              ),
+              e("button",{type:"button",style:{width:34,height:34,flexShrink:0,border:"none",borderRadius:"50%",background:"#F4F5FA",color:"#4A5068",display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer"},"aria-label":"Cerrar",onClick:cerrar},r19CloseX)
+            ),
+            e("div",{style:{display:"flex",flexDirection:"column",gap:8,marginBottom:4}},
+              r19Card({icon:r19IcSend,iconBg:"#EEF0FF",iconColor:"#3F4BD0",titulo:"Ya se lo envié",subtitulo:"Registrar cotización y programar seguimiento",onClick:abrirCotDesdeNC}),
+              e("div",{style:{borderRadius:16,border:"1.5px solid "+(contactadoOpcion==="expand_no_envie_nc"?"#8D9BFF":"#E3E6EF"),overflow:"hidden",boxShadow:contactadoOpcion==="expand_no_envie_nc"?"0 0 0 4px #EEF0FF":"none"}},
+                e("button",{type:"button","aria-expanded":contactadoOpcion==="expand_no_envie_nc",
+                  style:{display:"flex",alignItems:"center",gap:14,width:"100%",padding:"14px",border:"none",background:"#FFFFFF",fontFamily:FONT_CLEO,textAlign:"left",boxSizing:"border-box",cursor:"pointer"},
+                  onClick:function(){ setContactadoOpcion(contactadoOpcion==="expand_no_envie_nc"?null:"expand_no_envie_nc"); }
+                },
+                  e("span",{style:{width:40,height:40,flexShrink:0,borderRadius:13,background:"#FBF1DC",color:"#8A5A06",display:"flex",alignItems:"center",justifyContent:"center"}},r19IcClock),
+                  e("span",{style:{flex:1,minWidth:0}},
+                    e("b",{style:{display:"block",fontSize:15,fontWeight:800,color:C.ink}},"Todavía no se lo envié"),
+                    e("small",{style:{display:"block",marginTop:2,fontSize:13,color:"#5A6078"}},"Reprogramar el recordatorio")
                   ),
-
-                  // 2) Todavía no se lo envié
-                  e("div",{style:{borderRadius:12,border:"1px solid "+(contactadoOpcion==="expand_no_envie_nc"?C.border:C.border),overflow:"hidden"}},
-                    e("button",{type:"button","aria-expanded":contactadoOpcion==="expand_no_envie_nc",style:{padding:"12px 14px",display:"flex",justifyContent:"space-between",alignItems:"center",cursor:"pointer",background:"transparent",width:"100%",textAlign:"left",border:"none",fontFamily:"inherit"},
-                      onClick:function(){ setContactadoOpcion(contactadoOpcion==="expand_no_envie_nc"?null:"expand_no_envie_nc"); }
-                    },
-                      e("div",null,
-                        e("div",{style:{fontSize:14,fontWeight:500,color:C.amber}},"Todavía no se lo envié"),
-                        e("div",{style:{fontSize:12,color:C.textMuted,marginTop:1}},"Reprogramar el recordatorio")
-                      ),
-                      e("span",{style:{fontSize:16,color:C.textMuted}},contactadoOpcion==="expand_no_envie_nc"?"▲":"▼")
-                    ),
-                    contactadoOpcion==="expand_no_envie_nc"&&selectorDias("dias-no-envie-nc",[1,2,3,7],C.amber,reprogramarEnvioNC)
-                  ),
-
-                  // 3) No respondió
-                  e("div",{style:{borderRadius:12,border:"1px solid "+(contactadoOpcion==="expand_noresponde_nc"?C.border:C.border),overflow:"hidden"}},
-                    e("button",{type:"button","aria-expanded":contactadoOpcion==="expand_noresponde_nc",style:{padding:"12px 14px",display:"flex",justifyContent:"space-between",alignItems:"center",cursor:"pointer",background:"transparent",width:"100%",textAlign:"left",border:"none",fontFamily:"inherit"},
-                      onClick:function(){ setContactadoOpcion(contactadoOpcion==="expand_noresponde_nc"?null:"expand_noresponde_nc"); }
-                    },
-                      e("div",null,
-                        e("div",{style:{fontSize:14,fontWeight:500,color:C.amber}},"No respondió"),
-                        e("div",{style:{fontSize:12,color:C.textMuted,marginTop:1}},"Elegir cuándo volver a intentar")
-                      ),
-                      e("span",{style:{fontSize:16,color:C.textMuted}},contactadoOpcion==="expand_noresponde_nc"?"▲":"▼")
-                    ),
-                    contactadoOpcion==="expand_noresponde_nc"&&selectorDias("dias-noresponde-nc",[2,3,5,7],C.amber,noRespondioNC)
-                  ),
-
-                  // 4) Ya no está interesada , misma lógica que el flujo
-                  // genérico (abre el selector de motivo de pérdida, que ya
-                  // limpia los recordatorios de pipeline obsoletos al
-                  // confirmar).
-                  e("button",{type:"button",style:{borderRadius:12,border:"1px solid "+C.red+"44",overflow:"hidden",cursor:"pointer",background:"transparent",width:"100%",textAlign:"left",padding:0,display:"block",fontFamily:"inherit"},
-                    onClick:function(){
-                      cerrar();
-                      // Productos lee estadoProspecto, no etapa (cl.etapa es
-                      // siempre undefined ahí) , mismo criterio que ya usa
-                      // cambiarEstado en la tarjeta de Oportunidades para
-                      // este mismo valor de reversión.
-                      setEtapaAnteriorPipeline(esProductos?(cl.estadoProspecto||"Nueva"):cl.etapa);
-                      // Debe apuntar a la MISMA cotización que guardarMotivoPipeline
-                      // rechazará (la vinculada a la oportunidad activa) , si no,
-                      // cancelar después revertiría la cotización equivocada.
-                      var cotPendHoyNC=cotizaciones.find(function(x){ return x.clienteId===cl.id&&x.estatus==="Pendiente"&&cotizacionVinculadaOportunidad(x); });
-                      if(cotPendHoyNC) setEstatusAnteriorCot({cotId:cotPendHoyNC.id,estatus:"Pendiente"});
-                      setMotivoPipelineId(cl.id);
-                    }
-                  },
-                    e("div",{style:{padding:"12px 14px"}},
-                      e("div",{style:{fontSize:14,fontWeight:500,color:C.red}},"Ya no está interesada"),
-                      e("div",{style:{fontSize:12,color:C.textMuted,marginTop:1}},"Marcar como perdido")
-                    )
-                  )
+                  e("span",{style:{color:"#8E94AE",flexShrink:0}},contactadoOpcion==="expand_no_envie_nc"?r19ChevU:r19ChevD)
                 ),
-
-            // Footer
-            e("div",{style:{padding:"4px 16px 16px"}},
-              e("button",{style:Object.assign({},st.btn,{width:"100%",fontSize:13}),onClick:cerrar},"Cancelar")
+                contactadoOpcion==="expand_no_envie_nc"&&selectorDias("dias-no-envie-nc",[1,2,3,7],C.amber,reprogramarEnvioNC)
+              ),
+              e("div",{style:{borderRadius:16,border:"1.5px solid "+(contactadoOpcion==="expand_noresponde_nc"?"#8D9BFF":"#E3E6EF"),overflow:"hidden",boxShadow:contactadoOpcion==="expand_noresponde_nc"?"0 0 0 4px #EEF0FF":"none"}},
+                e("button",{type:"button","aria-expanded":contactadoOpcion==="expand_noresponde_nc",
+                  style:{display:"flex",alignItems:"center",gap:14,width:"100%",padding:"14px",border:"none",background:"#FFFFFF",fontFamily:FONT_CLEO,textAlign:"left",boxSizing:"border-box",cursor:"pointer"},
+                  onClick:function(){ setContactadoOpcion(contactadoOpcion==="expand_noresponde_nc"?null:"expand_noresponde_nc"); }
+                },
+                  e("span",{style:{width:40,height:40,flexShrink:0,borderRadius:13,background:"#FBF1DC",color:"#8A5A06",display:"flex",alignItems:"center",justifyContent:"center"}},r19IcMsg),
+                  e("span",{style:{flex:1,minWidth:0}},
+                    e("b",{style:{display:"block",fontSize:15,fontWeight:800,color:C.ink}},"No respondió"),
+                    e("small",{style:{display:"block",marginTop:2,fontSize:13,color:"#5A6078"}},"Elegir cuándo volver a intentar")
+                  ),
+                  e("span",{style:{color:"#8E94AE",flexShrink:0}},contactadoOpcion==="expand_noresponde_nc"?r19ChevU:r19ChevD)
+                ),
+                contactadoOpcion==="expand_noresponde_nc"&&selectorDias("dias-noresponde-nc",[2,3,5,7],C.amber,noRespondioNC)
+              ),
+              e("div",{style:{height:1,background:"#EDEFF5",margin:"4px 2px"}}),
+              r19Card({icon:r19IcXC,iconBg:"#FBE6E1",iconColor:"#B23A24",titleColor:"#B23A24",borderColor:"#F3D3CB",titulo:"Ya no está interesada",subtitulo:"Marcar como perdido",
+                onClick:function(){
+                  cerrar();
+                  setEtapaAnteriorPipeline(esProductos?(cl.estadoProspecto||"Nueva"):cl.etapa);
+                  var cotPendHoyNC=cotizaciones.find(function(x){ return x.clienteId===cl.id&&x.estatus==="Pendiente"&&cotizacionVinculadaOportunidad(x); });
+                  if(cotPendHoyNC) setEstatusAnteriorCot({cotId:cotPendHoyNC.id,estatus:"Pendiente"});
+                  setMotivoPipelineId(cl.id);
+                }
+              })
+            ),
+            e("div",{style:{display:"flex",justifyContent:"center",paddingTop:12,paddingBottom:2}},
+              e("button",{type:"button",style:{border:"none",background:"transparent",color:"#6E7489",fontFamily:FONT_CLEO,fontSize:13.5,fontWeight:700,padding:"8px 14px",borderRadius:16,cursor:"pointer"},onClick:cerrar},"Cancelar")
             )
           )
         );
@@ -20750,27 +20765,36 @@ export default function CLEO(props){
       if(!esPerdidoC){
         var opExpand=contactadoOpcion==="expand_interesado"?"interesado":contactadoOpcion==="expand_noresponde"?"noresponde":null;
         return e("div",{style:st.ov,onClick:cerrar},
-          e("div",{style:Object.assign({},st.modal2.outer,{overflowY:"auto"}),onClick:function(ev){ ev.stopPropagation(); }},
-
-            // Header
-            e("div",{style:{padding:"20px 20px 12px",borderBottom:"1px solid "+C.border,flexShrink:0}},
-              e("div",{style:{fontSize:17,fontWeight:700,color:C.text,marginBottom:4}},"¿Qué pasó con "+nombre+"?"),
-              e("div",{style:{fontSize:13,color:C.textMuted}},"Elige lo que mejor describe la conversación.")
+          e("div",{style:{position:"relative",background:"#FFFFFF",borderRadius:isMobile?"26px 26px 0 0":"26px",padding:"26px 24px 16px",width:isMobile?"100%":480,maxWidth:isMobile?"100%":"95vw",boxShadow:"0 30px 70px rgba(14,19,40,.30)",boxSizing:"border-box",overflowY:"auto",maxHeight:isMobile?"92vh":"88vh"},onClick:function(ev){ ev.stopPropagation(); }},
+            isMobile&&e("div",{style:{width:36,height:4,borderRadius:2,background:"#E3E6EF",margin:"0 auto 20px"}}),
+            e("div",{style:{display:"flex",alignItems:"flex-start",justifyContent:"space-between",gap:12,marginBottom:18}},
+              e("div",null,
+                e("h2",{style:{margin:0,fontSize:22,fontWeight:800,letterSpacing:"-0.025em",color:C.ink}},"¿Qué pasó con "+nombre+"?"),
+                e("p",{style:{margin:"4px 0 0",fontSize:14,color:"#5A6078"}},"Elige lo que mejor describe la conversación.")
+              ),
+              e("button",{type:"button",style:{width:34,height:34,flexShrink:0,border:"none",borderRadius:"50%",background:"#F4F5FA",color:"#4A5068",display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer"},"aria-label":"Cerrar",onClick:cerrar},
+                e("svg",{width:16,height:16,viewBox:"0 0 24 24",fill:"none",stroke:"currentColor",strokeWidth:2,strokeLinecap:"round",strokeLinejoin:"round"},e("path",{d:"M6 6l12 12M18 6 6 18"}))
+              )
             ),
 
             // Opciones
-            e("div",{style:{padding:"12px 16px",display:"flex",flexDirection:"column",gap:8}},
+            e("div",{style:{display:"flex",flexDirection:"column",gap:8,marginBottom:4}},
 
               // Sigue interesado
-              e("div",{style:{borderRadius:12,border:"1px solid "+(opExpand==="interesado"?C.purple+"44":C.border),overflow:"hidden"}},
-                e("button",{type:"button","aria-expanded":opExpand==="interesado",style:{padding:"12px 14px",display:"flex",justifyContent:"space-between",alignItems:"center",cursor:"pointer",background:"transparent",width:"100%",textAlign:"left",border:"none",fontFamily:"inherit"},
+              e("div",{style:{borderRadius:16,border:"1.5px solid "+(opExpand==="interesado"?"#8D9BFF":"#E3E6EF"),overflow:"hidden",boxShadow:opExpand==="interesado"?"0 0 0 4px #EEF0FF":"none"}},
+                e("button",{type:"button","aria-expanded":opExpand==="interesado",style:{display:"flex",alignItems:"center",gap:14,width:"100%",padding:"14px",border:"none",background:"#FFFFFF",fontFamily:FONT_CLEO,textAlign:"left",boxSizing:"border-box",cursor:"pointer"},
                   onClick:function(){ setContactadoOpcion(opExpand==="interesado"?null:"expand_interesado"); }
                 },
-                  e("div",null,
-                    e("div",{style:{fontSize:14,fontWeight:500,color:C.purple}},"Sigue interesado"),
-                    e("div",{style:{fontSize:12,color:C.textMuted,marginTop:1}},"¿En cuántos días le doy seguimiento?")
+                  e("span",{style:{width:40,height:40,flexShrink:0,borderRadius:13,background:"#EEF0FF",color:"#3F4BD0",display:"flex",alignItems:"center",justifyContent:"center"}},
+                    e("svg",{width:18,height:18,viewBox:"0 0 24 24",fill:"none",stroke:"currentColor",strokeWidth:2,strokeLinecap:"round",strokeLinejoin:"round"},e("path",{d:"M20.5 3.5 10 14M20.5 3.5 14 20.5l-4-6.5-6.5-4z"}))
                   ),
-                  e("span",{style:{fontSize:16,color:C.textMuted}},opExpand==="interesado"?"▲":"▼")
+                  e("span",{style:{flex:1,minWidth:0}},
+                    e("b",{style:{display:"block",fontSize:15,fontWeight:800,color:C.ink}},"Sigue interesado"),
+                    e("small",{style:{display:"block",marginTop:2,fontSize:13,color:"#5A6078"}},"¿En cuántos días le doy seguimiento?")
+                  ),
+                  e("span",{style:{color:"#8E94AE",flexShrink:0}},
+                    e("svg",{width:16,height:16,viewBox:"0 0 24 24",fill:"none",stroke:"currentColor",strokeWidth:2.4,strokeLinecap:"round",strokeLinejoin:"round"},e("path",{d:opExpand==="interesado"?"m18 15-6-6-6 6":"m6 9 6 6 6-6"}))
+                  )
                 ),
                 opExpand==="interesado"&&e("div",{style:{borderTop:"1px solid "+C.border}},
                   e("div",{style:{display:"flex",borderBottom:"1px solid "+C.border}},
@@ -20798,15 +20822,20 @@ export default function CLEO(props){
               // ver el branch justo antes de este FLUJO SIMPLE.)
 
               // No respondió
-              e("div",{style:{borderRadius:12,border:"1px solid "+(opExpand==="noresponde"?C.border:C.border),overflow:"hidden"}},
-                e("button",{type:"button","aria-expanded":opExpand==="noresponde",style:{padding:"12px 14px",display:"flex",justifyContent:"space-between",alignItems:"center",cursor:"pointer",background:"transparent",width:"100%",textAlign:"left",border:"none",fontFamily:"inherit"},
+              e("div",{style:{borderRadius:16,border:"1.5px solid "+(opExpand==="noresponde"?"#8D9BFF":"#E3E6EF"),overflow:"hidden",boxShadow:opExpand==="noresponde"?"0 0 0 4px #EEF0FF":"none"}},
+                e("button",{type:"button","aria-expanded":opExpand==="noresponde",style:{display:"flex",alignItems:"center",gap:14,width:"100%",padding:"14px",border:"none",background:"#FFFFFF",fontFamily:FONT_CLEO,textAlign:"left",boxSizing:"border-box",cursor:"pointer"},
                   onClick:function(){ setContactadoOpcion(opExpand==="noresponde"?null:"expand_noresponde"); }
                 },
-                  e("div",null,
-                    e("div",{style:{fontSize:14,fontWeight:500,color:C.amber}},"No respondió"),
-                    e("div",{style:{fontSize:12,color:C.textMuted,marginTop:1}},"¿Cuándo intento de nuevo?")
+                  e("span",{style:{width:40,height:40,flexShrink:0,borderRadius:13,background:"#FBF1DC",color:"#8A5A06",display:"flex",alignItems:"center",justifyContent:"center"}},
+                    e("svg",{width:18,height:18,viewBox:"0 0 24 24",fill:"none",stroke:"currentColor",strokeWidth:2,strokeLinecap:"round",strokeLinejoin:"round"},e("path",{d:"M4 5.5A1.5 1.5 0 0 1 5.5 4h13A1.5 1.5 0 0 1 20 5.5v9a1.5 1.5 0 0 1-1.5 1.5H9.5L4 20z"}),e("path",{d:"M9 9h.01M12 9h.01M15 9h.01"}))
                   ),
-                  e("span",{style:{fontSize:16,color:C.textMuted}},opExpand==="noresponde"?"▲":"▼")
+                  e("span",{style:{flex:1,minWidth:0}},
+                    e("b",{style:{display:"block",fontSize:15,fontWeight:800,color:C.ink}},"No respondió"),
+                    e("small",{style:{display:"block",marginTop:2,fontSize:13,color:"#5A6078"}},"¿Cuándo intento de nuevo?")
+                  ),
+                  e("span",{style:{color:"#8E94AE",flexShrink:0}},
+                    e("svg",{width:16,height:16,viewBox:"0 0 24 24",fill:"none",stroke:"currentColor",strokeWidth:2.4,strokeLinecap:"round",strokeLinejoin:"round"},e("path",{d:opExpand==="noresponde"?"m18 15-6-6-6 6":"m6 9 6 6 6-6"}))
+                  )
                 ),
                 opExpand==="noresponde"&&e("div",{style:{borderTop:"1px solid "+C.border}},
                   e("div",{style:{display:"flex",borderBottom:"1px solid "+C.border}},
@@ -20846,12 +20875,13 @@ export default function CLEO(props){
                 // "diferente" no debe ganar la oportunidad activa.
                 var cotPend=cotizaciones.find(function(x){ return x.clienteId===cl.id&&x.estatus==="Pendiente"&&cotizacionVinculadaOportunidad(x); });
                 if(!cotPend) return null;
-                return e("button",{type:"button",style:{borderRadius:12,border:"1px solid "+C.green+"44",overflow:"hidden",cursor:"pointer",background:"transparent",width:"100%",textAlign:"left",padding:0,display:"block",fontFamily:"inherit"},
+                return e("button",{type:"button",
+                  style:{display:"flex",alignItems:"center",gap:14,width:"100%",padding:"14px",borderRadius:16,border:"1.5px solid #E3E6EF",background:"#FFFFFF",fontFamily:FONT_CLEO,textAlign:"left",boxSizing:"border-box",cursor:"pointer"},
+                  onMouseEnter:function(ev){ ev.currentTarget.style.borderColor="#8D9BFF"; ev.currentTarget.style.boxShadow="0 0 0 4px #EEF0FF"; },
+                  onMouseLeave:function(ev){ ev.currentTarget.style.borderColor="#E3E6EF"; ev.currentTarget.style.boxShadow="none"; },
                   onClick:function(){
                     cerrar();
                     setEstatusAnteriorCot({cotId:cotPend.id,estatus:cotPend.estatus,fecha:cotPend.fecha});
-                    // cotizacion_aceptada , cotPend ya viene filtrada arriba
-                    // por estatus==="Pendiente", transición real siempre.
                     registrarEvento("cotizacion_aceptada",{tipo_perfil:perfil.tipoPerfil||"",dispositivo:dispositivoActual()});
                     setCotizaciones(cotizaciones.map(function(c){ return c.id===cotPend.id?cancelarSeguimientoComercialCotizacion(marcarCotizacionAceptada(Object.assign({},c,{estatus:"Aceptada",fechaCierre:FECHA_HOY,fechaHoraCierre:new Date().toISOString(),entregado:false,fechaEntrega:""}))):c; }));
                     setEtapaAnteriorGanado(cl.etapa);
@@ -20859,86 +20889,86 @@ export default function CLEO(props){
                     abrirConfiguracionPostVenta(cotPend.id);
                   }
                 },
-                  e("div",{style:{padding:"12px 14px"}},
-                    e("div",{style:{fontSize:14,fontWeight:500,color:C.green}},"Ya cerró"),
-                    e("div",{style:{fontSize:12,color:C.textMuted,marginTop:1}},"Marcar como cliente ganado")
-                  )
+                  e("span",{style:{width:40,height:40,flexShrink:0,borderRadius:13,background:"#E2F2E8",color:"#1E5C38",display:"flex",alignItems:"center",justifyContent:"center"}},
+                    e("svg",{width:18,height:18,viewBox:"0 0 24 24",fill:"none",stroke:"currentColor",strokeWidth:2,strokeLinecap:"round",strokeLinejoin:"round"},e("path",{d:"m5 12.5 4.5 4.5L19 7.5"}))
+                  ),
+                  e("span",{style:{flex:1,minWidth:0}},
+                    e("b",{style:{display:"block",fontSize:15,fontWeight:800,color:C.ink}},"Ya cerró"),
+                    e("small",{style:{display:"block",marginTop:2,fontSize:13,color:"#5A6078"}},"Marcar como cliente ganado")
+                  ),
+                  e("span",{style:{color:"#8E94AE",flexShrink:0}},e("svg",{width:16,height:16,viewBox:"0 0 24 24",fill:"none",stroke:"currentColor",strokeWidth:2.4,strokeLinecap:"round",strokeLinejoin:"round"},e("path",{d:"m9 6 6 6-6 6"})))
                 );
               })(),
 
-              // Ya confirmó su pedido — Productos , equivalente a "Ya
-              // cerró" para clientes que nunca llegaron a tener una
-              // cotización formal (lo normal en Productos: "Alguien
-              // preguntó" guarda el interés directo en la ficha, sin pasar
-              // por cotización). Sin esta opción, un cliente así solo podía
-              // marcarse "Sigue interesado"/"No respondió"/"Ya no está
-              // interesado" , nunca "ya me compró". Reabre el flujo ya
-              // existente y seguro de "Cerré una venta" (guardarCerreP),
-              // prellenado con este cliente y los productos que ya sabemos
-              // que le interesan , solo pide confirmar el pago.
               esProductos&&(function(){
                 var cotPendP=cotizaciones.find(function(x){ return x.clienteId===cl.id&&x.estatus==="Pendiente"; });
                 if(cotPendP) return null;
                 var itemsInteresCC=obtenerItemsInteres(cl);
                 if(itemsInteresCC.length===0) return null;
-                return e("button",{type:"button",style:{borderRadius:12,border:"1px solid "+C.green+"44",overflow:"hidden",cursor:"pointer",background:"transparent",width:"100%",textAlign:"left",padding:0,display:"block",fontFamily:"inherit"},
+                return e("button",{type:"button",
+                  style:{display:"flex",alignItems:"center",gap:14,width:"100%",padding:"14px",borderRadius:16,border:"1.5px solid #E3E6EF",background:"#FFFFFF",fontFamily:FONT_CLEO,textAlign:"left",boxSizing:"border-box",cursor:"pointer"},
+                  onMouseEnter:function(ev){ ev.currentTarget.style.borderColor="#8D9BFF"; ev.currentTarget.style.boxShadow="0 0 0 4px #EEF0FF"; },
+                  onMouseLeave:function(ev){ ev.currentTarget.style.borderColor="#E3E6EF"; ev.currentTarget.style.boxShadow="none"; },
                   onClick:function(){
                     cerrar();
                     setFormCerreP({busqueda:cl.nombre,clienteId:cl.id,mostrarForm:true,items:itemsInteresCC,tipoPago:"completo",anticipo:"",yaEntregado:null,origenVentaP:"oportunidad"});
                     setModalCerreP(true);
                   }
                 },
-                  e("div",{style:{padding:"12px 14px"}},
-                    e("div",{style:{fontSize:14,fontWeight:500,color:C.green}},"Ya confirmó su pedido"),
-                    e("div",{style:{fontSize:12,color:C.textMuted,marginTop:1}},"Registrar la venta")
-                  )
+                  e("span",{style:{width:40,height:40,flexShrink:0,borderRadius:13,background:"#E2F2E8",color:"#1E5C38",display:"flex",alignItems:"center",justifyContent:"center"}},
+                    e("svg",{width:18,height:18,viewBox:"0 0 24 24",fill:"none",stroke:"currentColor",strokeWidth:2,strokeLinecap:"round",strokeLinejoin:"round"},e("path",{d:"m5 12.5 4.5 4.5L19 7.5"}))
+                  ),
+                  e("span",{style:{flex:1,minWidth:0}},
+                    e("b",{style:{display:"block",fontSize:15,fontWeight:800,color:C.ink}},"Ya confirmó su pedido"),
+                    e("small",{style:{display:"block",marginTop:2,fontSize:13,color:"#5A6078"}},"Registrar la venta")
+                  ),
+                  e("span",{style:{color:"#8E94AE",flexShrink:0}},e("svg",{width:16,height:16,viewBox:"0 0 24 24",fill:"none",stroke:"currentColor",strokeWidth:2.4,strokeLinecap:"round",strokeLinejoin:"round"},e("path",{d:"m9 6 6 6-6 6"})))
                 );
               })(),
 
-              // Ya no está interesado
-              e("button",{type:"button",style:{borderRadius:12,border:"1px solid "+C.red+"44",overflow:"hidden",cursor:"pointer",background:"transparent",width:"100%",textAlign:"left",padding:0,display:"block",fontFamily:"inherit"},
+              e("div",{style:{height:1,background:"#EDEFF5",margin:"4px 2px"}}),
+              e("button",{type:"button",
+                style:{display:"flex",alignItems:"center",gap:14,width:"100%",padding:"14px",borderRadius:16,border:"1.5px solid #F3D3CB",background:"#FFFFFF",fontFamily:FONT_CLEO,textAlign:"left",boxSizing:"border-box",cursor:"pointer"},
+                onMouseEnter:function(ev){ ev.currentTarget.style.borderColor="#8D9BFF"; ev.currentTarget.style.boxShadow="0 0 0 4px #EEF0FF"; },
+                onMouseLeave:function(ev){ ev.currentTarget.style.borderColor="#F3D3CB"; ev.currentTarget.style.boxShadow="none"; },
                 onClick:function(){
                   cerrar();
-                  // El modal de motivo (motivoPipelineId) decide cómo
-                  // revertir con su propio esOpoProductos (estadoProspecto
-                  // definido Y sin ninguna cotización propia , línea ~13011).
-                  // Hay que guardar AQUÍ el valor con el MISMO criterio, si
-                  // no, cancelar sin elegir motivo revertiría al campo
-                  // equivocado (mismo patrón que línea 7876).
                   var tieneCotPropia=cotizaciones.some(function(x){ return x.clienteId===cl.id; });
                   var esOpoProductosAqui=esProductos&&cl.estadoProspecto!==undefined&&!tieneCotPropia;
                   setEtapaAnteriorPipeline(esOpoProductosAqui?(cl.estadoProspecto||"Nueva"):cl.etapa);
-                  // Mismo criterio que guardarMotivoPipeline: debe apuntar a
-                  // la cotización vinculada a la oportunidad activa, para
-                  // que cancelar revierta la cotización correcta.
                   var cotPendHoy=cotizaciones.find(function(x){ return x.clienteId===cl.id&&x.estatus==="Pendiente"&&(esProductos||cotizacionVinculadaOportunidad(x)); });
                   if(cotPendHoy) setEstatusAnteriorCot({cotId:cotPendHoy.id,estatus:"Pendiente"});
                   setMotivoPipelineId(cl.id);
                 }
               },
-                e("div",{style:{padding:"12px 14px"}},
-                  e("div",{style:{fontSize:14,fontWeight:500,color:C.red}},"Ya no está interesado"),
-                  e("div",{style:{fontSize:12,color:C.textMuted,marginTop:1}},"Marcar como perdido")
-                )
+                e("span",{style:{width:40,height:40,flexShrink:0,borderRadius:13,background:"#FBE6E1",color:"#B23A24",display:"flex",alignItems:"center",justifyContent:"center"}},
+                  e("svg",{width:18,height:18,viewBox:"0 0 24 24",fill:"none",stroke:"currentColor",strokeWidth:2,strokeLinecap:"round",strokeLinejoin:"round"},e("circle",{cx:12,cy:12,r:8.5}),e("path",{d:"m9 9 6 6M15 9l-6 6"}))
+                ),
+                e("span",{style:{flex:1,minWidth:0}},
+                  e("b",{style:{display:"block",fontSize:15,fontWeight:800,color:"#B23A24"}},"Ya no está interesado"),
+                  e("small",{style:{display:"block",marginTop:2,fontSize:13,color:"#5A6078"}},"Marcar como perdido")
+                ),
+                e("span",{style:{color:"#8E94AE",flexShrink:0}},e("svg",{width:16,height:16,viewBox:"0 0 24 24",fill:"none",stroke:"currentColor",strokeWidth:2.4,strokeLinecap:"round",strokeLinejoin:"round"},e("path",{d:"m9 6 6 6-6 6"})))
               ),
 
-              // Ya atendí mi recordatorio , solo visible cuando la tarjeta
-              // vino realmente de un recordatorio manual/personalizado.
-              recordatorioPersonalizadoParaCompletar()&&e("button",{type:"button",style:{borderRadius:12,border:"1px solid "+C.green+"44",overflow:"hidden",cursor:"pointer",background:"transparent",width:"100%",textAlign:"left",padding:0,display:"block",fontFamily:"inherit"},
+              recordatorioPersonalizadoParaCompletar()&&e("button",{type:"button",
+                style:{display:"flex",alignItems:"center",gap:14,width:"100%",padding:"14px",borderRadius:16,border:"1.5px solid #E3E6EF",background:"#FFFFFF",fontFamily:FONT_CLEO,textAlign:"left",boxSizing:"border-box",cursor:"pointer"},
+                onMouseEnter:function(ev){ ev.currentTarget.style.borderColor="#8D9BFF"; ev.currentTarget.style.boxShadow="0 0 0 4px #EEF0FF"; },
+                onMouseLeave:function(ev){ ev.currentTarget.style.borderColor="#E3E6EF"; ev.currentTarget.style.boxShadow="none"; },
                 onClick:function(){ atenderRecordatorioPersonalizado(); }
               },
-                e("div",{style:{padding:"12px 14px",display:"flex",justifyContent:"space-between",alignItems:"center"}},
-                  e("div",null,
-                    e("div",{style:{fontSize:14,fontWeight:500,color:C.green}},"Ya atendí mi recordatorio"),
-                    e("div",{style:{fontSize:12,color:C.textMuted,marginTop:1}},"Marcarlo como completado")
-                  )
-                )
+                e("span",{style:{width:40,height:40,flexShrink:0,borderRadius:13,background:"#E2F2E8",color:"#1E5C38",display:"flex",alignItems:"center",justifyContent:"center"}},
+                  e("svg",{width:18,height:18,viewBox:"0 0 24 24",fill:"none",stroke:"currentColor",strokeWidth:2,strokeLinecap:"round",strokeLinejoin:"round"},e("path",{d:"m5 12.5 4.5 4.5L19 7.5"}))
+                ),
+                e("span",{style:{flex:1,minWidth:0}},
+                  e("b",{style:{display:"block",fontSize:15,fontWeight:800,color:C.ink}},"Ya atendí mi recordatorio"),
+                  e("small",{style:{display:"block",marginTop:2,fontSize:13,color:"#5A6078"}},"Marcarlo como completado")
+                ),
+                e("span",{style:{color:"#8E94AE",flexShrink:0}},e("svg",{width:16,height:16,viewBox:"0 0 24 24",fill:"none",stroke:"currentColor",strokeWidth:2.4,strokeLinecap:"round",strokeLinejoin:"round"},e("path",{d:"m9 6 6 6-6 6"})))
               )
             ),
-
-            // Footer
-            e("div",{style:{padding:"4px 16px 16px"}},
-              e("button",{style:Object.assign({},st.btn,{width:"100%",fontSize:13}),onClick:cerrar},"Cancelar")
+            e("div",{style:{display:"flex",justifyContent:"center",paddingTop:12,paddingBottom:2}},
+              e("button",{type:"button",style:{border:"none",background:"transparent",color:"#6E7489",fontFamily:FONT_CLEO,fontSize:13.5,fontWeight:700,padding:"8px 14px",borderRadius:16,cursor:"pointer"},onClick:cerrar},"Cancelar")
             )
           )
         );
