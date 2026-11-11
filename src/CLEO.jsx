@@ -15108,7 +15108,7 @@ export default function CLEO(props){
                 e("div",{style:{fontSize:13.5,fontWeight:700,color:C.text}},esIOS()?"Instala CLEO en tu iPhone":"Instala CLEO en tu celular"),
                 e("div",{style:{marginTop:3,fontSize:12.5,color:C.textMuted,lineHeight:1.5}},
                   esIOS()
-                    ?"Toca Compartir (el ícono con la flecha) y luego \"Agregar a pantalla de inicio\" , así puedes recibir avisos directo en tu celular."
+                    ?"Toca Compartir (si no lo ves, toca primero el ícono de líneas junto a la dirección) y luego \"Agregar a pantalla de inicio\" , así puedes recibir avisos directo en tu celular."
                     :installPromptEvt
                       ?"Ábrela como app y recibe avisos directo, sin tener que entrar al navegador."
                       :"Toca los 3 puntos (⋮) de arriba y luego \"Agregar a pantalla de inicio\" , así puedes recibir avisos directo en tu celular."
@@ -21556,7 +21556,7 @@ export default function CLEO(props){
         e("div",{style:{fontSize:15,fontWeight:600,color:C.text,marginBottom:8}},"Para avisarte justo a esa hora..."),
         e("div",{style:{fontSize:13,color:C.textMuted,lineHeight:1.6,marginBottom:20}},
           esIOS()
-            ?"...instala CLEO en tu iPhone: toca Compartir y luego \"Agregar a pantalla de inicio\". Así podemos avisarte cuando sea hora de escribirle a "+pwaNudgeHora+"."
+            ?"...instala CLEO en tu iPhone: toca Compartir (si no lo ves, toca primero el ícono de líneas junto a la dirección) y luego \"Agregar a pantalla de inicio\". Así podemos avisarte cuando sea hora de escribirle a "+pwaNudgeHora+"."
             :installPromptEvt
               ?"...instala CLEO en tu celular. Así podemos avisarte cuando sea hora de escribirle a "+pwaNudgeHora+", directo en tu pantalla de bloqueo."
               :"...instala CLEO en tu celular: toca los 3 puntos (⋮) de arriba y luego \"Agregar a pantalla de inicio\". Así podemos avisarte cuando sea hora de escribirle a "+pwaNudgeHora+"."
