@@ -11470,19 +11470,7 @@ export default function CLEO(props){
             )
           ),
 
-          // ── RECONOCIMIENTO ──────────────────────────────────────────────────
-          reconocimiento&&reconocimiento.texto!==reconocimientoCerrado&&e("div",{style:{
-            background:"#F0FDF4",border:"1px solid #86EFAC",borderRadius:14,
-            padding:"14px 20px",marginTop:20,
-            display:"flex",alignItems:"center",gap:14
-          }},
-            e("span",{style:{fontSize:22,flexShrink:0}},reconocimiento.icono),
-            e("div",{style:{flex:1}},
-              e("div",{style:{fontSize:13,fontWeight:700,color:"#166534",marginBottom:2}},reconocimiento.titulo),
-              e("div",{style:{fontSize:13,color:"#15803D",lineHeight:1.5}},reconocimiento.texto)
-            ),
-            e("button",{style:{background:"none",border:"none",cursor:"pointer",color:"#15803D",opacity:0.6,fontSize:18,lineHeight:1,padding:"0 4px",flexShrink:0},onClick:function(){ setReconocimientoCerrado(reconocimiento.texto); }},"×")
-          ),
+          // ── RECONOCIMIENTO (oculto en rediseño) ─────────────────────────────
 
           // ── REGISTRO ──────────────────────────────────────────────────────────
           e("section",{style:{marginTop:isMobile?36:32}},
