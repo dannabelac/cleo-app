@@ -15822,11 +15822,11 @@ export default function CLEO(props){
         }
 
         return e("div",{style:{padding:pad}},
-          // ── Header (mismo patrón que Pedidos / Clientes)
-          e("div",{style:{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:12,flexWrap:"wrap",gap:12}},
+          // ── Header R20
+          e("div",{style:{display:"flex",alignItems:"flex-end",justifyContent:"space-between",flexWrap:"wrap",gap:12,marginBottom:12}},
             e("div",null,
-              e("div",{style:{fontSize:28,fontWeight:700,color:C.text,lineHeight:1.1,marginBottom:4}},"Inventario y costos"),
-              e("div",{style:{fontSize:14,color:C.textMuted}},
+              e("h1",{style:{margin:0,fontSize:24,fontWeight:800,letterSpacing:"-0.03em",color:C.ink}},"Inventario y costos"),
+              e("p",{style:{margin:"4px 0 0",fontSize:13.5,color:"#5A6078"}},
                 cosTabAct==="costos"
                   ?"Cuánto te cuesta y cuánto te queda por producto"
                   :cosTabAct==="eventos"
@@ -15839,45 +15839,58 @@ export default function CLEO(props){
                           :(total+" evento"+(total===1?"":"s")+" · Ninguno abierto");
                       })()
                     :productosActivados.length>0
-                      ?(productosActivados.length+" producto"+(productosActivados.length===1?"":"s")+(nTerminados>0?" · "+nTerminados+" agotado"+(nTerminados===1?"":"s"):"")+(nPocos>0?" · "+nPocos+" con pocas existencias":""))
+                      ?(function(){
+                          var parts=[productosActivados.length+" producto"+(productosActivados.length===1?"":"s")];
+                          if(nTerminados>0) parts.push(e("b",{style:{color:"#B23A24"}},nTerminados+(nTerminados===1?" agotado":" agotados")));
+                          if(nPocos>0) parts.push(e("b",{style:{color:"#8A5A06"}},nPocos+" con pocas existencias"));
+                          return parts.reduce(function(acc,v,i){ return i===0?[v]:acc.concat([" · ",v]); },[]);
+                        })()
                       :"Control de stock por producto"
               )
             ),
             cosTabAct==="inventario"&&productosActivados.length>0&&e("button",{
               type:"button",
-              style:{cursor:"pointer",padding:"7px 14px",borderRadius:10,border:"1px solid "+C.border,background:C.surface,fontSize:12,color:C.textMuted,fontWeight:600},
+              style:{cursor:"pointer",display:"inline-flex",alignItems:"center",gap:6,height:36,padding:"0 16px",borderRadius:18,border:"1.5px solid #D5D8E4",background:"#FFFFFF",color:C.ink,fontSize:13.5,fontWeight:700,fontFamily:FONT_CLEO},
               onClick:function(){
                 setInvErrorReporte("");
                 setInvFormReporte({desde:FECHA_HOY,hasta:FECHA_HOY});
                 setInvModalReporte(true);
               }
-            },"Descargar reporte")
+            },
+              e("svg",{width:16,height:16,viewBox:"0 0 24 24",fill:"none",stroke:"currentColor",strokeWidth:1.9,strokeLinecap:"round",strokeLinejoin:"round"},e("path",{d:"M12 4v11M7 10l5 5 5-5M5 20h14"})),
+              "Descargar reporte"
+            )
           ),
 
-          // ── Tab bar
+          // ── Tab bar R20
           e("div",{style:{display:"flex",borderBottom:"1px solid "+C.border,marginBottom:16}},
-            e("button",{type:"button",style:{cursor:"pointer",padding:"9px 16px",background:"transparent",border:"none",borderBottom:cosTabAct==="inventario"?"2px solid "+C.purple:"2px solid transparent",marginBottom:-1,fontSize:13,fontWeight:cosTabAct==="inventario"?700:500,color:cosTabAct==="inventario"?C.purple:C.textMuted},onClick:function(){ setCosTabAct("inventario"); setCosStep(null); }},"Inventario"),
-            e("button",{type:"button",style:{cursor:"pointer",padding:"9px 16px",background:"transparent",border:"none",borderBottom:cosTabAct==="costos"?"2px solid "+C.purple:"2px solid transparent",marginBottom:-1,fontSize:13,fontWeight:cosTabAct==="costos"?700:500,color:cosTabAct==="costos"?C.purple:C.textMuted},onClick:function(){ setCosTabAct("costos"); setCosStep(null); }},"Costos"),
-            e("button",{type:"button",style:{cursor:"pointer",padding:"9px 16px",background:"transparent",border:"none",borderBottom:cosTabAct==="eventos"?"2px solid #0D9488":"2px solid transparent",marginBottom:-1,fontSize:13,fontWeight:cosTabAct==="eventos"?700:500,color:cosTabAct==="eventos"?"#0D9488":C.textMuted,display:"flex",alignItems:"center",gap:4},onClick:function(){ setCosTabAct("eventos"); setCosStep(null); setEvtFichaId(null); }},
+            e("button",{type:"button",style:{cursor:"pointer",padding:"9px 16px",background:"transparent",border:"none",borderBottom:cosTabAct==="inventario"?"2.5px solid #3F4BD0":"2.5px solid transparent",marginBottom:-1,fontSize:13,fontWeight:cosTabAct==="inventario"?800:600,color:cosTabAct==="inventario"?"#0E1328":"#5A6078",fontFamily:FONT_CLEO},onClick:function(){ setCosTabAct("inventario"); setCosStep(null); }},"Inventario"),
+            e("button",{type:"button",style:{cursor:"pointer",padding:"9px 16px",background:"transparent",border:"none",borderBottom:cosTabAct==="costos"?"2.5px solid #3F4BD0":"2.5px solid transparent",marginBottom:-1,fontSize:13,fontWeight:cosTabAct==="costos"?800:600,color:cosTabAct==="costos"?"#0E1328":"#5A6078",fontFamily:FONT_CLEO},onClick:function(){ setCosTabAct("costos"); setCosStep(null); }},"Costos"),
+            e("button",{type:"button",style:{cursor:"pointer",padding:"9px 16px",background:"transparent",border:"none",borderBottom:cosTabAct==="eventos"?"2.5px solid #3F4BD0":"2.5px solid transparent",marginBottom:-1,fontSize:13,fontWeight:cosTabAct==="eventos"?800:600,color:cosTabAct==="eventos"?"#0E1328":"#5A6078",fontFamily:FONT_CLEO,display:"flex",alignItems:"center",gap:4},onClick:function(){ setCosTabAct("eventos"); setCosStep(null); setEvtFichaId(null); }},
               "Eventos",
-              (eventosInv||[]).filter(function(ev){ return ev.estado==="abierto"; }).length>0&&e("span",{style:{minWidth:16,height:16,borderRadius:8,background:"#0D9488",color:"#fff",fontSize:sc.textLabel,fontWeight:700,display:"inline-flex",alignItems:"center",justifyContent:"center",padding:"0 4px"}},(eventosInv||[]).filter(function(ev){ return ev.estado==="abierto"; }).length)
+              (eventosInv||[]).filter(function(ev){ return ev.estado==="abierto"; }).length>0&&e("span",{style:{minWidth:16,height:16,borderRadius:8,background:"#E4E8FF",color:"#3F4BD0",fontSize:sc.textLabel,fontWeight:800,display:"inline-flex",alignItems:"center",justifyContent:"center",padding:"0 4px"}},(eventosInv||[]).filter(function(ev){ return ev.estado==="abierto"; }).length)
             )
           ),
 
           // ── Inventario tab
           cosTabAct==="inventario"&&e("div",null,
 
-          // ── Buscador
+          // ── Buscador R20
           productosActivados.length>0&&e("div",{style:{position:"relative",marginBottom:8}},
-            e("input",{type:"text",placeholder:"Buscar por nombre...",value:invBusqueda||"",onChange:function(ev){ setInvBusqueda(ev.target.value); },style:Object.assign({},st.inp,{marginBottom:0,paddingLeft:34,fontSize:12})}),
-            e("svg",{width:14,height:14,viewBox:"0 0 24 24",fill:"none",stroke:C.textDim,strokeWidth:2,strokeLinecap:"round",strokeLinejoin:"round",style:{position:"absolute",left:11,top:"50%",transform:"translateY(-50%)",pointerEvents:"none"}},e("circle",{cx:11,cy:11,r:8}),e("path",{d:"M21 21l-4.35-4.35"}))
+            e("input",{type:"text",placeholder:"Buscar por nombre...",value:invBusqueda||"",onChange:function(ev){ setInvBusqueda(ev.target.value); },style:{width:"100%",height:40,boxSizing:"border-box",border:"1.5px solid #E3E6EF",borderRadius:22,background:"#FFFFFF",padding:"0 16px 0 42px",fontSize:14,fontFamily:FONT_CLEO,color:C.ink,outline:"none"}}),
+            e("svg",{width:16,height:16,viewBox:"0 0 24 24",fill:"none",stroke:"#8E94AE",strokeWidth:2,strokeLinecap:"round",strokeLinejoin:"round",style:{position:"absolute",left:14,top:"50%",transform:"translateY(-50%)",pointerEvents:"none"}},e("circle",{cx:11,cy:11,r:8}),e("path",{d:"M21 21l-4.35-4.35"}))
           ),
 
-          // ── Filtros
-          productosActivados.length>0&&e("div",{style:{display:"flex",gap:6,marginBottom:16,flexWrap:"wrap"}},
-            [["todos","Todos"],["pocos","Quedan pocos"+(nPocos>0?" ("+nPocos+")":"")],["terminados","Agotados"+(nTerminados>0?" ("+nTerminados+")":"")]].map(function(f){
+          // ── Filtros R20 (pastilla track)
+          productosActivados.length>0&&e("div",{style:{display:"flex",gap:6,marginBottom:16,padding:"4px",background:"#FFFFFF",borderRadius:22,border:"1.5px solid #E3E6EF",alignSelf:"flex-start",flexWrap:"wrap"}},
+            [["todos","Todos",null],["pocos","Quedan pocos",nPocos],["terminados","Agotados",nTerminados]].map(function(f){
               var activo=invFiltro===f[0];
-              return e("button",{key:f[0],type:"button",style:{cursor:"pointer",padding:"5px 12px",borderRadius:20,border:"1px solid "+(activo?C.purple:C.border),background:activo?C.purple:"transparent",fontSize:12,color:activo?"#fff":C.textMuted,fontWeight:activo?600:400},onClick:function(){ setInvFiltro(f[0]); }},f[1]);
+              return e("button",{key:f[0],type:"button",
+                style:{cursor:"pointer",display:"inline-flex",alignItems:"center",gap:5,padding:"4px 12px",borderRadius:18,border:"none",background:activo?"#E4E8FF":"transparent",fontSize:12.5,fontWeight:activo?700:600,color:activo?"#3F4BD0":"#5A6078",fontFamily:FONT_CLEO,whiteSpace:"nowrap"},
+                onClick:function(){ setInvFiltro(f[0]); }},
+                f[1],
+                f[2]!=null&&f[2]>0&&e("small",{style:{fontSize:11,fontWeight:700,color:activo?"#3F4BD0":"#8E94AE"}},f[2])
+              );
             })
           ),
 
@@ -15897,74 +15910,80 @@ export default function CLEO(props){
             invBusqueda?"Ningún producto coincide.":"No hay productos en este filtro."
           ),
 
-          // ── Lista compacta
-          filtrados.length>0&&e("div",{style:{border:"1px solid "+C.border,borderRadius:12,overflow:"hidden"}},
+          // ── Lista R20
+          filtrados.length>0&&e("div",{style:{background:"#FFFFFF",borderRadius:20,border:"1.5px solid #E3E6EF",overflow:"hidden"}},
             filtrados.map(function(p,idx){
               var editando=invEditId===p.id;
               var registrandoVenta=invVentaId===p.id;
               var detalleAbierto=invDetalleId===p.id;
-              var colorDis=p._disponibles===0?C.red:p.stockMinimo!=null&&p._disponibles<=p.stockMinimo?C.amber:C.green;
-              var bgDis=p._disponibles===0?C.redBg:p.stockMinimo!=null&&p._disponibles<=p.stockMinimo?C.amberBg:C.greenBg;
-              var chipLabel=p._disponibles===0&&p._pendientes>0
-                ?"Agotado · faltan "+p._pendientes
-                :p._disponibles===0?"Agotado"
-                :p._disponibles+" disponibles";
+              var colorDis=p._disponibles===0?"#B23A24":p.stockMinimo!=null&&p._disponibles<=p.stockMinimo?"#8A5A06":"#1E5C38";
+              var bgDis=p._disponibles===0?"#FBE6E1":p.stockMinimo!=null&&p._disponibles<=p.stockMinimo?"#FBF1DC":"#E2F2E8";
+              var stkLabel=p._disponibles===0?"Agotado":p._disponibles===1?"1 disponible":p._disponibles+" disponibles";
               var stockNuevoNum=invEditForm.stock!==""?Number(invEditForm.stock):null;
               var stockNuevoValido=stockNuevoNum!=null&&stockNuevoNum>=0&&!isNaN(stockNuevoNum);
               var stockNuevoDisp=stockNuevoValido?Math.max(0,stockNuevoNum-p._apartados):null;
               var stockCambio=stockNuevoValido&&stockNuevoNum!==p.stock;
               var totalDemanda=(p._apartados||0)+(p._pendientes||0);
               var stockBajo=stockNuevoValido&&stockNuevoNum<totalDemanda;
-              var inicial=(p.nombre||"?").charAt(0).toUpperCase();
               var noEsUltimo=idx<filtrados.length-1;
+              var quedan=p.stockMinimo!=null&&p._disponibles>0&&p._disponibles<=p.stockMinimo;
+              var r20PencilSvg=e("svg",{width:13,height:13,viewBox:"0 0 24 24",fill:"none",stroke:"currentColor",strokeWidth:2,strokeLinecap:"round",strokeLinejoin:"round"},e("path",{d:"M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"}),e("path",{d:"M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"}));
 
-              return e("div",{key:p.id,style:{borderBottom:(noEsUltimo||editando||detalleAbierto)?"1px solid "+C.border:"none",background:C.surface}},
+              return e("div",{key:p.id,style:{borderTop:idx>0?"1px solid #EDEFF5":"none",background:"#FFFFFF"}},
 
-                // ── Fila principal — tappable en mobile
-                e("div",{style:{display:"flex",alignItems:"center",gap:10,padding:isMobile?"12px 12px 6px":"10px 16px",minHeight:48,cursor:isMobile?"pointer":"default"},
+                // ── Fila principal R20
+                e("div",{style:{display:"flex",alignItems:"center",gap:16,padding:isMobile?"14px 20px 6px":"14px 20px",cursor:isMobile?"pointer":"default"},
                   onClick:isMobile&&!editando&&!registrandoVenta?function(){ setInvDetalleId(detalleAbierto?null:p.id); }:undefined},
-                  e("div",{style:{width:32,height:32,borderRadius:8,background:C.purple+"15",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,fontWeight:700,fontSize:12,color:C.purple}},inicial),
-                  e("div",{style:{flex:1,minWidth:0,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",fontWeight:700,fontSize:13,color:C.text}},p.nombre),
-                  // Chips en desktop — inline con el nombre
-                  !isMobile&&e("div",{style:{flexShrink:0,display:"flex",alignItems:"center",gap:6}},
-                    e("span",{style:{fontSize:11,fontWeight:600,padding:"2px 7px",borderRadius:8,background:bgDis,color:colorDis,whiteSpace:"nowrap"}},chipLabel),
-                    p._apartadosPed>0&&e("span",{style:{fontSize:11,fontWeight:600,padding:"2px 7px",borderRadius:8,background:C.purple+"15",color:C.purple,whiteSpace:"nowrap"}},p._apartadosPed+" pedidos"),
-                    p._apartadosEvt>0&&e("span",{style:{fontSize:11,fontWeight:600,padding:"2px 7px",borderRadius:8,background:"rgba(13,148,136,0.1)",color:"#0D9488",whiteSpace:"nowrap"}},p._apartadosEvt+" en evento")
+
+                  // Stk box
+                  e("div",{style:{width:76,height:52,flexShrink:0,borderRadius:14,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",lineHeight:1.1,background:bgDis,color:colorDis}},
+                    p._disponibles===0
+                      ?[e("svg",{key:"ic",width:16,height:16,viewBox:"0 0 24 24",fill:"none",stroke:"currentColor",strokeWidth:2,strokeLinecap:"round",strokeLinejoin:"round"},e("circle",{cx:12,cy:12,r:8.5}),e("path",{d:"M12 7.5v5M12 16h.01"})),
+                        e("small",{key:"lb",style:{marginTop:3,fontSize:10.5,fontWeight:700}},p._pendientes>0?"faltan "+p._pendientes:"Agotado")]
+                      :[e("b",{key:"n",style:{fontSize:19,fontWeight:800,letterSpacing:"-0.02em"}},p._disponibles),
+                        e("small",{key:"lb",style:{fontSize:10.5,fontWeight:700,marginTop:1}},p._disponibles===1?"disponible":"disponibles")]
                   ),
-                  // Botones en desktop — inline
+
+                  // Nombre + meta
+                  e("div",{style:{flex:1,minWidth:0}},
+                    e("b",{style:{display:"block",fontSize:15,fontWeight:800,color:C.ink,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}},p.nombre),
+                    (p._apartadosPed>0||p._apartadosEvt>0||quedan)&&e("span",{style:{display:"block",marginTop:3,fontSize:13,color:"#5A6078"}},
+                      [p._apartadosPed>0&&e("em",{key:"ped",style:{fontStyle:"normal",color:"#3F4BD0",fontWeight:700}},p._apartadosPed===1?"1 pedido":p._apartadosPed+" pedidos"),
+                       p._apartadosEvt>0&&e("span",{key:"evt",style:{color:"#5A6078"}},p._apartadosPed>0?" · ":null,p._apartadosEvt===1?"1 en evento":p._apartadosEvt+" en evento"),
+                       quedan&&e("span",{key:"pco",style:{color:"#8A5A06"}},(p._apartadosPed>0||p._apartadosEvt>0)?" · ":null,"Quedan pocos")]
+                    )
+                  ),
+
+                  // Botones desktop (32px)
                   !isMobile&&!editando&&!registrandoVenta&&e("div",{style:{display:"flex",gap:6,flexShrink:0,alignItems:"center"}},
                     e("button",{type:"button",
-                      style:{cursor:"pointer",padding:"5px 11px",borderRadius:8,border:"none",background:C.purple,color:"#fff",fontSize:12,fontWeight:700,whiteSpace:"nowrap"},
+                      style:{cursor:"pointer",height:32,padding:"0 13px",borderRadius:16,border:"none",background:"#0E1328",color:"#FFFFFF",fontSize:12.5,fontWeight:700,fontFamily:FONT_CLEO,display:"inline-flex",alignItems:"center",gap:6,whiteSpace:"nowrap"},
                       onClick:function(ev){ ev.stopPropagation(); setInvVentaId(p.id); setInvDetalleId(null); setInvEditId(null); setInvVentaForm({cant:"",lugar:""}); }
                     },"Anotar ventas"),
                     e("button",{type:"button",
-                      style:{cursor:"pointer",padding:"5px 10px",borderRadius:8,border:"1px solid "+C.border,background:C.surface,fontSize:12,color:C.textMuted,fontWeight:500,whiteSpace:"nowrap"},
+                      style:{cursor:"pointer",height:32,padding:"0 13px",borderRadius:16,border:"1.5px solid #E3E6EF",background:"#FFFFFF",color:"#0E1328",fontSize:12.5,fontWeight:700,fontFamily:FONT_CLEO,display:"inline-flex",alignItems:"center",gap:5,whiteSpace:"nowrap"},
                       onClick:function(ev){ ev.stopPropagation(); setInvEditId(p.id); setInvDetalleId(null); setInvVentaId(null); setInvEditForm({stock:String(p.stock),stockMinimo:p.stockMinimo!=null?String(p.stockMinimo):""}); }
-                    },"Cambiar cantidad"),
+                    },r20PencilSvg,"Cambiar cantidad"),
                     e("button",{type:"button",
-                      style:{cursor:"pointer",padding:"5px 8px",borderRadius:8,border:"1px solid "+C.border,background:C.surface,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0},
+                      style:{cursor:"pointer",width:32,height:32,borderRadius:16,border:"1.5px solid #E3E6EF",background:"#FFFFFF",color:"#6E7489",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0},
                       onClick:function(ev){ ev.stopPropagation(); setInvDetalleId(detalleAbierto?null:p.id); }
-                    },e("svg",{width:12,height:12,viewBox:"0 0 24 24",fill:"none",stroke:C.textMuted,strokeWidth:2.5,strokeLinecap:"round"},e("path",{d:detalleAbierto?"M18 15l-6-6-6 6":"M6 9l6 6 6-6"})))
+                    },e("svg",{width:14,height:14,viewBox:"0 0 24 24",fill:"none",stroke:"currentColor",strokeWidth:2.5,strokeLinecap:"round"},e("path",{d:detalleAbierto?"M18 15l-6-6-6 6":"M6 9l6 6 6-6"})))
                   ),
-                  // Flecha mobile — solo ícono, sin caja visible
-                  isMobile&&!editando&&!registrandoVenta&&e("svg",{width:14,height:14,viewBox:"0 0 24 24",fill:"none",stroke:C.textDim,strokeWidth:2,strokeLinecap:"round",style:{flexShrink:0,transition:"transform 0.2s",transform:detalleAbierto?"rotate(180deg)":"rotate(0deg)"}},e("path",{d:"M6 9l6 6 6-6"}))
+
+                  // Flecha mobile
+                  isMobile&&!editando&&!registrandoVenta&&e("svg",{width:16,height:16,viewBox:"0 0 24 24",fill:"none",stroke:"#8E94AE",strokeWidth:2.5,strokeLinecap:"round",style:{flexShrink:0,transition:"transform 0.15s",transform:detalleAbierto?"rotate(180deg)":"rotate(0deg)"}},e("path",{d:"M6 9l6 6 6-6"}))
                 ),
 
-                // ── Chips en mobile — segunda línea, compacta
-                isMobile&&!editando&&!registrandoVenta&&e("div",{style:{display:"flex",alignItems:"center",gap:5,padding:"0 12px 10px",flexWrap:"wrap"}},
-                  e("span",{style:{fontSize:11,fontWeight:600,padding:"2px 7px",borderRadius:6,background:bgDis,color:colorDis,whiteSpace:"nowrap"}},chipLabel),
-                  p._apartadosPed>0&&e("span",{style:{fontSize:11,fontWeight:600,padding:"2px 7px",borderRadius:6,background:C.purple+"15",color:C.purple,whiteSpace:"nowrap"}},p._apartadosPed+" pedidos"),
-                  p._apartadosEvt>0&&e("span",{style:{fontSize:11,fontWeight:600,padding:"2px 7px",borderRadius:6,background:"rgba(13,148,136,0.1)",color:"#0D9488",whiteSpace:"nowrap"}},p._apartadosEvt+" en evento"),
-                  e("div",{style:{marginLeft:"auto",display:"flex",gap:6}},
-                    e("button",{type:"button",
-                      style:{cursor:"pointer",padding:"5px 12px",borderRadius:6,border:"none",background:C.purple,color:"#fff",fontSize:11,fontWeight:700,lineHeight:1.3},
-                      onClick:function(ev){ ev.stopPropagation(); setInvVentaId(p.id); setInvDetalleId(null); setInvEditId(null); setInvVentaForm({cant:"",lugar:""}); }
-                    },"Anotar ventas"),
-                    e("button",{type:"button",
-                      style:{cursor:"pointer",padding:"5px 10px",borderRadius:6,border:"1px solid "+C.border,background:C.surface,fontSize:11,color:C.textMuted,fontWeight:500,lineHeight:1.3},
-                      onClick:function(ev){ ev.stopPropagation(); setInvEditId(p.id); setInvDetalleId(null); setInvVentaId(null); setInvEditForm({stock:String(p.stock),stockMinimo:p.stockMinimo!=null?String(p.stockMinimo):""}); }
-                    },"Cambiar cant.")
-                  )
+                // ── Botones mobile R20 — fila debajo del stk box
+                isMobile&&!editando&&!registrandoVenta&&e("div",{style:{display:"flex",gap:8,padding:"2px 20px 14px"}},
+                  e("button",{type:"button",
+                    style:{cursor:"pointer",flex:1,height:40,borderRadius:20,border:"none",background:"#0E1328",color:"#FFFFFF",fontSize:13.5,fontWeight:700,fontFamily:FONT_CLEO,display:"inline-flex",alignItems:"center",justifyContent:"center"},
+                    onClick:function(ev){ ev.stopPropagation(); setInvVentaId(p.id); setInvDetalleId(null); setInvEditId(null); setInvVentaForm({cant:"",lugar:""}); }
+                  },"Anotar ventas"),
+                  e("button",{type:"button",
+                    style:{cursor:"pointer",flex:1,height:40,borderRadius:20,border:"1.5px solid #E3E6EF",background:"#FFFFFF",color:"#0E1328",fontSize:13.5,fontWeight:700,fontFamily:FONT_CLEO,display:"inline-flex",alignItems:"center",justifyContent:"center",gap:5},
+                    onClick:function(ev){ ev.stopPropagation(); setInvEditId(p.id); setInvDetalleId(null); setInvVentaId(null); setInvEditForm({stock:String(p.stock),stockMinimo:p.stockMinimo!=null?String(p.stockMinimo):""}); }
+                  },r20PencilSvg,"Cambiar cantidad")
                 ),
 
                 // ── Detalle (separados + historial)
@@ -16169,14 +16188,17 @@ export default function CLEO(props){
             })
           ),
 
-          // ── Gestionar (secundario)
+          // ── Gestionar R20 (secundario)
           productosCat.length>0&&e("div",{style:{marginTop:16}},
-            e("button",{type:"button",style:{cursor:"pointer",width:"100%",padding:"10px 14px",borderRadius:10,border:"1px dashed "+C.border,background:"transparent",display:"flex",alignItems:"center",justifyContent:"space-between",fontSize:12,color:C.textMuted},onClick:function(){ setInvGestionarAbierto(!invGestionarAbierto); }},
-              e("div",null,
-                e("span",null,"Elegir productos para inventario"),
-                productosSinControl.length===0&&e("span",{style:{fontSize:11,color:C.textDim,marginLeft:6}},"(todos activos)")
+            e("button",{type:"button",style:{cursor:"pointer",width:"100%",padding:"12px 16px",borderRadius:18,border:"1.5px solid #E3E6EF",background:"#FFFFFF",display:"flex",alignItems:"center",justifyContent:"space-between",gap:12,boxSizing:"border-box"},onClick:function(){ setInvGestionarAbierto(!invGestionarAbierto); }},
+              e("div",{style:{display:"flex",alignItems:"center",gap:10}},
+                e("span",{style:{width:30,height:30,borderRadius:10,background:"#EEF0FF",display:"inline-flex",alignItems:"center",justifyContent:"center",flexShrink:0}},
+                  e("svg",{width:14,height:14,viewBox:"0 0 24 24",fill:"none",stroke:"#3F4BD0",strokeWidth:2.3,strokeLinecap:"round",strokeLinejoin:"round"},e("path",{d:"M12 5v14M5 12h14"}))
+                ),
+                e("span",{style:{fontSize:13.5,fontWeight:700,color:C.ink,fontFamily:FONT_CLEO}},"Elegir productos para inventario"),
+                productosSinControl.length===0&&e("span",{style:{fontSize:12,color:"#8E94AE",fontWeight:600}},"· todos activos")
               ),
-              e("svg",{width:12,height:12,viewBox:"0 0 24 24",fill:"none",stroke:C.textMuted,strokeWidth:2.5,strokeLinecap:"round"},e("path",{d:invGestionarAbierto?"M18 15l-6-6-6 6":"M6 9l6 6 6-6"}))
+              e("svg",{width:14,height:14,viewBox:"0 0 24 24",fill:"none",stroke:"#8E94AE",strokeWidth:2.5,strokeLinecap:"round"},e("path",{d:invGestionarAbierto?"M18 15l-6-6-6 6":"M6 9l6 6 6-6"}))
             ),
             invGestionarAbierto&&productosSinControl.length>0&&e("div",{style:{marginTop:4,border:"1px solid "+C.border,borderRadius:10,overflow:"hidden"}},
               productosSinControl.map(function(p,idx){
