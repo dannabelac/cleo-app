@@ -10883,41 +10883,117 @@ export default function CLEO(props){
               )
             ),
 
-            // PASO: SITUACIÓN
-            pasoMostrar==="situacion"&&e("div",null,
-              puntos("situacion"),
-              e("div",{style:{textAlign:"center",marginBottom:20}},
-                e("div",{style:{fontSize:sc.titleSection,fontWeight:700,color:C.text,marginBottom:8,lineHeight:1.3}},"¿Qué quieres organizar primero?"),
-                e("div",{style:{fontSize:13,color:C.textMuted,lineHeight:1.5}},"Elige algo real que esté pasando en tu negocio. CLEO te ayudará a saber qué sigue y a no dejarlo pasar.")
-              ),
-              e("div",{style:{display:"flex",flexDirection:"column",gap:10,marginBottom:16}},
-                [
-                  {ic:"💬",label:"Alguien preguntó",desc:"Guarda lo que busca y recuerda retomar la conversación.",tipo:"pregunto"},
-                  {ic:"🏷️",label:"Envié un precio",desc:"Registra lo que ofreciste y mantén pendiente su respuesta.",tipo:"envie"},
-                  {ic:"🎉",label:"Cerré una venta",desc:"Organiza el pedido, el pago y lo que falta por entregar.",tipo:"cerre"}
-                ].map(function(op,i){
-                  return e("button",{key:i,style:{cursor:"pointer",padding:"16px",borderRadius:14,border:"1.5px solid "+C.border,background:C.surface,textAlign:"left",display:"flex",gap:14,alignItems:"flex-start",width:"100%"},
-                    onMouseEnter:function(ev){ ev.currentTarget.style.borderColor=C.purple; },
-                    onMouseLeave:function(ev){ ev.currentTarget.style.borderColor=C.border; },
-                    onClick:function(){ lanzarFlujo(op.tipo); }},
-                    e("span",{style:{fontSize:22,flexShrink:0,marginTop:1}},op.ic),
-                    e("div",null,
-                      e("div",{style:{fontSize:sc.namePerson,fontWeight:600,color:C.text,marginBottom:3}},op.label),
-                      e("div",{style:{fontSize:13,color:C.textMuted,lineHeight:1.5}},op.desc)
+            // PASO: SITUACIÓN → R21 primer intercambio con CLEO (full-screen, sin menú)
+            pasoMostrar==="situacion"&&(function(){
+              var r21Activo=asistenteHistorial.length>0;
+              var r21UpSvg=e("svg",{width:16,height:16,viewBox:"0 0 24 24",fill:"none",stroke:"currentColor",strokeWidth:2.4,strokeLinecap:"round",strokeLinejoin:"round"},e("path",{d:"M12 19V5M6 11l6-6 6 6"}));
+              var r21BackSvg=e("svg",{width:14,height:14,viewBox:"0 0 24 24",fill:"none",stroke:"currentColor",strokeWidth:1.9,strokeLinecap:"round",strokeLinejoin:"round"},e("path",{d:"M19 12H5M11 6l-6 6 6 6"}));
+              var r21PlaySvg=e("svg",{width:15,height:15,viewBox:"0 0 24 24",fill:"none",stroke:"currentColor",strokeWidth:1.9,strokeLinecap:"round",strokeLinejoin:"round"},e("circle",{cx:12,cy:12,r:8.5}),e("path",{d:"m10.5 9 4.5 3-4.5 3z",fill:"currentColor",stroke:"none"}));
+              function r21Icono(tipo){
+                var base={width:16,height:16,viewBox:"0 0 24 24",fill:"none",stroke:"currentColor",strokeWidth:2,strokeLinecap:"round",strokeLinejoin:"round"};
+                if(tipo==="chat") return e("svg",base,e("path",{d:"M12 4c4.7 0 8.5 3.1 8.5 7s-3.8 7-8.5 7c-1 0-2-.1-2.9-.4L4.5 20l1.3-3.6C4.4 15 3.5 13.1 3.5 11c0-3.9 3.8-7 8.5-7z"}));
+                if(tipo==="cash") return e("svg",base,e("rect",{x:3,y:6,width:18,height:12,rx:2}),e("circle",{cx:12,cy:12,r:2.5}));
+                return e("svg",base,e("path",{d:"M6 16V11a6 6 0 0 1 12 0v5l1.5 2h-15z"}),e("path",{d:"M10 20.5a2 2 0 0 0 4 0"}));
+              }
+              var r21Ejemplos=[
+                {bg:"#EEF0FF",ic:"#3F4BD0",tipo:"chat",txt:"Sofía me pidió precio de 10 playeras para su negocio. Se lo envié, pero todavía no me confirma."},
+                {bg:"#E2F2E8",ic:"#1E5C38",tipo:"cash",txt:"Le vendí una playera a Luis por $200 y ya me pagó."},
+                {bg:"#FBF1DC",ic:"#8A5A06",tipo:"bell",txt:"Recuérdame enviarle a Ana las fotos de los nuevos productos mañana."}
+              ];
+              return e("div",{style:{position:"fixed",inset:0,zIndex:200,background:"#ECEEF5",overflowY:"auto",fontFamily:FONT_CLEO,WebkitFontSmoothing:"antialiased",boxSizing:"border-box"}},
+                // Encabezado
+                e("div",{style:{display:"flex",alignItems:"center",justifyContent:"space-between",gap:12,padding:isMobile?"16px 18px":"28px 40px 0",boxSizing:"border-box"}},
+                  e("span",{style:{fontSize:15,fontWeight:800,letterSpacing:".14em",color:C.ink}},"CLEO"),
+                  e("div",{style:{display:"flex",alignItems:"center",gap:14}},
+                    e("div",{style:{display:"flex",gap:6,width:120}},
+                      [1,2,3].map(function(n){ return e("div",{key:n,style:{flex:1,height:4,borderRadius:2,background:"#3F4BD0"}}); })
+                    ),
+                    e("span",{style:{fontSize:12,fontWeight:700,color:"#6E7489"}},"Paso 3 de 3")
+                  )
+                ),
+                // Columna de contenido
+                e("div",{style:{maxWidth:640,margin:"0 auto",padding:isMobile?"0 18px 32px":"0 40px 40px",boxSizing:"border-box"}},
+                  // ── Antes de enviar ──
+                  !r21Activo&&e("div",{style:{marginTop:isMobile?32:64}},
+                    e("h1",{style:{margin:0,fontSize:isMobile?26:32,lineHeight:1.15,fontWeight:800,letterSpacing:"-0.035em",color:C.ink}},
+                      tuNombreCorto?tuNombreCorto+", ¿qué pasó hoy en tu negocio?":"¿Qué pasó hoy en tu negocio?"
+                    ),
+                    e("p",{style:{margin:"10px 0 0",fontSize:16,lineHeight:1.55,color:"#5A6078"}},"Cuéntame con tus palabras. Te ayudo a organizarlo para que no se te pase lo que sigue."),
+                    // Campo de texto
+                    e("div",{style:{marginTop:26,display:"flex",flexDirection:"column",gap:10,padding:"16px 16px 14px 20px",borderRadius:22,border:"1.5px solid #8D9BFF",boxShadow:"0 0 0 5px #EEF0FF",background:"#FFFFFF"}},
+                      e("textarea",{value:asistenteChatInput,onChange:function(ev){ setAsistenteChatInput(ev.target.value); },
+                        onKeyDown:function(ev){ if(ev.key==="Enter"&&!ev.shiftKey){ ev.preventDefault(); if(asistenteChatInput.trim()){ enviarMensajeAsistente(); setAsistenteAbierto(true); } } },
+                        placeholder:"Escribe aquí algo de tu negocio…",rows:3,
+                        style:{width:"100%",border:"none",outline:"none",background:"transparent",fontSize:16,lineHeight:1.5,color:C.ink,fontFamily:FONT_CLEO,resize:"none",boxSizing:"border-box",padding:0,minHeight:48}
+                      }),
+                      e("div",{style:{display:"flex",justifyContent:"flex-end"}},
+                        e("button",{type:"button","aria-label":"Enviar",
+                          onClick:function(){ if(asistenteChatInput.trim()){ enviarMensajeAsistente(); setAsistenteAbierto(true); } },
+                          disabled:!asistenteChatInput.trim(),
+                          style:{cursor:asistenteChatInput.trim()?"pointer":"default",width:36,height:36,flexShrink:0,border:"none",borderRadius:"50%",background:asistenteChatInput.trim()?"#3F4BD0":"#E4E8FF",color:asistenteChatInput.trim()?"#FFFFFF":"#3F4BD0",display:"flex",alignItems:"center",justifyContent:"center"}
+                        }, r21UpSvg)
+                      )
+                    ),
+                    // Ejemplos
+                    e("div",{style:{marginTop:28,fontSize:12,fontWeight:800,letterSpacing:".08em",color:"#6E7489"}},"PRUEBA CON ALGO COMO ESTO"),
+                    e("div",{style:{marginTop:10,display:"flex",flexDirection:"column",gap:8}},
+                      r21Ejemplos.map(function(ex,i){
+                        return e("button",{key:i,
+                          style:{cursor:"pointer",display:"flex",alignItems:"center",gap:12,width:"100%",padding:"12px 14px",borderRadius:16,border:"1.5px solid "+C.border,background:"#FFFFFF",fontFamily:FONT_CLEO,fontSize:14,lineHeight:1.45,color:C.ink,boxSizing:"border-box",textAlign:"left"},
+                          onMouseEnter:function(ev){ ev.currentTarget.style.borderColor="#8D9BFF"; ev.currentTarget.style.boxShadow="0 0 0 4px #EEF0FF"; },
+                          onMouseLeave:function(ev){ ev.currentTarget.style.borderColor=C.border; ev.currentTarget.style.boxShadow="none"; },
+                          onClick:function(){ setAsistenteChatInput(ex.txt); }
+                        },
+                          e("span",{style:{width:34,height:34,flexShrink:0,borderRadius:11,background:ex.bg,color:ex.ic,display:"flex",alignItems:"center",justifyContent:"center"}},r21Icono(ex.tipo)),
+                          e("span",{style:{flex:1}},ex.txt),
+                          e("span",{style:{color:"#8E94AE",flexShrink:0}},r21UpSvg)
+                        );
+                      })
+                    ),
+                    // Fila inferior
+                    e("div",{style:{marginTop:28,display:"flex",alignItems:"center",justifyContent:"space-between",gap:12,flexWrap:"wrap"}},
+                      e("div",{style:{display:"flex",alignItems:"center",gap:16,flexWrap:"wrap"}},
+                        e("button",{style:{cursor:"pointer",background:"none",border:"none",color:"#6E7489",fontFamily:FONT_CLEO,fontSize:13,fontWeight:700,display:"inline-flex",alignItems:"center",gap:6,padding:"6px 0"},onClick:function(){ setOnbSubPaso("negocio"); }},r21BackSvg,"Atrás"),
+                        e("button",{style:{cursor:"pointer",background:"none",border:"none",color:"#6E7489",fontFamily:FONT_CLEO,fontSize:13,padding:"6px 0"},onClick:elegirAhoraNo},"Prefiero empezar después")
+                      ),
+                      e("button",{style:{cursor:"pointer",display:"inline-flex",alignItems:"center",gap:8,height:40,padding:"0 18px",borderRadius:20,border:"1.5px solid "+C.border,background:"#FFFFFF",color:C.ink,fontFamily:FONT_CLEO,fontSize:13.5,fontWeight:700},onClick:cargarDemoOnboarding},
+                        r21PlaySvg,"Explorar datos de ejemplo"
+                      )
+                    ),
+                    errorDemo&&e("div",{style:{fontSize:11,color:C.red,marginTop:8,lineHeight:1.4}},errorDemo)
+                  ),
+                  // ── Después de enviar: conversación inline ──
+                  r21Activo&&e("div",{style:{marginTop:isMobile?20:40}},
+                    e("div",{style:{display:"flex",flexDirection:"column",gap:10,padding:20,borderRadius:24,background:"#F4F5FA"}},
+                      asistenteHistorial.map(function(m,i){
+                        if(m.rol==="usuario") return e("div",{key:i,style:{alignSelf:"flex-end",maxWidth:"78%",padding:"10px 14px",borderRadius:"18px 18px 6px 18px",background:"#8D9BFF",color:"#0E1328",fontWeight:600,fontSize:14,lineHeight:1.5}},m.texto);
+                        if(m.error) return e("div",{key:i,style:{alignSelf:"flex-start",background:"#FBE6E1",color:"#8E2A18",padding:"10px 14px",borderRadius:14,fontSize:13,lineHeight:1.5,maxWidth:"88%"}},m.texto);
+                        return e("div",{key:i,style:{alignSelf:"flex-start",maxWidth:"84%",padding:"10px 14px",borderRadius:"18px 18px 18px 6px",background:"#FFFFFF",color:"#0E1328",fontSize:14,lineHeight:1.55}},m.texto);
+                      }),
+                      asistenteEsperando&&e("div",{style:{alignSelf:"flex-start",padding:"10px 14px",borderRadius:14,background:"rgba(255,255,255,.7)",fontSize:13,color:"#8E94AE"}},"CLEO está escribiendo…")
+                    ),
+                    asistentePaso==="revision"&&asistenteDraft&&e("div",{style:{marginTop:12,display:"flex",justifyContent:"center"}},
+                      e("button",{style:{cursor:"pointer",display:"inline-flex",alignItems:"center",gap:8,height:40,padding:"0 18px",borderRadius:20,border:"none",background:"#0E1328",color:"#FFFFFF",fontFamily:FONT_CLEO,fontSize:13.5,fontWeight:700},onClick:function(){ setAsistenteAbierto(true); }},
+                        "Revisar y guardar →"
+                      )
+                    ),
+                    e("div",{style:{display:"flex",alignItems:"flex-end",gap:8,padding:"6px 6px 6px 16px",marginTop:14,borderRadius:24,border:"1.5px solid "+C.border,background:"#FFFFFF"}},
+                      e("textarea",{value:asistenteChatInput,onChange:function(ev){ setAsistenteChatInput(ev.target.value); },
+                        onKeyDown:function(ev){ if(ev.key==="Enter"&&!ev.shiftKey){ ev.preventDefault(); if(asistenteChatInput.trim()) enviarMensajeAsistente(); } },
+                        placeholder:"Escribe aquí…",rows:1,
+                        style:{flex:1,border:"none",outline:"none",background:"transparent",fontSize:14.5,lineHeight:1.5,color:C.ink,fontFamily:FONT_CLEO,resize:"none",padding:"9px 0",boxSizing:"border-box"}
+                      }),
+                      e("button",{type:"button","aria-label":"Enviar",onClick:function(){ if(asistenteChatInput.trim()) enviarMensajeAsistente(); },disabled:!asistenteChatInput.trim()||asistenteEsperando,
+                        style:{cursor:asistenteChatInput.trim()?"pointer":"default",width:36,height:36,flexShrink:0,border:"none",borderRadius:"50%",background:asistenteChatInput.trim()?"#3F4BD0":"#E4E8FF",color:asistenteChatInput.trim()?"#FFFFFF":"#3F4BD0",display:"flex",alignItems:"center",justifyContent:"center"}
+                      }, r21UpSvg)
+                    ),
+                    e("div",{style:{marginTop:16,textAlign:"center"}},
+                      e("button",{style:{cursor:"pointer",background:"none",border:"none",color:"#6E7489",fontFamily:FONT_CLEO,fontSize:13},onClick:irAInicio},"Ir a mi inicio")
                     )
-                  );
-                })
-              ),
-              e("div",{style:{display:"flex",alignItems:"center",gap:10,margin:"4px 0 14px"}},
-                e("div",{style:{flex:1,height:1,background:C.border}}),
-                e("span",{style:{fontSize:11,color:C.textMuted,flexShrink:0}},"o"),
-                e("div",{style:{flex:1,height:1,background:C.border}})
-              ),
-              e("button",{style:{cursor:"pointer",width:"100%",padding:"13px",borderRadius:12,border:"none",background:C.purple,fontSize:14,color:"#fff",fontWeight:600,marginBottom:8},onClick:cargarDemoOnboarding},"Ver cómo funciona con datos de ejemplo"),
-              errorDemo&&e("div",{style:{fontSize:11,color:C.red,marginBottom:8,lineHeight:1.4}},errorDemo),
-              e("button",{style:{cursor:"pointer",width:"100%",padding:"10px",borderRadius:12,border:"1px solid "+C.border,background:"none",fontSize:13,color:C.textMuted,marginBottom:6},onClick:elegirAhoraNo},"Prefiero empezar después"),
-              botonAtras("negocio")
-            ),
+                  )
+                )
+              );
+            })(),
 
             // PASO: CONFIRMACIÓN (tras registrar algo)
             pasoMostrar==="confirmacion"&&e("div",{style:{textAlign:"center"}},
