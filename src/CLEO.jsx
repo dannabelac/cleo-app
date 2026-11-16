@@ -6919,7 +6919,7 @@ export default function CLEO(props){
     if(!r) return {ok:false}; // sin coincidencia exacta , no se elimina nada
     if(!(r.categoria==="manual"||r.esPersonalizada===true)) return {ok:false}; // protección: solo recordatorios realmente manuales/personalizados
     var listaSinEsa=recordatoriosDe(cliente).filter(function(rr){ return (rr.id||rr.fecha)!==recordatorioId; });
-    var evAtendido={tipo:"contacto",fecha:FECHA_HOY,fechaHora:new Date().toISOString(),resultado:r.nota?'Recordatorio atendido: "'+r.nota+'"':"Recordatorio personalizado atendido"};
+    var evAtendido={id:"hist_"+Date.now()+"_"+Math.random().toString(36).slice(2,8),tipo:"contacto",fecha:FECHA_HOY,fechaHora:new Date().toISOString(),resultado:r.nota?'Recordatorio atendido: "'+r.nota+'"':"Recordatorio personalizado atendido"};
     if(r.id){
       try{
         var _tombs=lsGet("cleo_tombstones",[]);
@@ -19874,7 +19874,7 @@ export default function CLEO(props){
                       e("div",{style:{display:"flex",gap:8}},
                         e("button",{type:"button",style:Object.assign({},st.btn,{flex:1,fontSize:12}),onClick:function(){ setContactadoOpcion(null); }},"Cancelar"),
                         e("button",{type:"button",style:Object.assign({},st.btnP,{flex:1,fontSize:12,background:C.red}),onClick:function(){
-                          var ev={tipo:"contacto",fecha:FECHA_HOY,fechaHora:new Date().toISOString(),resultado:"Marcado como inactivo tras recontacto"};
+                          var ev={id:"hist_"+Date.now()+"_"+Math.random().toString(36).slice(2,8),tipo:"contacto",fecha:FECHA_HOY,fechaHora:new Date().toISOString(),resultado:"Marcado como inactivo tras recontacto"};
                           setClientes(clientes.map(function(x){
                             if(x.id!==cl.id) return x;
                             var cambios={etapa:"Perdido",ultimoContacto:FECHA_HOY,seguimientoFecha:"",archivado:true,historialContactos:[...(x.historialContactos||[]),ev]};
@@ -20323,7 +20323,7 @@ export default function CLEO(props){
             e("div",{style:{display:"flex",flexDirection:"column",gap:8}},
               e("button",{style:st.btnP,onClick:function(){
                 setCotizaciones(cotizaciones.map(function(c){ return c.id===cot.id?Object.assign({},c,{estatus:"Pendiente"}):c; }));
-                var evRecup={tipo:"contacto",fecha:FECHA_HOY,fechaHora:new Date().toISOString(),resultado:"Oportunidad recuperada — se restauró: "+(cot.concepto||"Cotización")+" $"+(cot.monto?formatoDinero(Number(cot.monto)):"--")};
+                var evRecup={id:"hist_"+Date.now()+"_"+Math.random().toString(36).slice(2,8),tipo:"contacto",fecha:FECHA_HOY,fechaHora:new Date().toISOString(),resultado:"Oportunidad recuperada — se restauró: "+(cot.concepto||"Cotización")+" $"+(cot.monto?formatoDinero(Number(cot.monto)):"--")};
                 if(huboReactivacionQueAtender()) registrarEvento("recordatorio_atendido",{tipo_perfil:perfil.tipoPerfil||"",origen:"reactivacion",dispositivo:dispositivoActual()});
                 if(contactadoRecordatorioId){try{var _tombsR1=lsGet("cleo_tombstones",[]);if(!_tombsR1.some(function(t){return t.tipo==="recordatorio"&&t.cleoId===contactadoRecordatorioId;})){writeGuard.write("cleo_tombstones",JSON.stringify(_tombsR1.concat([{tipo:"recordatorio",cleoId:contactadoRecordatorioId}])));}}catch(e){}}
                 setClientes(clientes.map(function(x){
@@ -20406,7 +20406,7 @@ export default function CLEO(props){
             setContactadoResult(null);
             window._cotPreviaTemp={id:cotPrevia.id,concepto:cotPrevia.concepto,monto:cotPrevia.monto};
           } else {
-            var evReactiv={tipo:"contacto",fecha:FECHA_HOY,fechaHora:new Date().toISOString(),resultado:"Cliente reactivado — regresó como nuevo contacto"};
+            var evReactiv={id:"hist_"+Date.now()+"_"+Math.random().toString(36).slice(2,8),tipo:"contacto",fecha:FECHA_HOY,fechaHora:new Date().toISOString(),resultado:"Cliente reactivado — regresó como nuevo contacto"};
             setContactadoResult({titulo:"Oportunidad reactivada",desc:nombre+" regresó al inicio del proceso, como nuevo contacto."});
             if(huboReactivacionQueAtender()) registrarEvento("recordatorio_atendido",{tipo_perfil:perfil.tipoPerfil||"",origen:"reactivacion",dispositivo:dispositivoActual()});
             if(contactadoRecordatorioId){try{var _tombsR2=lsGet("cleo_tombstones",[]);if(!_tombsR2.some(function(t){return t.tipo==="recordatorio"&&t.cleoId===contactadoRecordatorioId;})){writeGuard.write("cleo_tombstones",JSON.stringify(_tombsR2.concat([{tipo:"recordatorio",cleoId:contactadoRecordatorioId}])));}}catch(e){}}
@@ -20426,7 +20426,7 @@ export default function CLEO(props){
         }
 
         if(key==="perdido"){
-          var contactoEvento={tipo:"contacto",fecha:FECHA_HOY,fechaHora:new Date().toISOString(),resultado:"Sin interés — confirmado tras recontacto"};
+          var contactoEvento={id:"hist_"+Date.now()+"_"+Math.random().toString(36).slice(2,8),tipo:"contacto",fecha:FECHA_HOY,fechaHora:new Date().toISOString(),resultado:"Sin interés — confirmado tras recontacto"};
           if(huboReactivacionQueAtender()) registrarEvento("recordatorio_atendido",{tipo_perfil:perfil.tipoPerfil||"",origen:"reactivacion",dispositivo:dispositivoActual()});
           if(contactadoRecordatorioId){try{var _tombsR3=lsGet("cleo_tombstones",[]);if(!_tombsR3.some(function(t){return t.tipo==="recordatorio"&&t.cleoId===contactadoRecordatorioId;})){writeGuard.write("cleo_tombstones",JSON.stringify(_tombsR3.concat([{tipo:"recordatorio",cleoId:contactadoRecordatorioId}])));}}catch(e){}}
           setClientes(clientes.map(function(x){
