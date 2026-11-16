@@ -593,7 +593,7 @@ export async function pullUserData(userId) {
   var confirmado = await cacheConfirmado(userId, local);
   // Detectar si el remoto cambió desde la última sincronización confirmada.
   var _updConf = updatedAtConfirmado();
-  var remotoCambio = !fila.updated_at || (!!_updConf && fila.updated_at !== _updConf);
+  var remotoCambio = !fila.updated_at || fila.updated_at !== _updConf;
 
   // Calcular la huella es asíncrono. Otra pestaña puede haber editado el
   // caché mientras tanto: no reemplazar una versión que ya cambió.
