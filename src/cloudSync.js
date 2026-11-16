@@ -410,6 +410,11 @@ function escribirSnapshotLocalStorage(data, userId) {
       if (localStorage.getItem(key) !== siguientes[key]) throw new Error("Escritura local incompleta");
     });
   } catch (error) {
+    var totalBytes = 0;
+    try { for (var _i = 0; _i < localStorage.length; _i++) { totalBytes += (localStorage.getItem(localStorage.key(_i)) || '').length; } } catch (_e) {}
+    console.error('escribirSnapshotLocalStorage FAILED',
+      error && error.name, '|', error && error.message,
+      '| localStorage aprox', (totalBytes / 1024 / 1024).toFixed(2) + 'MB');
     keys.forEach(function (key) {
       try {
         if (previos[key] === null) localStorage.removeItem(key);
@@ -623,22 +628,31 @@ export async function pullUserData(userId) {
     }
   }
   console.warn('%c[CLEO cloudSync] → SOBREESCRIBIENDO local con remoto', 'color:red;font-weight:700');
-  escribirSnapshotLocalStorage(remoto, userId);
-  await recordarConfirmado(userId, remoto, fila.updated_at);
-
-  // snapshot se recalcula leyendo localStorage recién escrito (en vez de
-  // devolver fila.data tal cual) para que quede en el mismo orden de
-  // llaves que usará intentarGuardar() al serializar , ambos pasan por
-  // leerSnapshotLocalStorage(), así su JSON.stringify() coincide byte a
-  // byte cuando nada cambió, y abrir CLEO sin tocar nada no dispara una
-  // subida innecesaria.
-  var snapshotPulled = leerSnapshotLocalStorage();
-  // Breadcrumb de carga exitosa , solo métricas (duración + tamaño + conteos),
-  // nunca el snapshot en sí. Nunca es un evento independiente.
-  registrarSyncExitoso(
-    Object.assign({ durationMs: Date.now() - _tInicioPull }, metricasSnapshot(snapshotPulled))
-  );
-  return { tieneDatos: true, updatedAt: fila.updated_at, snapshot: snapshotPulled, schemaVer: schemaVerDetectado };
+  var _diagPaso = 'escribirSnapshot';
+  try {
+    escribirSnapshotLocalStorage(remoto, userId);
+    _diagPaso = 'recordarConfirmado';
+    await recordarConfirmado(userId, remoto, fila.updated_at);
+    _diagPaso = 'leerSnapshot';
+    // snapshot se recalcula leyendo localStorage recién escrito (en vez de
+    // devolver fila.data tal cual) para que quede en el mismo orden de
+    // llaves que usará intentarGuardar() al serializar , ambos pasan por
+    // leerSnapshotLocalStorage(), así su JSON.stringify() coincide byte a
+    // byte cuando nada cambió, y abrir CLEO sin tocar nada no dispara una
+    // subida innecesaria.
+    var snapshotPulled = leerSnapshotLocalStorage();
+    _diagPaso = 'registrarSyncExitoso';
+    // Breadcrumb de carga exitosa , solo métricas (duración + tamaño + conteos),
+    // nunca el snapshot en sí. Nunca es un evento independiente.
+    registrarSyncExitoso(
+      Object.assign({ durationMs: Date.now() - _tInicioPull }, metricasSnapshot(snapshotPulled))
+    );
+    return { tieneDatos: true, updatedAt: fila.updated_at, snapshot: snapshotPulled, schemaVer: schemaVerDetectado };
+  } catch (_diagErr) {
+    console.error('[CLEO diag] pullUserData FAILED paso=' + _diagPaso,
+      _diagErr && _diagErr.name, '|', _diagErr && _diagErr.message, '| code:', _diagErr && _diagErr.code);
+    throw _diagErr;
+  }
 }
 
 // ── PUSH ──────────────────────────────────────────────────────────────────
