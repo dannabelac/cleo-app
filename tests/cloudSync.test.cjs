@@ -14,7 +14,7 @@ function setup(local, remote, owner = 'A', fail = () => false) {
     update(payload){ writes++; row = {...row,...payload,updated_at:'v2'}; return this; },
     insert(payload){writes++;row={...payload,updated_at:'v2'};return this;},
     then(resolve,reject){return Promise.resolve({data:[{updated_at:row.updated_at}],error:null}).then(resolve,reject);} };
-  const context = { console:{error(){}}, Blob, Date, JSON, TextEncoder, crypto:require("node:crypto").webcrypto,
+  const context = { console:{error(){},log(){},warn(){}}, Blob, Date, JSON, TextEncoder, crypto:require("node:crypto").webcrypto,
     supabase:{from(){return chain;}},
     localStorage:{getItem:k=>values.get(k)??null,setItem(k,v){if(fail(k,v))throw Error('quota');values.set(k,v);},removeItem:k=>values.delete(k)},
     setInterval(){return 1},clearInterval(){},setTimeout,
