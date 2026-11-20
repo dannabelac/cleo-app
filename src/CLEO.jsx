@@ -5189,7 +5189,7 @@ export default function CLEO(props){
   var s12e11=useState({desde:FECHA_HOY,hasta:FECHA_HOY}); var invFormReporte=s12e11[0]; var setInvFormReporte=s12e11[1];
   var s12e12=useState(""); var invErrorReporte=s12e12[0]; var setInvErrorReporte=s12e12[1];
   var s12e13=useState(null); var invVentaId=s12e13[0]; var setInvVentaId=s12e13[1];
-  var s12e14=useState({cant:"",lugar:""}); var invVentaForm=s12e14[0]; var setInvVentaForm=s12e14[1];
+  var s12e14=useState({cant:"",motivo:"",motivoOtro:""}); var invVentaForm=s12e14[0]; var setInvVentaForm=s12e14[1];
   // ── Eventos state
   var sEvtNuevoOpen=useState(false); var evtNuevoOpen=sEvtNuevoOpen[0]; var setEvtNuevoOpen=sEvtNuevoOpen[1];
   var sEvtNuevoForm=useState({nombre:"",fecha:FECHA_HOY,productos:[]}); var evtNuevoForm=sEvtNuevoForm[0]; var setEvtNuevoForm=sEvtNuevoForm[1];
@@ -16232,8 +16232,8 @@ export default function CLEO(props){
                   !isMobile&&!editando&&!registrandoVenta&&e("div",{style:{display:"flex",gap:6,flexShrink:0,alignItems:"center"}},
                     e("button",{type:"button",
                       style:{cursor:"pointer",height:32,padding:"0 13px",borderRadius:16,border:"none",background:"#0E1328",color:"#FFFFFF",fontSize:12.5,fontWeight:700,fontFamily:FONT_CLEO,display:"inline-flex",alignItems:"center",gap:6,whiteSpace:"nowrap"},
-                      onClick:function(ev){ ev.stopPropagation(); setInvVentaId(p.id); setInvDetalleId(null); setInvEditId(null); setInvVentaForm({cant:"",lugar:""}); }
-                    },"Anotar ventas"),
+                      onClick:function(ev){ ev.stopPropagation(); setInvVentaId(p.id); setInvDetalleId(null); setInvEditId(null); setInvVentaForm({cant:"",motivo:"",motivoOtro:""}); }
+                    },"Reportar merma"),
                     e("button",{type:"button",
                       style:{cursor:"pointer",height:32,padding:"0 13px",borderRadius:16,border:"1.5px solid #E3E6EF",background:"#FFFFFF",color:"#0E1328",fontSize:12.5,fontWeight:700,fontFamily:FONT_CLEO,display:"inline-flex",alignItems:"center",gap:5,whiteSpace:"nowrap"},
                       onClick:function(ev){ ev.stopPropagation(); setInvEditId(p.id); setInvDetalleId(null); setInvVentaId(null); setInvEditForm({stock:String(p.stock),stockMinimo:p.stockMinimo!=null?String(p.stockMinimo):""}); }
@@ -16252,8 +16252,8 @@ export default function CLEO(props){
                 isMobile&&!editando&&!registrandoVenta&&e("div",{style:{display:"flex",gap:8,padding:"2px 20px 14px"}},
                   e("button",{type:"button",
                     style:{cursor:"pointer",flex:1,height:40,borderRadius:20,border:"none",background:"#0E1328",color:"#FFFFFF",fontSize:13.5,fontWeight:700,fontFamily:FONT_CLEO,display:"inline-flex",alignItems:"center",justifyContent:"center"},
-                    onClick:function(ev){ ev.stopPropagation(); setInvVentaId(p.id); setInvDetalleId(null); setInvEditId(null); setInvVentaForm({cant:"",lugar:""}); }
-                  },"Anotar ventas"),
+                    onClick:function(ev){ ev.stopPropagation(); setInvVentaId(p.id); setInvDetalleId(null); setInvEditId(null); setInvVentaForm({cant:"",motivo:"",motivoOtro:""}); }
+                  },"Reportar merma"),
                   e("button",{type:"button",
                     style:{cursor:"pointer",flex:1,height:40,borderRadius:20,border:"1.5px solid #E3E6EF",background:"#FFFFFF",color:"#0E1328",fontSize:13.5,fontWeight:700,fontFamily:FONT_CLEO,display:"inline-flex",alignItems:"center",justifyContent:"center",gap:5},
                     onClick:function(ev){ ev.stopPropagation(); setInvEditId(p.id); setInvDetalleId(null); setInvVentaId(null); setInvEditForm({stock:String(p.stock),stockMinimo:p.stockMinimo!=null?String(p.stockMinimo):""}); }
@@ -16317,39 +16317,49 @@ export default function CLEO(props){
                   )
                 ),
 
-                // ── Form Registrar venta
+                // ── Form Reportar merma
                 registrandoVenta&&e("div",{style:{borderTop:"1px solid "+C.border,background:C.purplePale||C.surfaceUp,padding:"12px "+(isMobile?"12px":"16px")}},
                   e("div",{style:{fontSize:13,fontWeight:600,color:C.text,marginBottom:10}},
-                    "¿Cuántas ",e("span",{style:{color:C.purple}},p.nombre)," vendiste?"
+                    "¿Cuántas ",e("span",{style:{color:C.purple}},p.nombre)," vas a reportar como merma?"
                   ),
-                  e("div",{style:{display:"grid",gridTemplateColumns:isMobile?"1fr":"1fr 1fr",gap:10,marginBottom:10}},
-                    e("div",null,
-                      e("label",{style:{fontSize:11,fontWeight:600,color:C.textMuted,display:"block",marginBottom:4}},"Cantidad vendida"),
-                      e("input",{type:"number",min:"1",inputMode:"numeric",autoFocus:true,
-                        value:invVentaForm.cant,
-                        placeholder:"0",
-                        onChange:function(ev){ setInvVentaForm(Object.assign({},invVentaForm,{cant:ev.target.value})); },
-                        style:Object.assign({},st.inp,{marginBottom:0,fontSize:16,fontWeight:700,textAlign:"center"})
-                      })
-                    ),
-                    e("div",null,
-                      e("label",{style:{fontSize:11,fontWeight:600,color:C.textMuted,display:"block",marginBottom:4}},"¿Dónde? (opcional)"),
-                      e("input",{type:"text",
-                        value:invVentaForm.lugar,
-                        placeholder:"ej. Bazar Mérida",
-                        onChange:function(ev){ setInvVentaForm(Object.assign({},invVentaForm,{lugar:ev.target.value})); },
-                        style:Object.assign({},st.inp,{marginBottom:0})
+                  e("div",{style:{marginBottom:10}},
+                    e("label",{style:{fontSize:11,fontWeight:600,color:C.textMuted,display:"block",marginBottom:4}},"Cantidad"),
+                    e("input",{type:"number",min:"1",inputMode:"numeric",autoFocus:true,
+                      value:invVentaForm.cant,
+                      placeholder:"0",
+                      onChange:function(ev){ setInvVentaForm(Object.assign({},invVentaForm,{cant:ev.target.value})); },
+                      style:Object.assign({},st.inp,{marginBottom:0,fontSize:16,fontWeight:700,textAlign:"center",width:96})
+                    })
+                  ),
+                  e("div",{style:{marginBottom:invVentaForm.motivo==="otro"?8:10}},
+                    e("label",{style:{fontSize:11,fontWeight:600,color:C.textMuted,display:"block",marginBottom:4}},"¿Qué pasó?"),
+                    e("div",{style:{display:"flex",gap:6,flexWrap:"wrap"}},
+                      [{v:"Muestra / regalo"},{v:"Daño o pérdida"},{v:"Error de conteo"},{v:"otro",l:"Otro"}].map(function(op){
+                        var activo=invVentaForm.motivo===op.v;
+                        return e("button",{key:op.v,type:"button",
+                          style:{cursor:"pointer",padding:"6px 12px",borderRadius:20,border:"1.5px solid "+(activo?C.purple:C.border),background:activo?C.purple+"15":"transparent",fontSize:12,fontWeight:activo?700:500,color:activo?C.purple:C.textMuted},
+                          onClick:function(){ setInvVentaForm(Object.assign({},invVentaForm,{motivo:activo?"":op.v,motivoOtro:""})); }
+                        },op.l||op.v);
                       })
                     )
                   ),
+                  invVentaForm.motivo==="otro"&&e("input",{type:"text",
+                    value:invVentaForm.motivoOtro,
+                    placeholder:"ej. Se venció, se lo robaron...",
+                    onChange:function(ev){ setInvVentaForm(Object.assign({},invVentaForm,{motivoOtro:ev.target.value})); },
+                    style:Object.assign({},st.inp,{marginBottom:10,fontSize:13})
+                  }),
                   (function(){
                     var cantNum=Number(invVentaForm.cant);
                     var cantOk=cantNum>0&&!isNaN(cantNum);
+                    var disp=p._disponibles!=null?p._disponibles:p.stock;
                     var stockDespues=cantOk?Math.max(0,p.stock-cantNum):null;
                     var sinStock=cantOk&&cantNum>p.stock;
-                    return e("div",{style:{fontSize:12,minHeight:16,marginBottom:10,color:sinStock?C.red:C.green}},
+                    var comeApartado=cantOk&&!sinStock&&cantNum>disp;
+                    return e("div",{style:{fontSize:12,minHeight:16,marginBottom:10,color:sinStock?C.red:comeApartado?C.amber:C.textMuted}},
                       !cantOk?null
-                      :sinStock?"Solo tienes "+p.stock+" — quedarás con 0 disponibles"
+                      :sinStock?"Solo tienes "+p.stock+" en total — quedarás con 0"
+                      :comeApartado?"De estas, "+(cantNum-disp)+" ya estaban apartadas para un pedido — avísale a ese cliente"
                       :stockDespues===0?"Te quedarás sin existencias de este producto"
                       :"Te quedarán "+stockDespues+" unidades después"
                     );
@@ -16360,15 +16370,15 @@ export default function CLEO(props){
                       onClick:function(){ setInvVentaId(null); }
                     },"Cancelar"),
                     e("button",{type:"button",
-                      disabled:!(Number(invVentaForm.cant)>0),
-                      style:{cursor:Number(invVentaForm.cant)>0?"pointer":"not-allowed",padding:"8px 18px",borderRadius:8,border:"none",background:Number(invVentaForm.cant)>0?C.purple:"#D1D5DB",color:"#fff",fontSize:13,fontWeight:700},
+                      disabled:!(Number(invVentaForm.cant)>0)||!invVentaForm.motivo||(invVentaForm.motivo==="otro"&&!(invVentaForm.motivoOtro||"").trim()),
+                      style:(function(){ var hab=Number(invVentaForm.cant)>0&&invVentaForm.motivo&&(invVentaForm.motivo!=="otro"||(invVentaForm.motivoOtro||"").trim()); return {cursor:hab?"pointer":"not-allowed",padding:"8px 18px",borderRadius:8,border:"none",background:hab?C.purple:"#D1D5DB",color:"#fff",fontSize:13,fontWeight:700}; })(),
                       onClick:function(){
                         var cantNum=Number(invVentaForm.cant);
                         if(!(cantNum>0)) return;
-                        var lugar=(invVentaForm.lugar||"").trim();
+                        var motivoFinal=invVentaForm.motivo==="otro"?(invVentaForm.motivoOtro||"").trim():invVentaForm.motivo;
+                        if(!motivoFinal) return;
                         var stockNuevo=Math.max(0,p.stock-cantNum);
-                        var nota=lugar?"Salida manual · "+cantNum+" en "+lugar:"Salida manual · "+cantNum;
-                        var mov={id:"mov_"+Date.now(),fecha:FECHA_HOY,tipo:"venta_directa",cantAntes:p.stock,cantDespues:stockNuevo,nota:nota};
+                        var mov={id:"mov_"+Date.now(),fecha:FECHA_HOY,tipo:"merma",cantAntes:p.stock,cantDespues:stockNuevo,nota:motivoFinal};
                         setProductosCat(productosCat.map(function(x){
                           return x.id===p.id?Object.assign({},x,{stock:stockNuevo,movimientos:(x.movimientos||[]).concat([mov])}):x;
                         }));
@@ -17756,16 +17766,18 @@ export default function CLEO(props){
                         var movsEnPeriodo=(p.movimientos||[]).filter(function(mv){ return mv.fecha>=desde&&mv.fecha<=hasta; });
                         var salidas=movsEnPeriodo.filter(function(mv){ return mv.tipo==="entrega"||mv.tipo==="venta_directa"; }).reduce(function(s,mv){ return s+Math.max(0,(mv.cantAntes||0)-(mv.cantDespues||0)); },0);
                         var entradas=movsEnPeriodo.filter(function(mv){ return mv.tipo==="ajuste_cantidad"&&(mv.cantDespues||0)>(mv.cantAntes||0); }).reduce(function(s,mv){ return s+Math.max(0,(mv.cantDespues||0)-(mv.cantAntes||0)); },0);
+                        var mermas=movsEnPeriodo.filter(function(mv){ return mv.tipo==="merma"; }).reduce(function(s,mv){ return s+Math.max(0,(mv.cantAntes||0)-(mv.cantDespues||0)); },0);
                         var movsOrdenados=movsEnPeriodo.slice().sort(function(a,b){ return a.fecha<b.fecha?-1:1; }).map(function(mv){ return {fecha:mv.fecha,nota:mv.nota||"",cantAntes:mv.cantAntes,cantDespues:mv.cantDespues,tipo:mv.tipo}; });
-                        return {id:p.id,nombre:p.nombre,salidas:salidas,entradas:entradas,stockActual:p.stock,stockMinimo:p.stockMinimo!=null?p.stockMinimo:null,movimientos:movsOrdenados};
-                      }).filter(function(f){ return f.salidas>0||f.entradas>0||f.movimientos.length>0; }).sort(function(a,b){ return (b.salidas+b.entradas)-(a.salidas+a.entradas); });
+                        return {id:p.id,nombre:p.nombre,salidas:salidas,entradas:entradas,mermas:mermas,stockActual:p.stock,stockMinimo:p.stockMinimo!=null?p.stockMinimo:null,movimientos:movsOrdenados};
+                      }).filter(function(f){ return f.salidas>0||f.entradas>0||f.mermas>0||f.movimientos.length>0; }).sort(function(a,b){ return (b.salidas+b.entradas+b.mermas)-(a.salidas+a.entradas+a.mermas); });
                       var totalSalidas=filas.reduce(function(s,f){ return s+f.salidas; },0);
                       var totalEntradas=filas.reduce(function(s,f){ return s+f.entradas; },0);
+                      var totalMermas=filas.reduce(function(s,f){ return s+f.mermas; },0);
                       var agotados=productosConInv.filter(function(p){ return p.stock===0; }).length;
                       var mismodia=desde===hasta;
                       var periodoLabel=mismodia?(desde===FECHA_HOY?"Hoy":fechaCortaInv(desde)):(fechaCortaInv(desde)+" – "+fechaCortaInv(hasta));
                       var periodoRango=mismodia?fechaCortaInv(desde):(fechaCortaInv(desde)+" al "+fechaCortaInv(hasta));
-                      await manejarDescargarReporteInventarioPDF({negocio:perfil,filas:filas,periodoLabel:periodoLabel,periodoRango:periodoRango,totalSalidas:totalSalidas,totalEntradas:totalEntradas,agotados:agotados});
+                      await manejarDescargarReporteInventarioPDF({negocio:perfil,filas:filas,periodoLabel:periodoLabel,periodoRango:periodoRango,totalSalidas:totalSalidas,totalEntradas:totalEntradas,totalMermas:totalMermas,agotados:agotados});
                     }finally{ setInvDescargando(false); }
                   })();
                 }},invDescargando?"Generando…":"Descargar PDF")

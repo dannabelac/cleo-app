@@ -46,6 +46,7 @@ var ROJO   = "#DC2626";
 
 var COL_ENT = 72;
 var COL_SAL = 72;
+var COL_MER = 64;
 var COL_ACT = 80;
 
 var COL_HIST_FECHA   = 72;
@@ -85,8 +86,9 @@ var S = StyleSheet.create({
   statNum:   { color: TXT, fontSize: 24, fontFamily: "Helvetica-Bold", marginBottom: 3 },
   statNumR:  { color: ROJO, fontSize: 24, fontFamily: "Helvetica-Bold", marginBottom: 3 },
   statNumV:  { color: VERDE, fontSize: 24, fontFamily: "Helvetica-Bold", marginBottom: 3 },
+  statNumA:  { color: AMBAR, fontSize: 24, fontFamily: "Helvetica-Bold", marginBottom: 3 },
   statSub:   { color: DIM, fontSize: 8 },
-  statMid:   { marginHorizontal: 8 },
+  statMid:   { marginHorizontal: 6 },
 
   // ── Sección ──────────────────────────────────────────────────────────────────
   secRow:    { flexDirection: "row", alignItems: "center", marginBottom: 10 },
@@ -101,6 +103,7 @@ var S = StyleSheet.create({
   },
   thProd:  { flex: 1, color: MUTED, fontSize: 8, fontFamily: "Helvetica-Bold", letterSpacing: 0.4 },
   thNum:   { width: COL_ENT, color: MUTED, fontSize: 8, fontFamily: "Helvetica-Bold", letterSpacing: 0.4, textAlign: "right" },
+  thMer:   { width: COL_MER, color: MUTED, fontSize: 8, fontFamily: "Helvetica-Bold", letterSpacing: 0.4, textAlign: "right" },
   thAct:   { width: COL_ACT, color: MUTED, fontSize: 8, fontFamily: "Helvetica-Bold", letterSpacing: 0.4, textAlign: "right" },
 
   fila: {
@@ -111,6 +114,8 @@ var S = StyleSheet.create({
   filaNombre: { flex: 1, color: TXT, fontSize: 10, fontFamily: "Helvetica-Bold" },
   filaNumV:   { width: COL_ENT, color: VERDE, fontSize: 10, fontFamily: "Helvetica-Bold", textAlign: "right" },
   filaNumR:   { width: COL_SAL, color: ROJO,  fontSize: 10, fontFamily: "Helvetica-Bold", textAlign: "right" },
+  filaNumMer: { width: COL_MER, color: AMBAR, fontSize: 10, fontFamily: "Helvetica-Bold", textAlign: "right" },
+  filaNumMerVacio: { width: COL_MER, color: TXT, fontSize: 10, textAlign: "right" },
   filaNum:    { width: COL_ACT, color: TXT,   fontSize: 10, textAlign: "right" },
   filaNumA:   { width: COL_ACT, color: AMBAR, fontSize: 10, fontFamily: "Helvetica-Bold", textAlign: "right" },
   filaNumRed: { width: COL_ACT, color: ROJO,  fontSize: 10, fontFamily: "Helvetica-Bold", textAlign: "right" },
@@ -122,6 +127,7 @@ var S = StyleSheet.create({
   },
   totalLabel: { flex: 1, color: "#ffffff", fontSize: 10, fontFamily: "Helvetica-Bold" },
   totalNum:   { width: COL_ENT, color: "#ffffff", fontSize: 10, fontFamily: "Helvetica-Bold", textAlign: "right" },
+  totalNumMer:{ width: COL_MER, color: "#ffffff", fontSize: 10, fontFamily: "Helvetica-Bold", textAlign: "right" },
   totalAct:   { width: COL_ACT, color: DIM,      fontSize: 10, textAlign: "right" },
 
   // ── Historial ────────────────────────────────────────────────────────────────
@@ -146,6 +152,7 @@ var S = StyleSheet.create({
   hNota:    { flex: 1,               color: TXT,   fontSize: 9 },
   hDeltaV:  { width: COL_HIST_DELTA, color: VERDE, fontSize: 9, fontFamily: "Helvetica-Bold", textAlign: "right" },
   hDeltaR:  { width: COL_HIST_DELTA, color: ROJO,  fontSize: 9, fontFamily: "Helvetica-Bold", textAlign: "right" },
+  hDeltaA:  { width: COL_HIST_DELTA, color: AMBAR, fontSize: 9, fontFamily: "Helvetica-Bold", textAlign: "right" },
   hDelta:   { width: COL_HIST_DELTA, color: MUTED, fontSize: 9, textAlign: "right" },
 
   // ── Vacío / Footer ───────────────────────────────────────────────────────────
@@ -157,7 +164,7 @@ var S = StyleSheet.create({
   footerR: { color: DIM, fontSize: 8, fontFamily: "Helvetica-Bold" },
 });
 
-export function ReporteInventarioPDF({ negocio, filas, periodoLabel, periodoRango, totalSalidas, totalEntradas, agotados }) {
+export function ReporteInventarioPDF({ negocio, filas, periodoLabel, periodoRango, totalSalidas, totalEntradas, totalMermas, agotados }) {
   var R = React.createElement;
   var nombre = txt(negocio && negocio.nombre ? negocio.nombre : "Mi negocio", 55);
   var hayFilas = Array.isArray(filas) && filas.length > 0;
@@ -197,6 +204,11 @@ export function ReporteInventarioPDF({ negocio, filas, periodoLabel, periodoRang
           R(Text, { style: S.statSub }, (totalSalidas || 0) === 1 ? "unidad vendida/entregada" : "unidades vendidas/entregadas")
         ),
         R(View, { style: Object.assign({}, S.statBox, S.statMid) },
+          R(Text, { style: S.statLabel }, "MERMAS"),
+          R(Text, { style: (totalMermas || 0) > 0 ? S.statNumA : S.statNum }, String(totalMermas || 0)),
+          R(Text, { style: S.statSub }, (totalMermas || 0) === 1 ? "unidad perdida/regalada" : "unidades perdidas/regaladas")
+        ),
+        R(View, { style: Object.assign({}, S.statBox, S.statMid) },
           R(Text, { style: S.statLabel }, "ENTRADAS"),
           R(Text, { style: (totalEntradas || 0) > 0 ? S.statNumV : S.statNum }, String(totalEntradas || 0)),
           R(Text, { style: S.statSub }, (totalEntradas || 0) === 1 ? "unidad añadida" : "unidades añadidas")
@@ -220,6 +232,7 @@ export function ReporteInventarioPDF({ negocio, filas, periodoLabel, periodoRang
               R(Text, { style: S.thProd }, "PRODUCTO"),
               R(Text, { style: S.thNum }, "ENTRADAS"),
               R(Text, { style: S.thNum }, "SALIDAS"),
+              R(Text, { style: S.thMer }, "MERMAS"),
               R(Text, { style: S.thAct }, "STOCK ACTUAL")
             ),
             filas.map(function(f, i) {
@@ -229,6 +242,7 @@ export function ReporteInventarioPDF({ negocio, filas, periodoLabel, periodoRang
                 R(Text, { style: S.filaNombre }, txt(f.nombre, 40)),
                 R(Text, { style: f.entradas > 0 ? S.filaNumV : Object.assign({}, S.filaNum, { width: COL_ENT }) }, f.entradas > 0 ? "+" + f.entradas : "—"),
                 R(Text, { style: f.salidas > 0 ? S.filaNumR : Object.assign({}, S.filaNum, { width: COL_SAL }) }, f.salidas > 0 ? "-" + f.salidas : "—"),
+                R(Text, { style: f.mermas > 0 ? S.filaNumMer : S.filaNumMerVacio }, f.mermas > 0 ? "-" + f.mermas : "—"),
                 R(Text, { style: actStyle }, String(f.stockActual || 0))
               );
             }),
@@ -236,6 +250,7 @@ export function ReporteInventarioPDF({ negocio, filas, periodoLabel, periodoRang
               R(Text, { style: S.totalLabel }, "Total"),
               R(Text, { style: S.totalNum }, (totalEntradas || 0) > 0 ? "+" + totalEntradas : "—"),
               R(Text, { style: S.totalNum }, (totalSalidas || 0) > 0 ? "-" + totalSalidas : "—"),
+              R(Text, { style: S.totalNumMer }, (totalMermas || 0) > 0 ? "-" + totalMermas : "—"),
               R(Text, { style: S.totalAct }, "")
             )
           )
@@ -256,14 +271,15 @@ export function ReporteInventarioPDF({ negocio, filas, periodoLabel, periodoRang
         historial.map(function(mv, i) {
           var bg = i % 2 === 1 ? FONDO : "#ffffff";
           var delta = diffStr(mv.cantAntes, mv.cantDespues, mv.tipo);
-          var esEntrada = delta.charAt(0) === "+";
-          var esSalida = delta.charAt(0) === "-";
+          var esMerma = mv.tipo === "merma";
+          var esEntrada = !esMerma && delta.charAt(0) === "+";
+          var esSalida = !esMerma && delta.charAt(0) === "-";
           var notaDisp = mv.nota ? txt(mv.nota, 55) : (mv.cantAntes != null && mv.cantDespues != null ? "De " + mv.cantAntes + " a " + mv.cantDespues : "");
           return R(View, { key: String(i), style: Object.assign({}, S.hFila, { backgroundColor: bg }) },
             R(Text, { style: S.hFecha }, fechaCorta(mv.fecha)),
             R(Text, { style: S.hProd }, txt(mv.producto, 22)),
             R(Text, { style: S.hNota }, notaDisp),
-            R(Text, { style: esEntrada ? S.hDeltaV : esSalida ? S.hDeltaR : S.hDelta }, delta)
+            R(Text, { style: esMerma ? S.hDeltaA : esEntrada ? S.hDeltaV : esSalida ? S.hDeltaR : S.hDelta }, delta)
           );
         })
       ),
