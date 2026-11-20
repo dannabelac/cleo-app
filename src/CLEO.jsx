@@ -7860,6 +7860,25 @@ export default function CLEO(props){
   var sPedFormPagoModal=useState({monto:"",fecha:FECHA_HOY,concepto:"Anticipo",metodoPago:"efectivo"}); var formPagoPedidoModal=sPedFormPagoModal[0]; var setFormPagoPedidoModal=sPedFormPagoModal[1];
   var sPedEdit=useState(null); var pedidoEditando=sPedEdit[0]; var setPedidoEditando=sPedEdit[1];
   var sPromosRapidas=useState(function(){ try{ return JSON.parse(localStorage.getItem("cleo_promos_rapidas")||"[]")||[]; }catch(e){ return []; } }); var promosRapidas=sPromosRapidas[0]; var setPromosRapidas=sPromosRapidas[1];
+  // cleo_promos_rapidas no pasa por localWriteGuard (no es dato de negocio
+  // crítico) , pero SÍ puede cambiar en otra pestaña/dispositivo con la
+  // misma cuenta abierta (ej. tablet en el mostrador + celular). Sin esto,
+  // esta pestaña se queda con la lista que tenía al cargar y nunca se
+  // entera de una promo agregada en otro lado — y al guardar su propia
+  // promo, la escribiría usando esa copia vieja, borrando sin querer lo
+  // que el otro lado acaba de agregar. Esto la mantiene al día en vivo.
+  useEffect(function(){
+    function onStoragePromos(ev){
+      if(ev.storageArea!==localStorage) return;
+      if(ev.key!=="cleo_promos_rapidas") return;
+      try{
+        var parsed=ev.newValue?JSON.parse(ev.newValue):[];
+        setPromosRapidas(Array.isArray(parsed)?parsed:[]);
+      }catch(e){}
+    }
+    window.addEventListener("storage",onStoragePromos);
+    return function(){ window.removeEventListener("storage",onStoragePromos); };
+  },[]);
   var sNuevoPedidoModal=useState(false); var nuevoPedidoModal=sNuevoPedidoModal[0]; var setNuevoPedidoModal=sNuevoPedidoModal[1];
   var pedidoVacio={clienteId:"",nuevoNombre:"",items:[{id:"it_"+Date.now(),catalogoId:null,nombre:"",cantidad:1,precioUnitario:"",total:0}],anticipo:"",metodoPago:"efectivo",fechaEntrega:"",notas:"",oportunidadRespuesta:null,promoVenta:"",promoVentaOtra:""};
   var sNuevoPedidoForm=useState(pedidoVacio); var nuevoPedidoForm=sNuevoPedidoForm[0]; var setNuevoPedidoForm=sNuevoPedidoForm[1];
@@ -9968,22 +9987,28 @@ export default function CLEO(props){
     setModalVenta(true);
   }
 
+  // Lee cleo_promos_rapidas directo de localStorage (nunca del estado de
+  // React en memoria) justo antes de modificarlo. Si otra pestaña/dispositivo
+  // con la misma cuenta ya guardó una promo nueva, esta pestaña puede no
+  // haberla visto todavía en su propio estado , partir de localStorage en
+  // vez del `prev` de React evita que una escritura aquí borre sin querer
+  // lo que el otro lado acaba de agregar.
+  function leerPromosRapidasFrescas(){
+    try{ var arr=JSON.parse(localStorage.getItem("cleo_promos_rapidas")||"[]"); return Array.isArray(arr)?arr:[]; }
+    catch(e){ return promosRapidas; }
+  }
   function guardarPromoRapida(texto){
     var t=(texto||"").trim();
     if(!t||t==="2×1"||t==="3×2") return;
-    setPromosRapidas(function(prev){
-      var arr=prev.filter(function(x){ return x.toLowerCase()!==t.toLowerCase(); });
-      arr=[t].concat(arr).slice(0,8);
-      try{ localStorage.setItem("cleo_promos_rapidas",JSON.stringify(arr)); }catch(e){}
-      return arr;
-    });
+    var arr=leerPromosRapidasFrescas().filter(function(x){ return x.toLowerCase()!==t.toLowerCase(); });
+    arr=[t].concat(arr).slice(0,8);
+    try{ localStorage.setItem("cleo_promos_rapidas",JSON.stringify(arr)); }catch(e){}
+    setPromosRapidas(arr);
   }
   function eliminarPromoRapida(texto){
-    setPromosRapidas(function(prev){
-      var arr=prev.filter(function(x){ return x!==texto; });
-      try{ localStorage.setItem("cleo_promos_rapidas",JSON.stringify(arr)); }catch(e){}
-      return arr;
-    });
+    var arr=leerPromosRapidasFrescas().filter(function(x){ return x!==texto; });
+    try{ localStorage.setItem("cleo_promos_rapidas",JSON.stringify(arr)); }catch(e){}
+    setPromosRapidas(arr);
   }
 
   function guardarVentaDirecta(crearCliente){
