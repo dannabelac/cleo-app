@@ -16233,7 +16233,7 @@ export default function CLEO(props){
                     e("button",{type:"button",
                       style:{cursor:"pointer",height:32,padding:"0 13px",borderRadius:16,border:"none",background:"#0E1328",color:"#FFFFFF",fontSize:12.5,fontWeight:700,fontFamily:FONT_CLEO,display:"inline-flex",alignItems:"center",gap:6,whiteSpace:"nowrap"},
                       onClick:function(ev){ ev.stopPropagation(); setInvVentaId(p.id); setInvDetalleId(null); setInvEditId(null); setInvVentaForm({cant:"",motivo:"",motivoOtro:""}); }
-                    },"Reportar merma"),
+                    },"Registrar salida"),
                     e("button",{type:"button",
                       style:{cursor:"pointer",height:32,padding:"0 13px",borderRadius:16,border:"1.5px solid #E3E6EF",background:"#FFFFFF",color:"#0E1328",fontSize:12.5,fontWeight:700,fontFamily:FONT_CLEO,display:"inline-flex",alignItems:"center",gap:5,whiteSpace:"nowrap"},
                       onClick:function(ev){ ev.stopPropagation(); setInvEditId(p.id); setInvDetalleId(null); setInvVentaId(null); setInvEditForm({stock:String(p.stock),stockMinimo:p.stockMinimo!=null?String(p.stockMinimo):""}); }
@@ -16253,7 +16253,7 @@ export default function CLEO(props){
                   e("button",{type:"button",
                     style:{cursor:"pointer",flex:1,height:40,borderRadius:20,border:"none",background:"#0E1328",color:"#FFFFFF",fontSize:13.5,fontWeight:700,fontFamily:FONT_CLEO,display:"inline-flex",alignItems:"center",justifyContent:"center"},
                     onClick:function(ev){ ev.stopPropagation(); setInvVentaId(p.id); setInvDetalleId(null); setInvEditId(null); setInvVentaForm({cant:"",motivo:"",motivoOtro:""}); }
-                  },"Reportar merma"),
+                  },"Registrar salida"),
                   e("button",{type:"button",
                     style:{cursor:"pointer",flex:1,height:40,borderRadius:20,border:"1.5px solid #E3E6EF",background:"#FFFFFF",color:"#0E1328",fontSize:13.5,fontWeight:700,fontFamily:FONT_CLEO,display:"inline-flex",alignItems:"center",justifyContent:"center",gap:5},
                     onClick:function(ev){ ev.stopPropagation(); setInvEditId(p.id); setInvDetalleId(null); setInvVentaId(null); setInvEditForm({stock:String(p.stock),stockMinimo:p.stockMinimo!=null?String(p.stockMinimo):""}); }
@@ -16317,10 +16317,10 @@ export default function CLEO(props){
                   )
                 ),
 
-                // ── Form Reportar merma
+                // ── Form Registrar salida
                 registrandoVenta&&e("div",{style:{borderTop:"1px solid "+C.border,background:C.purplePale||C.surfaceUp,padding:"12px "+(isMobile?"12px":"16px")}},
                   e("div",{style:{fontSize:13,fontWeight:600,color:C.text,marginBottom:10}},
-                    "¿Cuántas ",e("span",{style:{color:C.purple}},p.nombre)," vas a reportar como merma?"
+                    "¿Cuántas ",e("span",{style:{color:C.purple}},p.nombre)," vas a registrar como salida?"
                   ),
                   e("div",{style:{marginBottom:10}},
                     e("label",{style:{fontSize:11,fontWeight:600,color:C.textMuted,display:"block",marginBottom:4}},"Cantidad"),
