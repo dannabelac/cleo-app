@@ -10165,10 +10165,14 @@ export default function CLEO(props){
           return cl&&cl.nombre?cl.nombre:null;
         })();
         setProductosCat(function(prev){ return prev.map(function(px){
-          var it=itemsVRConInv.find(function(x){ return x.catalogoId===px.id; });
-          if(!it) return px;
+          // Suma TODAS las líneas de este producto en la venta, no solo la
+          // primera , "Venta rápida" permite agregar el mismo producto como
+          // líneas separadas (ej. 2× "×1 Crema de Ajo") en vez de una sola
+          // línea con cantidad 2, y un .find() aquí descontaba de menos.
+          var cantRaw=itemsVRConInv.filter(function(x){ return x.catalogoId===px.id; }).reduce(function(s,x){ return s+Math.max(0,Number(x.cantidad)||0); },0);
+          if(cantRaw===0) return px;
           var factorVR=itemBaseVD.promoVenta==="2×1"?2:itemBaseVD.promoVenta==="3×2"?3:1;
-          var cant=Math.ceil(Math.max(0,Number(it.cantidad)||0)*factorVR);
+          var cant=Math.ceil(cantRaw*factorVR);
           if(cant===0) return px;
           var stockNuevo=Math.max(0,(px.stock||0)-cant);
           var notaPromo=itemBaseVD.promoVenta?" · "+itemBaseVD.promoVenta:"";
@@ -10184,10 +10188,13 @@ export default function CLEO(props){
         setEventosInv(function(prev){ return (prev||[]).map(function(ev){
           if(ev.id!==evtIdReal) return ev;
           var ventaItems=itemBaseVD.items||[];
+          // Suma TODAS las líneas que coincidan con este producto, no solo la
+          // primera con .find() , misma razón que en el descuento de stock de
+          // arriba: el mismo producto puede venir en más de una línea.
           var nuevosProds=(ev.productos||[]).map(function(ep){
-            var vit=ventaItems.find(function(x){ return (x.catalogoId&&ep.catalogoId)?String(x.catalogoId)===String(ep.catalogoId):(x.nombre||"").trim().toLowerCase()===(ep.nombre||"").trim().toLowerCase(); });
-            if(!vit) return ep;
-            return Object.assign({},ep,{cantidadVendida:(ep.cantidadVendida||0)+Math.max(0,Number(vit.cantidad)||0)});
+            var cantVendidaItem=ventaItems.filter(function(x){ return (x.catalogoId&&ep.catalogoId)?String(x.catalogoId)===String(ep.catalogoId):(x.nombre||"").trim().toLowerCase()===(ep.nombre||"").trim().toLowerCase(); }).reduce(function(s,x){ return s+Math.max(0,Number(x.cantidad)||0); },0);
+            if(cantVendidaItem===0) return ep;
+            return Object.assign({},ep,{cantidadVendida:(ep.cantidadVendida||0)+cantVendidaItem});
           });
           var pedIdStr=String(itemBaseVD.id);
           var movNuevo={id:"emov_"+Date.now(),fecha:FECHA_HOY,tipo:"venta",pedidoId:pedIdStr,nota:conceptoFinal||""};
@@ -10887,11 +10894,14 @@ export default function CLEO(props){
           setEventosInv(function(prev){ return (prev||[]).map(function(ev){
             if((ev.pedidosIds||[]).map(String).indexOf(_pedCancelId)<0) return ev;
             var _items=pedidoAntesEstado.items||[];
+            // Misma suma de todas las líneas que coinciden, no solo la
+            // primera , si no, cancelar una venta con el mismo producto en
+            // más de una línea dejaba un residuo de "vendida" fantasma.
             return Object.assign({},ev,{
               productos:(ev.productos||[]).map(function(ep){
-                var _it=_items.find(function(x){ return (x.catalogoId&&ep.catalogoId)?String(x.catalogoId)===String(ep.catalogoId):(x.nombre||"").trim().toLowerCase()===(ep.nombre||"").trim().toLowerCase(); });
-                if(!_it) return ep;
-                return Object.assign({},ep,{cantidadVendida:Math.max(0,(ep.cantidadVendida||0)-(Math.max(0,Number(_it.cantidad)||0)))});
+                var _cantVendidaItem=_items.filter(function(x){ return (x.catalogoId&&ep.catalogoId)?String(x.catalogoId)===String(ep.catalogoId):(x.nombre||"").trim().toLowerCase()===(ep.nombre||"").trim().toLowerCase(); }).reduce(function(s,x){ return s+Math.max(0,Number(x.cantidad)||0); },0);
+                if(_cantVendidaItem===0) return ep;
+                return Object.assign({},ep,{cantidadVendida:Math.max(0,(ep.cantidadVendida||0)-_cantVendidaItem)});
               }),
               movimientos:(ev.movimientos||[]).concat([{id:"emov_"+Date.now(),fecha:FECHA_HOY,tipo:"cancelacion",pedidoId:_pedCancelId,nota:"Venta anulada"}])
             });
@@ -16814,9 +16824,10 @@ export default function CLEO(props){
                     });
                     if(itemsConInv.length>0){
                       setProductosCat(function(prev){ return prev.map(function(px){
-                        var it=itemsConInv.find(function(x){ return x.catalogoId===px.id; });
-                        if(!it) return px;
-                        var cant=Math.max(0,Number(it.cantidad)||0);
+                        // Suma todas las líneas de este producto, no solo la
+                        // primera con .find() , si la venta tenía el mismo
+                        // producto en 2 líneas, solo se reponía una.
+                        var cant=itemsConInv.filter(function(x){ return x.catalogoId===px.id; }).reduce(function(s,x){ return s+Math.max(0,Number(x.cantidad)||0); },0);
                         if(cant===0) return px;
                         var stkNuevo=(px.stock||0)+cant;
                         var mov={id:"mov_"+Date.now()+"_"+px.id,fecha:FECHA_HOY,tipo:"ajuste_cantidad",cantAntes:px.stock,cantDespues:stkNuevo,nota:"Venta anulada en evento"};
