@@ -5189,7 +5189,7 @@ export default function CLEO(props){
   var s12e11=useState({desde:FECHA_HOY,hasta:FECHA_HOY}); var invFormReporte=s12e11[0]; var setInvFormReporte=s12e11[1];
   var s12e12=useState(""); var invErrorReporte=s12e12[0]; var setInvErrorReporte=s12e12[1];
   var s12e13=useState(null); var invVentaId=s12e13[0]; var setInvVentaId=s12e13[1];
-  var s12e14=useState({cant:"",lugar:""}); var invVentaForm=s12e14[0]; var setInvVentaForm=s12e14[1];
+  var s12e14=useState({cant:"",motivo:"",motivoOtro:""}); var invVentaForm=s12e14[0]; var setInvVentaForm=s12e14[1];
   // ── Eventos state
   var sEvtNuevoOpen=useState(false); var evtNuevoOpen=sEvtNuevoOpen[0]; var setEvtNuevoOpen=sEvtNuevoOpen[1];
   var sEvtNuevoForm=useState({nombre:"",fecha:FECHA_HOY,productos:[]}); var evtNuevoForm=sEvtNuevoForm[0]; var setEvtNuevoForm=sEvtNuevoForm[1];
@@ -7860,6 +7860,25 @@ export default function CLEO(props){
   var sPedFormPagoModal=useState({monto:"",fecha:FECHA_HOY,concepto:"Anticipo",metodoPago:"efectivo"}); var formPagoPedidoModal=sPedFormPagoModal[0]; var setFormPagoPedidoModal=sPedFormPagoModal[1];
   var sPedEdit=useState(null); var pedidoEditando=sPedEdit[0]; var setPedidoEditando=sPedEdit[1];
   var sPromosRapidas=useState(function(){ try{ return JSON.parse(localStorage.getItem("cleo_promos_rapidas")||"[]")||[]; }catch(e){ return []; } }); var promosRapidas=sPromosRapidas[0]; var setPromosRapidas=sPromosRapidas[1];
+  // cleo_promos_rapidas no pasa por localWriteGuard (no es dato de negocio
+  // crítico) , pero SÍ puede cambiar en otra pestaña/dispositivo con la
+  // misma cuenta abierta (ej. tablet en el mostrador + celular). Sin esto,
+  // esta pestaña se queda con la lista que tenía al cargar y nunca se
+  // entera de una promo agregada en otro lado — y al guardar su propia
+  // promo, la escribiría usando esa copia vieja, borrando sin querer lo
+  // que el otro lado acaba de agregar. Esto la mantiene al día en vivo.
+  useEffect(function(){
+    function onStoragePromos(ev){
+      if(ev.storageArea!==localStorage) return;
+      if(ev.key!=="cleo_promos_rapidas") return;
+      try{
+        var parsed=ev.newValue?JSON.parse(ev.newValue):[];
+        setPromosRapidas(Array.isArray(parsed)?parsed:[]);
+      }catch(e){}
+    }
+    window.addEventListener("storage",onStoragePromos);
+    return function(){ window.removeEventListener("storage",onStoragePromos); };
+  },[]);
   var sNuevoPedidoModal=useState(false); var nuevoPedidoModal=sNuevoPedidoModal[0]; var setNuevoPedidoModal=sNuevoPedidoModal[1];
   var pedidoVacio={clienteId:"",nuevoNombre:"",items:[{id:"it_"+Date.now(),catalogoId:null,nombre:"",cantidad:1,precioUnitario:"",total:0}],anticipo:"",metodoPago:"efectivo",fechaEntrega:"",notas:"",oportunidadRespuesta:null,promoVenta:"",promoVentaOtra:""};
   var sNuevoPedidoForm=useState(pedidoVacio); var nuevoPedidoForm=sNuevoPedidoForm[0]; var setNuevoPedidoForm=sNuevoPedidoForm[1];
@@ -9968,22 +9987,28 @@ export default function CLEO(props){
     setModalVenta(true);
   }
 
+  // Lee cleo_promos_rapidas directo de localStorage (nunca del estado de
+  // React en memoria) justo antes de modificarlo. Si otra pestaña/dispositivo
+  // con la misma cuenta ya guardó una promo nueva, esta pestaña puede no
+  // haberla visto todavía en su propio estado , partir de localStorage en
+  // vez del `prev` de React evita que una escritura aquí borre sin querer
+  // lo que el otro lado acaba de agregar.
+  function leerPromosRapidasFrescas(){
+    try{ var arr=JSON.parse(localStorage.getItem("cleo_promos_rapidas")||"[]"); return Array.isArray(arr)?arr:[]; }
+    catch(e){ return promosRapidas; }
+  }
   function guardarPromoRapida(texto){
     var t=(texto||"").trim();
     if(!t||t==="2×1"||t==="3×2") return;
-    setPromosRapidas(function(prev){
-      var arr=prev.filter(function(x){ return x.toLowerCase()!==t.toLowerCase(); });
-      arr=[t].concat(arr).slice(0,8);
-      try{ localStorage.setItem("cleo_promos_rapidas",JSON.stringify(arr)); }catch(e){}
-      return arr;
-    });
+    var arr=leerPromosRapidasFrescas().filter(function(x){ return x.toLowerCase()!==t.toLowerCase(); });
+    arr=[t].concat(arr).slice(0,8);
+    try{ localStorage.setItem("cleo_promos_rapidas",JSON.stringify(arr)); }catch(e){}
+    setPromosRapidas(arr);
   }
   function eliminarPromoRapida(texto){
-    setPromosRapidas(function(prev){
-      var arr=prev.filter(function(x){ return x!==texto; });
-      try{ localStorage.setItem("cleo_promos_rapidas",JSON.stringify(arr)); }catch(e){}
-      return arr;
-    });
+    var arr=leerPromosRapidasFrescas().filter(function(x){ return x!==texto; });
+    try{ localStorage.setItem("cleo_promos_rapidas",JSON.stringify(arr)); }catch(e){}
+    setPromosRapidas(arr);
   }
 
   function guardarVentaDirecta(crearCliente){
@@ -10140,10 +10165,14 @@ export default function CLEO(props){
           return cl&&cl.nombre?cl.nombre:null;
         })();
         setProductosCat(function(prev){ return prev.map(function(px){
-          var it=itemsVRConInv.find(function(x){ return x.catalogoId===px.id; });
-          if(!it) return px;
+          // Suma TODAS las líneas de este producto en la venta, no solo la
+          // primera , "Venta rápida" permite agregar el mismo producto como
+          // líneas separadas (ej. 2× "×1 Crema de Ajo") en vez de una sola
+          // línea con cantidad 2, y un .find() aquí descontaba de menos.
+          var cantRaw=itemsVRConInv.filter(function(x){ return x.catalogoId===px.id; }).reduce(function(s,x){ return s+Math.max(0,Number(x.cantidad)||0); },0);
+          if(cantRaw===0) return px;
           var factorVR=itemBaseVD.promoVenta==="2×1"?2:itemBaseVD.promoVenta==="3×2"?3:1;
-          var cant=Math.ceil(Math.max(0,Number(it.cantidad)||0)*factorVR);
+          var cant=Math.ceil(cantRaw*factorVR);
           if(cant===0) return px;
           var stockNuevo=Math.max(0,(px.stock||0)-cant);
           var notaPromo=itemBaseVD.promoVenta?" · "+itemBaseVD.promoVenta:"";
@@ -10159,10 +10188,13 @@ export default function CLEO(props){
         setEventosInv(function(prev){ return (prev||[]).map(function(ev){
           if(ev.id!==evtIdReal) return ev;
           var ventaItems=itemBaseVD.items||[];
+          // Suma TODAS las líneas que coincidan con este producto, no solo la
+          // primera con .find() , misma razón que en el descuento de stock de
+          // arriba: el mismo producto puede venir en más de una línea.
           var nuevosProds=(ev.productos||[]).map(function(ep){
-            var vit=ventaItems.find(function(x){ return (x.catalogoId&&ep.catalogoId)?String(x.catalogoId)===String(ep.catalogoId):(x.nombre||"").trim().toLowerCase()===(ep.nombre||"").trim().toLowerCase(); });
-            if(!vit) return ep;
-            return Object.assign({},ep,{cantidadVendida:(ep.cantidadVendida||0)+Math.max(0,Number(vit.cantidad)||0)});
+            var cantVendidaItem=ventaItems.filter(function(x){ return (x.catalogoId&&ep.catalogoId)?String(x.catalogoId)===String(ep.catalogoId):(x.nombre||"").trim().toLowerCase()===(ep.nombre||"").trim().toLowerCase(); }).reduce(function(s,x){ return s+Math.max(0,Number(x.cantidad)||0); },0);
+            if(cantVendidaItem===0) return ep;
+            return Object.assign({},ep,{cantidadVendida:(ep.cantidadVendida||0)+cantVendidaItem});
           });
           var pedIdStr=String(itemBaseVD.id);
           var movNuevo={id:"emov_"+Date.now(),fecha:FECHA_HOY,tipo:"venta",pedidoId:pedIdStr,nota:conceptoFinal||""};
@@ -10862,11 +10894,14 @@ export default function CLEO(props){
           setEventosInv(function(prev){ return (prev||[]).map(function(ev){
             if((ev.pedidosIds||[]).map(String).indexOf(_pedCancelId)<0) return ev;
             var _items=pedidoAntesEstado.items||[];
+            // Misma suma de todas las líneas que coinciden, no solo la
+            // primera , si no, cancelar una venta con el mismo producto en
+            // más de una línea dejaba un residuo de "vendida" fantasma.
             return Object.assign({},ev,{
               productos:(ev.productos||[]).map(function(ep){
-                var _it=_items.find(function(x){ return (x.catalogoId&&ep.catalogoId)?String(x.catalogoId)===String(ep.catalogoId):(x.nombre||"").trim().toLowerCase()===(ep.nombre||"").trim().toLowerCase(); });
-                if(!_it) return ep;
-                return Object.assign({},ep,{cantidadVendida:Math.max(0,(ep.cantidadVendida||0)-(Math.max(0,Number(_it.cantidad)||0)))});
+                var _cantVendidaItem=_items.filter(function(x){ return (x.catalogoId&&ep.catalogoId)?String(x.catalogoId)===String(ep.catalogoId):(x.nombre||"").trim().toLowerCase()===(ep.nombre||"").trim().toLowerCase(); }).reduce(function(s,x){ return s+Math.max(0,Number(x.cantidad)||0); },0);
+                if(_cantVendidaItem===0) return ep;
+                return Object.assign({},ep,{cantidadVendida:Math.max(0,(ep.cantidadVendida||0)-_cantVendidaItem)});
               }),
               movimientos:(ev.movimientos||[]).concat([{id:"emov_"+Date.now(),fecha:FECHA_HOY,tipo:"cancelacion",pedidoId:_pedCancelId,nota:"Venta anulada"}])
             });
@@ -16232,8 +16267,8 @@ export default function CLEO(props){
                   !isMobile&&!editando&&!registrandoVenta&&e("div",{style:{display:"flex",gap:6,flexShrink:0,alignItems:"center"}},
                     e("button",{type:"button",
                       style:{cursor:"pointer",height:32,padding:"0 13px",borderRadius:16,border:"none",background:"#0E1328",color:"#FFFFFF",fontSize:12.5,fontWeight:700,fontFamily:FONT_CLEO,display:"inline-flex",alignItems:"center",gap:6,whiteSpace:"nowrap"},
-                      onClick:function(ev){ ev.stopPropagation(); setInvVentaId(p.id); setInvDetalleId(null); setInvEditId(null); setInvVentaForm({cant:"",lugar:""}); }
-                    },"Anotar ventas"),
+                      onClick:function(ev){ ev.stopPropagation(); setInvVentaId(p.id); setInvDetalleId(null); setInvEditId(null); setInvVentaForm({cant:"",motivo:"",motivoOtro:""}); }
+                    },"Registrar salida"),
                     e("button",{type:"button",
                       style:{cursor:"pointer",height:32,padding:"0 13px",borderRadius:16,border:"1.5px solid #E3E6EF",background:"#FFFFFF",color:"#0E1328",fontSize:12.5,fontWeight:700,fontFamily:FONT_CLEO,display:"inline-flex",alignItems:"center",gap:5,whiteSpace:"nowrap"},
                       onClick:function(ev){ ev.stopPropagation(); setInvEditId(p.id); setInvDetalleId(null); setInvVentaId(null); setInvEditForm({stock:String(p.stock),stockMinimo:p.stockMinimo!=null?String(p.stockMinimo):""}); }
@@ -16252,8 +16287,8 @@ export default function CLEO(props){
                 isMobile&&!editando&&!registrandoVenta&&e("div",{style:{display:"flex",gap:8,padding:"2px 20px 14px"}},
                   e("button",{type:"button",
                     style:{cursor:"pointer",flex:1,height:40,borderRadius:20,border:"none",background:"#0E1328",color:"#FFFFFF",fontSize:13.5,fontWeight:700,fontFamily:FONT_CLEO,display:"inline-flex",alignItems:"center",justifyContent:"center"},
-                    onClick:function(ev){ ev.stopPropagation(); setInvVentaId(p.id); setInvDetalleId(null); setInvEditId(null); setInvVentaForm({cant:"",lugar:""}); }
-                  },"Anotar ventas"),
+                    onClick:function(ev){ ev.stopPropagation(); setInvVentaId(p.id); setInvDetalleId(null); setInvEditId(null); setInvVentaForm({cant:"",motivo:"",motivoOtro:""}); }
+                  },"Registrar salida"),
                   e("button",{type:"button",
                     style:{cursor:"pointer",flex:1,height:40,borderRadius:20,border:"1.5px solid #E3E6EF",background:"#FFFFFF",color:"#0E1328",fontSize:13.5,fontWeight:700,fontFamily:FONT_CLEO,display:"inline-flex",alignItems:"center",justifyContent:"center",gap:5},
                     onClick:function(ev){ ev.stopPropagation(); setInvEditId(p.id); setInvDetalleId(null); setInvVentaId(null); setInvEditForm({stock:String(p.stock),stockMinimo:p.stockMinimo!=null?String(p.stockMinimo):""}); }
@@ -16317,39 +16352,49 @@ export default function CLEO(props){
                   )
                 ),
 
-                // ── Form Registrar venta
+                // ── Form Registrar salida
                 registrandoVenta&&e("div",{style:{borderTop:"1px solid "+C.border,background:C.purplePale||C.surfaceUp,padding:"12px "+(isMobile?"12px":"16px")}},
                   e("div",{style:{fontSize:13,fontWeight:600,color:C.text,marginBottom:10}},
-                    "¿Cuántas ",e("span",{style:{color:C.purple}},p.nombre)," vendiste?"
+                    "¿Cuántas ",e("span",{style:{color:C.purple}},p.nombre)," vas a registrar como salida?"
                   ),
-                  e("div",{style:{display:"grid",gridTemplateColumns:isMobile?"1fr":"1fr 1fr",gap:10,marginBottom:10}},
-                    e("div",null,
-                      e("label",{style:{fontSize:11,fontWeight:600,color:C.textMuted,display:"block",marginBottom:4}},"Cantidad vendida"),
-                      e("input",{type:"number",min:"1",inputMode:"numeric",autoFocus:true,
-                        value:invVentaForm.cant,
-                        placeholder:"0",
-                        onChange:function(ev){ setInvVentaForm(Object.assign({},invVentaForm,{cant:ev.target.value})); },
-                        style:Object.assign({},st.inp,{marginBottom:0,fontSize:16,fontWeight:700,textAlign:"center"})
-                      })
-                    ),
-                    e("div",null,
-                      e("label",{style:{fontSize:11,fontWeight:600,color:C.textMuted,display:"block",marginBottom:4}},"¿Dónde? (opcional)"),
-                      e("input",{type:"text",
-                        value:invVentaForm.lugar,
-                        placeholder:"ej. Bazar Mérida",
-                        onChange:function(ev){ setInvVentaForm(Object.assign({},invVentaForm,{lugar:ev.target.value})); },
-                        style:Object.assign({},st.inp,{marginBottom:0})
+                  e("div",{style:{marginBottom:10}},
+                    e("label",{style:{fontSize:11,fontWeight:600,color:C.textMuted,display:"block",marginBottom:4}},"Cantidad"),
+                    e("input",{type:"number",min:"1",inputMode:"numeric",autoFocus:true,
+                      value:invVentaForm.cant,
+                      placeholder:"0",
+                      onChange:function(ev){ setInvVentaForm(Object.assign({},invVentaForm,{cant:ev.target.value})); },
+                      style:Object.assign({},st.inp,{marginBottom:0,fontSize:16,fontWeight:700,textAlign:"center",width:96})
+                    })
+                  ),
+                  e("div",{style:{marginBottom:invVentaForm.motivo==="otro"?8:10}},
+                    e("label",{style:{fontSize:11,fontWeight:600,color:C.textMuted,display:"block",marginBottom:4}},"¿Qué pasó?"),
+                    e("div",{style:{display:"flex",gap:6,flexWrap:"wrap"}},
+                      [{v:"Muestra / regalo"},{v:"Daño o pérdida"},{v:"Error de conteo"},{v:"otro",l:"Otro"}].map(function(op){
+                        var activo=invVentaForm.motivo===op.v;
+                        return e("button",{key:op.v,type:"button",
+                          style:{cursor:"pointer",padding:"6px 12px",borderRadius:20,border:"1.5px solid "+(activo?C.purple:C.border),background:activo?C.purple+"15":"transparent",fontSize:12,fontWeight:activo?700:500,color:activo?C.purple:C.textMuted},
+                          onClick:function(){ setInvVentaForm(Object.assign({},invVentaForm,{motivo:activo?"":op.v,motivoOtro:""})); }
+                        },op.l||op.v);
                       })
                     )
                   ),
+                  invVentaForm.motivo==="otro"&&e("input",{type:"text",
+                    value:invVentaForm.motivoOtro,
+                    placeholder:"ej. Se venció, se lo robaron...",
+                    onChange:function(ev){ setInvVentaForm(Object.assign({},invVentaForm,{motivoOtro:ev.target.value})); },
+                    style:Object.assign({},st.inp,{marginBottom:10,fontSize:13})
+                  }),
                   (function(){
                     var cantNum=Number(invVentaForm.cant);
                     var cantOk=cantNum>0&&!isNaN(cantNum);
+                    var disp=p._disponibles!=null?p._disponibles:p.stock;
                     var stockDespues=cantOk?Math.max(0,p.stock-cantNum):null;
                     var sinStock=cantOk&&cantNum>p.stock;
-                    return e("div",{style:{fontSize:12,minHeight:16,marginBottom:10,color:sinStock?C.red:C.green}},
+                    var comeApartado=cantOk&&!sinStock&&cantNum>disp;
+                    return e("div",{style:{fontSize:12,minHeight:16,marginBottom:10,color:sinStock?C.red:comeApartado?C.amber:C.textMuted}},
                       !cantOk?null
-                      :sinStock?"Solo tienes "+p.stock+" — quedarás con 0 disponibles"
+                      :sinStock?"Solo tienes "+p.stock+" en total — quedarás con 0"
+                      :comeApartado?"De estas, "+(cantNum-disp)+" ya estaban apartadas para un pedido — avísale a ese cliente"
                       :stockDespues===0?"Te quedarás sin existencias de este producto"
                       :"Te quedarán "+stockDespues+" unidades después"
                     );
@@ -16360,15 +16405,15 @@ export default function CLEO(props){
                       onClick:function(){ setInvVentaId(null); }
                     },"Cancelar"),
                     e("button",{type:"button",
-                      disabled:!(Number(invVentaForm.cant)>0),
-                      style:{cursor:Number(invVentaForm.cant)>0?"pointer":"not-allowed",padding:"8px 18px",borderRadius:8,border:"none",background:Number(invVentaForm.cant)>0?C.purple:"#D1D5DB",color:"#fff",fontSize:13,fontWeight:700},
+                      disabled:!(Number(invVentaForm.cant)>0)||!invVentaForm.motivo||(invVentaForm.motivo==="otro"&&!(invVentaForm.motivoOtro||"").trim()),
+                      style:(function(){ var hab=Number(invVentaForm.cant)>0&&invVentaForm.motivo&&(invVentaForm.motivo!=="otro"||(invVentaForm.motivoOtro||"").trim()); return {cursor:hab?"pointer":"not-allowed",padding:"8px 18px",borderRadius:8,border:"none",background:hab?C.purple:"#D1D5DB",color:"#fff",fontSize:13,fontWeight:700}; })(),
                       onClick:function(){
                         var cantNum=Number(invVentaForm.cant);
                         if(!(cantNum>0)) return;
-                        var lugar=(invVentaForm.lugar||"").trim();
+                        var motivoFinal=invVentaForm.motivo==="otro"?(invVentaForm.motivoOtro||"").trim():invVentaForm.motivo;
+                        if(!motivoFinal) return;
                         var stockNuevo=Math.max(0,p.stock-cantNum);
-                        var nota=lugar?"Salida manual · "+cantNum+" en "+lugar:"Salida manual · "+cantNum;
-                        var mov={id:"mov_"+Date.now(),fecha:FECHA_HOY,tipo:"venta_directa",cantAntes:p.stock,cantDespues:stockNuevo,nota:nota};
+                        var mov={id:"mov_"+Date.now(),fecha:FECHA_HOY,tipo:"merma",cantAntes:p.stock,cantDespues:stockNuevo,nota:motivoFinal};
                         setProductosCat(productosCat.map(function(x){
                           return x.id===p.id?Object.assign({},x,{stock:stockNuevo,movimientos:(x.movimientos||[]).concat([mov])}):x;
                         }));
@@ -16779,9 +16824,10 @@ export default function CLEO(props){
                     });
                     if(itemsConInv.length>0){
                       setProductosCat(function(prev){ return prev.map(function(px){
-                        var it=itemsConInv.find(function(x){ return x.catalogoId===px.id; });
-                        if(!it) return px;
-                        var cant=Math.max(0,Number(it.cantidad)||0);
+                        // Suma todas las líneas de este producto, no solo la
+                        // primera con .find() , si la venta tenía el mismo
+                        // producto en 2 líneas, solo se reponía una.
+                        var cant=itemsConInv.filter(function(x){ return x.catalogoId===px.id; }).reduce(function(s,x){ return s+Math.max(0,Number(x.cantidad)||0); },0);
                         if(cant===0) return px;
                         var stkNuevo=(px.stock||0)+cant;
                         var mov={id:"mov_"+Date.now()+"_"+px.id,fecha:FECHA_HOY,tipo:"ajuste_cantidad",cantAntes:px.stock,cantDespues:stkNuevo,nota:"Venta anulada en evento"};
@@ -17756,16 +17802,18 @@ export default function CLEO(props){
                         var movsEnPeriodo=(p.movimientos||[]).filter(function(mv){ return mv.fecha>=desde&&mv.fecha<=hasta; });
                         var salidas=movsEnPeriodo.filter(function(mv){ return mv.tipo==="entrega"||mv.tipo==="venta_directa"; }).reduce(function(s,mv){ return s+Math.max(0,(mv.cantAntes||0)-(mv.cantDespues||0)); },0);
                         var entradas=movsEnPeriodo.filter(function(mv){ return mv.tipo==="ajuste_cantidad"&&(mv.cantDespues||0)>(mv.cantAntes||0); }).reduce(function(s,mv){ return s+Math.max(0,(mv.cantDespues||0)-(mv.cantAntes||0)); },0);
+                        var mermas=movsEnPeriodo.filter(function(mv){ return mv.tipo==="merma"; }).reduce(function(s,mv){ return s+Math.max(0,(mv.cantAntes||0)-(mv.cantDespues||0)); },0);
                         var movsOrdenados=movsEnPeriodo.slice().sort(function(a,b){ return a.fecha<b.fecha?-1:1; }).map(function(mv){ return {fecha:mv.fecha,nota:mv.nota||"",cantAntes:mv.cantAntes,cantDespues:mv.cantDespues,tipo:mv.tipo}; });
-                        return {id:p.id,nombre:p.nombre,salidas:salidas,entradas:entradas,stockActual:p.stock,stockMinimo:p.stockMinimo!=null?p.stockMinimo:null,movimientos:movsOrdenados};
-                      }).filter(function(f){ return f.salidas>0||f.entradas>0||f.movimientos.length>0; }).sort(function(a,b){ return (b.salidas+b.entradas)-(a.salidas+a.entradas); });
+                        return {id:p.id,nombre:p.nombre,salidas:salidas,entradas:entradas,mermas:mermas,stockActual:p.stock,stockMinimo:p.stockMinimo!=null?p.stockMinimo:null,movimientos:movsOrdenados};
+                      }).filter(function(f){ return f.salidas>0||f.entradas>0||f.mermas>0||f.movimientos.length>0; }).sort(function(a,b){ return (b.salidas+b.entradas+b.mermas)-(a.salidas+a.entradas+a.mermas); });
                       var totalSalidas=filas.reduce(function(s,f){ return s+f.salidas; },0);
                       var totalEntradas=filas.reduce(function(s,f){ return s+f.entradas; },0);
+                      var totalMermas=filas.reduce(function(s,f){ return s+f.mermas; },0);
                       var agotados=productosConInv.filter(function(p){ return p.stock===0; }).length;
                       var mismodia=desde===hasta;
                       var periodoLabel=mismodia?(desde===FECHA_HOY?"Hoy":fechaCortaInv(desde)):(fechaCortaInv(desde)+" – "+fechaCortaInv(hasta));
                       var periodoRango=mismodia?fechaCortaInv(desde):(fechaCortaInv(desde)+" al "+fechaCortaInv(hasta));
-                      await manejarDescargarReporteInventarioPDF({negocio:perfil,filas:filas,periodoLabel:periodoLabel,periodoRango:periodoRango,totalSalidas:totalSalidas,totalEntradas:totalEntradas,agotados:agotados});
+                      await manejarDescargarReporteInventarioPDF({negocio:perfil,filas:filas,periodoLabel:periodoLabel,periodoRango:periodoRango,totalSalidas:totalSalidas,totalEntradas:totalEntradas,totalMermas:totalMermas,agotados:agotados});
                     }finally{ setInvDescargando(false); }
                   })();
                 }},invDescargando?"Generando…":"Descargar PDF")
