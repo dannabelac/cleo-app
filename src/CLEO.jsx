@@ -1911,7 +1911,7 @@ var formVacio={nombre:"",negocio:"",contacto:"",origen:"Instagram",etapa:"Nuevo 
 var cotVacio={clienteId:"",items:[{id:"it_"+Date.now(),catalogoId:null,nombre:"",cantidad:1,precioUnitario:"",total:0}],descuento:"",tipoDescuento:"porcentaje",estatus:"Pendiente",vigencia:"",vigenciaDias:"",notas:"",anticipo:0,fechaAnticipo:"",promoVenta:"",promoVentaOtra:""};
 var svVacio={nombre:"",precio:"",descripcion:"",condiciones:""};
 // Formulario de venta directa vacío
-var ventaVacia={tipo:"especifico",clienteId:"",concepto:"",monto:"",fecha:FECHA_HOY,etiqueta:"",eventoId:null,notas:"",nuevoNombre:"",nuevoContacto:"",nuevoNegocio:"",items:[],metodoPago:"efectivo",promoVenta:"",promoVentaOtra:""};
+var ventaVacia={tipo:"especifico",clienteId:"",concepto:"",monto:"",fecha:FECHA_HOY,etiqueta:"",eventoId:null,notas:"",nuevoNombre:"",nuevoContacto:"",nuevoNegocio:"",items:[],metodoPago:"efectivo",promoVenta:"",promoVentaOtra:"",descuento:"",tipoDescuento:"porcentaje"};
 
 // ─── PDF GENERATORS ──────────────────────────────────────────────────────────
 
@@ -3163,6 +3163,17 @@ function obtenerReversionIngresoPedido(ped){
   // `null` , el llamador decide el fallback (nunca "hoy").
   return { monto:-totalPagado, fecha:ped.fechaCancelacion||ped.fecha||ped.fechaCreado, fechaHora:ped.fechaHoraCancelacion||null };
 }
+// aplicarDescuento: única fórmula para convertir un descuento (% o monto
+// fijo) sobre una base ya dada en el monto real a restar , usada tanto por
+// calcularTotalesCotizacion (base = subtotal de items) como por Venta
+// rápida (base = total ya ajustado por promo, no un subtotal de items
+// puro) , un solo lugar para esta cuenta, nunca dos fórmulas que se puedan
+// desincronizar.
+function aplicarDescuento(monto,descuento,tipoDescuento){
+  var desc=redondearDinero(interpretarImporte(descuento)||0);
+  if(desc<=0) return 0;
+  return redondearDinero((tipoDescuento||"porcentaje")==="porcentaje"?Number(monto||0)*desc/100:desc);
+}
 // Única fórmula de subtotal/descuento/total a partir de un arreglo de items ,
 // usada por guardarCot, "Guardar y PDF" y cualquier otro lugar que necesite
 // el total real de una cotización , así nunca hay dos fórmulas que puedan
@@ -3179,7 +3190,7 @@ function calcularTotalesCotizacion(items,descuento,tipoDescuento){
   },0));
   var desc=redondearDinero(interpretarImporte(descuento)||0);
   var tipo=tipoDescuento||"porcentaje";
-  var montoDescuento=desc>0?redondearDinero(tipo==="porcentaje"?subtotal*desc/100:desc):0;
+  var montoDescuento=aplicarDescuento(subtotal,desc,tipo);
   var total=redondearDinero(Math.max(0,subtotal-montoDescuento));
   return {subtotal:subtotal,descuento:desc,tipoDescuento:tipo,montoDescuento:montoDescuento,total:total};
 }
@@ -4544,6 +4555,35 @@ function ModalVenta(props){
         ),
         multiProductoVD&&e("div",{style:{fontSize:11,color:C.textMuted,marginBottom:formVenta.promoVenta==="otra"?8:0}},"2×1 y 3×2 aplican cuando todos los productos son el mismo — usa Otra para describirla"),
         formVenta.promoVenta==="otra"&&e("input",{value:formVenta.promoVentaOtra||"",onChange:function(ev){ setFormVenta(Object.assign({},formVenta,{promoVentaOtra:ev.target.value})); },placeholder:"ej. 2da unidad mitad de precio",style:Object.assign({},st.inp,{marginBottom:0,fontSize:13})})
+      ),
+      // ── Descuento (opcional) ───────────────────────────────────────────
+      // Mismo patrón visual que ya usa Cotizaciones (chips %/$ + input +
+      // preview), pero la "base" sobre la que se calcula aquí ya incluye
+      // el factor de promo (si hay), por eso no se reusa
+      // calcularTotalesCotizacion tal cual , aplicarDescuento() sí es la
+      // misma fórmula que usa esa función, para que nunca se desincronicen.
+      e("div",{style:{marginBottom:8}},
+        e("label",{style:st.lbl},"¿Aplica algún descuento? (opcional)"),
+        e("div",{style:{display:"flex",gap:8,alignItems:"center",marginBottom:6}},
+          e("div",{style:{display:"flex",borderRadius:10,border:"1px solid "+C.border,overflow:"hidden",flexShrink:0,background:C.surface}},
+            e("button",{type:"button",style:{padding:"8px 12px",background:(formVenta.tipoDescuento||"porcentaje")==="porcentaje"?C.green:"transparent",color:(formVenta.tipoDescuento||"porcentaje")==="porcentaje"?"#fff":C.textMuted,border:"none",cursor:"pointer",fontSize:12,fontWeight:600},onClick:function(){ setFormVenta(Object.assign({},formVenta,{tipoDescuento:"porcentaje",descuento:""})); }},"%"),
+            e("button",{type:"button",style:{padding:"8px 12px",background:formVenta.tipoDescuento==="monto"?C.green:"transparent",color:formVenta.tipoDescuento==="monto"?"#fff":C.textMuted,border:"none",cursor:"pointer",fontSize:12,fontWeight:600},onClick:function(){ setFormVenta(Object.assign({},formVenta,{tipoDescuento:"monto",descuento:""})); }},"$")
+          ),
+          formVenta.tipoDescuento==="monto"
+            ? e(MontoInput,{placeholder:"ej. 50",value:formVenta.descuento,onChange:function(ev){ setFormVenta(Object.assign({},formVenta,{descuento:ev.target.value})); },style:Object.assign({},st.inp,{flex:1,marginBottom:0})})
+            : e("input",{type:"number",min:"0",value:formVenta.descuento||"",placeholder:"ej. 10",onChange:function(ev){ setFormVenta(Object.assign({},formVenta,{descuento:ev.target.value})); },style:Object.assign({},st.inp,{flex:1,marginBottom:0})})
+        ),
+        (function(){
+          if(!formVenta.descuento||!(interpretarImporte(formVenta.descuento)>0)) return null;
+          var _itemsVDPrev=formVenta.items||[];
+          var _totalItemsVDPrev=redondearDinero(_itemsVDPrev.reduce(function(s,it){ return s+Number(it.cantidad||1)*redondearDinero(interpretarImporte(it.precio)); },0));
+          var _promoVDPrev=(function(){ var pv=formVenta.promoVenta||""; return pv==="otra"?(formVenta.promoVentaOtra||"").trim():pv; })();
+          var _factorPagoVDPrev=esProductos&&_promoVDPrev==="3×2"?2:1;
+          var _montoConPromoVDPrev=_itemsVDPrev.length>0?redondearDinero(_totalItemsVDPrev*_factorPagoVDPrev):redondearDinero(interpretarImporte(formVenta.monto));
+          var _montoDescuentoVDPrev=aplicarDescuento(_montoConPromoVDPrev,formVenta.descuento,formVenta.tipoDescuento);
+          var _totalConDescuentoVDPrev=redondearDinero(Math.max(0,_montoConPromoVDPrev-_montoDescuentoVDPrev));
+          return e("div",{style:{fontSize:12,color:C.textMuted}},"Te quedará en $"+formatoDinero(_totalConDescuentoVDPrev)+" (ahorro de $"+formatoDinero(_montoDescuentoVDPrev)+")");
+        })()
       )
       ), // cierra body scrollable
       e("div",{style:{padding:isMobile?"12px 24px 28px":"14px 24px",borderTop:"1px solid "+C.border,background:C.surfaceUp,display:"flex",gap:8,justifyContent:"flex-end",flexShrink:0}},
@@ -4565,7 +4605,7 @@ var formVacio={nombre:"",negocio:"",contacto:"",origen:"Instagram",etapa:"Nuevo 
 var cotVacio={clienteId:"",items:[{id:"it_"+Date.now(),catalogoId:null,nombre:"",cantidad:1,precioUnitario:"",total:0}],descuento:"",tipoDescuento:"porcentaje",estatus:"Pendiente",vigencia:"",vigenciaDias:"",notas:"",anticipo:0,fechaAnticipo:"",promoVenta:"",promoVentaOtra:""};
 var svVacio={nombre:"",precio:"",descripcion:""};
 // Formulario de venta directa vacío
-var ventaVacia={tipo:"especifico",clienteId:"",concepto:"",monto:"",fecha:FECHA_HOY,etiqueta:"",eventoId:null,notas:"",nuevoNombre:"",nuevoContacto:"",nuevoNegocio:"",items:[],metodoPago:"efectivo",promoVenta:"",promoVentaOtra:""};
+var ventaVacia={tipo:"especifico",clienteId:"",concepto:"",monto:"",fecha:FECHA_HOY,etiqueta:"",eventoId:null,notas:"",nuevoNombre:"",nuevoContacto:"",nuevoNegocio:"",items:[],metodoPago:"efectivo",promoVenta:"",promoVentaOtra:"",descuento:"",tipoDescuento:"porcentaje"};
 
 // ─── PDF GENERATORS ──────────────────────────────────────────────────────────
 
@@ -10019,6 +10059,12 @@ export default function CLEO(props){
     guardarPromoRapida(promoVentaVD);
     var factorPagoVD=esProductos&&promoVentaVD==="3×2"?2:1;
     var montoFinal=items.length>0?redondearDinero(totalItems*factorPagoVD):redondearDinero(interpretarImporte(formVenta.monto));
+    // Descuento (opcional): se aplica DESPUÉS del factor de promo, sobre el
+    // monto ya ajustado por ella , son dos recortes en secuencia, nunca al
+    // mismo tiempo. Misma fórmula que usa Cotizaciones (aplicarDescuento),
+    // nunca una segunda fórmula aparte.
+    var montoDescuentoVD=aplicarDescuento(montoFinal,formVenta.descuento,formVenta.tipoDescuento);
+    montoFinal=redondearDinero(Math.max(0,montoFinal-montoDescuentoVD));
     // Igual que en avanzarVenta: si hay productos agregados (aunque sumen
     // $0, ej. un regalo/cortesía) no se bloquea , solo se bloquea cuando de
     // verdad no hay ni productos ni un monto escrito.
@@ -10055,6 +10101,10 @@ export default function CLEO(props){
       var precioUnitario=redondearDinero(interpretarImporte(it.precio));
       return {id:it.id||("it_"+Date.now()+"_"+Math.random().toString(36).slice(2,6)),catalogoId:it.catalogoId||null,nombre:it.nombre,cantidad:cantidad,precioUnitario:precioUnitario,total:redondearDinero(cantidad*precioUnitario)};
     });
+    // Solo se guarda como dato real si de verdad redujo algo , si la
+    // persona abrió el descuento y lo dejó en 0/vacío, no queda ningún
+    // rastro (mismo criterio que promoVentaVD arriba).
+    var descuentoFinalVD=montoDescuentoVD>0?(formVenta.descuento||""):"";
     var itemBaseVD=esProductos
       ? {
           id:"ped_"+Date.now(),
@@ -10071,7 +10121,9 @@ export default function CLEO(props){
           notas:formVenta.notas||"",
           etiqueta:formVenta.etiqueta||"",
           eventoId:(formVenta.eventoId&&formVenta.eventoId!=="otro")?formVenta.eventoId:null,
-          promoVenta:promoVentaVD
+          promoVenta:promoVentaVD,
+          descuento:descuentoFinalVD,
+          tipoDescuento:formVenta.tipoDescuento||"porcentaje"
         }
       : {
           id:Date.now(),
@@ -10091,6 +10143,8 @@ export default function CLEO(props){
           etiqueta:formVenta.etiqueta||"",
           notas:formVenta.notas||"",
           entregado:formVenta.tipo==="especifico"?false:undefined,fechaEntrega:"",
+          descuento:descuentoFinalVD,
+          tipoDescuento:formVenta.tipoDescuento||"porcentaje"
         };
 
     // Si es especifico y eligieron crear cliente nuevo , ya se validó el
@@ -14082,6 +14136,7 @@ export default function CLEO(props){
                         e("div",{style:{fontSize:sc.namePerson,fontWeight:800,letterSpacing:"-0.015em",color:C.ink,overflowWrap:"anywhere"}},cl?cl.nombre:"Cliente"),
                         e("div",{style:{marginTop:3,fontSize:sc.textSec,fontWeight:600,color:C.ink}},ped.productos||"Sin producto"),
                         ped.promoVenta&&e("span",{style:{display:"inline-flex",alignItems:"center",marginTop:4,padding:"2px 10px",borderRadius:16,background:C.amberBg,border:"1px solid "+C.amberBorder,fontSize:11,fontWeight:700,color:C.amberText}},"🏷️ "+ped.promoVenta),
+                        ped.descuento&&e("span",{style:{display:"inline-flex",alignItems:"center",marginTop:4,marginLeft:ped.promoVenta?4:0,padding:"2px 10px",borderRadius:16,background:C.greenBg,border:"1px solid "+C.greenBorder,fontSize:11,fontWeight:700,color:C.green}},"💸 "+(ped.tipoDescuento==="monto"?"$"+ped.descuento:ped.descuento+"%")+" OFF"),
                         ped.etiqueta&&e("div",{style:{marginTop:2,fontSize:sc.textLabel,color:C.textDim,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}},"📍 "+ped.etiqueta)
                       ),
                       totalPedido>0&&e("div",{style:{textAlign:"right",flexShrink:0}},
@@ -14193,6 +14248,7 @@ export default function CLEO(props){
                       // producto
                       e("div",{style:{marginTop:4,fontSize:sc.text,fontWeight:600,color:C.ink}},ped.productos||"Sin producto"),
                       ped.promoVenta&&e("span",{style:{display:"inline-flex",alignItems:"center",marginTop:4,padding:"2px 10px",borderRadius:16,background:C.amberBg,border:"1px solid "+C.amberBorder,fontSize:11,fontWeight:700,color:C.amberText}},"🏷️ "+ped.promoVenta),
+                      ped.descuento&&e("span",{style:{display:"inline-flex",alignItems:"center",marginTop:4,marginLeft:ped.promoVenta?4:0,padding:"2px 10px",borderRadius:16,background:C.greenBg,border:"1px solid "+C.greenBorder,fontSize:11,fontWeight:700,color:C.green}},"💸 "+(ped.tipoDescuento==="monto"?"$"+ped.descuento:ped.descuento+"%")+" OFF"),
                       ped.etiqueta&&e("div",{style:{marginTop:2,fontSize:sc.textLabel,color:C.textDim,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}},"📍 "+ped.etiqueta),
                       // fecha + tiempo
                       e("div",{style:{display:"flex",flexWrap:"wrap",alignItems:"center",gap:"6px 14px",marginTop:8,fontSize:sc.textSec,color:"#5A6078"}},
