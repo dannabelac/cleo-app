@@ -16858,7 +16858,17 @@ export default function CLEO(props){
                   var cur=new Date(inicioEvt+"T12:00:00"); var fin=new Date(finEvt+"T12:00:00");
                   while(cur<=fin){ diasEvt.push(cur.toISOString().slice(0,10)); cur=new Date(cur); cur.setDate(cur.getDate()+1); }
                   var porDia={}; diasEvt.forEach(function(d){ porDia[d]={total:0,n:0,metodos:{},productos:{}}; });
-                  pedEvt.forEach(function(ped){ var d=ped.fecha||FECHA_HOY; if(porDia[d]){ porDia[d].total+=Number(ped.total||0); porDia[d].n++; (ped.pagos||[]).forEach(function(pg){ var m=pg.metodoPago||"efectivo"; porDia[d].metodos[m]=(porDia[d].metodos[m]||0)+Number(pg.monto||0); }); (ped.items||[]).forEach(function(it){ var nom=it.nombre||it.concepto||""; if(!nom) return; var cant=Number(it.cantidad||1); var sub=Number(it.total||0)||Number(it.precioUnitario||0)*cant; if(!porDia[d].productos[nom]) porDia[d].productos[nom]={cantidad:0,total:0}; porDia[d].productos[nom].cantidad+=cant; porDia[d].productos[nom].total+=sub; }); } });
+                  pedEvt.forEach(function(ped){ var d=ped.fecha||FECHA_HOY; if(porDia[d]){ porDia[d].total+=Number(ped.total||0); porDia[d].n++; (ped.pagos||[]).forEach(function(pg){ var m=pg.metodoPago||"efectivo"; porDia[d].metodos[m]=(porDia[d].metodos[m]||0)+Number(pg.monto||0); });
+                    // separarMontoConfiableDePedido reparte proporcionalmente
+                    // cualquier descuento o promo (pedido.total≠suma(items))
+                    // antes de acumular por producto , sin esto, un pedido
+                    // con descuento sumaba el precio SIN descontar de cada
+                    // producto, mientras el total del día (que sí lee
+                    // ped.total) ya salía descontado , dos números que no
+                    // cuadraban entre sí. Mismo mecanismo que ya usa
+                    // obtenerProductosMasVendidos (Reporte Comercial).
+                    var _itemsReconciliadosEvt=separarMontoConfiableDePedido(obtenerItemsPedido(ped),ped.total).items;
+                    _itemsReconciliadosEvt.forEach(function(it){ var nom=it.nombre||it.concepto||""; if(!nom) return; var cant=Number(it.cantidad||1); var sub=Number(it.total||0); if(!porDia[d].productos[nom]) porDia[d].productos[nom]={cantidad:0,total:0}; porDia[d].productos[nom].cantidad+=cant; porDia[d].productos[nom].total+=sub; }); } });
                   var maxTotal=diasEvt.reduce(function(m,d){ return Math.max(m,porDia[d].total); },0);
                   var DIAS=["Dom","Lun","Mar","Mié","Jue","Vie","Sáb"]; var MESES=["ene","feb","mar","abr","may","jun","jul","ago","sep","oct","nov","dic"];
                   function fmtDia(s){ var f=new Date(s+"T12:00:00"); return DIAS[f.getDay()]+" "+f.getDate()+" "+MESES[f.getMonth()]; }
